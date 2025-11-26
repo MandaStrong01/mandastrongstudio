@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toolboard - MandaStrong Studio</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="black-bg">
+    <div class="page-container">
+        <h1 class="cinematic-title white-text">MANDASTRONG STUDIO - PAGE {{ page_num }}</h1>
+        <div class="tool-box">
+            <h2 style="font-size: 1.8rem; margin-bottom: 1rem; color: #0f0;">
+                Toolboard {{ page_num }}
+            </h2>
+            <p style="color: #fff;">
+                Continue your story... Build your scenes with AI-powered tools.
+            </p>
+        </div>
+        <div class="navigation">
+            <a href="{{ url_for('page', n=page_num-1) }}" class="btn">Back</a>
+            <a href="{{ url_for('page', n=page_num+1) }}" class="btn">Next</a>
+        </div>
+    </div>
+</body>
+</html>

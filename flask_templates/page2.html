@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome - MandaStrong Studio</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <video id="bg-video" autoplay loop muted playsinline>
+        <source src="{{ url_for('static', filename='video/background.mp4') }}" type="video/mp4">
+    </video>
+
+    <div class="page-container">
+        <h1 class="cinematic-title">WELCOME</h1>
+        <p class="tagline" style="max-width: 800px; margin-top: 2rem;">
+            Make awesome family movies or turn your dreams into film reality!
+        </p>
+        <div class="navigation">
+            <a href="{{ url_for('page', n=1) }}" class="btn">Back</a>
+            <a href="{{ url_for('page', n=3) }}" class="btn">Next</a>
+        </div>
+    </div>
+</body>
+</html>

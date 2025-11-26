@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+button {
+  text-decoration: none !important;
+}
+
+a {
+  text-decoration: none !important;
+}

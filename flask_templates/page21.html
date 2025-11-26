@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>That's All Folks! - MandaStrong Studio</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="black-bg">
+    <div class="page-container">
+        <h1 class="cinematic-title white-text" style="margin-bottom: 2rem;">
+            🎬 That's All Folks!
+        </h1>
+        <div class="video-player">
+            <video controls autoplay>
+                <source src="{{ url_for('static', filename='video/ThatsAllFolks.mp4') }}" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+        <p class="tagline white-text" style="margin-top: 2rem;">
+            Thank you for watching and creating with MandaStrong Studio!
+        </p>
+        <div class="navigation">
+            <a href="{{ url_for('page', n=20) }}" class="btn">Back</a>
+            <a href="{{ url_for('page', n=1) }}" class="btn">Home</a>
+        </div>
+    </div>
+</body>
+</html>

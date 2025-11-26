@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Builder - MandaStrong Studio</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="black-bg">
+    <div class="page-container">
+        <h1 class="cinematic-title white-text">MANDASTRONG STUDIO - PAGE {{ page_num }}</h1>
+        <div style="margin-top: 2rem; text-align: center;">
+            <p style="font-size: 1.5rem; margin-bottom: 1rem;">
+                Continue building your masterpiece...
+            </p>
+            <p style="font-size: 1.2rem; font-style: italic;">
+                Add scenes, effects, and bring your vision to life.
+            </p>
+        </div>
+        <div class="navigation">
+            <a href="{{ url_for('page', n=page_num-1) }}" class="btn">Back</a>
+            <a href="{{ url_for('page', n=page_num+1) }}" class="btn">Next</a>
+        </div>
+    </div>
+</body>
+</html>

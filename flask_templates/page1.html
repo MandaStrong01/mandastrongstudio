@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MANDASTRONG'S STUDIO</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <video id="bg-video" autoplay loop muted playsinline>
+        <source src="{{ url_for('static', filename='video/background.mp4') }}" type="video/mp4">
+    </video>
+
+    <div class="avatar-box" id="avatar-container">
+        <video id="avatar-video" muted>
+            <source src="{{ url_for('static', filename='video/avatar.mp4') }}" type="video/mp4">
+        </video>
+        <div class="play-button-overlay" id="play-button"></div>
+    </div>
+
+    <div class="page-container">
+        <h1 class="cinematic-title">MANDASTRONG'S STUDIO</h1>
+        <p class="tagline">Make-A-Movie-With-Two-Hours-Duration App</p>
+        <div style="margin-top: 3rem;">
+            <a href="{{ url_for('page', n=2) }}" class="btn">Next</a>
+            <a href="/login" class="btn">Login</a>
+            <a href="/register" class="btn">Register</a>
+        </div>
+    </div>
+
+    <script>
+        const avatarVideo = document.getElementById('avatar-video');
+        const playButton = document.getElementById('play-button');
+        const avatarContainer = document.getElementById('avatar-container');
+
+        avatarContainer.addEventListener('click', function() {
+            avatarVideo.muted = false;
+            avatarVideo.style.display = 'block';
+            avatarVideo.play();
+            playButton.style.display = 'none';
+        });
+    </script>
+</body>
+</html>

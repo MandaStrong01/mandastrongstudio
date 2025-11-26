@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doxy the School Bully - 120 Minute Expanded Final Cut</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #ff6b35;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #ccc;
+            margin-bottom: 30px;
+            font-size: 18px;
+        }
+        
+        .movie-info {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        
+        .info-item {
+            background: #333;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .info-label {
+            color: #ff6b35;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .player-section {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        video {
+            width: 100%;
+            max-width: 800px;
+            height: auto;
+            border-radius: 10px;
+            margin: 0 auto;
+            display: block;
+        }
+        
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .video-list {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        
+        .video-item {
+            background: #333;
+            margin: 5px 0;
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .video-item:hover {
+            background: #444;
+        }
+        
+        .video-item.active {
+            background: #ff6b35;
+            color: white;
+        }
+        
+        .video-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .video-desc {
+            color: #ccc;
+            font-size: 14px;
+        }
+        
+        .current-video {
+            text-align: center;
+            margin: 10px 0;
+            color: #ff6b35;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .navigation {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .nav-button {
+            background: #ff6b35;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 0 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .nav-button:hover {
+            background: #ff8555;
+        }
+        
+        .nav-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 Doxy the School Bully</h1>
+        <div class="subtitle">120 Minute Expanded Final Cut</div>
+        
+        <div class="movie-info">
+            <h2>Movie Information</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Total Duration</div>
+                    <div>120 Minutes</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Total Clips</div>
+                    <div>85 Video Files</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Quality</div>
+                    <div>768P HD</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Characters</div>
+                    <div>Doxy, Ethan, Lily</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="player-section">
+            <div class="current-video" id="currentVideo">Now Playing: 01A_extended_drone_opening.mp4</div>
+            
+            <video id="videoPlayer" controls autoplay>
+                <source src="enhanced_videos/01A_extended_drone_opening.mp4" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+            
+            <div class="navigation">
+                <button class="nav-button" id="prevBtn" onclick="previousVideo()">⬅️ Previous</button>
+                <button class="nav-button" id="nextBtn" onclick="nextVideo()">Next ➡️</button>
+            </div>
+        </div>
+        
+        <div class="video-list">
+            <h2>Video Playlist</h2>
+            <div id="videoList"></div>
+        </div>
+    </div>
+
+    <script>
+        const videos = [
+            { file: '01A_extended_drone_opening.mp4', title: '01A - Extended Drone Opening', desc: 'Cinematic opening over Westview High School' },
+            { file: '01B_morning_arrival_sequences.mp4', title: '01B - Morning Arrival Sequences', desc: 'Students arriving, building tension' },
+            { file: '01C_hallway_morning_transition.mp4', title: '01C - Hallway Morning Transition', desc: 'Morning hallway atmosphere' },
+            { file: '02A_doxy_before_transformation.mp4', title: '02A - Doxy Before Transformation', desc: 'Deep dive into Doxy\'s morning routine' },
+            { file: '02B_ethan_freshman_nervousness.mp4', title: '02B - Ethan Freshman Nervousness', desc: 'Extended scene of Ethan\'s anxiety' },
+            { file: '02C_lily_confidence_showcase.mp4', title: '02C - Lily Confidence Showcase', desc: 'Lily\'s morning routine, red hair, confident leadership' },
+            { file: '03A_classroom_dynamics.mp4', title: '03A - Classroom Dynamics', desc: 'Westview High classrooms, social hierarchies' },
+            { file: '03B_hallway_social_structures.mp4', title: '03B - Hallway Social Structures', desc: 'Detailed hallway interactions, social positioning' },
+            { file: '04A_first_bullying_incident.mp4', title: '04A - First Bullying Incident', desc: 'Extended version of locker scene' },
+            { file: '04B_bystander_reactions.mp4', title: '04B - Bystander Reactions', desc: 'Other students witnessing initial bullying' },
+            { file: '04C_doxy_power_dynamics.mp4', title: '04C - Doxy Power Dynamics', desc: 'Doxy\'s control over social situation' },
+            { file: '05A_ethan_stress_responses.mp4', title: '05A - Ethan Stress Responses', desc: 'Extended scenes of Ethan\'s anxiety' },
+            { file: '05B_doxy_escalation_patterns.mp4', title: '05B - Doxy Escalation Patterns', desc: 'Shows Doxy\'s intimidation patterns' },
+            { file: '05C_lily_observation_phase.mp4', title: '05C - Lily Observation Phase', desc: 'Lily watching and planning intervention' },
+            { file: '06A_extended_cafeteria_confrontation.mp4', title: '06A - Extended Cafeteria Confrontation', desc: 'Much longer version of confrontation scene' },
+            { file: '06B_doxy_initial_resistance.mp4', title: '06B - Doxy Initial Resistance', desc: 'Doxy\'s defensive responses to Lily' },
+            { file: '06C_lily_persistence.mp4', title: '06C - Lily Persistence', desc: 'Lily\'s continued efforts to reach Doxy' },
+            { file: '07A_ethan_survival_strategies.mp4', title: '07A - Ethan Survival Strategies', desc: 'How Ethan copes with ongoing bullying' },
+            { file: '07B_doxy_internal_conflict.mp4', title: '07B - Doxy Internal Conflict', desc: 'Early signs of Doxy\'s inner turmoil' },
+            { file: '08A_lily_family_background.mp4', title: '08A - Lily Family Background', desc: 'Lily\'s background and motivation' },
+            { file: '08B_lily_school_involvement.mp4', title: '08B - Lily School Involvement', desc: 'Lily\'s role in school community' },
+            { file: '09A_extended_library_scene.mp4', title: '09A - Extended Library Scene', desc: 'Much longer library reflection scene' },
+            { file: '09B_doxy_reading_deeply.mp4', title: '09B - Doxy Reading Deeply', desc: 'Doxy reading The Great Gatsby, self-reflection' },
+            { file: '09C_moral_questioning.mp4', title: '09C - Moral Questioning', desc: 'Doxy\'s internal dialogue about actions' },
+            { file: '10A_skate_park_setup.mp4', title: '10A - Skate Park Setup', desc: 'Setting up skate park connection scene' },
+            { file: '10B_extended_skate_park_scene.mp4', title: '10B - Extended Skate Park Scene', desc: 'Much longer skating interaction' },
+            { file: '10C_conversation_development.mp4', title: '10C - Conversation Development', desc: 'Detailed conversation between Doxy and Ethan' },
+            { file: '11A_ethan_initial_mistrust.mp4', title: '11A - Ethan Initial Mistrust', desc: 'Ethan\'s cautious response to Doxy' },
+            { file: '11B_doxy_authentic_apology.mp4', title: '11B - Doxy Authentic Apology', desc: 'Doxy\'s genuine attempt at making amends' },
+            { file: '11C_broken_wall_moments.mp4', title: '11C - Broken Wall Moments', desc: 'Moments of connection between former enemies' },
+            { file: '12A_building_new_relationship.mp4', title: '12A - Building New Relationship', desc: 'Developing friendship between Doxy and Ethan' },
+            { file: '13A_school_notice_changes.mp4', title: '13A - School Notice Changes', desc: 'Students and teachers noticing Doxy\'s transformation' },
+            { file: '13B_lily_coordinating_efforts.mp4', title: '13B - Lily Coordinating Efforts', desc: 'Lily organizing anti-bullying initiatives' },
+            { file: '13C_student_community_reaction.mp4', title: '13C - Student Community Reaction', desc: 'How the wider student body responds' },
+            { file: '14A_preparation_for_speech.mp4', title: '14A - Preparation for Speech', desc: 'Doxy preparing for public statement' },
+            { file: '14B_extended_auditorium_speech.mp4', title: '14B - Extended Auditorium Speech', desc: 'Much longer version of original speech' },
+            { file: '14C_detailed_apology.mp4', title: '14C - Detailed Apology', desc: 'Comprehensive acknowledgment of past actions' },
+            { file: '14D_vision_for_change.mp4', title: '14D - Vision for Change', desc: 'Doxy\'s plan for becoming advocate' },
+            { file: '15A_community_commitment.mp4', title: '15A - Community Commitment', desc: 'Students and faculty committing to change' },
+            { file: '15B_lily_coordinator_role.mp4', title: '15B - Lily Coordinator Role', desc: 'Lily\'s leadership in anti-bullying movement' },
+            { file: '16A_ethan_speaking_up.mp4', title: '16A - Ethan Speaking Up', desc: 'Ethan\'s own voice in supporting change' },
+            { file: '16B_westview_transformation.mp4', title: '16B - Westview Transformation', desc: 'School-wide culture shift' },
+            { file: '17A_admin_support.mp4', title: '17A - Admin Support', desc: 'School administration backing efforts' },
+            { file: '18A_annual_assembly.mp4', title: '18A - Annual Assembly', desc: 'One year later, addressing new students' },
+            { file: '18B_thank_you_westview_extended.mp4', title: '18B - Thank You Westview Extended', desc: 'Enhanced version of closing moment' },
+            { file: '18C_legacy_moment.mp4', title: '18C - Legacy Moment', desc: 'Final scene showing lasting impact' },
+            { file: '19A_new_student_integration.mp4', title: '19A - New Student Integration', desc: 'New students learning about school culture' },
+            { file: '19B_final_celebration.mp4', title: '19B - Final Celebration', desc: 'Community-wide celebration of change' }
+        ];
+
+        let currentIndex = 0;
+        const videoPlayer = document.getElementById('videoPlayer');
+        const currentVideoDisplay = document.getElementById('currentVideo');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+
+        function updateVideo() {
+            const video = videos[currentIndex];
+            videoPlayer.src = `enhanced_videos/${video.file}`;
+            currentVideoDisplay.textContent = `Now Playing: ${video.title}`;
+            
+            // Update navigation buttons
+            prevBtn.disabled = currentIndex === 0;
+            nextBtn.disabled = currentIndex === videos.length - 1;
+            
+            // Update video list active state
+            document.querySelectorAll('.video-item').forEach((item, index) => {
+                item.classList.toggle('active', index === currentIndex);
+            });
+        }
+
+        function nextVideo() {
+            if (currentIndex < videos.length - 1) {
+                currentIndex++;
+                updateVideo();
+            }
+        }
+
+        function previousVideo() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                updateVideo();
+            }
+        }
+
+        function playVideo(index) {
+            currentIndex = index;
+            updateVideo();
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'ArrowRight') nextVideo();
+            if (event.key === 'ArrowLeft') previousVideo();
+        });
+
+        // Auto-advance to next video when current video ends
+        videoPlayer.addEventListener('ended', function() {
+            nextVideo();
+        });
+
+        // Create video list
+        function createVideoList() {
+            const videoListDiv = document.getElementById('videoList');
+            videos.forEach((video, index) => {
+                const videoItem = document.createElement('div');
+                videoItem.className = 'video-item';
+                videoItem.onclick = () => playVideo(index);
+                
+                videoItem.innerHTML = `
+                    <div class="video-title">${video.title}</div>
+                    <div class="video-desc">${video.desc}</div>
+                `;
+                
+                videoListDiv.appendChild(videoItem);
+            });
+        }
+
+        // Initialize
+        createVideoList();
+        updateVideo();
+    </script>
+</body>
+</html>

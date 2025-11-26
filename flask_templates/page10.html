@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doxy: The School Bully - MandaStrong Studio</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="black-bg">
+    <div class="page-container">
+        <h1 class="cinematic-title white-text" style="margin-bottom: 2rem;">
+            🎬 Doxy: The School Bully
+        </h1>
+        <div class="video-player">
+            <video controls autoplay>
+                <source src="{{ url_for('static', filename='video/DTSBmovie.mp4') }}" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+        <div class="navigation">
+            <a href="{{ url_for('page', n=9) }}" class="btn">Back</a>
+            <a href="{{ url_for('page', n=11) }}" class="btn">Next</a>
+        </div>
+    </div>
+</body>
+</html>

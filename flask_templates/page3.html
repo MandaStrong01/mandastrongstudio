@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Choose Your Plan - MandaStrong Studio</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="black-bg">
+    <div class="page-container">
+        <h1 class="cinematic-title white-text">Choose Your Plan</h1>
+        <div style="margin-top: 3rem;">
+            <div class="plan-box">
+                <h2 style="font-size: 2rem; margin-bottom: 1rem;">Basic</h2>
+                <p style="font-size: 2.5rem; font-weight: bold; margin: 1rem 0;">$10</p>
+                <p style="margin-bottom: 1.5rem;">Essential features for beginners</p>
+                <a href="https://buy.stripe.com/test_basic" class="btn" target="_blank" rel="noopener noreferrer">
+                    Choose Basic
+                </a>
+            </div>
+
+            <div class="plan-box">
+                <h2 style="font-size: 2rem; margin-bottom: 1rem;">Pro</h2>
+                <p style="font-size: 2.5rem; font-weight: bold; margin: 1rem 0;">$20</p>
+                <p style="margin-bottom: 1.5rem;">Advanced tools for creators</p>
+                <a href="https://buy.stripe.com/test_pro" class="btn" target="_blank" rel="noopener noreferrer">
+                    Choose Pro
+                </a>
+            </div>
+
+            <div class="plan-box">
+                <h2 style="font-size: 2rem; margin-bottom: 1rem;">Studio</h2>
+                <p style="font-size: 2.5rem; font-weight: bold; margin: 1rem 0;">$30</p>
+                <p style="margin-bottom: 1.5rem;">Professional suite with all features</p>
+                <a href="https://buy.stripe.com/test_studio" class="btn" target="_blank" rel="noopener noreferrer">
+                    Choose Studio
+                </a>
+            </div>
+        </div>
+
+        <div class="navigation" style="margin-top: 3rem;">
+            <a href="{{ url_for('page', n=2) }}" class="btn">Back</a>
+            <a href="{{ url_for('page', n=4) }}" class="btn">Continue</a>
+        </div>
+    </div>
+</body>
+</html>
