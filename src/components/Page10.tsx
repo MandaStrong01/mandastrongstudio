@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { Maximize2, Play } from 'lucide-react';
+import { useState } from 'react';
+import { ExternalLink } from 'lucide-react';
 
 interface Page10Props {
   onNext: () => void;
@@ -8,14 +8,9 @@ interface Page10Props {
 
 export default function Page10({ onNext, onBack }: Page10Props) {
   const [videoUrl] = useState<string>('https://custom-2-hour-movie-lftx.bolt.host/');
-  const videoRef = useRef<HTMLVideoElement>(null);
 
-  const handleFullscreen = () => {
-    if (videoRef.current) {
-      if (videoRef.current.requestFullscreen) {
-        videoRef.current.requestFullscreen();
-      }
-    }
+  const handleOpenFullscreen = () => {
+    window.open(videoUrl, '_blank');
   };
 
   return (
@@ -26,27 +21,22 @@ export default function Page10({ onNext, onBack }: Page10Props) {
         </h1>
         <p className="text-purple-300 text-xl mb-6">A MandaStrong1 Film - 120 Minutes</p>
 
-        <div className="border-2 border-purple-500 rounded-2xl overflow-hidden shadow-2xl mb-8 max-w-5xl mx-auto relative group">
-          <video
-            ref={videoRef}
+        <div className="border-2 border-purple-500 rounded-2xl overflow-hidden shadow-2xl mb-8 max-w-5xl mx-auto relative">
+          <iframe
+            src={videoUrl}
             className="w-full aspect-video"
-            controls
-            preload="metadata"
-            playsInline
-          >
-            <source src={videoUrl} type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
-          <button
-            onClick={handleFullscreen}
-            className="absolute top-4 right-4 bg-purple-600/90 hover:bg-purple-500 text-white p-3 rounded-lg opacity-0 group-hover:opacity-100 transition-all flex items-center gap-2 font-bold"
-            title="Play Fullscreen"
-          >
-            <Maximize2 className="w-5 h-5" />
-            <Play className="w-5 h-5" />
-            Fullscreen
-          </button>
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            title="Doxy: The School Bully Full Movie"
+          />
         </div>
+        <button
+          onClick={handleOpenFullscreen}
+          className="bg-purple-600 hover:bg-purple-500 text-white px-6 py-3 rounded-lg font-bold transition-all hover:scale-105 flex items-center gap-2 mx-auto mb-6"
+        >
+          <ExternalLink className="w-5 h-5" />
+          Open in New Tab
+        </button>
 
         <div className="bg-purple-900/30 border-2 border-purple-500 rounded-2xl p-8 mb-8 max-w-4xl mx-auto">
           <h2 className="font-serif text-3xl font-bold text-purple-400 mb-4">About the Film</h2>

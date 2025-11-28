@@ -78,6 +78,8 @@ function App() {
         onHome={() => navigateTo(1)}
         onBack={() => navigateTo(1)}
         videoUrl="/video/dtsb_120min.mp4"
+        autoTransition={true}
+        transitionDelay={15000}
       />
     );
     if (currentPage === 'builder') return <BuilderPage onBack={() => navigateTo(4)} />;
