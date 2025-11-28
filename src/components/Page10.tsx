@@ -7,7 +7,7 @@ interface Page10Props {
 }
 
 export default function Page10({ onNext, onBack }: Page10Props) {
-  const [videoUrl] = useState<string>('/video/dtsb_120min.mp4');
+  const [videoUrl] = useState<string>('https://custom-2-hour-movie-lftx.bolt.host/');
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const handleFullscreen = () => {
