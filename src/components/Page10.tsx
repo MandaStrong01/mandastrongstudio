@@ -9,12 +9,12 @@ export default function Page10({ onNext, onBack }: Page10Props) {
   const [videoUrl] = useState<string>('/video/dtsb_120min.mp4');
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center px-4 py-12">
-      <div className="text-center max-w-6xl w-full">
+    <div className="min-h-screen bg-black flex flex-col px-4 py-4">
+      <div className="text-center max-w-6xl w-full mx-auto pt-16">
         <h1 className="font-serif text-5xl md:text-6xl font-bold text-purple-400 mb-4">
           🎬 Doxy: The School Bully
         </h1>
-        <p className="text-purple-300 text-xl mb-8">A MandaStrong1 Film - 120 Minutes</p>
+        <p className="text-purple-300 text-xl mb-6">A MandaStrong1 Film - 120 Minutes</p>
 
         <div className="border-2 border-purple-500 rounded-2xl overflow-hidden shadow-2xl mb-8 max-w-5xl mx-auto">
           <video

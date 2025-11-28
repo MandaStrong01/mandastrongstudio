@@ -98,7 +98,7 @@ export default function Page21({ onBack, onHome }: Page21Props) {
                   <div className="text-3xl mb-3 text-center">💡</div>
                   <h4 className="text-xl font-bold text-pink-300 mb-2 text-center">What</h4>
                   <p className="text-sm">
-                    Free access to MandaStrong Studio. Film workshops and training. Scholarships. Equipment grants. Mental health resources. A kinder, stronger world. Together.
+                    Free 30 Minute Booking with Creator. Film workshops and training. Scholarships. Equipment grants. Mental health resources. A kinder, stronger world. Together.
                   </p>
                 </div>
               </div>
