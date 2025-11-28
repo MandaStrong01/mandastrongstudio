@@ -28,7 +28,7 @@ export default function ProgressIndicator({ currentPage }: ProgressIndicatorProp
   const progress = ((currentIndex + 1) / currentWorkflow.pages.length) * 100;
 
   return (
-    <div className="fixed top-4 left-4 z-30 bg-black/90 backdrop-blur border-2 border-purple-500 rounded-lg p-3 max-w-xs">
+    <div className="fixed top-2 left-2 z-30 bg-black/90 backdrop-blur border-2 border-purple-500 rounded-lg p-2 max-w-[200px] text-[10px]">
       <div className="flex items-center gap-2 mb-2">
         {workflows.map((workflow) => {
           const isCompleted = completedPhases.includes(workflow);
@@ -37,7 +37,7 @@ export default function ProgressIndicator({ currentPage }: ProgressIndicatorProp
           return (
             <div
               key={workflow.phase}
-              className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1 px-1 py-0.5 rounded text-[9px] font-semibold transition-all ${
                 isCurrent
                   ? colorClasses[workflow.color as keyof typeof colorClasses]
                   : isCompleted
@@ -46,11 +46,11 @@ export default function ProgressIndicator({ currentPage }: ProgressIndicatorProp
               }`}
             >
               {isCompleted ? (
-                <Check className="w-3 h-3" />
+                <Check className="w-2 h-2" />
               ) : (
-                <Circle className="w-3 h-3" fill={isCurrent ? "currentColor" : "none"} />
+                <Circle className="w-2 h-2" fill={isCurrent ? "currentColor" : "none"} />
               )}
-              <span className="hidden sm:inline">{workflow.phase}</span>
+              <span className="hidden sm:inline text-[8px]">{workflow.phase}</span>
             </div>
           );
         })}

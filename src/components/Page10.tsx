@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { Maximize2, Play } from 'lucide-react';
 
 interface Page10Props {
   onNext: () => void;
@@ -7,6 +8,15 @@ interface Page10Props {
 
 export default function Page10({ onNext, onBack }: Page10Props) {
   const [videoUrl] = useState<string>('/video/dtsb_120min.mp4');
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const handleFullscreen = () => {
+    if (videoRef.current) {
+      if (videoRef.current.requestFullscreen) {
+        videoRef.current.requestFullscreen();
+      }
+    }
+  };
 
   return (
     <div className="min-h-screen bg-black flex flex-col px-4 py-4">
@@ -16,8 +26,9 @@ export default function Page10({ onNext, onBack }: Page10Props) {
         </h1>
         <p className="text-purple-300 text-xl mb-6">A MandaStrong1 Film - 120 Minutes</p>
 
-        <div className="border-2 border-purple-500 rounded-2xl overflow-hidden shadow-2xl mb-8 max-w-5xl mx-auto">
+        <div className="border-2 border-purple-500 rounded-2xl overflow-hidden shadow-2xl mb-8 max-w-5xl mx-auto relative group">
           <video
+            ref={videoRef}
             className="w-full aspect-video"
             controls
             preload="metadata"
@@ -26,6 +37,15 @@ export default function Page10({ onNext, onBack }: Page10Props) {
             <source src={videoUrl} type="video/mp4" />
             Your browser does not support the video tag.
           </video>
+          <button
+            onClick={handleFullscreen}
+            className="absolute top-4 right-4 bg-purple-600/90 hover:bg-purple-500 text-white p-3 rounded-lg opacity-0 group-hover:opacity-100 transition-all flex items-center gap-2 font-bold"
+            title="Play Fullscreen"
+          >
+            <Maximize2 className="w-5 h-5" />
+            <Play className="w-5 h-5" />
+            Fullscreen
+          </button>
         </div>
 
         <div className="bg-purple-900/30 border-2 border-purple-500 rounded-2xl p-8 mb-8 max-w-4xl mx-auto">
