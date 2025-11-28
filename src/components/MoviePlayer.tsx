@@ -107,7 +107,6 @@ export default function MoviePlayer({ onBack, onHome, videoUrl = '/video/dtsb_12
               controls
               controlsList="nodownload"
               autoPlay={autoTransition}
-              muted={autoTransition}
             >
               <source src={videoUrl} type="video/mp4" />
               Your browser does not support the video tag.

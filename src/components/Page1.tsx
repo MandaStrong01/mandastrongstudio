@@ -30,14 +30,10 @@ export default function Page1({ onNext, onNavigate, currentPage }: Page1Props) {
         className="absolute inset-0 w-full h-full object-cover"
         autoPlay
         loop
-        muted
         playsInline
       >
         <source src="/video/background.mp4" type="video/mp4" />
       </video>
-      <audio autoPlay loop>
-        <source src="/video/background.mp4" type="audio/mp4" />
-      </audio>
       <div className="absolute inset-0 bg-black opacity-30"></div>
 
       <div className="relative z-10 text-center px-4 pt-6">
