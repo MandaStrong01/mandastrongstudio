@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import QuickNav from './QuickNav';
 
 interface Page1Props {
@@ -9,9 +9,31 @@ interface Page1Props {
 
 export default function Page1({ onNext, onNavigate, currentPage }: Page1Props) {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(false);
+
+  useEffect(() => {
+    const bgVideo = document.querySelector('video') as HTMLVideoElement;
+    if (bgVideo && !audioEnabled) {
+      const enableAudio = () => {
+        bgVideo.muted = false;
+        bgVideo.play().catch(() => {});
+        setAudioEnabled(true);
+        document.removeEventListener('click', enableAudio);
+      };
+      document.addEventListener('click', enableAudio, { once: true });
+    }
+  }, [audioEnabled]);
 
   const handlePlayClick = () => {
     const video = document.getElementById('avatar-video') as HTMLVideoElement;
+    const bgVideo = document.querySelector('video') as HTMLVideoElement;
+
+    if (bgVideo && !audioEnabled) {
+      bgVideo.muted = false;
+      bgVideo.play().catch(() => {});
+      setAudioEnabled(true);
+    }
+
     if (video) {
       video.loop = false;
       video.currentTime = 0;
@@ -30,6 +52,7 @@ export default function Page1({ onNext, onNavigate, currentPage }: Page1Props) {
         className="absolute inset-0 w-full h-full object-cover"
         autoPlay
         loop
+        muted
         playsInline
       >
         <source src="/video/background.mp4" type="video/mp4" />
