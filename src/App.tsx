@@ -128,7 +128,7 @@ function App() {
 
   return (
     <div className="app">
-      {typeof currentPage === 'number' && currentPage >= 1 && currentPage <= 21 && (
+      {currentPage === 1 && (
         <ProgressIndicator currentPage={currentPage} />
       )}
       {renderPage()}
