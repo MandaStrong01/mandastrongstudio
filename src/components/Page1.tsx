@@ -113,6 +113,7 @@ export default function Page1({ onNext, onNavigate, currentPage }: Page1Props) {
           id="avatar-video"
           className="w-full h-full object-cover"
           playsInline
+          muted={false}
           onEnded={handleVideoEnd}
         >
           <source src="https://umrzctjpjveocpzdyjxs.supabase.co/storage/v1/object/public/videos/avatar_full.mp4" type="video/mp4" />

@@ -11,6 +11,7 @@ export default function Page2({ onNext, onBack, onNavigate }: Page2Props) {
         className="absolute inset-0 w-full h-full object-cover"
         autoPlay
         loop
+        muted
         playsInline
       >
         <source src="/video/background.mp4" type="video/mp4" />
