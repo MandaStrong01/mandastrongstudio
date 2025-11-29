@@ -1,15 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Play } from 'lucide-react';
 
 export default function AvatarVideo() {
   const [isPlaying, setIsPlaying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.play().catch(() => {});
+      setIsPlaying(true);
+    }
+  }, []);
 
   const handlePlay = () => {
-    const video = document.getElementById('avatar-video') as HTMLVideoElement;
-    if (video) {
-      video.loop = false;
-      video.currentTime = 0;
-      video.play();
+    if (videoRef.current) {
+      videoRef.current.loop = false;
+      videoRef.current.currentTime = 0;
+      videoRef.current.play();
       setIsPlaying(true);
     }
   };
@@ -21,8 +28,12 @@ export default function AvatarVideo() {
   return (
     <div className="fixed bottom-8 right-8 w-[140px] h-[180px] border-4 border-white rounded-lg shadow-[0_0_20px_rgba(255,255,255,0.5)] overflow-hidden">
       <video
+        ref={videoRef}
         id="avatar-video"
         className="w-full h-full object-cover"
+        autoPlay
+        loop
+        muted
         playsInline
         onEnded={handleVideoEnd}
       >

@@ -160,6 +160,8 @@ export default function Page11({ onNext, onBack, onNavigate, currentPage }: Page
                 <video
                   src={timelineClips[0].url}
                   controls
+                  autoPlay
+                  loop
                   className="w-full h-full"
                 />
               ) : timelineClips.length > 0 && timelineClips[0].type === 'image' ? (
