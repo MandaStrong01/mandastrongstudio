@@ -84,7 +84,7 @@ export default function GrokHelpDesk() {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-50 bg-gradient-to-r from-orange-600 to-orange-500 text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-all duration-300 hover:shadow-orange-500/50 animate-pulse"
+        className="fixed bottom-6 right-6 z-[9999] bg-gradient-to-r from-orange-600 to-orange-500 text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-all duration-300 hover:shadow-orange-500/50 animate-pulse"
         title="Grok Help Desk - 24/7 Support"
       >
         <MessageCircle className="w-8 h-8" />
@@ -95,7 +95,7 @@ export default function GrokHelpDesk() {
 
   return (
     <div
-      className={`fixed z-50 bg-neutral-900 border-2 border-orange-500 rounded-2xl shadow-2xl transition-all duration-300 ${
+      className={`fixed z-[9999] bg-neutral-900 border-2 border-orange-500 rounded-2xl shadow-2xl transition-all duration-300 ${
         isMinimized ? 'bottom-6 right-6 w-80' : 'bottom-6 right-6 w-96 h-[600px]'
       }`}
     >
