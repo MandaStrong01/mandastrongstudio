@@ -35,8 +35,10 @@ export default function Page1({ onNext, onNavigate, currentPage }: Page1Props) {
     }
 
     if (video) {
+      video.muted = false;
       video.loop = false;
       video.currentTime = 0;
+      video.volume = 1.0;
       video.play();
       setIsPlaying(true);
     }
@@ -113,7 +115,6 @@ export default function Page1({ onNext, onNavigate, currentPage }: Page1Props) {
           id="avatar-video"
           className="w-full h-full object-cover"
           playsInline
-          muted={false}
           onEnded={handleVideoEnd}
         >
           <source src="https://umrzctjpjveocpzdyjxs.supabase.co/storage/v1/object/public/videos/avatar_full.mp4" type="video/mp4" />
