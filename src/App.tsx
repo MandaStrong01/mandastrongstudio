@@ -6,6 +6,7 @@ import ToolboardPage from './components/ToolboardPage';
 import BuilderPage from './components/BuilderPage';
 import ProgressIndicator from './components/ProgressIndicator';
 import BeginnerTutorial from './components/BeginnerTutorial';
+import GrokHelpDesk from './components/GrokHelpDesk';
 import Page1 from './components/Page1';
 import Page2 from './components/Page2';
 import Page3 from './components/Page3';
@@ -135,6 +136,7 @@ function App() {
       {showTutorial && (
         <BeginnerTutorial onClose={closeTutorial} onNavigate={navigateTo} />
       )}
+      <GrokHelpDesk />
     </div>
   );
 }

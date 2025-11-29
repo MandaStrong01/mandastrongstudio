@@ -22,6 +22,19 @@ export default function Page1({ onNext, onNavigate, currentPage }: Page1Props) {
       };
       document.addEventListener('click', enableAudio, { once: true });
     }
+
+    return () => {
+      if (bgVideo) {
+        bgVideo.pause();
+        bgVideo.currentTime = 0;
+        bgVideo.muted = true;
+      }
+      const avatarVideo = document.getElementById('avatar-video') as HTMLVideoElement;
+      if (avatarVideo) {
+        avatarVideo.pause();
+        avatarVideo.currentTime = 0;
+      }
+    };
   }, [audioEnabled]);
 
   const handlePlayClick = () => {

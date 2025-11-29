@@ -4,6 +4,8 @@ import { Play, Pause, Volume2, VolumeX, Maximize2 } from 'lucide-react';
 interface Page10Props {
   onNext: () => void;
   onBack: () => void;
+  onNavigate?: (page: number) => void;
+  currentPage?: number;
 }
 
 export default function Page10({ onNext, onBack }: Page10Props) {
@@ -63,7 +65,7 @@ export default function Page10({ onNext, onBack }: Page10Props) {
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
             >
-              <source src="/video/packageDTSBext copy copy.mp4" type="video/mp4" />
+              <source src="/video/dtsb_120min.mp4" type="video/mp4" />
               Your browser does not support the video tag.
             </video>
           </div>
