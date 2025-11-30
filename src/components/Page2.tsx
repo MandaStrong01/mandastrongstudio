@@ -11,8 +11,16 @@ export default function Page2({ onNext, onBack, onNavigate }: Page2Props) {
     const bgVideo = document.querySelector('video') as HTMLVideoElement;
     if (bgVideo) {
       bgVideo.muted = false;
+      bgVideo.volume = 1.0;
       bgVideo.play().catch(() => {});
     }
+
+    return () => {
+      if (bgVideo) {
+        bgVideo.pause();
+        bgVideo.currentTime = 0;
+      }
+    };
   }, []);
 
   return (

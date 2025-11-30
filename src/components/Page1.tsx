@@ -13,21 +13,36 @@ export default function Page1({ onNext, onNavigate, currentPage }: Page1Props) {
 
   useEffect(() => {
     const bgVideo = document.querySelector('video') as HTMLVideoElement;
-    if (bgVideo && !audioEnabled) {
-      const enableAudio = () => {
+
+    const attemptAutoPlay = async () => {
+      if (bgVideo) {
         bgVideo.muted = false;
-        bgVideo.play().catch(() => {});
-        setAudioEnabled(true);
-        document.removeEventListener('click', enableAudio);
-      };
-      document.addEventListener('click', enableAudio, { once: true });
-    }
+        bgVideo.volume = 1.0;
+        try {
+          await bgVideo.play();
+          setAudioEnabled(true);
+        } catch (error) {
+          bgVideo.muted = false;
+          const enableAudio = async () => {
+            try {
+              await bgVideo.play();
+              setAudioEnabled(true);
+            } catch (e) {
+              console.log('Audio playback prevented');
+            }
+            document.removeEventListener('click', enableAudio);
+          };
+          document.addEventListener('click', enableAudio, { once: true });
+        }
+      }
+    };
+
+    attemptAutoPlay();
 
     return () => {
       if (bgVideo) {
         bgVideo.pause();
         bgVideo.currentTime = 0;
-        bgVideo.muted = true;
       }
       const avatarVideo = document.getElementById('avatar-video') as HTMLVideoElement;
       if (avatarVideo) {
@@ -35,7 +50,7 @@ export default function Page1({ onNext, onNavigate, currentPage }: Page1Props) {
         avatarVideo.currentTime = 0;
       }
     };
-  }, [audioEnabled]);
+  }, []);
 
   const handlePlayClick = () => {
     const video = document.getElementById('avatar-video') as HTMLVideoElement;
@@ -67,7 +82,6 @@ export default function Page1({ onNext, onNavigate, currentPage }: Page1Props) {
         className="absolute inset-0 w-full h-full object-cover"
         autoPlay
         loop
-        muted
         playsInline
       >
         <source src="/video/background.mp4" type="video/mp4" />
