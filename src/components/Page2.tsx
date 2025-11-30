@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+
 interface Page2Props {
   onNext: () => void;
   onBack: () => void;
@@ -5,13 +7,20 @@ interface Page2Props {
 }
 
 export default function Page2({ onNext, onBack, onNavigate }: Page2Props) {
+  useEffect(() => {
+    const bgVideo = document.querySelector('video') as HTMLVideoElement;
+    if (bgVideo) {
+      bgVideo.muted = false;
+      bgVideo.play().catch(() => {});
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-black flex flex-col relative overflow-hidden">
       <video
         className="absolute inset-0 w-full h-full object-cover"
         autoPlay
         loop
-        muted
         playsInline
       >
         <source src="/video/background.mp4" type="video/mp4" />
