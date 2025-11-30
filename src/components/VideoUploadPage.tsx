@@ -3,6 +3,7 @@ import { Upload, Film, CheckCircle, AlertCircle, Home, Play, Pause, X } from 'lu
 import { supabase } from '../lib/supabase';
 import * as tus from 'tus-js-client';
 import { validateVideoFile, testVideoPlayback, formatFileSize as formatSize, formatDuration } from '../lib/videoValidator';
+import { extractAndSaveVideoMetadata } from '../lib/videoMetadataService';
 
 interface VideoUploadPageProps {
   onHome?: () => void;
@@ -133,6 +134,14 @@ export default function VideoUploadPage({ onHome, onPlayMovie }: VideoUploadPage
             message: 'Video uploaded but playback test failed. The video may be corrupted.'
           });
           return;
+        }
+
+        const metadataResult = await extractAndSaveVideoMetadata(file, fileName, publicUrl);
+
+        if (!metadataResult.success) {
+          console.error('Failed to save video metadata:', metadataResult.error);
+        } else {
+          console.log('Video metadata saved successfully:', metadataResult.metadata);
         }
 
         setUploadStatus({

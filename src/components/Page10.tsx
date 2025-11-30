@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { Play, Pause, Volume2, VolumeX, Maximize2, Upload, CheckCircle } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize2, Upload, CheckCircle, Info } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { validateVideoFile, testVideoPlayback, formatFileSize, formatDuration } from '../lib/videoValidator';
+import { extractAndSaveVideoMetadata, formatMetadataForDisplay, type VideoMetadata } from '../lib/videoMetadataService';
 
 interface Page10Props {
   onNext: () => void;
@@ -18,6 +19,7 @@ export default function Page10({ onNext, onBack }: Page10Props) {
   const [customVideoUrl, setCustomVideoUrl] = useState<string | null>(null);
   const [currentVideoSource, setCurrentVideoSource] = useState('/video/dtsb_120min.mp4');
   const [validationSuccess, setValidationSuccess] = useState(false);
+  const [videoMetadata, setVideoMetadata] = useState<VideoMetadata | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -77,6 +79,15 @@ export default function Page10({ onNext, onBack }: Page10Props) {
         setIsUploading(false);
         setUploadProgress(0);
         return;
+      }
+
+      const metadataResult = await extractAndSaveVideoMetadata(file, data.path, publicUrl);
+
+      if (!metadataResult.success) {
+        console.error('Failed to save video metadata:', metadataResult.error);
+      } else if (metadataResult.metadata) {
+        setVideoMetadata(metadataResult.metadata);
+        console.log('Video metadata saved successfully:', metadataResult.metadata);
       }
 
       setCustomVideoUrl(publicUrl);
@@ -219,6 +230,41 @@ export default function Page10({ onNext, onBack }: Page10Props) {
             Complete uninterrupted 120-minute viewing experience
           </p>
         </div>
+
+        {videoMetadata && customVideoUrl && (
+          <div className="bg-blue-900/30 border-2 border-blue-500 rounded-2xl p-6 mb-8 max-w-4xl mx-auto">
+            <h3 className="text-2xl font-bold text-blue-300 mb-4 flex items-center gap-2">
+              <Info className="w-6 h-6" />
+              Video Metadata
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-black/50 p-4 rounded-lg">
+                <div className="text-blue-400 font-bold mb-1">Duration</div>
+                <div className="text-white">{formatMetadataForDisplay(videoMetadata).duration}</div>
+              </div>
+              <div className="bg-black/50 p-4 rounded-lg">
+                <div className="text-blue-400 font-bold mb-1">Resolution</div>
+                <div className="text-white">{formatMetadataForDisplay(videoMetadata).resolution}</div>
+              </div>
+              <div className="bg-black/50 p-4 rounded-lg">
+                <div className="text-blue-400 font-bold mb-1">File Size</div>
+                <div className="text-white">{formatMetadataForDisplay(videoMetadata).size}</div>
+              </div>
+              <div className="bg-black/50 p-4 rounded-lg">
+                <div className="text-blue-400 font-bold mb-1">Format</div>
+                <div className="text-white">{formatMetadataForDisplay(videoMetadata).format}</div>
+              </div>
+              <div className="bg-black/50 p-4 rounded-lg">
+                <div className="text-blue-400 font-bold mb-1">Aspect Ratio</div>
+                <div className="text-white">{formatMetadataForDisplay(videoMetadata).aspectRatio}</div>
+              </div>
+              <div className="bg-black/50 p-4 rounded-lg">
+                <div className="text-blue-400 font-bold mb-1">File Name</div>
+                <div className="text-white text-xs truncate" title={videoMetadata.file_name}>{videoMetadata.file_name}</div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="bg-neutral-900 border-2 border-orange-500 rounded-2xl p-8 mb-8 max-w-4xl mx-auto">
           <h2 className="font-serif text-3xl font-bold text-orange-400 mb-4">Movie Information</h2>
