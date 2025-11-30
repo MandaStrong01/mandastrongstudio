@@ -9,11 +9,31 @@ interface Page2Props {
 export default function Page2({ onNext, onBack, onNavigate }: Page2Props) {
   useEffect(() => {
     const bgVideo = document.querySelector('video') as HTMLVideoElement;
-    if (bgVideo) {
-      bgVideo.muted = false;
-      bgVideo.volume = 1.0;
-      bgVideo.play().catch(() => {});
-    }
+    let isAudioPlaying = false;
+
+    const forceAudioPlay = async () => {
+      if (bgVideo && !isAudioPlaying) {
+        bgVideo.muted = false;
+        bgVideo.volume = 1.0;
+        try {
+          await bgVideo.play();
+          isAudioPlaying = true;
+        } catch (error) {
+          const enableOnClick = async () => {
+            if (bgVideo) {
+              bgVideo.muted = false;
+              bgVideo.volume = 1.0;
+              await bgVideo.play();
+              isAudioPlaying = true;
+              document.removeEventListener('click', enableOnClick);
+            }
+          };
+          document.addEventListener('click', enableOnClick, { once: true });
+        }
+      }
+    };
+
+    forceAudioPlay();
 
     return () => {
       if (bgVideo) {
@@ -30,6 +50,7 @@ export default function Page2({ onNext, onBack, onNavigate }: Page2Props) {
         autoPlay
         loop
         playsInline
+        preload="auto"
       >
         <source src="/video/background.mp4" type="video/mp4" />
       </video>

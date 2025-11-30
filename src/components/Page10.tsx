@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import { Play, Pause, Volume2, VolumeX, Maximize2 } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize2, Upload, CheckCircle } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { validateVideoFile, testVideoPlayback, formatFileSize, formatDuration } from '../lib/videoValidator';
 
 interface Page10Props {
   onNext: () => void;
@@ -11,13 +13,93 @@ interface Page10Props {
 export default function Page10({ onNext, onBack }: Page10Props) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [customVideoUrl, setCustomVideoUrl] = useState<string | null>(null);
+  const [currentVideoSource, setCurrentVideoSource] = useState('/video/dtsb_120min.mp4');
+  const [validationSuccess, setValidationSuccess] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (videoRef.current) {
       videoRef.current.volume = 1.0;
     }
   }, []);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setValidationSuccess(false);
+    const validation = await validateVideoFile(file);
+
+    if (!validation.isValid) {
+      alert(validation.error || 'Invalid video file');
+      return;
+    }
+
+    if (validation.metadata) {
+      const duration = formatDuration(validation.metadata.duration);
+      const size = formatFileSize(validation.metadata.size);
+      const resolution = `${validation.metadata.width}x${validation.metadata.height}`;
+      console.log(`Validated video: ${duration}, ${size}, ${resolution}`);
+    }
+
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const fileName = `doxy_movie_${Date.now()}_${file.name}`;
+      const filePath = `${fileName}`;
+
+      const { data, error } = await supabase.storage
+        .from('videos')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+          onUploadProgress: (progress) => {
+            const percent = (progress.loaded / progress.total) * 100;
+            setUploadProgress(Math.round(percent));
+          }
+        });
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('videos')
+        .getPublicUrl(data.path);
+
+      const canPlay = await testVideoPlayback(publicUrl);
+
+      if (!canPlay) {
+        alert('Video uploaded but playback test failed. The video may be corrupted or in an unsupported format.');
+        setIsUploading(false);
+        setUploadProgress(0);
+        return;
+      }
+
+      setCustomVideoUrl(publicUrl);
+      setCurrentVideoSource(publicUrl);
+      setIsUploading(false);
+      setUploadProgress(0);
+      setValidationSuccess(true);
+
+      if (videoRef.current) {
+        videoRef.current.load();
+      }
+
+      setTimeout(() => {
+        setValidationSuccess(false);
+      }, 5000);
+    } catch (error: unknown) {
+      console.error('Upload error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+      alert(`Upload failed: ${errorMessage}`);
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
+  };
 
   const togglePlay = () => {
     if (videoRef.current) {
@@ -54,7 +136,36 @@ export default function Page10({ onNext, onBack }: Page10Props) {
 
         <div className="bg-neutral-900 border-2 border-orange-500 rounded-2xl p-6 mb-8 max-w-5xl mx-auto">
           <div className="text-orange-400 font-bold text-lg mb-4">
-            Now Playing: Doxy - The School Bully (120 Minutes)
+            {customVideoUrl ? 'Now Playing: Your Custom Movie' : 'Now Playing: Doxy - The School Bully (120 Minutes)'}
+          </div>
+
+          <div className="mb-6">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="video/*"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="bg-orange-600 hover:bg-orange-500 text-white px-6 py-3 rounded-lg font-bold transition-all hover:scale-105 flex items-center gap-2 mx-auto disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Upload className="w-5 h-5" />
+              {isUploading ? `Uploading... ${uploadProgress}%` : 'Upload Your 120-Minute Movie'}
+            </button>
+            {isUploading && (
+              <div className="mt-3 bg-black/50 rounded-lg p-2">
+                <div className="bg-orange-600 h-2 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }}></div>
+              </div>
+            )}
+            {validationSuccess && (
+              <div className="mt-3 bg-green-500/20 border border-green-500 rounded-lg p-3 flex items-center justify-center gap-2">
+                <CheckCircle className="w-5 h-5 text-green-400" />
+                <span className="text-green-400 font-semibold">Video validated and ready to play!</span>
+              </div>
+            )}
           </div>
 
           <div className="border-2 border-orange-500 rounded-xl overflow-hidden shadow-2xl mb-6">
@@ -64,8 +175,9 @@ export default function Page10({ onNext, onBack }: Page10Props) {
               controls
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
+              key={currentVideoSource}
             >
-              <source src="/video/dtsb_120min.mp4" type="video/mp4" />
+              <source src={currentVideoSource} type="video/mp4" />
               Your browser does not support the video tag.
             </video>
           </div>

@@ -13,42 +13,48 @@ export default function Page1({ onNext, onNavigate, currentPage }: Page1Props) {
 
   useEffect(() => {
     const bgVideo = document.querySelector('video') as HTMLVideoElement;
+    let audioUnlocked = false;
 
-    const attemptAutoPlay = async () => {
-      if (bgVideo) {
+    const forcePlayAudio = async () => {
+      if (bgVideo && !audioUnlocked) {
+        bgVideo.muted = false;
+        bgVideo.volume = 1.0;
+        try {
+          const playPromise = bgVideo.play();
+          if (playPromise !== undefined) {
+            await playPromise;
+            setAudioEnabled(true);
+            audioUnlocked = true;
+          }
+        } catch (error) {
+          console.log('Waiting for user interaction to enable audio');
+        }
+      }
+    };
+
+    const enableAudioOnInteraction = async () => {
+      if (!audioUnlocked && bgVideo) {
         bgVideo.muted = false;
         bgVideo.volume = 1.0;
         try {
           await bgVideo.play();
           setAudioEnabled(true);
-        } catch (error) {
-          bgVideo.muted = false;
-          const enableAudio = async () => {
-            try {
-              await bgVideo.play();
-              setAudioEnabled(true);
-            } catch (e) {
-              console.log('Audio playback prevented');
-            }
-            document.removeEventListener('click', enableAudio);
-          };
-          document.addEventListener('click', enableAudio, { once: true });
+          audioUnlocked = true;
+          document.removeEventListener('click', enableAudioOnInteraction);
+          document.removeEventListener('touchstart', enableAudioOnInteraction);
+        } catch (e) {
+          console.log('Audio still blocked');
         }
       }
     };
 
-    attemptAutoPlay();
+    forcePlayAudio();
+    document.addEventListener('click', enableAudioOnInteraction, { once: true });
+    document.addEventListener('touchstart', enableAudioOnInteraction, { once: true });
 
     return () => {
-      if (bgVideo) {
-        bgVideo.pause();
-        bgVideo.currentTime = 0;
-      }
-      const avatarVideo = document.getElementById('avatar-video') as HTMLVideoElement;
-      if (avatarVideo) {
-        avatarVideo.pause();
-        avatarVideo.currentTime = 0;
-      }
+      document.removeEventListener('click', enableAudioOnInteraction);
+      document.removeEventListener('touchstart', enableAudioOnInteraction);
     };
   }, []);
 
@@ -83,6 +89,7 @@ export default function Page1({ onNext, onNavigate, currentPage }: Page1Props) {
         autoPlay
         loop
         playsInline
+        preload="auto"
       >
         <source src="/video/background.mp4" type="video/mp4" />
       </video>
