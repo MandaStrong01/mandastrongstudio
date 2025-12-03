@@ -44,4 +44,59 @@ Global rules (must match exactly):
 - Cinematic header text style from page 2 onward
 - Fully working internal links, mobile-responsive
 
-Generate the complete project with all 21 pages + shared components + routing. After finishing, auto-build and deploy to bolt.host immediately.
+Generate the complete project with all 21 pages + shared components + routing. After finishing, auto-build and deploy to bolt.host immediately.<script>
+// GLOBAL AUTOPLAY + UPLOAD SYSTEM (works on every page automatically)
+document.addEventListener('DOMContentLoaded', function () {
+  const currentPage = window.location.pathname.toLowerCase();
+  const isPage1or2 = currentPage.includes('page1') || currentPage.includes('page2') || currentPage === '/' || currentPage === '/index.html';
+  const isPage10 = currentPage.includes('page10');
+
+  // Find or create the full-screen video player (works even if you used Bolt's Video component)
+  let video = document.querySelector('video');
+  if (!video) {
+    video = document.createElement('video');
+    video.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-index:-1;';
+    video.playsInline = true;
+    video.autoplay = true;
+    video.loop = true;
+    document.body.prepend(video);
+  }
+
+  // ──────────────────────────────────────
+  // 1. FORCE AUTOPLAY WITH SOUND on Page 1 & 2
+  // ──────────────────────────────────────
+  if (isPage1or2) {
+    video.muted = false;
+    const playVideo = () => video.play().catch(() => {
+      video.muted = true; video.play();
+      const unmute = () => { video.muted = false; video.play(); document.removeEventListener('click', unmute); document.removeEventListener('touchstart', unmute); };
+      document.addEventListener('click', unmute, { once: true });
+      document.addEventListener('touchstart', unmute, { once: true });
+    });
+    playVideo();
+
+    // Re-play when returning to Page 1 or 2
+    window.addEventListener('focus', playVideo);
+  }
+
+  // ──────────────────────────────────────
+  // 2. PAUSE & RESET when leaving Page 2
+  // ──────────────────────────────────────
+  window.addEventListener('popstate', () => {
+    if (!window.location.pathname.toLowerCase().includes('page2') && 
+        !window.location.pathname.toLowerCase().includes('page1')) {
+      video.pause();
+      video.currentTime = 0;
+    }
+  });
+
+  // ──────────────────────────────────────
+  // 3. AUTO-ADD UPLOAD BUTTON on Page 10 only
+  // ──────────────────────────────────────
+  if (isPage10) {
+    // Avoid adding multiple buttons
+    if (document.getElementById('globalUploadBtn')) return;
+
+    const uploadHTML = `
+      <div style="position:fixed; bottom:30px; left:50%; transform:translateX(-50%); z-index:9999;">
+        <button id="globalUploadBtn" style="padding:16px 32px; font-size:18px; background:#000; color
