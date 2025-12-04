@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>MandaStrong Studio – All Fixes Applied</title>
+<title>MandaStrong Studio – Full Fix Build</title>
 
 <!-- GLOBAL VIDEO VLC-STYLE -->
 <style>
@@ -17,11 +17,11 @@ video {
   body,html{margin:0;padding:0;height:100%;font-family:Arial,sans-serif;overflow-x:hidden;}
   .page{min-height:100vh;position:relative;padding:80px 20px;text-align:center;color:white;}
   video.bg{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:-1;}
-  .overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.35);pointer-events:none;}
+  .overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.3);pointer-events:none;}
   .content{position:relative;z-index:2;}
   .audio-btn{position:fixed;bottom:30px;right:30px;z-index:9999;background:#000000cc;padding:14px 20px;border-radius:50px;cursor:pointer;font-size:22px;}
   .upload-btn{position:fixed;top:20px;right:20px;z-index:9999;background:#00ff9d;color:#000;padding:14px 28px;border-radius:50px;font-weight:bold;cursor:pointer;box-shadow:0 4px 20px rgba(0,255,157,0.5);}
-  #doxy-player, #ai-assets{margin-top:40px;display:grid;gap:20px;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));}
+  #doxy-player,#ai-assets{margin-top:40px;display:grid;gap:20px;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));}
   #demo-video{max-width:90%;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,0.6);}
   #grok-chat{position:fixed;bottom:20px;right:20px;z-index:9999;background:#111;color:#fff;padding:15px;border-radius:12px;width:340px;max-height:520px;display:none;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,0.6);}
   #grok-messages{flex:1;overflow-y:auto;margin-bottom:10px;padding:10px;background:#222;border-radius:8px;}
@@ -31,16 +31,24 @@ video {
 
 <body>
 
-<!-- PAGE 1 – background + avatar + music -->
-<div class="page" id="page1">
+<!-- PAGE 1 -->
+<div class="page" data-page="1">
+
   <video class="bg" autoplay loop muted playsinline>
     <source src="/static/video/background.mp4" type="video/mp4">
+  </video>
+
+  <video class="bg" autoplay loop muted playsinline style="mix-blend-mode:screen;opacity:0.7;">
+    <source src="/static/video/avatar.mp4" type="video/mp4">
   </video>
 
   <div class="overlay"></div>
 
   <div class="content">
-    <h1 style="font-size:4rem;">PAGE 1 – Welcome to MandaStrong Studio</h1>
+    <h1 style="font-size:4rem;font-weight:bold;">MANDASTRONG STUDIO</h1>
+    <p style="font-size:1.8rem;margin-top:20px;">
+      Welcome To My Studio! An All-In-One Make Movies 2 Hours Duration
+    </p>
   </div>
 
   <audio id="oceanMusic" autoplay loop>
@@ -51,24 +59,32 @@ video {
 </div>
 
 <!-- PAGE 2 -->
-<div class="page">
+<div class="page" data-page="2">
   <video class="bg" autoplay loop muted playsinline>
     <source src="/static/video/background.mp4" type="video/mp4">
   </video>
+
+  <video class="bg" autoplay loop muted playsinline style="mix-blend-mode:screen;opacity:0.7;">
+    <source src="/static/video/avatar.mp4" type="video/mp4">
+  </video>
+
   <div class="overlay"></div>
-  <h1 style="font-size:4rem;position:relative;z-index:2;">PAGE 2 – Continue</h1>
+
+  <div class="content">
+    <h1 style="font-size:4rem;font-weight:bold;">MANDASTRONG STUDIO</h1>
+    <p style="font-size:1.8rem;margin-top:20px;">
+      Welcome! Make Awesome Family Movies Or Turn Your Dreams Into Film Reality! Enjoy.
+    </p>
+  </div>
 </div>
 
 <!-- PAGE 3 -->
-<div class="page" style="background:#111;">
-  <h1>PAGE 3 – Public Area</h1>
-  <p style="font-size:1.5rem;max-width:800px;margin:40px auto;">
-    Everything private has been removed.
-  </p>
+<div class="page" data-page="3" style="background:#111;">
+  <h1>Public Zone</h1>
 </div>
 
 <!-- PAGE 10 -->
-<div class="page" style="background:#000;">
+<div class="page" data-page="10" style="background:#000;">
   <h1>PAGE 10 – Upload Extended Doxy Movie</h1>
   <p>Upload → instantly displays below</p>
 
@@ -79,7 +95,7 @@ video {
 </div>
 
 <!-- PAGE 11 -->
-<div class="page" style="background:#111;">
+<div class="page" data-page="11" style="background:#111;">
   <h1>PAGE 11 – AI Assets</h1>
   <div id="ai-assets">
     <video controls>
@@ -88,9 +104,9 @@ video {
   </div>
 </div>
 
-<!-- PAGE 16 – EXPORT PAGE -->
-<div class="page" style="background:#111;">
-  <h1>PAGE 16 – Export Your Movie</h1>
+<!-- PAGE 16 -->
+<div class="page" data-page="16" style="background:#111;">
+  <h1>Export Your Movie</h1>
 
   <form action="/export_movie" method="POST" enctype="multipart/form-data">
       <label for="movie">Upload Final Movie File:</label><br><br>
@@ -104,8 +120,9 @@ video {
 </div>
 
 <!-- PAGE 21 -->
-<div class="page" style="background:#000;">
+<div class="page" data-page="21" style="background:#000;">
   <h1>3-Minute Demo</h1>
+
   <video id="demo-video" controls autoplay muted loop playsinline>
     <source src="/static/video/demo3min.mp4" type="video/mp4">
   </video>
@@ -162,8 +179,8 @@ document.getElementById('grok-input').addEventListener('keypress', function(e) {
     const msg = this.value.trim();
     const chat = document.getElementById('grok-messages');
     chat.innerHTML += `<div style="text-align:right;color:#00ff9d;margin:5px 0;">You: ${msg}</div>`;
-    chat.innerHTML += `<div style="text-align:left;background:#333;padding:10px;border-radius:8px;margin:10px 0;">
-      Grok: Everything is fixed. Uploads, playback, audio, AI assets, and your 3-min demo are all working.
+    chat.innerHTML += `<div style="background:#333;padding:10px;border-radius:8px;margin:10px 0;">
+      Grok: Everything is fixed and running smoothly.  
     </div>`;
     chat.scrollTop = chat.scrollHeight;
     this.value = '';
@@ -173,3 +190,4 @@ document.getElementById('grok-input').addEventListener('keypress', function(e) {
 
 </body>
 </html>
+
