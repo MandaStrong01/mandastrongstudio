@@ -28,6 +28,144 @@ video {
   #grok-input{width:100%;padding:12px;border:none;border-radius:8px;}
 </style>
 </head>
+<!-- 🌐 MANDASTRONG STUDIO — BOLT-SAFE GLOBAL ENGINE (FINAL VERSION) -->
+<script>
+setTimeout(() => {
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    console.log("🔥 MandaStrong Global Engine Loaded (Bolt-Safe Mode)");
+
+    /* ============================================================
+       1️⃣ PAGE 10 — DOXY MOVIE (PERMANENT)
+    ============================================================ */
+    window.mandaStrongMovie = "/movies/packageDTSBext.mp4";
+
+    fetch(window.mandaStrongMovie, { method: "HEAD" })
+        .then(res => {
+            if (!res.ok) console.warn("⚠ Missing: packageDTSBext.mp4");
+            else console.log("🎬 Page 10 Movie Ready");
+        });
+
+    /* ============================================================
+       2️⃣ PAGE 21 — FINALE MOVIE (PERMANENT)
+    ============================================================ */
+    window.mandaStrongFinale = "/movies/thatsallfolks.mp4";
+
+    fetch(window.mandaStrongFinale, { method: "HEAD" })
+        .then(res => {
+            if (!res.ok) console.warn("⚠ Missing: thatsallfolks.mp4");
+            else console.log("🎬 Page 21 Finale Ready");
+        });
+
+    /* ============================================================
+       3️⃣ GLOBAL ASSET SAVE (PAGES 4–9)
+    ============================================================ */
+    window.saveAsset = function (assetURL) {
+        let assets = JSON.parse(localStorage.getItem("mandastrong_assets")) || [];
+        if (!assets.includes(assetURL)) assets.push(assetURL);
+        localStorage.setItem("mandastrong_assets", JSON.stringify(assets));
+        console.log("💾 Saved Asset:", assetURL);
+    };
+
+    /* ============================================================
+       4️⃣ PAGE 11 — LOAD SAVED ASSETS
+    ============================================================ */
+    window.loadAssetsForPage11 = function (containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        let assets = JSON.parse(localStorage.getItem("mandastrong_assets")) || [];
+
+        if (assets.length === 0) {
+            container.innerHTML = "<p>No media generated yet.</p>";
+            return;
+        }
+
+        assets.forEach(asset => {
+            const box = document.createElement("div");
+            box.style.background = "#111";
+            box.style.border = "3px solid #00ff7f";
+            box.style.borderRadius = "10px";
+            box.style.padding = "10px";
+            box.style.margin = "10px";
+            box.style.width = "260px";
+            box.style.textAlign = "center";
+
+            if (asset.match(/\.(mp4|mov|webm)$/)) {
+                box.innerHTML = `<video controls style="width:100%" src="${asset}"></video>`;
+            } else if (asset.match(/\.(png|jpg|jpeg|gif)$/)) {
+                box.innerHTML = `<img style="width:100%" src="${asset}">`;
+            } else if (asset.match(/\.(mp3|wav|m4a)$/)) {
+                box.innerHTML = `<audio controls style="width:100%" src="${asset}"></audio>`;
+            } else {
+                box.innerHTML = `<p>Unsupported File<br>${asset}</p>`;
+            }
+
+            container.appendChild(box);
+        });
+    };
+
+    /* ============================================================
+       5️⃣ PAGE 1 — BACKGROUND VIDEO AUDIO FIX
+    ============================================================ */
+    const bg = document.getElementById("background-video");
+    if (bg) {
+        bg.muted = false;
+        bg.volume = 1.0;
+        bg.autoplay = true;
+        bg.playsInline = true;
+
+        bg.play().catch(() => {
+            window.addEventListener("click", () => bg.play(), { once: true });
+        });
+    }
+
+    /* ============================================================
+       6️⃣ GLOBAL VIDEO/AUDIO PRELOAD
+    ============================================================ */
+    document.querySelectorAll("video, audio").forEach(el => {
+        el.preload = "auto";
+    });
+
+    /* ============================================================
+       7️⃣ GLOBAL PERSONAL DATA REMOVAL
+    ============================================================ */
+    ["user-email", "user-name", "account-info", "profile-email", "profile-name"]
+        .forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.value = "";
+                el.placeholder = "Enter your own details";
+            }
+        });
+
+    /* ============================================================
+       8️⃣ GLOBAL STRIPE HANDLERS
+    ============================================================ */
+    const stripePlans = {
+        basic:  "https://buy.stripe.com/test_basic_plan",
+        pro:    "https://buy.stripe.com/test_pro_plan",
+        studio: "https://buy.stripe.com/test_studio_plan"
+    };
+
+    ["plan-basic", "plan-pro", "plan-studio"].forEach(id => {
+        let btn = document.getElementById(id);
+        if (btn) btn.onclick = () => window.location.href = stripePlans[id];
+    });
+
+    /* ============================================================
+       9️⃣ GLOBAL ERROR SHIELD
+    ============================================================ */
+    window.onerror = function (msg, src, line) {
+        console.warn("⚠ Global Error Caught:", msg, "at", src, "line", line);
+        return true;
+    };
+
+}); // DOMContentLoaded end
+
+}, 1000); // Bolt load delay
+</script>
 
 <body>
 
