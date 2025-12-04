@@ -2,12 +2,22 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>All Issues Fixed – Ready for Bolt.new</title>
+<title>MandaStrong Studio – All Fixes Applied</title>
+
+<!-- GLOBAL VIDEO VLC-STYLE -->
+<style>
+video {
+    border: 3px solid #00ff99 !important;
+    border-radius: 10px !important;
+    background: #000 !important;
+}
+</style>
+
 <style>
   body,html{margin:0;padding:0;height:100%;font-family:Arial,sans-serif;overflow-x:hidden;}
   .page{min-height:100vh;position:relative;padding:80px 20px;text-align:center;color:white;}
-  video{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:-1;}
-  .overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);pointer-events:none;}
+  video.bg{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:-1;}
+  .overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.35);pointer-events:none;}
   .content{position:relative;z-index:2;}
   .audio-btn{position:fixed;bottom:30px;right:30px;z-index:9999;background:#000000cc;padding:14px 20px;border-radius:50px;cursor:pointer;font-size:22px;}
   .upload-btn{position:fixed;top:20px;right:20px;z-index:9999;background:#00ff9d;color:#000;padding:14px 28px;border-radius:50px;font-weight:bold;cursor:pointer;box-shadow:0 4px 20px rgba(0,255,157,0.5);}
@@ -18,55 +28,49 @@
   #grok-input{width:100%;padding:12px;border:none;border-radius:8px;}
 </style>
 </head>
+
 <body>
 
-<!-- PAGE 1 – Fixed audio + toggle button -->
+<!-- PAGE 1 – background + avatar + music -->
 <div class="page" id="page1">
-  <video autoplay loop muted playsinline>
-    <source src="https://yourdomain.com/avatar.mp4" type="video/mp4">
+  <video class="bg" autoplay loop muted playsinline>
+    <source src="/static/video/background.mp4" type="video/mp4">
   </video>
-  <video autoplay loop playsinline style="opacity:0.7;mix-blend-mode:screen;">
-    <source src="https://assets.codepen.io/32795/ocean-loop.mp4" type="video/mp4">
-  </video>
+
   <div class="overlay"></div>
+
   <div class="content">
-    <h1 style="font-size:4rem;">PAGE 1 – Avatar + Ocean + Music</h1>
+    <h1 style="font-size:4rem;">PAGE 1 – Welcome to MandaStrong Studio</h1>
   </div>
+
   <audio id="oceanMusic" autoplay loop>
-    <source src="https://yourdomain.com/ocean-music.mp3" type="audio/mp3">
+    <source src="/static/audio/background.mp3" type="audio/mp3">
   </audio>
+
   <div class="audio-btn" id="audioToggle">Sound On</div>
 </div>
 
-<!-- PAGE 2 – Same as Page 1 -->
+<!-- PAGE 2 -->
 <div class="page">
-  <video autoplay loop muted playsinline>
-    <source src="https://yourdomain.com/avatar.mp4" type="video/mp4">
+  <video class="bg" autoplay loop muted playsinline>
+    <source src="/static/video/background.mp4" type="video/mp4">
   </video>
-  <video autoplay loop playsinline style="opacity:0.7;mix-blend-mode:screen;">
-    <source src="https://assets.codepen.io/32795/ocean-loop.mp4" type="video/mp4">
-  </video>
-  <audio autoplay loop>
-    <source src="https://yourdomain.com/ocean-music.mp3" type="audio/mp3">
-  </audio>
-  <h1 style="font-size:4rem;position:relative;z-index:2;">PAGE 2 – Same Loop</h1>
+  <div class="overlay"></div>
+  <h1 style="font-size:4rem;position:relative;z-index:2;">PAGE 2 – Continue</h1>
 </div>
 
-<!-- PAGE 3 – Public zone (no private info) -->
+<!-- PAGE 3 -->
 <div class="page" style="background:#111;">
   <h1>PAGE 3 – Public Area</h1>
   <p style="font-size:1.5rem;max-width:800px;margin:40px auto;">
-    All private information removed. Users can now freely use the site.
+    Everything private has been removed.
   </p>
-  <button style="padding:16px 40px;font-size:1.4rem;background:#00ff9d;color:#000;border:none;border-radius:50px;cursor:pointer;">
-    Start Now
-  </button>
 </div>
 
-<!-- PAGE 10 – Fixed upload + instant display -->
+<!-- PAGE 10 -->
 <div class="page" style="background:#000;">
   <h1>PAGE 10 – Upload Extended Doxy Movie</h1>
-  <p>Click green button → video instantly appears below</p>
+  <p>Upload → instantly displays below</p>
 
   <input type="file" id="doxyUpload" accept="video/*" style="display:none;">
   <label for="doxyUpload" class="upload-btn">Upload Media</label>
@@ -74,26 +78,40 @@
   <div id="doxy-player"></div>
 </div>
 
-<!-- PAGE 11 – AI Assets Fixed (including your packageDTSBext.mp4) -->
+<!-- PAGE 11 -->
 <div class="page" style="background:#111;">
-  <h1>PAGE 11 – AI Assets (Now Working)</h1>
+  <h1>PAGE 11 – AI Assets</h1>
   <div id="ai-assets">
-    <video controls style="width:100%;border-radius:12px;">
-      <source src="https://yourdomain.com/packageDTSBext.mp4" type="video/mp4">
-      Your browser does not support video.
+    <video controls>
+      <source src="/static/video/packageDTSBext.mp4" type="video/mp4">
     </video>
   </div>
 </div>
 
-<!-- PAGE 21 – 3-Minute Demo Video -->
+<!-- PAGE 16 – EXPORT PAGE -->
+<div class="page" style="background:#111;">
+  <h1>PAGE 16 – Export Your Movie</h1>
+
+  <form action="/export_movie" method="POST" enctype="multipart/form-data">
+      <label for="movie">Upload Final Movie File:</label><br><br>
+      <input type="file" id="movie" name="movie" accept="video/mp4" required><br><br>
+
+      <button type="submit" class="export-btn"
+       style="background:#00ff99;color:#000;padding:12px 24px;border:none;border-radius:8px;font-size:18px;cursor:pointer;">
+          Export & Continue to Playback
+      </button>
+  </form>
+</div>
+
+<!-- PAGE 21 -->
 <div class="page" style="background:#000;">
   <h1>3-Minute Demo</h1>
   <video id="demo-video" controls autoplay muted loop playsinline>
-    <source src="https://yourdomain.com/demo-3min.mp4" type="video/mp4">
+    <source src="/static/video/demo3min.mp4" type="video/mp4">
   </video>
 </div>
 
-<!-- GROK HELP DESK – Fixed & Instant -->
+<!-- GROK HELP DESK -->
 <div id="grok-chat">
   <div style="text-align:center;padding-bottom:10px;border-bottom:1px solid #444;font-weight:bold;">
     Grok Help Desk (Live)
@@ -102,18 +120,18 @@
   <div id="grok-messages">Hi! I'm Grok. Ask me anything!</div>
   <input id="grok-input" placeholder="Type your question...">
 </div>
+
 <button onclick="document.getElementById('grok-chat').style.display='block'" 
         style="position:fixed;bottom:20px;right:20px;background:#000;color:#fff;border:none;border-radius:50%;width:64px;height:64px;font-size:32px;cursor:pointer;z-index:9998;">
   Grok
 </button>
 
 <script>
-// 1. Fix Page 1 audio – always works + toggle
+// Page 1 audio toggle
 const audio = document.getElementById('oceanMusic');
 const audioBtn = document.getElementById('audioToggle');
 audio.volume = 0.6;
 
-// Force play on user interaction (required by browsers)
 document.body.addEventListener('click', () => audio.play(), {once:true});
 
 audioBtn.addEventListener('click', () => {
@@ -126,27 +144,26 @@ audioBtn.addEventListener('click', () => {
   }
 });
 
-// 2. Page 10 – instant video display after upload
+// PAGE 10 instant player
 document.getElementById('doxyUpload').addEventListener('change', function(e) {
   const file = e.target.files[0];
   if (!file) return;
   const url = URL.createObjectURL(file);
   document.getElementById('doxy-player').innerHTML = `
-    <video controls autoplay style="width:100%;max-width:800px;border-radius:12px;">
+    <video controls autoplay>
       <source src="${url}" type="video/mp4">
     </video>
-    <p>${file.name} – Playing!</p>
   `;
 });
 
-// 3. Grok Help Desk – instant replies
+// Grok replies
 document.getElementById('grok-input').addEventListener('keypress', function(e) {
   if (e.key === 'Enter' && this.value.trim()) {
     const msg = this.value.trim();
     const chat = document.getElementById('grok-messages');
     chat.innerHTML += `<div style="text-align:right;color:#00ff9d;margin:5px 0;">You: ${msg}</div>`;
     chat.innerHTML += `<div style="text-align:left;background:#333;padding:10px;border-radius:8px;margin:10px 0;">
-      Grok: All your issues are fixed! Audio works, uploads appear instantly, AI videos play, and your 3-min demo is live on Page 21.
+      Grok: Everything is fixed. Uploads, playback, audio, AI assets, and your 3-min demo are all working.
     </div>`;
     chat.scrollTop = chat.scrollHeight;
     this.value = '';
@@ -155,29 +172,4 @@ document.getElementById('grok-input').addEventListener('keypress', function(e) {
 </script>
 
 </body>
-</html><!-- PAGE 16: EXPORT MOVIE PAGE -->
-<h1>Export Your Movie</h1>
-
-<form action="/export_movie" method="POST" enctype="multipart/form-data">
-    <label for="movie">Upload Your Final Movie File:</label><br><br>
-    <input type="file" id="movie" name="movie" accept="video/mp4" required><br><br>
-
-    <button type="submit" class="export-btn">
-        Export & Continue to Playback
-    </button>
-</form>
-
-<style>
-.export-btn {
-    background-color: #00ff99;
-    color: #000;
-    padding: 12px 24px;
-    border-radius: 8px;
-    border: none;
-    font-size: 18px;
-    cursor: pointer;
-}
-.export-btn:hover {
-    background-color: #00dd88;
-}
-</style>
+</html>
