@@ -96,3 +96,6 @@ done
 echo "DEPLOYMENT READY: 21 PAGES GENERATED IN BLACK & PURPLE."
 npm run build
 npm run dev
+
+npm run dev
+     
