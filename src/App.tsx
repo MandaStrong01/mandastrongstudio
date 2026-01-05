@@ -125,6 +125,7 @@ function App() {
       {showTutorial && (
         <BeginnerTutorial onClose={closeTutorial} onNavigate={navigateTo} />
       )}
+      <button onClick={() => setShowEditor(true)} className="bg-purple-700 px-6 py-2 font-bold uppercase text-xs border border-purple-400">Open Video Editor</button>
     </div>
   );
 }
