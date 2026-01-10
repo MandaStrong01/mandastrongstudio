@@ -156,7 +156,6 @@ export default function Page17({ onNext, onBack }: Page17Props) {
             ref={videoRef}
             className="w-full aspect-video"
             controls
-            autoPlay
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
           >

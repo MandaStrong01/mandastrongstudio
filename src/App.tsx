@@ -61,8 +61,6 @@ function App() {
       else if (hash.startsWith('page')) {
         const pageNum = parseInt(hash.replace('page', ''));
         if (!isNaN(pageNum)) setCurrentPage(pageNum);
-      } else if (!hash) {
-        setCurrentPage(1);
       }
     };
 
@@ -118,7 +116,7 @@ function App() {
 
   return (
     <div className="app">
-      {currentPage === 1 && (
+      {typeof currentPage === 'number' && currentPage >= 1 && currentPage <= 21 && (
         <ProgressIndicator currentPage={currentPage} />
       )}
       {renderPage()}

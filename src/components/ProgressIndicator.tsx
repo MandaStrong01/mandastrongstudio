@@ -28,8 +28,8 @@ export default function ProgressIndicator({ currentPage }: ProgressIndicatorProp
   const progress = ((currentIndex + 1) / currentWorkflow.pages.length) * 100;
 
   return (
-    <div className="fixed bottom-4 left-4 z-30 bg-black/95 backdrop-blur border border-purple-500 rounded-md p-1.5 max-w-[150px]">
-      <div className="flex items-center gap-1 mb-1">
+    <div className="fixed top-4 left-4 z-30 bg-black/90 backdrop-blur border-2 border-purple-500 rounded-lg p-3 max-w-xs">
+      <div className="flex items-center gap-2 mb-2">
         {workflows.map((workflow) => {
           const isCompleted = completedPhases.includes(workflow);
           const isCurrent = workflow === currentWorkflow;
@@ -37,7 +37,7 @@ export default function ProgressIndicator({ currentPage }: ProgressIndicatorProp
           return (
             <div
               key={workflow.phase}
-              className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[7px] font-semibold transition-all ${
+              className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold transition-all ${
                 isCurrent
                   ? colorClasses[workflow.color as keyof typeof colorClasses]
                   : isCompleted
@@ -46,24 +46,24 @@ export default function ProgressIndicator({ currentPage }: ProgressIndicatorProp
               }`}
             >
               {isCompleted ? (
-                <Check className="w-1.5 h-1.5" />
+                <Check className="w-3 h-3" />
               ) : (
-                <Circle className="w-1.5 h-1.5" fill={isCurrent ? "currentColor" : "none"} />
+                <Circle className="w-3 h-3" fill={isCurrent ? "currentColor" : "none"} />
               )}
-              <span className="hidden sm:inline text-[6px]">{workflow.phase}</span>
+              <span className="hidden sm:inline">{workflow.phase}</span>
             </div>
           );
         })}
       </div>
 
-      <div className="space-y-0.5">
-        <div className="flex justify-between items-center text-[8px]">
+      <div className="space-y-1">
+        <div className="flex justify-between items-center text-xs">
           <span className="text-white font-semibold">{currentWorkflow.phase}</span>
-          <span className="text-gray-400 text-[7px]">
-            {currentIndex + 1}/{currentWorkflow.pages.length}
+          <span className="text-gray-400">
+            Step {currentIndex + 1} of {currentWorkflow.pages.length}
           </span>
         </div>
-        <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
+        <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
           <div
             className={`h-full transition-all duration-300 ${
               currentWorkflow.color === 'blue' ? 'bg-blue-500' :

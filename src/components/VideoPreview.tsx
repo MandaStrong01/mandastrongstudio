@@ -72,9 +72,6 @@ export default function VideoPreview({ projectId }: VideoPreviewProps) {
           onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={handleLoadedMetadata}
           className="max-w-full max-h-full"
-          autoPlay
-          loop
-          muted
         />
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="text-white text-center">

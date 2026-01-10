@@ -28,8 +28,8 @@ export default function Page3({ onNext, onBack }: Page3Props) {
     if (error) {
       setMessage(`Login failed: ${error.message}`);
     } else {
-      setMessage('Login successful! Redirecting to payment...');
-      await updateUserPlan(data.user.id, selectedPlan);
+      setMessage('Login successful! Bypassing Stripe - Full access granted.');
+      await updateUserPlan(data.user.id, 'studio');
       setTimeout(() => onNext(), 1500);
     }
   };
@@ -52,7 +52,7 @@ export default function Page3({ onNext, onBack }: Page3Props) {
     if (error) {
       setMessage(`Registration failed: ${error.message}`);
     } else {
-      setMessage('Account created! Redirecting to payment...');
+      setMessage('Account created! Bypassing Stripe - Full access granted.');
       if (data.user) {
         await updateUserPlan(data.user.id, selectedPlan);
       }
@@ -157,21 +157,21 @@ export default function Page3({ onNext, onBack }: Page3Props) {
                   type="submit"
                   className="w-full bg-purple-600 hover:bg-purple-500 text-white py-3 rounded-lg font-bold transition-all hover:scale-105"
                 >
-                  Register & Choose Plan
+                  Register (Free Access - No Stripe)
                 </button>
               </form>
             </div>
           </div>
 
           <div className="bg-purple-900/80 backdrop-blur-sm border-2 border-purple-500 text-white p-8 rounded-xl">
-            <h2 className="text-2xl font-bold mb-6 text-center">Choose Your Plan</h2>
+            <h2 className="text-2xl font-bold mb-6 text-center">Choose Your Plan (Bypass Mode - All Free)</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div
                 onClick={() => setSelectedPlan('basic')}
                 className={`cursor-pointer bg-black/50 border-2 p-6 rounded-xl hover:border-purple-300 transition-all ${selectedPlan === 'basic' ? 'border-yellow-400 shadow-lg shadow-yellow-400/50' : 'border-purple-400'}`}
               >
                 <h3 className="text-xl font-bold mb-2">Basic</h3>
-                <p className="text-3xl font-bold text-purple-300 mb-4">$10<span className="text-sm">/mo</span></p>
+                <p className="text-3xl font-bold text-purple-300 mb-4">FREE<span className="text-sm line-through opacity-50"> $10/mo</span></p>
                 <ul className="space-y-2 text-sm mb-6">
                   <li>✓ HD Export</li>
                   <li>✓ 100 AI Tools</li>
@@ -188,7 +188,7 @@ export default function Page3({ onNext, onBack }: Page3Props) {
               >
                 <div className="bg-purple-600 text-white text-xs font-bold py-1 px-3 rounded-full inline-block mb-2">POPULAR</div>
                 <h3 className="text-xl font-bold mb-2">Pro</h3>
-                <p className="text-3xl font-bold text-purple-300 mb-4">$20<span className="text-sm">/mo</span></p>
+                <p className="text-3xl font-bold text-purple-300 mb-4">FREE<span className="text-sm line-through opacity-50"> $20/mo</span></p>
                 <ul className="space-y-2 text-sm mb-6">
                   <li>✓ 4K Export</li>
                   <li>✓ 300 AI Tools</li>
@@ -205,7 +205,7 @@ export default function Page3({ onNext, onBack }: Page3Props) {
                 className={`cursor-pointer bg-black/50 border-2 p-6 rounded-xl hover:border-purple-300 transition-all ${selectedPlan === 'studio' ? 'border-yellow-400 shadow-lg shadow-yellow-400/50' : 'border-purple-400'}`}
               >
                 <h3 className="text-xl font-bold mb-2">Studio</h3>
-                <p className="text-3xl font-bold text-purple-300 mb-4">$30<span className="text-sm">/mo</span></p>
+                <p className="text-3xl font-bold text-purple-300 mb-4">FREE<span className="text-sm line-through opacity-50"> $30/mo</span></p>
                 <ul className="space-y-2 text-sm mb-6">
                   <li>✓ 8K Export</li>
                   <li>✓ All 600 AI Tools</li>

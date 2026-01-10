@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import QuickNav from './QuickNav';
 
 interface Page1Props {
@@ -9,70 +9,12 @@ interface Page1Props {
 
 export default function Page1({ onNext, onNavigate, currentPage }: Page1Props) {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [audioEnabled, setAudioEnabled] = useState(false);
-
-  useEffect(() => {
-    const bgVideo = document.querySelector('video') as HTMLVideoElement;
-    let audioUnlocked = false;
-
-    const forcePlayAudio = async () => {
-      if (bgVideo && !audioUnlocked) {
-        bgVideo.muted = false;
-        bgVideo.volume = 1.0;
-        try {
-          const playPromise = bgVideo.play();
-          if (playPromise !== undefined) {
-            await playPromise;
-            setAudioEnabled(true);
-            audioUnlocked = true;
-          }
-        } catch (error) {
-          console.log('Waiting for user interaction to enable audio');
-        }
-      }
-    };
-
-    const enableAudioOnInteraction = async () => {
-      if (!audioUnlocked && bgVideo) {
-        bgVideo.muted = false;
-        bgVideo.volume = 1.0;
-        try {
-          await bgVideo.play();
-          setAudioEnabled(true);
-          audioUnlocked = true;
-          document.removeEventListener('click', enableAudioOnInteraction);
-          document.removeEventListener('touchstart', enableAudioOnInteraction);
-        } catch (e) {
-          console.log('Audio still blocked');
-        }
-      }
-    };
-
-    forcePlayAudio();
-    document.addEventListener('click', enableAudioOnInteraction, { once: true });
-    document.addEventListener('touchstart', enableAudioOnInteraction, { once: true });
-
-    return () => {
-      document.removeEventListener('click', enableAudioOnInteraction);
-      document.removeEventListener('touchstart', enableAudioOnInteraction);
-    };
-  }, []);
 
   const handlePlayClick = () => {
     const video = document.getElementById('avatar-video') as HTMLVideoElement;
-    const bgVideo = document.querySelector('video') as HTMLVideoElement;
-
-    if (bgVideo && !audioEnabled) {
-      bgVideo.muted = false;
-      bgVideo.play().catch(() => {});
-      setAudioEnabled(true);
-    }
-
     if (video) {
-      video.muted = false;
       video.loop = false;
       video.currentTime = 0;
-      video.volume = 1.0;
       video.play();
       setIsPlaying(true);
     }
@@ -89,7 +31,6 @@ export default function Page1({ onNext, onNavigate, currentPage }: Page1Props) {
         autoPlay
         loop
         playsInline
-        preload="auto"
       >
         <source src="/video/background.mp4" type="video/mp4" />
       </video>

@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react';
 import { Upload, Film, CheckCircle, AlertCircle, Home, Play, Pause, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import * as tus from 'tus-js-client';
-import { validateVideoFile, testVideoPlayback, formatFileSize as formatSize, formatDuration } from '../lib/videoValidator';
-import { extractAndSaveVideoMetadata } from '../lib/videoMetadataService';
 
 interface VideoUploadPageProps {
   onHome?: () => void;
@@ -63,23 +61,12 @@ export default function VideoUploadPage({ onHome, onPlayMovie }: VideoUploadPage
     const file = event.target.files?.[0];
     if (!file) return;
 
-    setError(null);
-
-    const validation = await validateVideoFile(file);
-
-    if (!validation.isValid) {
-      setError(validation.error || 'Invalid video file');
+    if (!file.type.startsWith('video/')) {
+      setError('Please upload a video file');
       return;
     }
 
-    if (validation.metadata) {
-      console.log('Video metadata:', {
-        duration: formatDuration(validation.metadata.duration),
-        resolution: `${validation.metadata.width}x${validation.metadata.height}`,
-        size: formatSize(validation.metadata.size),
-        format: validation.metadata.format
-      });
-    }
+    setError(null);
 
     const fileExt = file.name.split('.').pop();
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
@@ -121,28 +108,8 @@ export default function VideoUploadPage({ onHome, onPlayMovie }: VideoUploadPage
           upload
         });
       },
-      onSuccess: async () => {
+      onSuccess: () => {
         const publicUrl = supabase.storage.from('videos').getPublicUrl(fileName).data.publicUrl;
-
-        const canPlay = await testVideoPlayback(publicUrl);
-
-        if (!canPlay) {
-          setUploadStatus({
-            fileName: file.name,
-            progress: 100,
-            status: 'error',
-            message: 'Video uploaded but playback test failed. The video may be corrupted.'
-          });
-          return;
-        }
-
-        const metadataResult = await extractAndSaveVideoMetadata(file, fileName, publicUrl);
-
-        if (!metadataResult.success) {
-          console.error('Failed to save video metadata:', metadataResult.error);
-        } else {
-          console.log('Video metadata saved successfully:', metadataResult.metadata);
-        }
 
         setUploadStatus({
           fileName: file.name,
