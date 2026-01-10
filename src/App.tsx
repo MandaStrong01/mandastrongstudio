@@ -29,7 +29,7 @@ import Page20 from './components/Page20';
 import Page21 from './components/Page21';
 
 function App() {
-  const [currentPage, setCurrentPage] = useState<number | string>(1);
+  const [currentPage, setCurrentPage] = useState<number | string>('demo');
   const [currentVideoUrl, setCurrentVideoUrl] = useState<string | null>(null);
   const [showTutorial, setShowTutorial] = useState(false);
 
@@ -58,9 +58,12 @@ function App() {
       else if (hash === 'upload') setCurrentPage('upload');
       else if (hash === 'view-projects') setCurrentPage('video-studio');
       else if (hash === 'toolboard') setCurrentPage('toolboard');
+      else if (hash === 'demo') setCurrentPage('demo');
       else if (hash.startsWith('page')) {
         const pageNum = parseInt(hash.replace('page', ''));
         if (!isNaN(pageNum)) setCurrentPage(pageNum);
+      } else if (!hash) {
+        setCurrentPage('demo');
       }
     };
 
@@ -70,6 +73,15 @@ function App() {
   }, []);
 
   const renderPage = () => {
+    if (currentPage === 'demo') return (
+      <MoviePlayer
+        onHome={() => navigateTo(1)}
+        onBack={() => navigateTo(1)}
+        videoUrl="/video/dtsb_120min.mp4"
+        autoTransition={true}
+        transitionDelay={15000}
+      />
+    );
     if (currentPage === 'builder') return <BuilderPage onBack={() => navigateTo(4)} />;
     if (currentPage === 'video-studio') return <VideoStudio />;
     if (currentPage === 'toolboard') return <ToolboardPage onBack={() => navigateTo(4)} />;

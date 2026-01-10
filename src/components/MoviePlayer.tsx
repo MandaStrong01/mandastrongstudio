@@ -4,12 +4,35 @@ import { Play, Pause, Volume2, VolumeX, Maximize, SkipBack, SkipForward, Home, A
 interface MoviePlayerProps {
   onBack?: () => void;
   onHome?: () => void;
+  videoUrl?: string;
+  autoTransition?: boolean;
+  transitionDelay?: number;
 }
 
-export default function MoviePlayer({ onBack, onHome }: MoviePlayerProps) {
+export default function MoviePlayer({ onBack, onHome, videoUrl = '/video/dtsb_120min.mp4', autoTransition = false, transitionDelay = 10000 }: MoviePlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [videoRef, setVideoRef] = useState<HTMLVideoElement | null>(null);
+
+  useState(() => {
+    if (autoTransition && onHome) {
+      const playVideo = async () => {
+        if (videoRef) {
+          try {
+            await videoRef.play();
+          } catch (error) {
+            console.log('Autoplay prevented:', error);
+          }
+        }
+      };
+      playVideo();
+
+      const timer = setTimeout(() => {
+        onHome();
+      }, transitionDelay);
+      return () => clearTimeout(timer);
+    }
+  });
 
   const togglePlay = () => {
     if (videoRef) {
@@ -83,8 +106,9 @@ export default function MoviePlayer({ onBack, onHome }: MoviePlayerProps) {
               onPause={() => setIsPlaying(false)}
               controls
               controlsList="nodownload"
+              autoPlay={autoTransition}
             >
-              <source src="/video/dtsb_120min.mp4" type="video/mp4" />
+              <source src={videoUrl} type="video/mp4" />
               Your browser does not support the video tag.
             </video>
 
