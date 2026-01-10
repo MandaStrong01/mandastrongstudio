@@ -26,7 +26,6 @@ export default function Page10({ onNext, onBack }: Page10Props) {
   useEffect(() => {
     if (videoRef.current) {
       videoRef.current.volume = 1.0;
-      videoRef.current.muted = false;
     }
   }, []);
 
@@ -188,7 +187,6 @@ export default function Page10({ onNext, onBack }: Page10Props) {
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
               key={currentVideoSource}
-              playsInline
             >
               <source src={currentVideoSource} type="video/mp4" />
               Your browser does not support the video tag.

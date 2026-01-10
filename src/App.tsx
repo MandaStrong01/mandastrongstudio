@@ -1,91 +1,132 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Upload, Library, Wand2, Play, Sparkles, FileVideo, FileAudio, Cpu, MessageSquare } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import MoviePlayer from './components/MoviePlayer';
+import VideoUploadPage from './components/VideoUploadPage';
+import VideoStudio from './components/VideoStudio';
+import ToolboardPage from './components/ToolboardPage';
+import BuilderPage from './components/BuilderPage';
+import ProgressIndicator from './components/ProgressIndicator';
+import BeginnerTutorial from './components/BeginnerTutorial';
+import Page1 from './components/Page1';
+import Page2 from './components/Page2';
+import Page3 from './components/Page3';
+import Page4 from './components/Page4';
+import Page5 from './components/Page5';
+import Page6 from './components/Page6';
+import Page7 from './components/Page7';
+import Page8 from './components/Page8';
+import Page9 from './components/Page9';
+import Page10 from './components/Page10';
+import Page11 from './components/Page11';
+import Page12 from './components/Page12';
+import Page13 from './components/Page13';
+import Page14 from './components/Page14';
+import Page15 from './components/Page15';
+import Page16 from './components/Page16';
+import Page17 from './components/Page17';
+import Page18 from './components/Page18';
+import Page19 from './components/Page19';
+import Page20 from './components/Page20';
+import Page21 from './components/Page21';
 
-export default function App() {
-  const [page, setPage] = useState(1);
-  const [assets, setAssets] = useState([]); 
-  const videoRef = useRef(null);
+function App() {
+  const [currentPage, setCurrentPage] = useState<number | string>(1);
+  const [currentVideoUrl, setCurrentVideoUrl] = useState<string | null>(null);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   useEffect(() => {
-    if (videoRef.current) {
-      if (page <= 2) {
-        videoRef.current.play().catch(() => {});
-      } else {
-        videoRef.current.pause();
-      }
+    const hasSeenTutorial = localStorage.getItem('hasSeenTutorial');
+    if (!hasSeenTutorial && currentPage === 1) {
+      setShowTutorial(true);
     }
-  }, [page]);
+  }, [currentPage]);
 
-  const Navigation = () => (
-    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-4 z-[100]">
-      <button onClick={() => setPage(Math.max(1, page - 1))} className="bg-black text-white px-8 py-3 rounded-full font-black uppercase text-[10px] border border-white/20 hover:bg-white hover:text-black transition-all">← BACK</button>
-      <button onClick={() => setPage(Math.min(21, page + 1))} className="bg-black text-white px-8 py-3 rounded-full font-black uppercase text-[10px] border border-white/20 hover:bg-white hover:text-black transition-all">NEXT →</button>
-    </div>
-  );
+  const closeTutorial = () => {
+    setShowTutorial(false);
+    localStorage.setItem('hasSeenTutorial', 'true');
+  };
+
+  const navigateTo = (page: number | string) => {
+    setCurrentPage(page);
+    window.location.hash = typeof page === 'number' ? `page${page}` : page;
+  };
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(1);
+      if (hash === 'video-studio') setCurrentPage('video-studio');
+      else if (hash === 'builder') setCurrentPage('builder');
+      else if (hash === 'upload') setCurrentPage('upload');
+      else if (hash === 'view-projects') setCurrentPage('video-studio');
+      else if (hash === 'toolboard') setCurrentPage('toolboard');
+      else if (hash.startsWith('page')) {
+        const pageNum = parseInt(hash.replace('page', ''));
+        if (!isNaN(pageNum)) setCurrentPage(pageNum);
+      } else if (!hash) {
+        setCurrentPage(1);
+      }
+    };
+
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const renderPage = () => {
+    if (currentPage === 'builder') return <BuilderPage onBack={() => navigateTo(4)} />;
+    if (currentPage === 'video-studio') return <VideoStudio />;
+    if (currentPage === 'toolboard') return <ToolboardPage onBack={() => navigateTo(4)} />;
+    if (currentPage === 'upload') return (
+      <VideoUploadPage
+        onHome={() => navigateTo(1)}
+        onPlayMovie={(url) => {
+          setCurrentVideoUrl(url);
+          navigateTo('movie');
+        }}
+      />
+    );
+    if (currentPage === 'movie') return (
+      <MoviePlayer
+        onHome={() => navigateTo(1)}
+        onBack={() => navigateTo(1)}
+        videoUrl={currentVideoUrl || undefined}
+      />
+    );
+    if (currentPage === 1) return <Page1 onNext={() => navigateTo(2)} onNavigate={navigateTo} currentPage={typeof currentPage === 'number' ? currentPage : 1} />;
+    if (currentPage === 2) return <Page2 onNext={() => navigateTo(3)} onBack={() => navigateTo(1)} onNavigate={navigateTo} />;
+    if (currentPage === 3) return <Page3 onNext={() => navigateTo(4)} onBack={() => navigateTo(2)} onNavigate={navigateTo} />;
+    if (currentPage === 4) return <Page4 onNext={() => navigateTo(5)} onBack={() => navigateTo(3)} onNavigate={navigateTo} currentPage={typeof currentPage === 'number' ? currentPage : 1} />;
+    if (currentPage === 5) return <Page5 onNext={() => navigateTo(6)} onBack={() => navigateTo(4)} onNavigate={navigateTo} currentPage={typeof currentPage === 'number' ? currentPage : 1} />;
+    if (currentPage === 6) return <Page6 onNext={() => navigateTo(7)} onBack={() => navigateTo(5)} onNavigate={navigateTo} currentPage={typeof currentPage === 'number' ? currentPage : 1} />;
+    if (currentPage === 7) return <Page7 onNext={() => navigateTo(8)} onBack={() => navigateTo(6)} onNavigate={navigateTo} currentPage={typeof currentPage === 'number' ? currentPage : 1} />;
+    if (currentPage === 8) return <Page8 onNext={() => navigateTo(9)} onBack={() => navigateTo(7)} onNavigate={navigateTo} currentPage={typeof currentPage === 'number' ? currentPage : 1} />;
+    if (currentPage === 9) return <Page9 onNext={() => navigateTo(10)} onBack={() => navigateTo(8)} onNavigate={navigateTo} currentPage={typeof currentPage === 'number' ? currentPage : 1} />;
+    if (currentPage === 10) return <Page10 onNext={() => navigateTo(11)} onBack={() => navigateTo(9)} onNavigate={navigateTo} currentPage={typeof currentPage === 'number' ? currentPage : 1} />;
+    if (currentPage === 11) return <Page11 onNext={() => navigateTo(12)} onBack={() => navigateTo(10)} onNavigate={navigateTo} currentPage={typeof currentPage === 'number' ? currentPage : 1} />;
+    if (currentPage === 12) return <Page12 onNext={() => navigateTo(13)} onBack={() => navigateTo(11)} onNavigate={navigateTo} currentPage={typeof currentPage === 'number' ? currentPage : 1} />;
+    if (currentPage === 13) return <Page13 onNext={() => navigateTo(14)} onBack={() => navigateTo(12)} onNavigate={navigateTo} currentPage={typeof currentPage === 'number' ? currentPage : 1} />;
+    if (currentPage === 14) return <Page14 onNext={() => navigateTo(15)} onBack={() => navigateTo(13)} onNavigate={navigateTo} currentPage={typeof currentPage === 'number' ? currentPage : 1} />;
+    if (currentPage === 15) return <Page15 onNext={() => navigateTo(16)} onBack={() => navigateTo(14)} onNavigate={navigateTo} currentPage={typeof currentPage === 'number' ? currentPage : 1} />;
+    if (currentPage === 16) return <Page16 onNext={() => navigateTo(17)} onBack={() => navigateTo(15)} onNavigate={navigateTo} currentPage={typeof currentPage === 'number' ? currentPage : 1} />;
+    if (currentPage === 17) return <Page17 onNext={() => navigateTo(18)} onBack={() => navigateTo(16)} onNavigate={navigateTo} currentPage={typeof currentPage === 'number' ? currentPage : 1} />;
+    if (currentPage === 18) return <Page18 onNext={() => navigateTo(19)} onBack={() => navigateTo(17)} onNavigate={navigateTo} currentPage={typeof currentPage === 'number' ? currentPage : 1} />;
+    if (currentPage === 19) return <Page19 onNext={() => navigateTo(20)} onBack={() => navigateTo(18)} onNavigate={navigateTo} currentPage={typeof currentPage === 'number' ? currentPage : 1} />;
+    if (currentPage === 20) return <Page20 onNext={() => navigateTo(21)} onBack={() => navigateTo(19)} onNavigate={navigateTo} currentPage={typeof currentPage === 'number' ? currentPage : 1} />;
+    if (currentPage === 21) return <Page21 onBack={() => navigateTo(20)} onHome={() => navigateTo(1)} />;
+
+    return <MoviePlayer />;
+  };
 
   return (
-    <div className="h-screen bg-black overflow-hidden relative font-black italic">
-      <video ref={videoRef} className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${page <= 2 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} src="background.mp4" loop playsInline />
-
-      {/* NODE 1 & 2: THE SPLASH */}
-      {(page === 1 || page === 2) && (
-        <div className="relative z-10 h-full flex flex-col items-center justify-center text-center px-4">
-          <h1 className="text-7xl md:text-9xl text-black uppercase leading-none font-black tracking-tighter">MANDASTRONG'S STUDIO</h1>
-          <p className="text-xl text-black uppercase mt-4 font-black">{page === 1 ? "All-In-One Movie App" : "Make Your Dreams Reality"}</p>
-          <button onClick={() => setPage(page + 1)} className="absolute bottom-20 bg-black text-white px-12 py-4 rounded-xl font-black uppercase tracking-widest hover:scale-105 transition-all">Next</button>
-        </div>
+    <div className="app">
+      {currentPage === 1 && (
+        <ProgressIndicator currentPage={currentPage} />
       )}
-
-      {/* NODE 3: PRICING ($20, $40, $80) */}
-      {page === 3 && (
-        <div className="h-full bg-black flex flex-col items-center p-8 border-[15px] border-zinc-900 overflow-y-auto pb-32">
-          <div className="grid grid-cols-2 gap-6 w-full max-w-5xl mb-10">
-            <div className="bg-[#1a0b2e] p-8 rounded-3xl border-2 border-purple-500/30 text-white text-center font-black"><h2>LOGIN</h2></div>
-            <div className="bg-[#1a0b2e] p-8 rounded-3xl border-2 border-purple-500/30 text-white text-center font-black"><h2>REGISTER</h2></div>
-          </div>
-          <div className="grid grid-cols-3 gap-4 w-full max-w-6xl">
-            {[{t:"Basic", p:"20"}, {t:"Pro", p:"40"}, {t:"Studio", p:"80"}].map((plan, i) => (
-              <div key={i} className="bg-[#0d0517] p-6 rounded-2xl border-2 border-purple-500/10 text-white text-center font-black">
-                <h3 className="text-xl uppercase">{plan.t}</h3>
-                <div className="text-6xl font-black tracking-tighter">${plan.p}</div>
-                <button onClick={() => setPage(4)} className="w-full bg-purple-600 mt-4 py-3 rounded-xl uppercase tracking-widest hover:bg-purple-500">SELECT</button>
-              </div>
-            ))}
-          </div>
-        </div>
+      {renderPage()}
+      {showTutorial && (
+        <BeginnerTutorial onClose={closeTutorial} onNavigate={navigateTo} />
       )}
-
-      {/* NODE 11: MEDIA LIBRARY */}
-      {page === 11 && (
-        <div className="h-full bg-[#050505] text-white flex flex-col border-[20px] border-zinc-900 italic font-black">
-          <div className="flex-1 p-10 flex flex-col relative overflow-hidden">
-            <div className="flex justify-between items-center mb-10">
-              <h2 className="text-5xl uppercase tracking-tighter font-black font-black">Library ({assets.length})</h2>
-              <button onClick={() => window.open('https://mandastrong-studio-global-enhancement.ai/engine-v2', '_blank')} className="bg-purple-600 px-8 py-3 rounded-xl font-black border border-white/20 uppercase shadow-2xl hover:scale-105 transition-all">Enhancement Suite</button>
-            </div>
-            <div className="flex-1 border-4 border-dashed border-zinc-900 rounded-[4rem] flex items-center justify-center text-zinc-800 text-3xl uppercase font-black italic text-center px-10">
-              Media assets empty. Generate assets in the AI tool board.
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* NODE 21: FINALE */}
-      {page === 21 && (
-        <div className="h-full bg-black border-[20px] border-zinc-900 flex flex-col items-center justify-center relative italic font-black p-20 text-center">
-          <h1 className="text-7xl md:text-[10rem] text-purple-500 uppercase tracking-tighter mb-12 leading-none font-black">THAT'S ALL FOLKS!</h1>
-          <button onClick={() => setPage(1)} className="bg-white text-black px-16 py-6 rounded-full uppercase text-xl font-black hover:bg-purple-600 hover:text-white transition-all shadow-2xl">Restart Engine</button>
-        </div>
-      )}
-
-      {/* GENERIC NODES 4-20 */}
-      {![1,2,3,11,21].includes(page) && (
-        <div className="h-full bg-black border-[20px] border-zinc-900 flex flex-col items-center justify-center text-white italic font-black opacity-10 uppercase text-8xl md:text-9xl">
-          Node {page}
-        </div>
-      )}
-      
-      <Navigation />
     </div>
   );
 }
+
+export default App;
