@@ -171,7 +171,7 @@ export default function Page3({ onNext, onBack }: Page3Props) {
                 className={`cursor-pointer bg-black/50 border-2 p-6 rounded-xl hover:border-purple-300 transition-all ${selectedPlan === 'basic' ? 'border-yellow-400 shadow-lg shadow-yellow-400/50' : 'border-purple-400'}`}
               >
                 <h3 className="text-xl font-bold mb-2">Basic</h3>
-                <p className="text-3xl font-bold text-purple-300 mb-4">$10<span className="text-sm">/mo</span></p>
+                <p className="text-3xl font-bold text-purple-300 mb-4">$20<span className="text-sm">/mo</span></p>
                 <ul className="space-y-2 text-sm mb-6">
                   <li>✓ HD Export</li>
                   <li>✓ 100 AI Tools</li>
@@ -188,7 +188,7 @@ export default function Page3({ onNext, onBack }: Page3Props) {
               >
                 <div className="bg-purple-600 text-white text-xs font-bold py-1 px-3 rounded-full inline-block mb-2">POPULAR</div>
                 <h3 className="text-xl font-bold mb-2">Pro</h3>
-                <p className="text-3xl font-bold text-purple-300 mb-4">$20<span className="text-sm">/mo</span></p>
+                <p className="text-3xl font-bold text-purple-300 mb-4">$30<span className="text-sm">/mo</span></p>
                 <ul className="space-y-2 text-sm mb-6">
                   <li>✓ 4K Export</li>
                   <li>✓ 300 AI Tools</li>
@@ -205,7 +205,7 @@ export default function Page3({ onNext, onBack }: Page3Props) {
                 className={`cursor-pointer bg-black/50 border-2 p-6 rounded-xl hover:border-purple-300 transition-all ${selectedPlan === 'studio' ? 'border-yellow-400 shadow-lg shadow-yellow-400/50' : 'border-purple-400'}`}
               >
                 <h3 className="text-xl font-bold mb-2">Studio</h3>
-                <p className="text-3xl font-bold text-purple-300 mb-4">$30<span className="text-sm">/mo</span></p>
+                <p className="text-3xl font-bold text-purple-300 mb-4">$50<span className="text-sm">/mo</span></p>
                 <ul className="space-y-2 text-sm mb-6">
                   <li>✓ 8K Export</li>
                   <li>✓ All 600 AI Tools</li>
