@@ -119,14 +119,14 @@ export default function App() {
     </div>
   );
 
-  const GrokButton = () => (
+  const GrokButton = () => page >= 2 && page !== 19 ? (
     <button
       onClick={() => setPage(19)}
       className="fixed bottom-8 right-8 z-50 bg-purple-600 hover:bg-purple-500 p-4 rounded-full shadow-lg transition-all"
     >
       <MessageCircle size={28} className="text-white" />
     </button>
-  );
+  ) : null;
 
   const Footer = () => page >= 3 ? (
     <div className="fixed bottom-0 left-0 right-0 bg-black/90 py-3 text-center text-white text-xs md:text-sm font-black uppercase z-40 border-t border-purple-900/30">
@@ -430,9 +430,9 @@ export default function App() {
 
       {/* PAGE 10: EDITOR'S CHOICE */}
       {page === 10 && (
-        <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 pb-32">
+        <div className="relative min-h-screen bg-black flex flex-col items-center justify-center p-8 pb-32">
           <button
-            className="absolute top-8 right-40 bg-purple-600 hover:bg-purple-500 px-6 py-3 rounded-full font-black uppercase text-white shadow-lg transition-all flex items-center gap-2"
+            className="absolute top-8 right-40 bg-purple-600 hover:bg-purple-500 px-6 py-3 rounded-full font-black uppercase text-white shadow-lg transition-all flex items-center gap-2 z-10"
           >
             <Upload size={20} /> Upload
           </button>
@@ -904,7 +904,7 @@ export default function App() {
                   <h2 className="text-2xl font-black text-purple-400">Color Grading Workspace</h2>
                 </div>
                 <div className="grid grid-cols-2 gap-6">
-                  {['Exposure', 'Contrast', 'Highlights', 'Shadows', 'Saturation', 'Vibrance'].map((slider) => (
+                  {['Exposure', 'Contrast', 'Highlights', 'Shadows', 'Saturation', 'Vibrance', 'Temperature'].map((slider) => (
                     <div key={slider}>
                       <label className="text-sm font-bold mb-2 block">{slider}</label>
                       <input
@@ -921,22 +921,6 @@ export default function App() {
                       </div>
                     </div>
                   ))}
-                  {/* Temperature */}
-                  <div>
-                    <label className="text-sm font-bold mb-2 block">Temperature</label>
-                    <input
-                      type="range"
-                      className="w-full accent-blue-600"
-                      defaultValue="0"
-                      min="-100"
-                      max="100"
-                    />
-                    <div className="flex justify-between text-xs text-gray-400 mt-1">
-                      <span>-100</span>
-                      <span>0</span>
-                      <span>+100</span>
-                    </div>
-                  </div>
                 </div>
               </div>
 
