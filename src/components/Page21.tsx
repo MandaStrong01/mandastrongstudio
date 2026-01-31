@@ -12,10 +12,6 @@ export default function Page21({ onBack, onHome }: Page21Props) {
   return (
     <div className="min-h-screen bg-black text-white p-8 overflow-y-auto">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-5xl font-bold mb-8 text-center cinematic-title text-purple-400" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
-          That's All Folks!
-        </h1>
-
         <div className="border-2 border-purple-500 rounded-2xl overflow-hidden shadow-2xl mb-12 max-w-4xl mx-auto">
           <video
             className="w-full"
@@ -23,10 +19,14 @@ export default function Page21({ onBack, onHome }: Page21Props) {
             autoPlay
             playsInline
           >
-            <source src="https://umrzctjpjveocpzdyjxs.supabase.co/storage/v1/object/public/videos/ThatsAllFolks_full.mp4" type="video/mp4" />
+            <source src="/video/thatsallfolks" type="video/mp4" />
             Your browser does not support the video tag.
           </video>
         </div>
+
+        <h1 className="text-5xl font-bold mb-8 text-center cinematic-title text-purple-400" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
+          That's All Folks!
+        </h1>
 
         <div className="space-y-6 mb-12 max-w-4xl mx-auto">
           <div className="bg-gradient-to-br from-purple-900/40 to-pink-900/40 backdrop-blur rounded-2xl border-2 border-purple-500 p-8">
