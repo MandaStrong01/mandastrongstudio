@@ -372,82 +372,82 @@ export default function App() {
 
       {/* PAGE 3: LOGIN/REGISTER/PRICING */}
       {page === 3 && (
-        <div className="min-h-screen bg-zinc-950 p-8 pb-32 overflow-y-auto">
+        <div className="min-h-screen bg-black p-8 pb-32 overflow-y-auto">
           {authError && (
-            <div className="max-w-7xl mx-auto mb-6 bg-red-600 border border-red-500 rounded-lg p-4 text-white">
+            <div className="max-w-7xl mx-auto mb-6 bg-red-600 border-2 border-red-500 rounded-lg p-4 text-white font-semibold">
               {authError}
             </div>
           )}
           {authSuccess && (
-            <div className="max-w-7xl mx-auto mb-6 bg-green-600 border border-green-500 rounded-lg p-4 text-white">
+            <div className="max-w-7xl mx-auto mb-6 bg-green-600 border-2 border-green-500 rounded-lg p-4 text-white font-semibold">
               {authSuccess}
             </div>
           )}
 
           <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-8 mb-16">
             {/* Login */}
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8">
-              <h2 className="text-3xl font-bold mb-8">Sign In</h2>
+            <div className="bg-purple-950/30 border-2 border-purple-500 rounded-xl p-8">
+              <h2 className="text-3xl font-bold mb-8 text-purple-300">Sign In</h2>
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-300">Email Address</label>
+                  <label className="block text-sm font-medium mb-2 text-purple-300">Email Address</label>
                   <input
                     type="email"
                     placeholder="your@email.com"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     required
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                    className="w-full bg-black border-2 border-purple-500 rounded-lg px-4 py-3 text-white placeholder-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-300">Password</label>
+                  <label className="block text-sm font-medium mb-2 text-purple-300">Password</label>
                   <input
                     type="password"
                     placeholder="••••••••"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     required
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                    className="w-full bg-black border-2 border-purple-500 rounded-lg px-4 py-3 text-white placeholder-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent"
                   />
                 </div>
-                <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 py-3.5 rounded-lg font-semibold text-base mt-6 transition">
+                <button type="submit" className="w-full bg-purple-600 hover:bg-purple-500 py-3.5 rounded-lg font-semibold text-base mt-6 transition">
                   Sign In
                 </button>
                 <div className="text-center">
-                  <a href="#" className="text-sm text-blue-500 hover:text-blue-400">Forgot password?</a>
+                  <a href="#" className="text-sm text-purple-400 hover:text-purple-300">Forgot password?</a>
                 </div>
               </form>
             </div>
 
             {/* Register */}
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8">
-              <h2 className="text-3xl font-bold mb-8">Create Account</h2>
+            <div className="bg-purple-950/30 border-2 border-purple-500 rounded-xl p-8">
+              <h2 className="text-3xl font-bold mb-8 text-purple-300">Create Account</h2>
               <form onSubmit={handleRegister} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-300">Full Name</label>
+                  <label className="block text-sm font-medium mb-2 text-purple-300">Full Name</label>
                   <input
                     type="text"
                     placeholder="John Doe"
                     value={registerName}
                     onChange={(e) => setRegisterName(e.target.value)}
                     required
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                    className="w-full bg-black border-2 border-purple-500 rounded-lg px-4 py-3 text-white placeholder-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-300">Email Address</label>
+                  <label className="block text-sm font-medium mb-2 text-purple-300">Email Address</label>
                   <input
                     type="email"
                     placeholder="your@email.com"
                     value={registerEmail}
                     onChange={(e) => setRegisterEmail(e.target.value)}
                     required
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                    className="w-full bg-black border-2 border-purple-500 rounded-lg px-4 py-3 text-white placeholder-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-gray-300">Password</label>
+                  <label className="block text-sm font-medium mb-2 text-purple-300">Password</label>
                   <input
                     type="password"
                     placeholder="••••••••"
@@ -455,10 +455,10 @@ export default function App() {
                     onChange={(e) => setRegisterPassword(e.target.value)}
                     required
                     minLength={6}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                    className="w-full bg-black border-2 border-purple-500 rounded-lg px-4 py-3 text-white placeholder-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent"
                   />
                 </div>
-                <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 py-3.5 rounded-lg font-semibold text-base mt-6 transition">
+                <button type="submit" className="w-full bg-purple-600 hover:bg-purple-500 py-3.5 rounded-lg font-semibold text-base mt-6 transition">
                   Create Account
                 </button>
               </form>
@@ -466,54 +466,59 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-4 max-w-lg mx-auto mb-8">
-            <div className="flex-1 h-px bg-zinc-800"></div>
-            <span className="text-gray-500 font-medium text-sm">or</span>
-            <div className="flex-1 h-px bg-zinc-800"></div>
+            <div className="flex-1 h-px bg-purple-700"></div>
+            <span className="text-purple-400 font-medium text-sm">or</span>
+            <div className="flex-1 h-px bg-purple-700"></div>
           </div>
 
           <div className="max-w-lg mx-auto mb-16">
-            <button className="w-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 py-3.5 rounded-lg font-medium text-base flex items-center justify-center gap-2 transition">
+            <button
+              onClick={() => setPage(4)}
+              className="w-full bg-purple-700 hover:bg-purple-600 border-2 border-purple-500 py-3.5 rounded-lg font-medium text-base flex items-center justify-center gap-2 transition"
+            >
               <Eye size={20} /> Continue as Guest
             </button>
-            <p className="text-center text-gray-500 text-sm mt-3">Explore features without creating an account</p>
+            <p className="text-center text-purple-400 text-sm mt-3">Explore features without creating an account</p>
           </div>
 
           {/* Pricing */}
           <div className="max-w-7xl mx-auto">
-            <h2 className="text-3xl font-bold text-center mb-10">Choose Your Plan</h2>
-            <div className="grid md:grid-cols-3 gap-6">
+            <h2 className="text-3xl font-bold text-center mb-3 text-white">Choose Your Plan</h2>
+            <p className="text-center text-purple-300 mb-10">Start free, upgrade anytime</p>
+            <div className="grid md:grid-cols-4 gap-6">
               {[
-                { name: 'Basic', price: '20', features: ['HD Export', '100 AI Tools', 'Basic Templates', '10GB Storage', 'Email Support'] },
-                { name: 'Pro', price: '30', features: ['4K Export', '300 AI Tools', 'Premium Templates', '100GB Storage', 'Priority Support', 'Commercial License'], popular: true },
-                { name: 'Studio', price: '50', features: ['8K Export', 'All 600 AI Tools', 'Unlimited Templates', '1TB Storage', '24/7 Live Support', 'Full Commercial Rights', 'Team Collaboration'] }
+                { name: 'Free', price: '0', features: ['720p Export', '50 AI Tools', 'Basic Templates', '1GB Storage', 'Community Support'], tier: 'free' },
+                { name: 'Basic', price: '20', features: ['HD Export', '100 AI Tools', 'Basic Templates', '10GB Storage', 'Email Support'], tier: 'basic' },
+                { name: 'Pro', price: '30', features: ['4K Export', '300 AI Tools', 'Premium Templates', '100GB Storage', 'Priority Support', 'Commercial License'], popular: true, tier: 'pro' },
+                { name: 'Studio', price: '50', features: ['8K Export', 'All 600 AI Tools', 'Unlimited Templates', '1TB Storage', '24/7 Live Support', 'Full Commercial Rights', 'Team Collaboration'], tier: 'studio' }
               ].map((plan, i) => (
                 <div
                   key={i}
-                  onClick={() => setSelectedPlan(plan.name.toLowerCase())}
-                  className={`bg-zinc-900 border-2 rounded-xl p-8 transition-all cursor-pointer ${
-                    selectedPlan === plan.name.toLowerCase() || plan.popular ? 'border-blue-600 ring-2 ring-blue-600/20' : 'border-zinc-800 hover:border-zinc-700'
+                  onClick={() => setSelectedPlan(plan.tier)}
+                  className={`bg-black border-2 rounded-xl p-6 transition-all cursor-pointer ${
+                    selectedPlan === plan.tier || plan.popular ? 'border-purple-500 ring-2 ring-purple-500/20 scale-105' : 'border-purple-700 hover:border-purple-500'
                   } ${plan.popular ? 'relative' : ''}`}
                 >
                   {plan.popular && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 px-4 py-1 rounded-full text-xs font-semibold">
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-purple-600 px-4 py-1 rounded-full text-xs font-semibold">
                       Most Popular
                     </div>
                   )}
-                  <h3 className="text-2xl font-bold mb-4">{plan.name}</h3>
+                  <h3 className="text-2xl font-bold mb-4 text-purple-300">{plan.name}</h3>
                   <div className="mb-6">
-                    <span className="text-4xl font-bold">${plan.price}</span>
-                    <span className="text-gray-400 text-lg">/month</span>
+                    <span className="text-4xl font-bold text-white">${plan.price}</span>
+                    <span className="text-purple-400 text-lg">/month</span>
                   </div>
                   <ul className="space-y-3 mb-6">
                     {plan.features.map((feature, idx) => (
                       <li key={idx} className="flex items-center gap-2 text-sm">
-                        <Check size={18} className="text-blue-500 flex-shrink-0" />
-                        <span className="text-gray-300">{feature}</span>
+                        <Check size={18} className="text-purple-500 flex-shrink-0" />
+                        <span className="text-purple-200">{feature}</span>
                       </li>
                     ))}
                   </ul>
-                  {selectedPlan === plan.name.toLowerCase() && (
-                    <div className="text-blue-500 font-semibold text-sm flex items-center gap-2">
+                  {selectedPlan === plan.tier && (
+                    <div className="text-purple-400 font-semibold text-sm flex items-center gap-2">
                       <CheckCircle size={18} /> Selected
                     </div>
                   )}
@@ -521,10 +526,32 @@ export default function App() {
               ))}
             </div>
             <div className="text-center mt-10">
-              <button className="bg-blue-600 hover:bg-blue-700 px-12 py-4 rounded-lg font-semibold text-lg transition">
-                Continue to Payment
-              </button>
-              <p className="text-gray-500 text-sm mt-4">Secure payment processing with Stripe</p>
+              {user ? (
+                <button
+                  onClick={() => {
+                    setAuthSuccess('Your plan has been updated! Admins can manage subscriptions in the Admin Dashboard.');
+                    setTimeout(() => setAuthSuccess(''), 4000);
+                  }}
+                  className="bg-purple-600 hover:bg-purple-500 px-12 py-4 rounded-lg font-semibold text-lg transition"
+                >
+                  Update Plan
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setAuthError('Please sign in or create an account first to subscribe');
+                    setTimeout(() => {
+                      setAuthError('');
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }, 2000);
+                  }}
+                  className="bg-purple-600 hover:bg-purple-500 px-12 py-4 rounded-lg font-semibold text-lg transition"
+                >
+                  Continue to Payment
+                </button>
+              )}
+              <p className="text-purple-400 text-sm mt-4">Secure payment processing with Stripe</p>
+              <p className="text-purple-500 text-xs mt-2">Contact admin to upgrade your subscription tier</p>
             </div>
           </div>
         </div>
@@ -532,36 +559,163 @@ export default function App() {
 
       {/* PAGE 4: AI TOOL BOARD HUB */}
       {page === 4 && (
-        <div className="min-h-screen bg-zinc-950 p-8 pb-32">
+        <div className="min-h-screen bg-black p-8 pb-32">
           <div className="max-w-7xl mx-auto">
-            <div className="flex justify-between items-center mb-10">
-              <div>
-                <h1 className="text-4xl font-bold text-white mb-2">AI Tools</h1>
-                <p className="text-gray-400">Explore our comprehensive AI-powered production tools</p>
+            {/* Header */}
+            <div className="text-center mb-12">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <Sparkles className="w-12 h-12 text-purple-400" />
+                <h1 className="text-5xl font-bold text-white">AI Creative Studio</h1>
               </div>
-              <button className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-5 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition">
-                <Search size={18} /> Search
-              </button>
+              <p className="text-purple-300 text-xl mb-6">
+                600+ Professional AI Tools for Complete Video Production
+              </p>
+
+              {user ? (
+                <div className="inline-flex items-center gap-3 bg-purple-900/30 border-2 border-purple-500 rounded-full px-8 py-4">
+                  {subscription?.plan_type !== 'free' && (
+                    <Crown className="w-5 h-5 text-yellow-400" />
+                  )}
+                  <span className="text-white font-semibold">Your Plan:</span>
+                  <span className="text-purple-300 font-bold text-lg uppercase">
+                    {subscription?.plan_type || 'FREE'}
+                  </span>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setPage(3)}
+                  className="bg-purple-600 hover:bg-purple-500 text-white px-8 py-4 rounded-full font-bold text-lg transition-all"
+                >
+                  Sign In to Save Your Work
+                </button>
+              )}
             </div>
+
+            {/* Workflow Guide */}
+            <div className="bg-gradient-to-r from-purple-900/20 to-black border-2 border-purple-500 rounded-2xl p-8 mb-12">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-2xl font-bold text-white mb-2">Production Workflow</h3>
+                  <p className="text-purple-300">Follow these 4 steps to create your video</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <button
+                  onClick={() => setPage(4)}
+                  className="bg-purple-600 border-2 border-purple-400 rounded-xl p-6 text-left"
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center">
+                      <span className="text-white font-bold">1</span>
+                    </div>
+                    <Sparkles className="w-6 h-6 text-purple-200" />
+                  </div>
+                  <h4 className="font-bold text-white mb-2">Generate Content</h4>
+                  <p className="text-sm text-purple-200">Use AI tools to create assets</p>
+                  <div className="mt-2">
+                    <span className="bg-purple-500 text-white text-xs px-2 py-1 rounded-full font-semibold">
+                      Current Step
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => setPage(13)}
+                  className="bg-black border-2 border-purple-700 hover:border-purple-500 rounded-xl p-6 text-left transition-all"
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-full bg-purple-700/30 flex items-center justify-center">
+                      <span className="text-purple-400 font-bold">2</span>
+                    </div>
+                    <Upload className="w-6 h-6 text-purple-400" />
+                  </div>
+                  <h4 className="font-bold text-white mb-2">Upload Videos</h4>
+                  <p className="text-sm text-purple-400">Add your footage</p>
+                </button>
+
+                <button
+                  onClick={() => setPage(12)}
+                  className="bg-black border-2 border-purple-700 hover:border-purple-500 rounded-xl p-6 text-left transition-all"
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-full bg-purple-700/30 flex items-center justify-center">
+                      <span className="text-purple-400 font-bold">3</span>
+                    </div>
+                    <Film className="w-6 h-6 text-purple-400" />
+                  </div>
+                  <h4 className="font-bold text-white mb-2">Edit Timeline</h4>
+                  <p className="text-sm text-purple-400">Arrange and enhance</p>
+                </button>
+
+                <button
+                  onClick={() => setPage(16)}
+                  className="bg-black border-2 border-purple-700 hover:border-purple-500 rounded-xl p-6 text-left transition-all"
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-full bg-purple-700/30 flex items-center justify-center">
+                      <span className="text-purple-400 font-bold">4</span>
+                    </div>
+                    <Download className="w-6 h-6 text-purple-400" />
+                  </div>
+                  <h4 className="font-bold text-white mb-2">Export Project</h4>
+                  <p className="text-sm text-purple-400">Render final video</p>
+                </button>
+              </div>
+            </div>
+
+            {/* Tool Categories */}
+            <h2 className="text-2xl font-bold text-white mb-6">Choose Your AI Toolkit</h2>
             <div className="grid md:grid-cols-3 gap-6">
               {[
-                { page: 5, title: "Writing Tools", icon: "✍️", desc: "120 Story & Script AI Tools" },
-                { page: 6, title: "Voice Synthesis", icon: "🎙️", desc: "120 Voice Generation Tools" },
-                { page: 7, title: "Image Generation", icon: "🎨", desc: "120 Image Creation Tools" },
-                { page: 8, title: "Video Production", icon: "🎬", desc: "120 Video AI Tools" },
-                { page: 9, title: "Animation", icon: "🎭", desc: "120 Motion & Animation Tools" },
-                { page: 10, title: "Featured", icon: "⭐", desc: "Editor's Choice Collection" },
+                { page: 5, title: "Writing & Story", icon: "✍️", desc: "Scripts, dialogue & plot generation", tools: "120+ Tools" },
+                { page: 6, title: "Voice Synthesis", icon: "🎙️", desc: "Character voices & narration", tools: "120+ Tools" },
+                { page: 7, title: "Image Generation", icon: "🎨", desc: "Scenes, characters & concept art", tools: "120+ Tools" },
+                { page: 8, title: "Video Production", icon: "🎬", desc: "Scene generation & visual effects", tools: "120+ Tools" },
+                { page: 9, title: "Animation", icon: "🎭", desc: "Motion, lip-sync & face animation", tools: "120+ Tools" },
+                { page: 11, title: "Media Library", icon: "📁", desc: "Your saved assets & creations", tools: "View All" },
               ].map((board) => (
-                <div
+                <button
                   key={board.page}
                   onClick={() => setPage(board.page)}
-                  className="bg-zinc-900 border border-zinc-800 hover:border-blue-600 rounded-xl p-8 transition-all cursor-pointer text-center group"
+                  className="group bg-gradient-to-br from-black via-purple-950 to-black border-2 border-purple-500 hover:border-purple-400 rounded-2xl p-8 transition-all hover:scale-105 text-left"
                 >
-                  <div className="text-5xl mb-4">{board.icon}</div>
-                  <h3 className="text-xl font-bold mb-2 group-hover:text-blue-500 transition">{board.title}</h3>
-                  <p className="text-gray-400 text-sm">{board.desc}</p>
-                </div>
+                  <div className="text-6xl mb-4">{board.icon}</div>
+                  <h3 className="text-2xl font-bold text-white mb-2 group-hover:text-purple-300 transition">
+                    {board.title}
+                  </h3>
+                  <p className="text-purple-300 text-sm mb-4">{board.desc}</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-purple-400 font-semibold text-sm">{board.tools}</span>
+                    <ChevronRight className="w-5 h-5 text-purple-400 group-hover:translate-x-2 transition-transform" />
+                  </div>
+                </button>
               ))}
+            </div>
+
+            {/* Bottom CTA */}
+            <div className="mt-12 bg-gradient-to-r from-purple-900/30 to-purple-700/30 border-2 border-purple-500 rounded-2xl p-8 text-center">
+              <h3 className="text-2xl font-bold text-white mb-3">
+                Ready to Start Creating?
+              </h3>
+              <p className="text-purple-200 mb-6">
+                Generate content → Upload videos → Edit timeline → Export project
+              </p>
+              <div className="flex justify-center gap-4">
+                <button
+                  onClick={() => setPage(17)}
+                  className="bg-black hover:bg-purple-950 border-2 border-purple-500 text-purple-300 px-8 py-3 rounded-lg font-semibold transition-all"
+                >
+                  Watch Tutorial
+                </button>
+                <button
+                  onClick={() => setPage(12)}
+                  className="bg-purple-600 hover:bg-purple-500 text-white px-8 py-3 rounded-lg font-semibold transition-all flex items-center gap-2"
+                >
+                  <Zap size={20} />
+                  Open Editor
+                </button>
+              </div>
             </div>
           </div>
         </div>
