@@ -253,7 +253,7 @@ export default function VideoUploadPage({ onHome, onPlayMovie }: VideoUploadPage
                 {uploadStatus.status === 'uploading' && (
                   <button
                     onClick={pauseUpload}
-                    className="w-full bg-yellow-600 hover:bg-yellow-500 text-white px-4 py-3 rounded-lg transition-all flex items-center justify-center gap-2 font-semibold"
+                    className="w-full bg-orange-600 hover:bg-orange-500 text-white px-4 py-3 rounded-lg transition-all flex items-center justify-center gap-2 font-semibold"
                   >
                     <Pause className="w-5 h-5" />
                     Pause Upload

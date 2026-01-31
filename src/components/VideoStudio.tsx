@@ -175,7 +175,7 @@ export default function VideoStudio() {
                     <Film className="w-8 h-8 text-white" />
                     <span className={`text-xs px-2 py-1 rounded ${
                       project.status === 'completed' ? 'bg-green-600' :
-                      project.status === 'rendering' ? 'bg-yellow-600' :
+                      project.status === 'rendering' ? 'bg-blue-600' :
                       'bg-slate-600'
                     } text-white`}>
                       {project.status}

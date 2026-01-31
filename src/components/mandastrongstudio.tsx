@@ -225,13 +225,13 @@ export default function App() {
                 { name: 'PRO', price: '30', features: ['4K Export', '300 AI Tools', 'Premium Templates', '100GB Storage', 'Priority Support', 'Commercial License'], popular: true },
                 { name: 'STUDIO', price: '50', features: ['8K Export', 'All 600 AI Tools', 'Unlimited Templates', '1TB Storage', '24/7 Live Support', 'Full Commercial Rights', 'Team Collaboration'] }
               ].map((plan, i) => (
-                <div 
-                  key={i} 
-                  className={`bg-black/60 border-2 ${plan.popular ? 'border-yellow-500 shadow-[0_0_50px_rgba(234,179,8,0.3)]' : 'border-purple-500/30'} rounded-3xl p-8 backdrop-blur relative`}
+                <div
+                  key={i}
+                  className={`bg-black/60 border-2 ${plan.popular ? 'border-purple-400 shadow-[0_0_50px_rgba(168,85,247,0.3)]' : 'border-purple-500/30'} rounded-3xl p-8 backdrop-blur relative`}
                   onClick={() => setSelectedPlan(plan.name.toLowerCase())}
                 >
                   {plan.popular && (
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-yellow-500 px-6 py-2 rounded-full font-black text-black text-sm uppercase">
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-purple-500 px-6 py-2 rounded-full font-black text-white text-sm uppercase">
                       POPULAR
                     </div>
                   )}
@@ -248,7 +248,7 @@ export default function App() {
                     ))}
                   </ul>
                   {plan.popular && selectedPlan === plan.name.toLowerCase() && (
-                    <div className="text-center text-yellow-500 font-black text-lg mb-4">✓ SELECTED</div>
+                    <div className="text-center text-purple-300 font-black text-lg mb-4">✓ SELECTED</div>
                   )}
                 </div>
               ))}
@@ -878,9 +878,9 @@ export default function App() {
               <p className="text-purple-200 text-xl leading-relaxed mb-6">
                 MandaStrong Studio is part of a larger educational mission focused on bullying prevention programs for schools, social skills development, and educational movie content for students.
               </p>
-              <div className="bg-yellow-500/20 border-2 border-yellow-500/30 rounded-2xl p-6 mb-6">
-                <p className="text-yellow-300 text-2xl font-black">
-                  💛 100% of all Etsy Store proceeds are donated to Veterans Mental Health Services
+              <div className="bg-purple-500/20 border-2 border-purple-500/30 rounded-2xl p-6 mb-6">
+                <p className="text-purple-300 text-2xl font-black">
+                  💜 100% of all Etsy Store proceeds are donated to Veterans Mental Health Services
                 </p>
               </div>
               <a 
