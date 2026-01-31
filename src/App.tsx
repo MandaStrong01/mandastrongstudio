@@ -7,6 +7,7 @@ import {
   Home, Settings, User, Check, Headphones, Volume2, Eye, FileVideo,
   TrendingUp, Camera
 } from 'lucide-react';
+import MandaStrongStudioPro from './components/MandaStrongStudioPro';
 
 const generateTools = (baseTools: string[]) => {
   const tools = [];
@@ -67,7 +68,12 @@ export default function App() {
   const [selectedPlan, setSelectedPlan] = useState('pro');
   const [volume, setVolume] = useState(80);
   const [editorTab, setEditorTab] = useState('home');
+  const [showProStudio, setShowProStudio] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  if (showProStudio) {
+    return <MandaStrongStudioPro />;
+  }
 
   useEffect(() => {
     if (videoRef.current && page === 1) {
@@ -95,6 +101,12 @@ export default function App() {
       {menuOpen && (
         <div className="absolute top-16 right-0 bg-black border-2 border-purple-600 rounded-2xl p-4 w-64 shadow-2xl">
           <div className="flex flex-col gap-2">
+            <button
+              onClick={() => { setShowProStudio(true); setMenuOpen(false); }}
+              className="text-left text-xs font-bold text-white bg-purple-600 px-4 py-2 hover:bg-purple-500 rounded-lg transition"
+            >
+              PRO STUDIO
+            </button>
             {[
               {page: 1, label: "Home"},
               {page: 4, label: "AI Tools"},
@@ -217,6 +229,12 @@ export default function App() {
               </p>
             </div>
             <div className="flex flex-wrap gap-4 mb-8 justify-center">
+              <button
+                onClick={() => setShowProStudio(true)}
+                className="bg-purple-600 border-2 border-white px-12 py-4 rounded-xl text-2xl font-black text-white hover:bg-purple-700 transition shadow-2xl animate-pulse"
+              >
+                LAUNCH PRO STUDIO
+              </button>
               <button
                 onClick={() => setPage(2)}
                 className="bg-black border border-white/20 px-10 py-3 rounded-xl text-xl font-black text-white hover:bg-gray-900 transition shadow-2xl"
