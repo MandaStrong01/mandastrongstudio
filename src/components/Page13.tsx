@@ -26,7 +26,7 @@ export default function Page13({ onNext, onBack, onNavigate }: Page13Props) {
           <div className="flex items-center gap-3 mb-2">
             <div className="bg-purple-600 text-white text-sm font-bold px-3 py-1 rounded-full">STEP 3</div>
             <h1 className="text-3xl font-bold flex items-center gap-3">
-              <Sparkles className="w-8 h-8 text-yellow-400" />
+              <Sparkles className="w-8 h-8 text-purple-300" />
               Transitions & Effects
             </h1>
           </div>
@@ -45,13 +45,13 @@ export default function Page13({ onNext, onBack, onNavigate }: Page13Props) {
                   <div className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center">
                     <span className="text-2xl font-bold">Clip A</span>
                   </div>
-                  <div className="w-1 bg-yellow-400 animate-pulse"></div>
+                  <div className="w-1 bg-purple-500 animate-pulse"></div>
                   <div className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 flex items-center justify-center">
                     <span className="text-2xl font-bold">Clip B</span>
                   </div>
                 </div>
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 backdrop-blur px-4 py-2 rounded-full text-sm">
-                  Transition: <span className="text-yellow-400 font-semibold">{selectedTransition}</span>
+                  Transition: <span className="text-purple-300 font-semibold">{selectedTransition}</span>
                 </div>
               </div>
 
@@ -73,13 +73,13 @@ export default function Page13({ onNext, onBack, onNavigate }: Page13Props) {
                   <div className="flex-1 h-16 bg-purple-600 rounded-l-lg flex items-center justify-center text-sm font-semibold">
                     Scene 1
                   </div>
-                  <div className="w-12 h-16 bg-yellow-400 flex items-center justify-center">
+                  <div className="w-12 h-16 bg-purple-500 flex items-center justify-center">
                     <Zap className="w-5 h-5 text-black" />
                   </div>
                   <div className="flex-1 h-16 bg-blue-600 flex items-center justify-center text-sm font-semibold">
                     Scene 2
                   </div>
-                  <div className="w-12 h-16 bg-yellow-400 flex items-center justify-center">
+                  <div className="w-12 h-16 bg-purple-500 flex items-center justify-center">
                     <Waves className="w-5 h-5 text-black" />
                   </div>
                   <div className="flex-1 h-16 bg-green-600 rounded-r-lg flex items-center justify-center text-sm font-semibold">
@@ -145,7 +145,7 @@ export default function Page13({ onNext, onBack, onNavigate }: Page13Props) {
                         <div className="text-xs text-slate-400">Duration: {transition.duration}</div>
                       </div>
                       {selectedTransition === transition.id && (
-                        <CircleDot className="w-4 h-4 text-yellow-400" />
+                        <CircleDot className="w-4 h-4 text-purple-300" />
                       )}
                     </div>
                   </button>

@@ -47,35 +47,35 @@ export default function Page19({ onNext, onBack }: Page19Props) {
           </div>
         </div>
 
-        <div className="bg-yellow-900/30 border-2 border-yellow-600 rounded-xl p-8 mb-8">
+        <div className="bg-purple-900/30 border-2 border-purple-600 rounded-xl p-8 mb-8">
           <div className="flex items-center gap-3 mb-6">
-            <Scale className="w-10 h-10 text-yellow-400" />
-            <h2 className="text-3xl font-bold text-yellow-300">Disclaimer</h2>
+            <Scale className="w-10 h-10 text-purple-400" />
+            <h2 className="text-3xl font-bold text-purple-300">Disclaimer</h2>
           </div>
 
-          <div className="space-y-4 text-yellow-100 leading-relaxed">
+          <div className="space-y-4 text-purple-100 leading-relaxed">
             <p className="text-lg">
-              <strong className="text-yellow-300">AI-Generated Content:</strong> MandaStrong Studio utilizes artificial intelligence to assist in content creation. While our AI tools are powerful, AI-generated content should always be reviewed, edited, and verified before distribution or commercial use.
+              <strong className="text-purple-300">AI-Generated Content:</strong> MandaStrong Studio utilizes artificial intelligence to assist in content creation. While our AI tools are powerful, AI-generated content should always be reviewed, edited, and verified before distribution or commercial use.
             </p>
 
             <p className="text-lg">
-              <strong className="text-yellow-300">User Responsibility:</strong> Users are solely responsible for ensuring their final productions comply with all local, state, federal, and international laws and regulations. This includes but is not limited to copyright law, defamation law, and privacy regulations.
+              <strong className="text-purple-300">User Responsibility:</strong> Users are solely responsible for ensuring their final productions comply with all local, state, federal, and international laws and regulations. This includes but is not limited to copyright law, defamation law, and privacy regulations.
             </p>
 
             <p className="text-lg">
-              <strong className="text-yellow-300">No Warranties:</strong> The service is provided "as is" without warranties of any kind, either express or implied. MandaStrong Studio makes no guarantees regarding the accuracy, reliability, or quality of AI-generated content.
+              <strong className="text-purple-300">No Warranties:</strong> The service is provided "as is" without warranties of any kind, either express or implied. MandaStrong Studio makes no guarantees regarding the accuracy, reliability, or quality of AI-generated content.
             </p>
 
             <p className="text-lg">
-              <strong className="text-yellow-300">Limitation of Liability:</strong> MandaStrong Studio, its creators, and affiliates shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of the platform.
+              <strong className="text-purple-300">Limitation of Liability:</strong> MandaStrong Studio, its creators, and affiliates shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of the platform.
             </p>
 
             <p className="text-lg">
-              <strong className="text-yellow-300">Content Review:</strong> You acknowledge that AI tools may occasionally produce unexpected results. It is your responsibility to review all content before publishing, sharing, or using it commercially.
+              <strong className="text-purple-300">Content Review:</strong> You acknowledge that AI tools may occasionally produce unexpected results. It is your responsibility to review all content before publishing, sharing, or using it commercially.
             </p>
 
             <p className="text-lg">
-              <strong className="text-yellow-300">Educational Purpose:</strong> This platform is designed to empower creativity and education. We provide tools for storytelling and content creation that can educate, inspire, and make a positive impact on the world.
+              <strong className="text-purple-300">Educational Purpose:</strong> This platform is designed to empower creativity and education. We provide tools for storytelling and content creation that can educate, inspire, and make a positive impact on the world.
             </p>
           </div>
         </div>

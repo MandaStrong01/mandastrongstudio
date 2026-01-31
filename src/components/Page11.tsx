@@ -135,7 +135,7 @@ export default function Page11({ onNext, onBack, onNavigate, currentPage }: Page
   const tracks = [
     { id: 1, name: 'VIDEO', color: 'bg-blue-600' },
     { id: 2, name: 'AUDIO', color: 'bg-green-600' },
-    { id: 3, name: 'SRT', color: 'bg-yellow-600' },
+    { id: 3, name: 'SRT', color: 'bg-pink-600' },
     { id: 4, name: 'VIDEO 2', color: 'bg-purple-600' }
   ];
 

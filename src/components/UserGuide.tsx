@@ -248,8 +248,8 @@ export default function UserGuide({ onClose }: UserGuideProps) {
                   <p><strong className="text-blue-400">Organize Early:</strong> Use the category system to keep your Media Board organized as your asset library grows.</p>
                 </div>
 
-                <div className="border-l-4 border-yellow-500 pl-4">
-                  <p><strong className="text-yellow-400">Timeline Duration:</strong> Set your timeline duration at the start of your project to match your target length (up to 180 minutes).</p>
+                <div className="border-l-4 border-purple-500 pl-4">
+                  <p><strong className="text-purple-400">Timeline Duration:</strong> Set your timeline duration at the start of your project to match your target length (up to 180 minutes).</p>
                 </div>
 
                 <div className="border-l-4 border-red-500 pl-4">

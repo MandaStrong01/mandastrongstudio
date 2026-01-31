@@ -74,19 +74,19 @@ export default function Page1({ onNext, onNavigate, currentPage }: Page1Props) {
         <div className="flex flex-wrap gap-4 justify-center">
           <button
             onClick={onNext}
-            className="bg-black text-white px-8 py-3 rounded-lg text-lg font-bold hover:bg-gray-800 transition-all hover:scale-105"
+            className="bg-purple-600 text-white px-8 py-3 rounded-lg text-lg font-bold hover:bg-purple-500 transition-all hover:scale-105"
           >
             Next
           </button>
           <button
             onClick={() => onNavigate(3)}
-            className="bg-black text-white px-8 py-3 rounded-lg text-lg font-bold hover:bg-gray-800 transition-all hover:scale-105"
+            className="bg-purple-600 text-white px-8 py-3 rounded-lg text-lg font-bold hover:bg-purple-500 transition-all hover:scale-105"
           >
             Login
           </button>
           <button
             onClick={() => onNavigate(3)}
-            className="bg-black text-white px-8 py-3 rounded-lg text-lg font-bold hover:bg-gray-800 transition-all hover:scale-105"
+            className="bg-purple-600 text-white px-8 py-3 rounded-lg text-lg font-bold hover:bg-purple-500 transition-all hover:scale-105"
           >
             Register
           </button>

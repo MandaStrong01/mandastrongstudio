@@ -32,13 +32,13 @@ export default function Page2({ onNext, onBack, onNavigate }: Page2Props) {
         <div className="flex flex-wrap gap-4 justify-center">
           <button
             onClick={onBack}
-            className="bg-black text-white px-8 py-3 rounded-lg text-lg font-bold hover:bg-gray-800 transition-all hover:scale-105"
+            className="bg-purple-600 text-white px-8 py-3 rounded-lg text-lg font-bold hover:bg-purple-500 transition-all hover:scale-105"
           >
             Back
           </button>
           <button
             onClick={onNext}
-            className="bg-black text-white px-8 py-3 rounded-lg text-lg font-bold hover:bg-gray-800 transition-all hover:scale-105"
+            className="bg-purple-600 text-white px-8 py-3 rounded-lg text-lg font-bold hover:bg-purple-500 transition-all hover:scale-105"
           >
             Next
           </button>

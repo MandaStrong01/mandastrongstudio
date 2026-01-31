@@ -168,7 +168,7 @@ export default function Page3({ onNext, onBack }: Page3Props) {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div
                 onClick={() => setSelectedPlan('basic')}
-                className={`cursor-pointer bg-black/50 border-2 p-6 rounded-xl hover:border-purple-300 transition-all ${selectedPlan === 'basic' ? 'border-yellow-400 shadow-lg shadow-yellow-400/50' : 'border-purple-400'}`}
+                className={`cursor-pointer bg-black/50 border-2 p-6 rounded-xl hover:border-purple-300 transition-all ${selectedPlan === 'basic' ? 'border-purple-300 shadow-lg shadow-purple-300/50' : 'border-purple-400'}`}
               >
                 <h3 className="text-xl font-bold mb-2">Basic</h3>
                 <p className="text-3xl font-bold text-purple-300 mb-4">$20<span className="text-sm">/mo</span></p>
@@ -179,12 +179,12 @@ export default function Page3({ onNext, onBack }: Page3Props) {
                   <li>✓ 10GB Storage</li>
                   <li>✓ Email Support</li>
                 </ul>
-                {selectedPlan === 'basic' && <div className="text-yellow-400 font-bold text-center">✓ SELECTED</div>}
+                {selectedPlan === 'basic' && <div className="text-purple-300 font-bold text-center">✓ SELECTED</div>}
               </div>
 
               <div
                 onClick={() => setSelectedPlan('pro')}
-                className={`cursor-pointer bg-black/50 border-2 p-6 rounded-xl hover:border-purple-200 transition-all transform scale-105 ${selectedPlan === 'pro' ? 'border-yellow-400 shadow-lg shadow-yellow-400/50' : 'border-purple-300'}`}
+                className={`cursor-pointer bg-black/50 border-2 p-6 rounded-xl hover:border-purple-200 transition-all transform scale-105 ${selectedPlan === 'pro' ? 'border-purple-300 shadow-lg shadow-purple-300/50' : 'border-purple-300'}`}
               >
                 <div className="bg-purple-600 text-white text-xs font-bold py-1 px-3 rounded-full inline-block mb-2">POPULAR</div>
                 <h3 className="text-xl font-bold mb-2">Pro</h3>
@@ -197,12 +197,12 @@ export default function Page3({ onNext, onBack }: Page3Props) {
                   <li>✓ Priority Support</li>
                   <li>✓ Commercial License</li>
                 </ul>
-                {selectedPlan === 'pro' && <div className="text-yellow-400 font-bold text-center">✓ SELECTED</div>}
+                {selectedPlan === 'pro' && <div className="text-purple-300 font-bold text-center">✓ SELECTED</div>}
               </div>
 
               <div
                 onClick={() => setSelectedPlan('studio')}
-                className={`cursor-pointer bg-black/50 border-2 p-6 rounded-xl hover:border-purple-300 transition-all ${selectedPlan === 'studio' ? 'border-yellow-400 shadow-lg shadow-yellow-400/50' : 'border-purple-400'}`}
+                className={`cursor-pointer bg-black/50 border-2 p-6 rounded-xl hover:border-purple-300 transition-all ${selectedPlan === 'studio' ? 'border-purple-300 shadow-lg shadow-purple-300/50' : 'border-purple-400'}`}
               >
                 <h3 className="text-xl font-bold mb-2">Studio</h3>
                 <p className="text-3xl font-bold text-purple-300 mb-4">$50<span className="text-sm">/mo</span></p>
@@ -215,7 +215,7 @@ export default function Page3({ onNext, onBack }: Page3Props) {
                   <li>✓ Full Commercial Rights</li>
                   <li>✓ Team Collaboration</li>
                 </ul>
-                {selectedPlan === 'studio' && <div className="text-yellow-400 font-bold text-center">✓ SELECTED</div>}
+                {selectedPlan === 'studio' && <div className="text-purple-300 font-bold text-center">✓ SELECTED</div>}
               </div>
             </div>
           </div>
