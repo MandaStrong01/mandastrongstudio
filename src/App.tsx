@@ -5,7 +5,7 @@ import {
   Sliders, Layers, Palette, Download, Share2, Youtube, Twitter, Instagram,
   Facebook, BookOpen, Shield, Heart, Send, X, ChevronRight, ChevronLeft,
   Home, Settings, User, Check, Headphones, Volume2, Eye, FileVideo,
-  TrendingUp, Camera
+  TrendingUp, Camera, CheckCircle
 } from 'lucide-react';
 import MandaStrongStudioPro from './components/MandaStrongStudioPro';
 
@@ -91,22 +91,23 @@ export default function App() {
   };
 
   const QuickAccessMenu = () => (
-    <div className="fixed top-8 right-6 z-50">
+    <div className="fixed top-6 right-6 z-50">
       <button
         onClick={() => setMenuOpen(!menuOpen)}
-        className="bg-purple-600 hover:bg-purple-500 px-6 py-3 rounded-full font-black uppercase text-white flex items-center gap-2 shadow-lg transition-all"
+        className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-5 py-2.5 rounded-lg font-medium text-sm text-white flex items-center gap-2 shadow-lg transition-all backdrop-blur-sm"
       >
-        <Menu size={20} /> Quick Access
+        <Menu size={18} /> Menu
       </button>
       {menuOpen && (
-        <div className="absolute top-16 right-0 bg-black border-2 border-purple-600 rounded-2xl p-4 w-64 shadow-2xl">
-          <div className="flex flex-col gap-2">
+        <div className="absolute top-14 right-0 bg-zinc-900 border border-zinc-700 rounded-lg p-2 w-56 shadow-2xl backdrop-blur-xl">
+          <div className="flex flex-col gap-1">
             <button
               onClick={() => { setShowProStudio(true); setMenuOpen(false); }}
-              className="text-left text-xs font-bold text-white bg-purple-600 px-4 py-2 hover:bg-purple-500 rounded-lg transition"
+              className="text-left text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2.5 rounded-md transition"
             >
-              PRO STUDIO
+              Pro Studio
             </button>
+            <div className="h-px bg-zinc-800 my-1"></div>
             {[
               {page: 1, label: "Home"},
               {page: 4, label: "AI Tools"},
@@ -115,12 +116,12 @@ export default function App() {
               {page: 17, label: "Tutorials"},
               {page: 19, label: "Help Desk"},
               {page: 20, label: "Community"},
-              {page: 21, label: "Finish"}
+              {page: 21, label: "About"}
             ].map((item) => (
               <button
                 key={item.page}
                 onClick={() => goTo(item.page)}
-                className="text-left text-xs font-bold text-purple-400 px-4 py-2 hover:bg-purple-600 hover:text-white rounded-lg transition"
+                className="text-left text-sm font-medium text-gray-300 hover:text-white px-4 py-2.5 hover:bg-zinc-800 rounded-md transition"
               >
                 {item.label}
               </button>
@@ -134,46 +135,46 @@ export default function App() {
   const GrokButton = () => page >= 2 && page !== 19 ? (
     <button
       onClick={() => setPage(19)}
-      className="fixed bottom-8 right-8 z-50 bg-purple-600 hover:bg-purple-500 p-4 rounded-full shadow-lg transition-all"
+      className="fixed bottom-6 right-6 z-50 bg-blue-600 hover:bg-blue-700 p-3.5 rounded-full shadow-lg transition-all"
     >
-      <MessageCircle size={28} className="text-white" />
+      <MessageCircle size={24} className="text-white" />
     </button>
   ) : null;
 
   const Footer = () => page >= 3 ? (
-    <div className="fixed bottom-0 left-0 right-0 bg-black/90 py-3 text-center text-white text-xs md:text-sm font-black uppercase z-40 border-t border-purple-900/30">
-      <p>MandaStrong1 2025 ~ Author of Doxy The School Bully ~ Also Find Me On MandaStrong1.Etsy.com</p>
+    <div className="fixed bottom-0 left-0 right-0 bg-zinc-950/95 backdrop-blur-sm py-3 text-center text-gray-400 text-xs md:text-sm font-medium z-40 border-t border-zinc-800">
+      <p>MandaStrong Studio 2025 • Author of Doxy The School Bully • MandaStrong1.Etsy.com</p>
     </div>
   ) : null;
 
   const Navigation = () => page >= 2 && page <= 21 ? (
-    <div className="fixed bottom-20 right-6 z-50 flex flex-col gap-3">
+    <div className="fixed bottom-20 right-6 z-50 flex flex-col gap-2">
       {page > 1 && page < 21 && (
         <button
           onClick={() => setPage(page - 1)}
-          className="bg-purple-600 hover:bg-purple-500 px-6 py-3 rounded-full font-black uppercase text-white shadow-lg transition-all flex items-center gap-2"
+          className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-5 py-2.5 rounded-lg font-medium text-sm text-white shadow-lg transition-all flex items-center gap-2"
         >
-          <ChevronLeft size={20} /> Back
+          <ChevronLeft size={18} /> Back
         </button>
       )}
       {page < 21 && (
         <button
           onClick={() => setPage(page + 1)}
-          className="bg-purple-600 hover:bg-purple-500 px-6 py-3 rounded-full font-black uppercase text-white shadow-lg transition-all flex items-center gap-2"
+          className="bg-blue-600 hover:bg-blue-700 px-5 py-2.5 rounded-lg font-medium text-sm text-white shadow-lg transition-all flex items-center gap-2"
         >
-          Next <ChevronRight size={20} />
+          Next <ChevronRight size={18} />
         </button>
       )}
       {page === 21 && (
         <>
           <button
             onClick={() => setPage(1)}
-            className="bg-purple-600 hover:bg-purple-500 px-6 py-3 rounded-full font-black uppercase text-white shadow-lg transition-all"
+            className="bg-blue-600 hover:bg-blue-700 px-5 py-2.5 rounded-lg font-medium text-sm text-white shadow-lg transition-all"
           >
             Home
           </button>
           <button
-            className="bg-black hover:bg-gray-900 px-6 py-3 rounded-full font-black uppercase text-white shadow-lg transition-all border-2 border-white/20"
+            className="bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 px-5 py-2.5 rounded-lg font-medium text-sm text-white shadow-lg transition-all"
           >
             Close
           </button>
@@ -183,17 +184,17 @@ export default function App() {
   ) : null;
 
   const ToolBoard = ({ title, tools }: { title: string; tools: string[] }) => (
-    <div className="min-h-screen bg-black text-white p-6 pb-32">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-5xl font-black uppercase text-purple-500 mb-12">{title} BOARD</h1>
-        <div className="grid grid-cols-2 gap-4">
+    <div className="min-h-screen bg-zinc-950 text-white p-6 pb-32">
+      <div className="max-w-6xl mx-auto">
+        <h1 className="text-3xl font-bold text-white mb-8">{title} Tools</h1>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {tools.map((tool, i) => (
             <div
               key={i}
-              className="bg-gray-900/50 border-2 border-purple-900/30 rounded-xl p-4 flex items-center gap-3 hover:border-purple-600 hover:bg-gray-900 transition-all cursor-pointer"
+              className="bg-zinc-900 border border-zinc-800 hover:border-blue-600 rounded-lg p-4 flex items-center gap-3 transition-all cursor-pointer group"
             >
-              <Sparkles size={20} className="text-purple-500 flex-shrink-0" />
-              <span className="font-bold text-sm">{tool}</span>
+              <Sparkles size={18} className="text-blue-500 flex-shrink-0" />
+              <span className="font-medium text-sm text-gray-300 group-hover:text-white transition">{tool}</span>
             </div>
           ))}
         </div>
@@ -202,7 +203,7 @@ export default function App() {
   );
 
   return (
-    <div className="min-h-screen bg-black text-white overflow-x-hidden">
+    <div className="min-h-screen bg-zinc-950 text-white overflow-x-hidden">
       <QuickAccessMenu />
       <GrokButton />
       <Footer />
@@ -213,52 +214,51 @@ export default function App() {
         <div className="relative h-screen overflow-hidden">
           <video
             ref={videoRef}
-            className="absolute inset-0 w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover opacity-40"
             src="/video/background.mp4"
             loop
             muted
             playsInline
           />
-          <div className="relative z-10 h-full flex flex-col justify-between items-center text-center px-4 py-8">
-            <div className="mt-8">
-              <h1 className="text-6xl md:text-8xl font-black text-black uppercase italic tracking-tighter leading-none drop-shadow-lg">
-                MANDASTRONG'S STUDIO
+          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80"></div>
+
+          <div className="relative z-10 h-full flex flex-col justify-center items-center text-center px-4 py-8">
+            <div className="mb-12">
+              <h1 className="text-6xl md:text-7xl font-bold text-white tracking-tight leading-tight mb-4">
+                MandaStrong Studio
               </h1>
-              <p className="text-xl md:text-3xl font-black text-black italic uppercase mt-2 drop-shadow-lg">
-                Welcome To The All-In-One Make-A-Movie App! ~ Up To 3 Hours
+              <p className="text-lg md:text-xl text-gray-300 font-normal max-w-3xl mx-auto">
+                Professional cinema production platform with AI-powered tools for creating feature-length films up to 3 hours
               </p>
             </div>
-            <div className="flex flex-wrap gap-4 mb-8 justify-center">
+
+            <div className="flex flex-col gap-4 mb-8">
               <button
                 onClick={() => setShowProStudio(true)}
-                className="bg-purple-600 border-2 border-white px-12 py-4 rounded-xl text-2xl font-black text-white hover:bg-purple-700 transition shadow-2xl animate-pulse"
+                className="bg-blue-600 hover:bg-blue-700 px-12 py-4 rounded-lg text-lg font-semibold text-white transition shadow-lg"
               >
-                LAUNCH PRO STUDIO
+                Launch Pro Studio
               </button>
-              <button
-                onClick={() => setPage(2)}
-                className="bg-black border border-white/20 px-10 py-3 rounded-xl text-xl font-black text-white hover:bg-gray-900 transition shadow-2xl"
-              >
-                Next
-              </button>
-              <button
-                onClick={() => setPage(3)}
-                className="bg-black border border-white/20 px-10 py-3 rounded-xl text-xl font-black text-white hover:bg-gray-900 transition shadow-2xl"
-              >
-                Login
-              </button>
-              <button
-                onClick={() => setPage(3)}
-                className="bg-black border border-white/20 px-10 py-3 rounded-xl text-xl font-black text-white hover:bg-gray-900 transition shadow-2xl"
-              >
-                Register
-              </button>
-              <button
-                onClick={() => setPage(4)}
-                className="bg-gray-800 border border-white/20 px-10 py-3 rounded-xl text-xl font-black text-white hover:bg-gray-700 transition shadow-2xl"
-              >
-                Browse For Now
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setPage(3)}
+                  className="bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 px-8 py-3 rounded-lg text-sm font-medium text-white transition"
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => setPage(3)}
+                  className="bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 px-8 py-3 rounded-lg text-sm font-medium text-white transition"
+                >
+                  Create Account
+                </button>
+                <button
+                  onClick={() => setPage(4)}
+                  className="bg-white/5 hover:bg-white/10 backdrop-blur-sm border border-white/10 px-8 py-3 rounded-lg text-sm font-medium text-gray-300 transition"
+                >
+                  Browse Features
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -266,75 +266,78 @@ export default function App() {
 
       {/* PAGE 2: WELCOME */}
       {page === 2 && (
-        <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-purple-900 flex flex-col items-center justify-center text-center px-4">
-          <Sparkles size={80} className="text-purple-400 mb-8" />
-          <h1 className="text-6xl md:text-8xl font-black uppercase text-white mb-6">
-            MANDASTRONG'S<br/>STUDIO
+        <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 flex flex-col items-center justify-center text-center px-4">
+          <Sparkles size={64} className="text-blue-500 mb-8 animate-pulse" />
+          <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 tracking-tight">
+            MandaStrong Studio
           </h1>
-          <p className="text-3xl md:text-5xl font-black text-purple-300 mb-4">Make Amazing Family Movies</p>
-          <p className="text-3xl md:text-5xl font-black text-purple-300">& Bring Dreams To Life!</p>
+          <p className="text-xl md:text-2xl font-normal text-gray-400 mb-3 max-w-2xl">Create professional family movies</p>
+          <p className="text-xl md:text-2xl font-normal text-gray-400 max-w-2xl">and bring your stories to life</p>
         </div>
       )}
 
       {/* PAGE 3: LOGIN/REGISTER/PRICING */}
       {page === 3 && (
-        <div className="min-h-screen bg-black p-8 pb-32 overflow-y-auto">
+        <div className="min-h-screen bg-zinc-950 p-8 pb-32 overflow-y-auto">
           <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-8 mb-16">
             {/* Login */}
-            <div className="bg-gradient-to-br from-purple-900/50 to-purple-800/30 border-2 border-purple-600 rounded-3xl p-8">
-              <h2 className="text-5xl font-black mb-8 text-center">Login</h2>
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8">
+              <h2 className="text-3xl font-bold mb-8">Sign In</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-bold mb-2">Email</label>
+                  <label className="block text-sm font-medium mb-2 text-gray-300">Email Address</label>
                   <input
                     type="email"
                     placeholder="your@email.com"
-                    className="w-full bg-transparent border-2 border-purple-600 rounded-xl px-4 py-3 text-white placeholder-gray-500"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold mb-2">Password</label>
+                  <label className="block text-sm font-medium mb-2 text-gray-300">Password</label>
                   <input
                     type="password"
                     placeholder="••••••••"
-                    className="w-full bg-transparent border-2 border-purple-600 rounded-xl px-4 py-3 text-white placeholder-gray-500"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                   />
                 </div>
-                <button className="w-full bg-purple-600 hover:bg-purple-500 py-4 rounded-xl font-black text-xl mt-6">
-                  Login
+                <button className="w-full bg-blue-600 hover:bg-blue-700 py-3.5 rounded-lg font-semibold text-base mt-6 transition">
+                  Sign In
                 </button>
+                <div className="text-center">
+                  <a href="#" className="text-sm text-blue-500 hover:text-blue-400">Forgot password?</a>
+                </div>
               </div>
             </div>
 
             {/* Register */}
-            <div className="bg-gradient-to-br from-purple-900/50 to-purple-800/30 border-2 border-purple-600 rounded-3xl p-8">
-              <h2 className="text-5xl font-black mb-8 text-center">Register</h2>
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8">
+              <h2 className="text-3xl font-bold mb-8">Create Account</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-bold mb-2">Name</label>
+                  <label className="block text-sm font-medium mb-2 text-gray-300">Full Name</label>
                   <input
                     type="text"
-                    placeholder="Your Name"
-                    className="w-full bg-transparent border-2 border-purple-600 rounded-xl px-4 py-3 text-white placeholder-gray-500"
+                    placeholder="John Doe"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold mb-2">Email</label>
+                  <label className="block text-sm font-medium mb-2 text-gray-300">Email Address</label>
                   <input
                     type="email"
                     placeholder="your@email.com"
-                    className="w-full bg-transparent border-2 border-purple-600 rounded-xl px-4 py-3 text-white placeholder-gray-500"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold mb-2">Password</label>
+                  <label className="block text-sm font-medium mb-2 text-gray-300">Password</label>
                   <input
                     type="password"
                     placeholder="••••••••"
-                    className="w-full bg-transparent border-2 border-purple-600 rounded-xl px-4 py-3 text-white placeholder-gray-500"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                   />
                 </div>
-                <button className="w-full bg-purple-600 hover:bg-purple-500 py-4 rounded-xl font-black text-xl mt-6">
+                <button className="w-full bg-blue-600 hover:bg-blue-700 py-3.5 rounded-lg font-semibold text-base mt-6 transition">
                   Create Account
                 </button>
               </div>
@@ -342,22 +345,22 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-4 max-w-lg mx-auto mb-8">
-            <div className="flex-1 h-px bg-gray-700"></div>
-            <span className="text-gray-400 font-bold">or</span>
-            <div className="flex-1 h-px bg-gray-700"></div>
+            <div className="flex-1 h-px bg-zinc-800"></div>
+            <span className="text-gray-500 font-medium text-sm">or</span>
+            <div className="flex-1 h-px bg-zinc-800"></div>
           </div>
 
           <div className="max-w-lg mx-auto mb-16">
-            <button className="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-xl font-black text-xl flex items-center justify-center gap-2">
-              <Eye size={24} /> Browse as Guest (View Only)
+            <button className="w-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 py-3.5 rounded-lg font-medium text-base flex items-center justify-center gap-2 transition">
+              <Eye size={20} /> Continue as Guest
             </button>
-            <p className="text-center text-gray-400 text-sm mt-4">Explore the platform without an account</p>
+            <p className="text-center text-gray-500 text-sm mt-3">Explore features without creating an account</p>
           </div>
 
           {/* Pricing */}
           <div className="max-w-7xl mx-auto">
-            <h2 className="text-5xl font-black text-center mb-10">Select Your Plan</h2>
-            <div className="grid md:grid-cols-3 gap-8">
+            <h2 className="text-3xl font-bold text-center mb-10">Choose Your Plan</h2>
+            <div className="grid md:grid-cols-3 gap-6">
               {[
                 { name: 'Basic', price: '20', features: ['HD Export', '100 AI Tools', 'Basic Templates', '10GB Storage', 'Email Support'] },
                 { name: 'Pro', price: '30', features: ['4K Export', '300 AI Tools', 'Premium Templates', '100GB Storage', 'Priority Support', 'Commercial License'], popular: true },
@@ -366,40 +369,41 @@ export default function App() {
                 <div
                   key={i}
                   onClick={() => setSelectedPlan(plan.name.toLowerCase())}
-                  className={`bg-gradient-to-br from-purple-900/50 to-purple-800/30 border-4 rounded-3xl p-8 transition-all cursor-pointer ${
-                    selectedPlan === plan.name.toLowerCase() || plan.popular ? 'border-yellow-400 scale-105' : 'border-purple-900'
+                  className={`bg-zinc-900 border-2 rounded-xl p-8 transition-all cursor-pointer ${
+                    selectedPlan === plan.name.toLowerCase() || plan.popular ? 'border-blue-600 ring-2 ring-blue-600/20' : 'border-zinc-800 hover:border-zinc-700'
                   } ${plan.popular ? 'relative' : ''}`}
                 >
                   {plan.popular && (
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-purple-600 px-4 py-1 rounded-full text-sm font-black">
-                      POPULAR
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 px-4 py-1 rounded-full text-xs font-semibold">
+                      Most Popular
                     </div>
                   )}
-                  <h3 className="text-3xl font-black mb-4">{plan.name}</h3>
-                  <div className="text-5xl font-black mb-6">
-                    ${plan.price}<span className="text-2xl">/mo</span>
+                  <h3 className="text-2xl font-bold mb-4">{plan.name}</h3>
+                  <div className="mb-6">
+                    <span className="text-4xl font-bold">${plan.price}</span>
+                    <span className="text-gray-400 text-lg">/month</span>
                   </div>
-                  <ul className="space-y-3">
+                  <ul className="space-y-3 mb-6">
                     {plan.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-center gap-2">
-                        <Check size={20} className="text-purple-400 flex-shrink-0" />
-                        <span>{feature}</span>
+                      <li key={idx} className="flex items-center gap-2 text-sm">
+                        <Check size={18} className="text-blue-500 flex-shrink-0" />
+                        <span className="text-gray-300">{feature}</span>
                       </li>
                     ))}
                   </ul>
-                  {plan.popular && selectedPlan === plan.name.toLowerCase() && (
-                    <div className="text-yellow-400 font-black text-center mt-6 flex items-center justify-center gap-2">
-                      <Check size={20} /> SELECTED
+                  {selectedPlan === plan.name.toLowerCase() && (
+                    <div className="text-blue-500 font-semibold text-sm flex items-center gap-2">
+                      <CheckCircle size={18} /> Selected
                     </div>
                   )}
                 </div>
               ))}
             </div>
-            <div className="text-center mt-12">
-              <button className="bg-purple-600 hover:bg-purple-500 px-16 py-5 rounded-xl font-black text-2xl uppercase">
+            <div className="text-center mt-10">
+              <button className="bg-blue-600 hover:bg-blue-700 px-12 py-4 rounded-lg font-semibold text-lg transition">
                 Continue to Payment
               </button>
-              <p className="text-gray-400 mt-4">Secure payment powered by Stripe</p>
+              <p className="text-gray-500 text-sm mt-4">Secure payment processing with Stripe</p>
             </div>
           </div>
         </div>
@@ -407,31 +411,34 @@ export default function App() {
 
       {/* PAGE 4: AI TOOL BOARD HUB */}
       {page === 4 && (
-        <div className="min-h-screen bg-black p-8 pb-32">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex justify-between items-center mb-12">
-              <h1 className="text-6xl font-black uppercase text-purple-500">AI TOOL BOARD</h1>
-              <button className="bg-purple-600 hover:bg-purple-500 px-6 py-3 rounded-full font-bold flex items-center gap-2">
-                <Search size={20} /> Search
+        <div className="min-h-screen bg-zinc-950 p-8 pb-32">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex justify-between items-center mb-10">
+              <div>
+                <h1 className="text-4xl font-bold text-white mb-2">AI Tools</h1>
+                <p className="text-gray-400">Explore our comprehensive AI-powered production tools</p>
+              </div>
+              <button className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-5 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 transition">
+                <Search size={18} /> Search
               </button>
             </div>
-            <div className="grid md:grid-cols-3 gap-8">
+            <div className="grid md:grid-cols-3 gap-6">
               {[
-                { page: 5, title: "Writing Board", icon: "✍️", desc: "120 Story & Script Tools" },
-                { page: 6, title: "Voice Board", icon: "🎙️", desc: "120 Voice Generation Tools" },
-                { page: 7, title: "Image Board", icon: "🎨", desc: "120 Image Creation Tools" },
-                { page: 8, title: "Video Board", icon: "🎬", desc: "120 Video Production Tools" },
-                { page: 9, title: "Motion Board", icon: "🎭", desc: "120 Animation Tools" },
-                { page: 10, title: "Editor's Choice", icon: "⭐", desc: "Featured Movie Player" },
+                { page: 5, title: "Writing Tools", icon: "✍️", desc: "120 Story & Script AI Tools" },
+                { page: 6, title: "Voice Synthesis", icon: "🎙️", desc: "120 Voice Generation Tools" },
+                { page: 7, title: "Image Generation", icon: "🎨", desc: "120 Image Creation Tools" },
+                { page: 8, title: "Video Production", icon: "🎬", desc: "120 Video AI Tools" },
+                { page: 9, title: "Animation", icon: "🎭", desc: "120 Motion & Animation Tools" },
+                { page: 10, title: "Featured", icon: "⭐", desc: "Editor's Choice Collection" },
               ].map((board) => (
                 <div
                   key={board.page}
                   onClick={() => setPage(board.page)}
-                  className="bg-gradient-to-br from-purple-900/50 to-purple-800/30 border-2 border-purple-600 rounded-2xl p-8 hover:border-purple-400 hover:scale-105 transition-all cursor-pointer text-center"
+                  className="bg-zinc-900 border border-zinc-800 hover:border-blue-600 rounded-xl p-8 transition-all cursor-pointer text-center group"
                 >
-                  <div className="text-6xl mb-4">{board.icon}</div>
-                  <h3 className="text-2xl font-black mb-2">{board.title}</h3>
-                  <p className="text-purple-300">{board.desc}</p>
+                  <div className="text-5xl mb-4">{board.icon}</div>
+                  <h3 className="text-xl font-bold mb-2 group-hover:text-blue-500 transition">{board.title}</h3>
+                  <p className="text-gray-400 text-sm">{board.desc}</p>
                 </div>
               ))}
             </div>
