@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import MandaStrongStudioPro from './components/MandaStrongStudioPro';
 import AdminDashboard from './components/AdminDashboard';
+import AIToolInterface from './components/AIToolInterface';
 import { useAuth } from './contexts/AuthContext';
 
 const generateTools = (baseTools: string[]) => {
@@ -75,6 +76,7 @@ export default function App() {
 
   const { user, profile, subscription, signIn, signUp, signOut, isAdmin } = useAuth();
 
+  const [selectedTool, setSelectedTool] = useState<{name: string, category: string} | null>(null);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [registerName, setRegisterName] = useState('');
@@ -278,18 +280,22 @@ export default function App() {
   ) : null;
 
   const ToolBoard = ({ title, tools }: { title: string; tools: string[] }) => (
-    <div className="min-h-screen bg-zinc-950 text-white p-6 pb-32">
+    <div className="min-h-screen bg-black text-white p-6 pb-32">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold text-white mb-8">{title} Tools</h1>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-purple-400 mb-2">{title} Tools</h1>
+          <p className="text-purple-300">Click any tool to start creating with AI</p>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {tools.map((tool, i) => (
-            <div
+            <button
               key={i}
-              className="bg-zinc-900 border border-zinc-800 hover:border-blue-600 rounded-lg p-4 flex items-center gap-3 transition-all cursor-pointer group"
+              onClick={() => setSelectedTool({ name: tool, category: title })}
+              className="bg-purple-950/30 border-2 border-purple-700 hover:border-purple-500 rounded-lg p-4 flex items-center gap-3 transition-all cursor-pointer group hover:scale-105"
             >
-              <Sparkles size={18} className="text-blue-500 flex-shrink-0" />
-              <span className="font-medium text-sm text-gray-300 group-hover:text-white transition">{tool}</span>
-            </div>
+              <Sparkles size={18} className="text-purple-500 flex-shrink-0" />
+              <span className="font-medium text-sm text-purple-200 group-hover:text-white transition text-left">{tool}</span>
+            </button>
           ))}
         </div>
       </div>
@@ -1932,6 +1938,15 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* AI Tool Interface Modal */}
+      {selectedTool && (
+        <AIToolInterface
+          toolName={selectedTool.name}
+          toolCategory={selectedTool.category}
+          onClose={() => setSelectedTool(null)}
+        />
       )}
     </div>
   );
