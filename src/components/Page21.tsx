@@ -29,13 +29,13 @@ export default function Page21({ onBack, onHome }: Page21Props) {
         </h1>
 
         <div className="space-y-6 mb-12 max-w-4xl mx-auto">
-          <div className="bg-gradient-to-br from-purple-900/40 to-pink-900/40 backdrop-blur rounded-2xl border-2 border-purple-500 p-8">
+          <div className="bg-purple-900/40 backdrop-blur rounded-2xl border-2 border-purple-500 p-8">
             <div className="flex items-center gap-3 mb-4">
-              <Heart className="w-8 h-8 text-pink-400" />
-              <h2 className="text-3xl font-bold text-purple-300">A Personal Thank You From MandaStrong1</h2>
+              <Heart className="w-8 h-8 text-purple-400" />
+              <h2 className="text-3xl font-bold text-white">A Personal Thank You From MandaStrong1</h2>
             </div>
-            <div className="space-y-4 text-lg leading-relaxed text-purple-200">
-              <p className="text-xl font-semibold text-purple-100">
+            <div className="space-y-4 text-lg leading-relaxed text-white">
+              <p className="text-xl font-semibold text-white">
                 Dear Friend and Fellow Creator,
               </p>
               <p>
@@ -47,7 +47,7 @@ export default function Page21({ onBack, onHome }: Page21Props) {
               <p>
                 Whether you're making your first short film, documenting important moments, or crafting the next viral sensation, know that I'm cheering for you every step of the way.
               </p>
-              <p className="text-purple-100 font-semibold">
+              <p className="text-white font-semibold">
                 Your creativity inspires me. Your courage to create moves me. Your stories matter.
               </p>
               <p className="text-right italic text-purple-300">
@@ -57,47 +57,44 @@ export default function Page21({ onBack, onHome }: Page21Props) {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-900/40 to-purple-900/40 backdrop-blur rounded-2xl border-2 border-purple-500 p-8">
+          <div className="bg-purple-900/40 backdrop-blur rounded-2xl border-2 border-purple-500 p-8">
             <div className="flex items-center gap-3 mb-6">
-              <Users className="w-8 h-8 text-blue-400" />
-              <h2 className="text-3xl font-bold text-purple-300">Humanity First Fundraiser</h2>
+              <Users className="w-8 h-8 text-purple-400" />
+              <h2 className="text-3xl font-bold text-white">Humanity First Fundraiser</h2>
             </div>
 
-            <div className="space-y-6 text-lg leading-relaxed text-purple-200">
-              <div className="bg-purple-900/30 border-l-4 border-blue-400 p-6 rounded-r-lg">
-                <h3 className="text-2xl font-bold text-blue-300 mb-3">Mission Statement</h3>
+            <div className="space-y-6 text-lg leading-relaxed text-white">
+              <div className="bg-purple-900/30 border-l-4 border-purple-400 p-6 rounded-r-lg">
+                <h3 className="text-2xl font-bold text-purple-300 mb-3">Mission Statement</h3>
                 <p className="mb-4">
                   I'm Amanda, and I'm dedicated to building a kinder, more inclusive environment through my Education Humanitarian Campaign. With honesty, transparency, and unwavering principles, I stand up for Veterans, Kids and those in need.
                 </p>
-                <p className="font-semibold text-blue-200 italic">
+                <p className="font-semibold text-white italic">
                   One year in: self-taught, battle-tested. New mission: build razor-sharp visual tools that turn messy emotions into clarity, so people connect with real empathy, speak with intent, and treat each other right—no matter what.
                 </p>
-                <p className="mt-3 text-purple-100">
+                <p className="mt-3 text-white">
                   Stay true, stick to your principles, always do the right thing, and lift others up. We're creating a kinder, stronger world. Still grinding. Onward. Together.
                 </p>
               </div>
 
               <div className="grid md:grid-cols-3 gap-6">
-                <div className="bg-black/30 border-2 border-blue-500 rounded-xl p-5">
-                  <div className="text-3xl mb-3 text-center">🌍</div>
-                  <h4 className="text-xl font-bold text-blue-300 mb-2 text-center">Why</h4>
-                  <p className="text-sm">
+                <div className="bg-black/30 border-2 border-purple-500 rounded-xl p-5">
+                  <h4 className="text-xl font-bold text-purple-300 mb-2 text-center">Why</h4>
+                  <p className="text-sm text-white">
                     Building razor-sharp visual tools that turn messy emotions into clarity. We're creating a platform where people connect with real empathy, speak with intent, and treat each other right.
                   </p>
                 </div>
 
                 <div className="bg-black/30 border-2 border-purple-500 rounded-xl p-5">
-                  <div className="text-3xl mb-3 text-center">👥</div>
                   <h4 className="text-xl font-bold text-purple-300 mb-2 text-center">Who</h4>
-                  <p className="text-sm">
+                  <p className="text-sm text-white">
                     Veterans who've served our country. Kids who need advocates. Underserved communities. Single parents. Activists. Young dreamers. Everyone who deserves a voice.
                   </p>
                 </div>
 
-                <div className="bg-black/30 border-2 border-pink-500 rounded-xl p-5">
-                  <div className="text-3xl mb-3 text-center">💡</div>
-                  <h4 className="text-xl font-bold text-pink-300 mb-2 text-center">What</h4>
-                  <p className="text-sm">
+                <div className="bg-black/30 border-2 border-purple-500 rounded-xl p-5">
+                  <h4 className="text-xl font-bold text-purple-300 mb-2 text-center">What</h4>
+                  <p className="text-sm text-white">
                     Free 30 Minute Booking with Creator. Film workshops and training. Scholarships. Equipment grants. Mental health resources. A kinder, stronger world. Together.
                   </p>
                 </div>
@@ -105,16 +102,16 @@ export default function Page21({ onBack, onHome }: Page21Props) {
 
               <div className="bg-purple-900/50 border-2 border-purple-400 rounded-xl p-6">
                 <p className="text-center text-2xl font-bold text-purple-300 mb-4">
-                  🎯 Join the Movement
+                  Join the Movement
                 </p>
-                <p className="text-center text-purple-200 mb-4">
+                <p className="text-center text-white mb-4">
                   Every purchase from my Etsy shop contributes to this mission. Every dollar supports Veterans, Kids, and creators in need.
                 </p>
                 <a
                   href="https://MandaStrong1.Etsy.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-3 p-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-lg transition-all hover:scale-105 border-2 border-purple-400 font-bold text-lg"
+                  className="flex items-center justify-center gap-3 p-4 bg-purple-600 hover:bg-purple-700 rounded-lg transition-all hover:scale-105 border-2 border-white font-bold text-lg text-white"
                 >
                   <DollarSign className="w-6 h-6" />
                   Support the Cause - Visit Etsy Store
@@ -124,8 +121,8 @@ export default function Page21({ onBack, onHome }: Page21Props) {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-green-900/40 to-teal-900/40 backdrop-blur rounded-2xl border-2 border-purple-500 p-6">
-            <h2 className="text-2xl font-bold text-purple-300 mb-4">Stay Connected</h2>
+          <div className="bg-purple-900/40 backdrop-blur rounded-2xl border-2 border-purple-500 p-6">
+            <h2 className="text-2xl font-bold text-white mb-4">Stay Connected</h2>
             <div className="space-y-3">
               <a
                 href="https://MandaStrong1.Etsy.com"
@@ -135,7 +132,7 @@ export default function Page21({ onBack, onHome }: Page21Props) {
               >
                 <ExternalLink className="w-6 h-6 text-purple-400" />
                 <div>
-                  <div className="font-bold">Visit My Etsy Store</div>
+                  <div className="font-bold text-white">Visit My Etsy Store</div>
                   <div className="text-sm text-purple-300">MandaStrong1.Etsy.com</div>
                 </div>
               </a>
@@ -155,13 +152,13 @@ export default function Page21({ onBack, onHome }: Page21Props) {
         <div className="flex gap-4 justify-center">
           <button
             onClick={onBack}
-            className="px-8 py-3 bg-purple-700 hover:bg-purple-600 rounded-lg transition-all hover:scale-105 font-bold"
+            className="px-8 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg transition-all hover:scale-105 font-bold text-white border-2 border-white"
           >
             Back
           </button>
           <button
             onClick={onHome}
-            className="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-lg transition-all hover:scale-105 font-bold"
+            className="px-8 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg transition-all hover:scale-105 font-bold text-white border-2 border-white"
           >
             Back to Home
           </button>
@@ -170,7 +167,7 @@ export default function Page21({ onBack, onHome }: Page21Props) {
         <footer className="mt-12 py-6 border-t-2 border-purple-500 text-center">
           <button
             onClick={() => setShowGuide(true)}
-            className="mb-6 inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 rounded-lg transition-all hover:scale-105 font-bold text-lg border-2 border-purple-400"
+            className="mb-6 inline-flex items-center gap-3 px-8 py-4 bg-purple-600 hover:bg-purple-700 rounded-lg transition-all hover:scale-105 font-bold text-lg border-2 border-white text-white"
           >
             <BookOpen className="w-6 h-6" />
             Complete User Guide - How To Use MandaStrong1 Studio

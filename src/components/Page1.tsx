@@ -57,13 +57,13 @@ export default function Page1({ onNext, onNavigate, currentPage }: Page1Props) {
       >
         <source src="/video/background.mp4" type="video/mp4" />
       </video>
-      <div className="absolute inset-0 bg-black opacity-30"></div>
+      <div className="absolute inset-0 bg-black opacity-40"></div>
 
       <div className="relative z-10 text-center px-4 pt-6">
-        <h1 className="text-3xl md:text-4xl font-black text-black tracking-wider mb-2" style={{ fontFamily: 'Georgia, serif', textShadow: '4px 4px 8px rgba(0,0,0,0.9), -1px -1px 2px rgba(255,255,255,0.3)' }}>
+        <h1 className="text-4xl md:text-6xl font-black text-white tracking-wider mb-4" style={{ textShadow: '0 0 20px rgba(168, 85, 247, 0.8), 2px 2px 4px rgba(0,0,0,0.9)' }}>
           MANDASTRONG'S STUDIO
         </h1>
-        <p className="text-lg md:text-xl font-bold text-black tracking-wide" style={{ fontFamily: 'Georgia, serif', textShadow: '3px 3px 6px rgba(0,0,0,0.9), -1px -1px 2px rgba(255,255,255,0.3)' }}>
+        <p className="text-xl md:text-2xl font-bold text-white tracking-wide" style={{ textShadow: '0 0 10px rgba(168, 85, 247, 0.6), 2px 2px 4px rgba(0,0,0,0.9)' }}>
           An All In One Make A Movie App! 2 ~ 2.5 Hours Duration
         </p>
       </div>
@@ -74,19 +74,19 @@ export default function Page1({ onNext, onNavigate, currentPage }: Page1Props) {
         <div className="flex flex-wrap gap-4 justify-center">
           <button
             onClick={onNext}
-            className="bg-purple-600 text-white px-8 py-3 rounded-lg text-lg font-bold hover:bg-purple-500 transition-all hover:scale-105"
+            className="bg-purple-600 text-white px-8 py-3 rounded-lg text-lg font-bold hover:bg-purple-700 transition-all hover:scale-105 border-2 border-white"
           >
             Next
           </button>
           <button
             onClick={() => onNavigate(3)}
-            className="bg-purple-600 text-white px-8 py-3 rounded-lg text-lg font-bold hover:bg-purple-500 transition-all hover:scale-105"
+            className="bg-purple-600 text-white px-8 py-3 rounded-lg text-lg font-bold hover:bg-purple-700 transition-all hover:scale-105 border-2 border-white"
           >
             Login
           </button>
           <button
             onClick={() => onNavigate(3)}
-            className="bg-purple-600 text-white px-8 py-3 rounded-lg text-lg font-bold hover:bg-purple-500 transition-all hover:scale-105"
+            className="bg-purple-600 text-white px-8 py-3 rounded-lg text-lg font-bold hover:bg-purple-700 transition-all hover:scale-105 border-2 border-white"
           >
             Register
           </button>
@@ -94,7 +94,7 @@ export default function Page1({ onNext, onNavigate, currentPage }: Page1Props) {
       </div>
 
       <div
-        className="w-28 h-36 border-4 border-white shadow-2xl overflow-hidden cursor-pointer"
+        className="w-28 h-36 border-4 border-purple-500 shadow-2xl overflow-hidden cursor-pointer"
         style={{
           position: 'fixed',
           bottom: '2rem',
@@ -106,7 +106,7 @@ export default function Page1({ onNext, onNavigate, currentPage }: Page1Props) {
       >
         {!isPlaying && (
           <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-            <div className="w-0 h-0 border-l-[20px] border-l-white border-t-[12px] border-t-transparent border-b-[12px] border-b-transparent ml-1 drop-shadow-lg"></div>
+            <div className="w-0 h-0 border-l-[20px] border-l-purple-500 border-t-[12px] border-t-transparent border-b-[12px] border-b-transparent ml-1 drop-shadow-lg"></div>
           </div>
         )}
         <video
