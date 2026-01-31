@@ -1,5 +1,4 @@
-import { MessageCircle, Send, Bot, HelpCircle } from 'lucide-react';
-import { useState } from 'react';
+import { Shield, FileText, Scale } from 'lucide-react';
 
 interface Page19Props {
   onNext: () => void;
@@ -7,132 +6,87 @@ interface Page19Props {
 }
 
 export default function Page19({ onNext, onBack }: Page19Props) {
-  const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      sender: 'Grok',
-      text: 'Hello! I\'m Grok, your 24/7 AI assistant. How can I help you with MandaStrong Studio today?',
-      time: 'Just now'
-    }
-  ]);
-
-  const handleSend = () => {
-    if (!message.trim()) return;
-
-    const newMessage = {
-      id: messages.length + 1,
-      sender: 'You',
-      text: message,
-      time: 'Just now'
-    };
-
-    setMessages([...messages, newMessage]);
-    setMessage('');
-
-    setTimeout(() => {
-      setMessages(prev => [...prev, {
-        id: prev.length + 1,
-        sender: 'Grok',
-        text: 'I understand your question! Let me help you with that. What specific aspect of MandaStrong Studio would you like assistance with?',
-        time: 'Just now'
-      }]);
-    }, 1000);
-  };
-
-  const quickQuestions = [
-    'How do I save my project?',
-    'Export options explained',
-    'AI tool not working',
-    'Video rendering help',
-    'Timeline editor guide'
-  ];
-
   return (
     <div className="min-h-screen bg-black text-white p-6">
-      <div className="max-w-5xl mx-auto">
-        <h1 className="text-4xl font-bold mb-6 text-purple-400 flex items-center gap-3">
-          <Bot className="w-10 h-10" />
-          24/7 Grok Help Desk - AI Support
+      <div className="max-w-6xl mx-auto">
+        <h1 className="text-5xl font-bold mb-6 text-purple-400 text-center flex items-center justify-center gap-3">
+          <Shield className="w-12 h-12" />
+          Terms of Service & Disclaimer
         </h1>
 
-        <div className="bg-gradient-to-br from-purple-900/30 to-blue-900/30 border-2 border-purple-500 rounded-xl p-6 mb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
-              <Bot className="w-7 h-7 text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-purple-300">Grok AI Assistant</h2>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-sm text-green-400">Online & Ready</span>
-              </div>
-            </div>
+        <div className="bg-purple-900/30 border-2 border-purple-500 rounded-xl p-8 mb-8">
+          <div className="flex items-center gap-3 mb-6">
+            <FileText className="w-10 h-10 text-purple-400" />
+            <h2 className="text-3xl font-bold text-purple-300">Terms of Service</h2>
           </div>
-          <p className="text-purple-200">
-            Get instant help with any questions about MandaStrong Studio. Available 24/7 to assist you!
+
+          <div className="space-y-4 text-purple-100 leading-relaxed">
+            <p className="text-lg">
+              <strong className="text-purple-300">1. Acceptance of Terms:</strong> By accessing and using MandaStrong Studio, you agree to be bound by these Terms of Service and all applicable laws and regulations. If you do not agree with any of these terms, you are prohibited from using this service.
+            </p>
+
+            <p className="text-lg">
+              <strong className="text-purple-300">2. User Content Ownership:</strong> All content created using MandaStrong Studio's AI tools is owned by you, the user. You retain full intellectual property rights to your creative works. We do not claim any ownership of content you generate.
+            </p>
+
+            <p className="text-lg">
+              <strong className="text-purple-300">3. Acceptable Use:</strong> You agree to use this platform for lawful purposes only. Users must respect intellectual property rights and not create content that infringes on copyrights, trademarks, or other proprietary rights of third parties.
+            </p>
+
+            <p className="text-lg">
+              <strong className="text-purple-300">4. Service Availability:</strong> While we strive to maintain 24/7 availability, MandaStrong Studio reserves the right to modify, suspend, or discontinue any aspect of the service at any time without prior notice.
+            </p>
+
+            <p className="text-lg">
+              <strong className="text-purple-300">5. Payment & Subscriptions:</strong> Subscription fees are billed monthly. All payments are processed securely through Stripe. Refunds are handled on a case-by-case basis.
+            </p>
+
+            <p className="text-lg">
+              <strong className="text-purple-300">6. Privacy:</strong> We respect your privacy and handle your data in accordance with applicable privacy laws. Your projects and creative content remain private unless you choose to share them in our Community Hub.
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-yellow-900/30 border-2 border-yellow-600 rounded-xl p-8 mb-8">
+          <div className="flex items-center gap-3 mb-6">
+            <Scale className="w-10 h-10 text-yellow-400" />
+            <h2 className="text-3xl font-bold text-yellow-300">Disclaimer</h2>
+          </div>
+
+          <div className="space-y-4 text-yellow-100 leading-relaxed">
+            <p className="text-lg">
+              <strong className="text-yellow-300">AI-Generated Content:</strong> MandaStrong Studio utilizes artificial intelligence to assist in content creation. While our AI tools are powerful, AI-generated content should always be reviewed, edited, and verified before distribution or commercial use.
+            </p>
+
+            <p className="text-lg">
+              <strong className="text-yellow-300">User Responsibility:</strong> Users are solely responsible for ensuring their final productions comply with all local, state, federal, and international laws and regulations. This includes but is not limited to copyright law, defamation law, and privacy regulations.
+            </p>
+
+            <p className="text-lg">
+              <strong className="text-yellow-300">No Warranties:</strong> The service is provided "as is" without warranties of any kind, either express or implied. MandaStrong Studio makes no guarantees regarding the accuracy, reliability, or quality of AI-generated content.
+            </p>
+
+            <p className="text-lg">
+              <strong className="text-yellow-300">Limitation of Liability:</strong> MandaStrong Studio, its creators, and affiliates shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of the platform.
+            </p>
+
+            <p className="text-lg">
+              <strong className="text-yellow-300">Content Review:</strong> You acknowledge that AI tools may occasionally produce unexpected results. It is your responsibility to review all content before publishing, sharing, or using it commercially.
+            </p>
+
+            <p className="text-lg">
+              <strong className="text-yellow-300">Educational Purpose:</strong> This platform is designed to empower creativity and education. We provide tools for storytelling and content creation that can educate, inspire, and make a positive impact on the world.
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-purple-900/30 border-2 border-purple-500 rounded-xl p-6 text-center mb-8">
+          <p className="text-purple-200 text-lg mb-4">
+            By continuing to use MandaStrong Studio, you acknowledge that you have read, understood, and agree to these Terms of Service and Disclaimer.
           </p>
-        </div>
-
-        <div className="bg-purple-900/30 border-2 border-purple-500 rounded-xl overflow-hidden mb-6">
-          <div className="h-96 overflow-y-auto p-6 space-y-4">
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`flex ${msg.sender === 'You' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-xs lg:max-w-md xl:max-w-lg px-4 py-3 rounded-lg ${
-                    msg.sender === 'You'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-purple-600 text-white'
-                  }`}
-                >
-                  <div className="font-bold text-sm mb-1">{msg.sender}</div>
-                  <div>{msg.text}</div>
-                  <div className="text-xs opacity-70 mt-1">{msg.time}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="border-t-2 border-purple-500 p-4 bg-black/50">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                placeholder="Type your question here..."
-                className="flex-1 bg-black border border-purple-500 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
-              />
-              <button
-                onClick={handleSend}
-                className="bg-purple-600 hover:bg-purple-500 px-6 py-3 rounded-lg font-bold transition-all flex items-center gap-2"
-              >
-                <Send className="w-5 h-5" />
-                Send
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-purple-900/30 border-2 border-purple-500 rounded-xl p-6 mb-6">
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-purple-300">
-            <HelpCircle className="w-6 h-6" />
-            Quick Questions
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {quickQuestions.map((q, idx) => (
-              <button
-                key={idx}
-                onClick={() => setMessage(q)}
-                className="bg-black border border-purple-500 hover:bg-purple-600 px-4 py-2 rounded-lg text-sm transition-all"
-              >
-                {q}
-              </button>
-            ))}
-          </div>
+          <p className="text-purple-400 font-bold text-xl">
+            Last Updated: January 2025
+          </p>
         </div>
 
         <div className="flex gap-4 justify-center">
