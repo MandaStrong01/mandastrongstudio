@@ -5,9 +5,11 @@ import {
   Sliders, Layers, Palette, Download, Share2, Youtube, Twitter, Instagram,
   Facebook, BookOpen, Shield, Heart, Send, X, ChevronRight, ChevronLeft,
   Home, Settings, User, Check, Headphones, Volume2, Eye, FileVideo,
-  TrendingUp, Camera, CheckCircle
+  TrendingUp, Camera, CheckCircle, Crown, LogOut
 } from 'lucide-react';
 import MandaStrongStudioPro from './components/MandaStrongStudioPro';
+import AdminDashboard from './components/AdminDashboard';
+import { useAuth } from './contexts/AuthContext';
 
 const generateTools = (baseTools: string[]) => {
   const tools = [];
@@ -71,6 +73,52 @@ export default function App() {
   const [showProStudio, setShowProStudio] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  const { user, profile, subscription, signIn, signUp, signOut, isAdmin } = useAuth();
+
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [registerName, setRegisterName] = useState('');
+  const [registerEmail, setRegisterEmail] = useState('');
+  const [registerPassword, setRegisterPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [authSuccess, setAuthSuccess] = useState('');
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    setAuthSuccess('');
+    try {
+      await signIn(loginEmail, loginPassword);
+      setAuthSuccess('Logged in successfully!');
+      setTimeout(() => setPage(4), 1500);
+    } catch (error: any) {
+      setAuthError(error.message || 'Login failed');
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    setAuthSuccess('');
+    try {
+      await signUp(registerEmail, registerPassword, registerName);
+      setAuthSuccess('Account created successfully!');
+      setTimeout(() => setPage(4), 1500);
+    } catch (error: any) {
+      setAuthError(error.message || 'Registration failed');
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      setPage(1);
+      setMenuOpen(false);
+    } catch (error: any) {
+      console.error('Sign out error:', error);
+    }
+  };
+
   if (showProStudio) {
     return <MandaStrongStudioPro />;
   }
@@ -99,8 +147,30 @@ export default function App() {
         <Menu size={18} /> Menu
       </button>
       {menuOpen && (
-        <div className="absolute top-14 right-0 bg-zinc-900 border border-zinc-700 rounded-lg p-2 w-56 shadow-2xl backdrop-blur-xl">
+        <div className="absolute top-14 right-0 bg-zinc-900 border border-zinc-700 rounded-lg p-2 w-64 shadow-2xl backdrop-blur-xl">
           <div className="flex flex-col gap-1">
+            {user && profile && (
+              <>
+                <div className="px-4 py-3 border-b border-zinc-800">
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="font-semibold text-sm text-white">{profile.full_name}</p>
+                    {isAdmin && <Crown size={14} className="text-yellow-500" />}
+                  </div>
+                  <p className="text-xs text-gray-400">{profile.email}</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-xs px-2 py-1 bg-blue-600 rounded text-white font-medium uppercase">
+                      {subscription?.plan_type || 'free'}
+                    </span>
+                    {isAdmin && (
+                      <span className="text-xs px-2 py-1 bg-yellow-600 rounded text-white font-medium">
+                        ADMIN
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
             <button
               onClick={() => { setShowProStudio(true); setMenuOpen(false); }}
               className="text-left text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2.5 rounded-md transition"
@@ -126,6 +196,30 @@ export default function App() {
                 {item.label}
               </button>
             ))}
+
+            {isAdmin && (
+              <>
+                <div className="h-px bg-zinc-800 my-1"></div>
+                <button
+                  onClick={() => goTo(22)}
+                  className="text-left text-sm font-medium text-yellow-400 hover:text-yellow-300 px-4 py-2.5 hover:bg-zinc-800 rounded-md transition flex items-center gap-2"
+                >
+                  <Crown size={16} /> Admin Dashboard
+                </button>
+              </>
+            )}
+
+            {user && (
+              <>
+                <div className="h-px bg-zinc-800 my-1"></div>
+                <button
+                  onClick={handleSignOut}
+                  className="text-left text-sm font-medium text-red-400 hover:text-red-300 px-4 py-2.5 hover:bg-zinc-800 rounded-md transition flex items-center gap-2"
+                >
+                  <LogOut size={16} /> Sign Out
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -279,16 +373,30 @@ export default function App() {
       {/* PAGE 3: LOGIN/REGISTER/PRICING */}
       {page === 3 && (
         <div className="min-h-screen bg-zinc-950 p-8 pb-32 overflow-y-auto">
+          {authError && (
+            <div className="max-w-7xl mx-auto mb-6 bg-red-600 border border-red-500 rounded-lg p-4 text-white">
+              {authError}
+            </div>
+          )}
+          {authSuccess && (
+            <div className="max-w-7xl mx-auto mb-6 bg-green-600 border border-green-500 rounded-lg p-4 text-white">
+              {authSuccess}
+            </div>
+          )}
+
           <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-8 mb-16">
             {/* Login */}
             <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8">
               <h2 className="text-3xl font-bold mb-8">Sign In</h2>
-              <div className="space-y-4">
+              <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-2 text-gray-300">Email Address</label>
                   <input
                     type="email"
                     placeholder="your@email.com"
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    required
                     className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                   />
                 </div>
@@ -297,27 +405,33 @@ export default function App() {
                   <input
                     type="password"
                     placeholder="••••••••"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    required
                     className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                   />
                 </div>
-                <button className="w-full bg-blue-600 hover:bg-blue-700 py-3.5 rounded-lg font-semibold text-base mt-6 transition">
+                <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 py-3.5 rounded-lg font-semibold text-base mt-6 transition">
                   Sign In
                 </button>
                 <div className="text-center">
                   <a href="#" className="text-sm text-blue-500 hover:text-blue-400">Forgot password?</a>
                 </div>
-              </div>
+              </form>
             </div>
 
             {/* Register */}
             <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8">
               <h2 className="text-3xl font-bold mb-8">Create Account</h2>
-              <div className="space-y-4">
+              <form onSubmit={handleRegister} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-2 text-gray-300">Full Name</label>
                   <input
                     type="text"
                     placeholder="John Doe"
+                    value={registerName}
+                    onChange={(e) => setRegisterName(e.target.value)}
+                    required
                     className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                   />
                 </div>
@@ -326,6 +440,9 @@ export default function App() {
                   <input
                     type="email"
                     placeholder="your@email.com"
+                    value={registerEmail}
+                    onChange={(e) => setRegisterEmail(e.target.value)}
+                    required
                     className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                   />
                 </div>
@@ -334,13 +451,17 @@ export default function App() {
                   <input
                     type="password"
                     placeholder="••••••••"
+                    value={registerPassword}
+                    onChange={(e) => setRegisterPassword(e.target.value)}
+                    required
+                    minLength={6}
                     className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                   />
                 </div>
-                <button className="w-full bg-blue-600 hover:bg-blue-700 py-3.5 rounded-lg font-semibold text-base mt-6 transition">
+                <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 py-3.5 rounded-lg font-semibold text-base mt-6 transition">
                   Create Account
                 </button>
-              </div>
+              </form>
             </div>
           </div>
 
@@ -1581,6 +1702,9 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* PAGE 22: ADMIN DASHBOARD */}
+      {page === 22 && isAdmin && <AdminDashboard />}
 
       {/* PAGE 21: THAT'S ALL FOLKS */}
       {page === 21 && (

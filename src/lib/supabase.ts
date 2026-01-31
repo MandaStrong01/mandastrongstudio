@@ -13,6 +13,7 @@ export interface Profile {
   id: string;
   full_name: string;
   email: string;
+  is_admin: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -20,7 +21,7 @@ export interface Profile {
 export interface Subscription {
   id: string;
   user_id: string;
-  plan_type: 'basic' | 'pro' | 'studio';
+  plan_type: 'free' | 'basic' | 'pro' | 'studio';
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   status: 'active' | 'cancelled' | 'expired' | 'trialing';
