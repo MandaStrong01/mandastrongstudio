@@ -127,10 +127,6 @@ const AI_TOOLS = [
 const App = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [avatarPlaying, setAvatarPlaying] = useState(false);
-  const [showEnhancementStudio, setShowEnhancementStudio] = useState(false);
-  const [showRenderModal, setShowRenderModal] = useState(false);
-  const [renderProgress, setRenderProgress] = useState(0);
-  const [duration, setDuration] = useState(90);
   const oceanRef = useRef(null);
   const avatarRef = useRef(null);
 
@@ -360,7 +356,7 @@ const Page3 = ({ onBack, onNext }) => {
   <div className="w-full h-full bg-black text-white p-8 overflow-y-auto">
     <div className="max-w-4xl mx-auto">
 
-      {/* AMANDA STRONG - STUDIO PLAN OWNER */}
+      {/* AMANDA STRONG - STUDIO PLAN */}
       <div className="bg-gradient-to-br from-gray-900 to-black p-8 rounded-2xl border-2 border-purple-500 mb-10 text-center shadow-xl">
         <h2 className="text-4xl font-black mb-2 text-purple-500">AMANDA STRONG</h2>
         <p className="text-xl text-white font-bold">Studio Plan</p>
@@ -369,10 +365,10 @@ const Page3 = ({ onBack, onNext }) => {
       {/* SIGN IN / CREATE ACCOUNT */}
       <div className="bg-gradient-to-br from-gray-900 to-black rounded-2xl border-2 border-gray-700 p-8 mb-10 shadow-xl">
         <div className="flex gap-4 mb-6">
-          <button onClick={() => setView('signin')} className={`flex-1 py-3 rounded-lg font-bold transition-all ${view === 'signin' ? 'bg-purple-500 text-black' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}`}>
+          <button onClick={() => setView('signin')} className={`flex-1 py-3 rounded-lg font-bold transition-all ${view === 'signin' ? 'bg-purple-500 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}`}>
             Sign In
           </button>
-          <button onClick={() => setView('signup')} className={`flex-1 py-3 rounded-lg font-bold transition-all ${view === 'signup' ? 'bg-purple-500 text-black' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}`}>
+          <button onClick={() => setView('signup')} className={`flex-1 py-3 rounded-lg font-bold transition-all ${view === 'signup' ? 'bg-purple-500 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}`}>
             Create Account
           </button>
         </div>
@@ -383,7 +379,7 @@ const Page3 = ({ onBack, onNext }) => {
             <input type="email" placeholder="Email Address" className="w-full p-3 mb-4 bg-gray-800 rounded-lg text-white placeholder-gray-500 border border-gray-700 focus:border-purple-500 focus:outline-none" />
             <label className="block text-sm text-gray-400 mb-1">Password</label>
             <input type="password" placeholder="Password" className="w-full p-3 mb-6 bg-gray-800 rounded-lg text-white placeholder-gray-500 border border-gray-700 focus:border-purple-500 focus:outline-none" />
-            <button className="w-full py-3 bg-purple-500 text-black font-bold rounded-lg hover:bg-purple-400 transition-all">Sign In</button>
+            <button className="w-full py-3 bg-purple-500 text-white font-bold rounded-lg hover:bg-purple-400 transition-all">Sign In</button>
           </div>
         )}
 
@@ -395,7 +391,7 @@ const Page3 = ({ onBack, onNext }) => {
             <input type="email" placeholder="Email Address" className="w-full p-3 mb-4 bg-gray-800 rounded-lg text-white placeholder-gray-500 border border-gray-700 focus:border-purple-500 focus:outline-none" />
             <label className="block text-sm text-gray-400 mb-1">Password</label>
             <input type="password" placeholder="Password" className="w-full p-3 mb-6 bg-gray-800 rounded-lg text-white placeholder-gray-500 border border-gray-700 focus:border-purple-500 focus:outline-none" />
-            <button className="w-full py-3 bg-purple-500 text-black font-bold rounded-lg hover:bg-purple-400 transition-all">Create Account</button>
+            <button className="w-full py-3 bg-purple-500 text-white font-bold rounded-lg hover:bg-purple-400 transition-all">Create Account</button>
           </div>
         )}
 
@@ -403,9 +399,9 @@ const Page3 = ({ onBack, onNext }) => {
         <p className="text-center text-gray-400 text-sm mt-1">Explore features without creating an account</p>
       </div>
 
-      {/* CHOOSE YOUR PLAN */}
+      {/* CHOOSE YOUR PLAN - NO FREE PLAN */}
       <h2 className="text-4xl font-bold text-center mb-2 text-purple-500">Choose Your Plan</h2>
-      <p className="text-center text-gray-400 mb-8">Pick the plan that works for you</p>
+      <p className="text-center text-gray-400 mb-8">Start free, upgrade anytime</p>
 
       <div className="grid grid-cols-3 gap-6 mb-8">
 
@@ -420,13 +416,13 @@ const Page3 = ({ onBack, onNext }) => {
             <li className="flex items-center"><span className="text-purple-500 mr-2">✓</span> 10GB Storage</li>
             <li className="flex items-center"><span className="text-purple-500 mr-2">✓</span> Email Support</li>
           </ul>
-          <button className="w-full py-3 bg-purple-500 text-black font-bold rounded-lg hover:bg-purple-400 transition-all">Subscribe</button>
+          <button className="w-full py-3 bg-purple-500 text-white font-bold rounded-lg hover:bg-purple-400 transition-all">Subscribe</button>
         </div>
 
         {/* PRO $30 - MOST POPULAR */}
         <div className="bg-gradient-to-br from-purple-900 to-black p-8 rounded-2xl border-4 border-purple-500 shadow-2xl hover:shadow-purple-500/50 transition-all duration-300 transform scale-105">
           <div className="text-center mb-3">
-            <span className="bg-purple-500 text-black px-4 py-1 rounded-full text-sm font-bold">Most Popular</span>
+            <span className="bg-purple-500 text-white px-4 py-1 rounded-full text-sm font-bold">Most Popular</span>
           </div>
           <h3 className="text-2xl font-bold mb-3 text-white">Pro</h3>
           <p className="text-4xl font-black text-purple-500 mb-4">$30<span className="text-base">/month</span></p>
@@ -438,13 +434,13 @@ const Page3 = ({ onBack, onNext }) => {
             <li className="flex items-center"><span className="text-purple-500 mr-2">✓</span> Priority Support</li>
             <li className="flex items-center"><span className="text-purple-500 mr-2">✓</span> Commercial License</li>
           </ul>
-          <button className="w-full py-3 bg-purple-500 text-black font-bold rounded-lg hover:bg-purple-400 transition-all">Subscribe</button>
+          <button className="w-full py-3 bg-purple-500 text-white font-bold rounded-lg hover:bg-purple-400 transition-all">Subscribe</button>
         </div>
 
-        {/* STUDIO $50 - AMANDA'S PLAN - SELECTED */}
+        {/* STUDIO $50 - SELECTED (AMANDA'S PLAN) */}
         <div className="bg-gradient-to-br from-gray-900 to-black p-8 rounded-2xl border-4 border-purple-500 shadow-xl transition-all duration-300">
           <div className="text-center mb-3">
-            <span className="bg-purple-500 text-black px-4 py-1 rounded-full text-sm font-bold">Selected</span>
+            <span className="bg-purple-500 text-white px-4 py-1 rounded-full text-sm font-bold">Selected</span>
           </div>
           <h3 className="text-2xl font-bold mb-3 text-white">Studio</h3>
           <p className="text-4xl font-black text-purple-500 mb-4">$50<span className="text-base">/month</span></p>
@@ -457,7 +453,7 @@ const Page3 = ({ onBack, onNext }) => {
             <li className="flex items-center"><span className="text-purple-500 mr-2">✓</span> Full Commercial Rights</li>
             <li className="flex items-center"><span className="text-purple-500 mr-2">✓</span> Team Collaboration</li>
           </ul>
-          <button className="w-full py-3 bg-purple-500 text-black font-bold rounded-lg cursor-default">Selected</button>
+          <button className="w-full py-3 bg-purple-500 text-white font-bold rounded-lg cursor-default">Selected</button>
         </div>
 
       </div>
@@ -469,7 +465,7 @@ const Page3 = ({ onBack, onNext }) => {
         <button onClick={onBack} className="px-12 py-4 bg-gray-700 text-white font-bold rounded-lg hover:bg-gray-600 transition-all duration-300 flex items-center gap-2">
           <ChevronLeft />Back
         </button>
-        <button onClick={onNext} className="px-12 py-4 bg-purple-500 text-black font-bold rounded-lg hover:bg-purple-400 transition-all duration-300 flex items-center gap-2">
+        <button onClick={onNext} className="px-12 py-4 bg-purple-500 text-white font-bold rounded-lg hover:bg-purple-400 transition-all duration-300 flex items-center gap-2">
           Next<ChevronRight />
         </button>
       </div>
@@ -481,6 +477,41 @@ const Page3 = ({ onBack, onNext }) => {
   </div>
   );
 };
+  <div className="w-full h-full bg-black text-white overflow-y-auto">
+    <div className="p-8">
+      <h1 className="text-5xl font-bold text-center mb-4 text-purple-500">
+        Professional AI Tools - Page {pageNum - 3} of 5
+      </h1>
+      <p className="text-center text-gray-400 mb-12 text-lg">Click any tool to access its interface</p>
+      
+      <div className="grid grid-cols-4 gap-6 max-w-7xl mx-auto mb-12">
+        {tools.map((tool, index) => (
+          <button
+            key={index}
+            onClick={() => onToolClick(tool)}
+            className="bg-gradient-to-br from-purple-500 to-purple-600 text-black font-bold p-8 rounded-xl hover:from-purple-400 hover:to-purple-500 transition-all duration-300 transform hover:scale-105 min-h-[120px] flex items-center justify-center text-center shadow-lg hover:shadow-purple-500/50 border-2 border-purple-400"
+          >
+            <span className="text-sm leading-tight">{tool}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="flex gap-6 justify-center mt-12">
+        <button onClick={onBack} className="px-12 py-4 bg-gray-700 text-white font-bold rounded-lg hover:bg-gray-600 transition-all duration-300 flex items-center gap-2">
+          <ChevronLeft />Back
+        </button>
+        <button onClick={onNext} className="px-12 py-4 bg-purple-500 text-black font-bold rounded-lg hover:bg-purple-400 transition-all duration-300 flex items-center gap-2">
+          Next<ChevronRight />
+        </button>
+      </div>
+
+      <footer className="text-center mt-16 text-sm text-gray-500">
+        MandaStrong1 © 2025 ~ Author of Doxy the School Bully ~ Find Me On MandaStrong1.Etsy.com
+      </footer>
+    </div>
+  </div>
+);
+
 
 const EditorsChoicePage = ({ onBack, onNext }) => (
   <div className="w-full h-full bg-black text-white p-8 overflow-y-auto">
@@ -488,21 +519,21 @@ const EditorsChoicePage = ({ onBack, onNext }) => (
       <h1 className="text-5xl font-bold text-center mb-4 text-purple-500">Editor's Choice</h1>
       <p className="text-center text-gray-400 mb-12 text-lg">Showcase your masterpiece or browse community highlights</p>
 
-      {/* Upload Portal */}
+      {/* Upload Portal with Drag-Drop */}
       <div className="bg-gradient-to-br from-gray-900 to-black p-10 rounded-2xl border-2 border-purple-500 mb-12 text-center shadow-xl">
         <h2 className="text-3xl font-bold text-purple-500 mb-3">Upload Your Movie</h2>
         <p className="text-gray-400 mb-6 text-lg">Share your creation with the world – up to 180 min supported</p>
         
         <div className="border-4 border-dashed border-purple-500 rounded-xl p-12 mb-4 hover:bg-gray-800/50 transition-all cursor-pointer"
              onDragOver={(e) => e.preventDefault()}
-             onDrop={(e) => { e.preventDefault(); alert('File upload ready!'); }}>
+             onDrop={(e) => { e.preventDefault(); alert('File ready for upload!'); }}>
           <Upload className="mx-auto mb-4 text-purple-500" size={48} />
           <p className="text-gray-300 mb-2">Drag & drop your movie here</p>
           <p className="text-gray-500 text-sm">or click to browse</p>
         </div>
         
         <input type="file" accept="video/*" className="hidden" id="movie-upload" />
-        <label htmlFor="movie-upload" className="px-12 py-5 bg-purple-500 text-black font-bold rounded-lg hover:bg-purple-400 transition-all duration-300 inline-flex items-center gap-3 text-xl shadow-lg hover:shadow-purple-500/50 cursor-pointer">
+        <label htmlFor="movie-upload" className="px-12 py-5 bg-purple-500 text-white font-bold rounded-lg hover:bg-purple-400 transition-all duration-300 inline-flex items-center gap-3 text-xl shadow-lg hover:shadow-purple-500/50 cursor-pointer">
           <Upload /> Browse Files
         </label>
       </div>
@@ -537,7 +568,7 @@ const EditorsChoicePage = ({ onBack, onNext }) => (
         <button onClick={onBack} className="px-12 py-4 bg-gray-700 text-white font-bold rounded-lg hover:bg-gray-600 transition-all duration-300 flex items-center gap-2">
           <ChevronLeft />Back
         </button>
-        <button onClick={onNext} className="px-12 py-4 bg-purple-500 text-black font-bold rounded-lg hover:bg-purple-400 transition-all duration-300 flex items-center gap-2">
+        <button onClick={onNext} className="px-12 py-4 bg-purple-500 text-white font-bold rounded-lg hover:bg-purple-400 transition-all duration-300 flex items-center gap-2">
           Next<ChevronRight />
         </button>
       </div>
@@ -549,103 +580,13 @@ const EditorsChoicePage = ({ onBack, onNext }) => (
   </div>
 );
 
-const ToolBoardPage = ({ pageNum, tools, onBack, onNext, onToolClick }) => (
-  <div className="w-full h-full bg-black text-white overflow-y-auto">
-    <div className="p-8">
-      <h1 className="text-5xl font-bold text-center mb-4 text-purple-500">
-        Professional AI Tools - Page {pageNum - 3} of 5
-      </h1>
-      <p className="text-center text-gray-400 mb-12 text-lg">Click any tool to access its interface</p>
-      
-      <div className="grid grid-cols-4 gap-6 max-w-7xl mx-auto mb-12">
-        {tools.map((tool, index) => (
-          <button
-            key={index}
-            onClick={() => onToolClick(tool)}
-            className="bg-gradient-to-br from-purple-500 to-purple-600 text-black font-bold p-8 rounded-xl hover:from-purple-400 hover:to-purple-500 transition-all duration-300 transform hover:scale-105 min-h-[120px] flex items-center justify-center text-center shadow-lg hover:shadow-purple-500/50 border-2 border-purple-400"
-          >
-            <span className="text-sm leading-tight">{tool}</span>
-          </button>
-        ))}
-      </div>
-
-      <div className="flex gap-6 justify-center mt-12">
-        <button onClick={onBack} className="px-12 py-4 bg-gray-700 text-white font-bold rounded-lg hover:bg-gray-600 transition-all duration-300 flex items-center gap-2">
-          <ChevronLeft />Back
-        </button>
-        <button onClick={onNext} className="px-12 py-4 bg-purple-500 text-black font-bold rounded-lg hover:bg-purple-400 transition-all duration-300 flex items-center gap-2">
-          Next<ChevronRight />
-        </button>
-      </div>
-
-      <footer className="text-center mt-16 text-sm text-gray-500">
-        MandaStrong Studio 2025 • Author of Doxy The School Bully • MandaStrong1.Etsy.com
-      </footer>
-    </div>
-  </div>
-);
-
-const EditorPage = ({ pageNum, onBack, onNext }) => {
-  const [dragActive, setDragActive] = useState(false);
-  const fileInputRef = useRef(null);
-
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      // Handle files
-      console.log("Files dropped:", e.dataTransfer.files);
-    }
-  };
-
-  const handleFileSelect = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      console.log("Files selected:", e.target.files);
-    }
-  };
-
-  return (
+const EditorPage = ({ pageNum, onBack, onNext }) => (
   <div className="w-full h-full bg-black text-white flex">
-    <div 
-      className={`w-1/3 border-r border-gray-700 p-6 overflow-y-auto bg-gradient-to-b from-gray-900 to-black ${
-        dragActive ? 'bg-purple-500/10 border-purple-500' : ''
-      }`}
-      onDragEnter={handleDrag}
-      onDragLeave={handleDrag}
-      onDragOver={handleDrag}
-      onDrop={handleDrop}
-    >
+    <div className="w-1/3 border-r border-gray-700 p-6 overflow-y-auto bg-gradient-to-b from-gray-900 to-black">
       <h2 className="text-3xl font-bold mb-6 text-purple-500">Media Library</h2>
-      <input 
-        ref={fileInputRef}
-        type="file"
-        multiple
-        accept="video/*,audio/*,image/*"
-        onChange={handleFileSelect}
-        className="hidden"
-      />
-      <button 
-        onClick={() => fileInputRef.current?.click()}
-        className="w-full py-4 bg-purple-500 text-black font-bold rounded-lg mb-6 hover:bg-purple-400 transition-all duration-300 flex items-center justify-center gap-2"
-      >
-        <Upload />Upload Media (Click or Drag & Drop)
+      <button className="w-full py-4 bg-purple-500 text-black font-bold rounded-lg mb-6 hover:bg-purple-400 transition-all duration-300 flex items-center justify-center gap-2">
+        <Upload />Upload Media
       </button>
-      {dragActive && (
-        <div className="text-center text-purple-500 font-bold mb-4 animate-pulse">
-          Drop files here to upload
-        </div>
-      )}
       <div className="space-y-3">
         <div className="bg-gray-800 p-4 rounded-lg hover:bg-gray-700 transition-all cursor-pointer border border-gray-700 hover:border-purple-500">
           <div className="flex items-center gap-3">
@@ -733,102 +674,11 @@ const EditorPage = ({ pageNum, onBack, onNext }) => {
       </div>
     </div>
   </div>
-  );
-};
+);
 
-const FinalEditorPage = ({ onBack, onNext }) => {
-  const [showEnhancementStudio, setShowEnhancementStudio] = useState(false);
-  const [duration, setDuration] = useState(90);
-  const [isRendering, setIsRendering] = useState(false);
-  const [renderProgress, setRenderProgress] = useState(0);
-
-  const handleRender = () => {
-    setIsRendering(true);
-    setRenderProgress(0);
-    const interval = setInterval(() => {
-      setRenderProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsRendering(false);
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 500);
-  };
-
-  if (showEnhancementStudio) {
-    return (
-      <div className="w-full h-full bg-black text-white p-6 overflow-y-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-4xl font-bold text-purple-500">AI Enhancement Studio</h1>
-          <button onClick={() => setShowEnhancementStudio(false)} className="px-6 py-3 bg-gray-700 text-white font-bold rounded-lg hover:bg-gray-600 transition-all">
-            Close Studio
-          </button>
-        </div>
-
-        {/* Duration Slider */}
-        <div className="bg-gray-800 border-2 border-purple-500 rounded-xl p-6 mb-6">
-          <h3 className="text-xl font-bold text-purple-500 mb-4">Project Duration</h3>
-          <div className="flex items-center gap-6">
-            <input 
-              type="range" 
-              min="0" 
-              max="180" 
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
-              className="flex-1 accent-purple-500"
-            />
-            <div className="text-2xl font-black text-purple-500 w-32 text-right">{duration} min</div>
-          </div>
-          <div className="flex justify-between text-sm text-gray-400 mt-2">
-            <span>0 min</span>
-            <span>90 min</span>
-            <span>180 min (3 hours)</span>
-          </div>
-        </div>
-
-        {/* Enhancement Tools Grid */}
-        <h2 className="text-2xl font-bold text-purple-500 mb-4">Professional Enhancement Tools</h2>
-        <div className="grid grid-cols-4 gap-4 mb-6">
-          {[
-            "Neural Upscale 8K", "Cinematic Color Grade", "HDR Enhancement", "Noise Reduction Pro",
-            "Frame Interpolation", "Motion Blur Control", "Sharpness AI", "Contrast Optimizer",
-            "Lighting Synthesis", "Shadow Recovery", "Highlight Control", "White Balance AI",
-            "Skin Tone Perfection", "Color Harmony", "Film Grain", "Vintage Filter",
-            "Slow Motion Pro", "Speed Ramping", "Stabilization AI", "Lens Correction",
-            "Chromatic Fix", "Vignette Control", "Glow Effects", "Lens Flare AI",
-            "Bokeh Enhancement", "Depth of Field", "Focus Puller", "Tracking AI",
-            "Green Screen Pro", "Object Removal", "Sky Replacement", "Weather FX",
-            "Particle Effects", "Light Leaks", "Transitions AI", "Text Animation",
-            "Logo Placement", "Watermark Removal", "Audio Sync", "Voice Enhancement"
-          ].map((tool, i) => (
-            <button key={i} className="bg-gradient-to-br from-gray-900 to-black p-4 rounded-lg border-2 border-purple-500 hover:border-purple-400 hover:scale-105 transition-all font-bold text-sm text-white hover:bg-gray-800">
-              {tool}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex gap-6 justify-center">
-          <button onClick={() => setShowEnhancementStudio(false)} className="px-12 py-4 bg-gray-700 text-white font-bold rounded-lg hover:bg-gray-600 transition-all">
-            Back to Editor
-          </button>
-          <button className="px-12 py-4 bg-purple-500 text-black font-bold rounded-lg hover:bg-purple-400 transition-all">
-            Apply Enhancements
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
+const FinalEditorPage = ({ onBack, onNext }) => (
   <div className="w-full h-full bg-black text-white flex flex-col p-6">
-    <div className="flex items-center justify-between mb-6">
-      <h1 className="text-4xl font-bold text-purple-500">Final Editor & Export</h1>
-      <button onClick={() => setShowEnhancementStudio(true)} className="px-8 py-3 bg-purple-500 text-black font-bold rounded-lg hover:bg-purple-400 transition-all duration-300 flex items-center gap-2">
-        <Sparkles />Open Enhancement Studio
-      </button>
-    </div>
+    <h1 className="text-4xl font-bold mb-6 text-purple-500 text-center">Final Editor & Export</h1>
     
     <div className="flex flex-1 gap-6">
       <div className="flex-1 bg-gradient-to-br from-gray-900 to-black rounded-xl flex items-center justify-center border-2 border-gray-700 relative overflow-hidden">
@@ -840,40 +690,9 @@ const FinalEditorPage = ({ onBack, onNext }) => {
         <button className="w-full py-4 bg-purple-500 text-black font-bold rounded-lg hover:bg-purple-400 transition-all duration-300 flex items-center justify-center gap-2">
           <Eye />Preview
         </button>
-        
-        {/* Render Button with Progress */}
-        <button 
-          onClick={handleRender}
-          disabled={isRendering}
-          className={`w-full py-4 font-bold rounded-lg transition-all duration-300 flex items-center justify-center gap-2 ${
-            isRendering ? 'bg-yellow-500 cursor-not-allowed' : 'bg-purple-500 text-black hover:bg-purple-400'
-          }`}
-        >
-          {isRendering ? (
-            <>
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-black"></div>
-              Rendering... {renderProgress}%
-            </>
-          ) : renderProgress === 100 ? (
-            <>
-              <Zap />Render Complete!
-            </>
-          ) : (
-            <>
-              <Zap />Generate Final Video
-            </>
-          )}
+        <button className="w-full py-4 bg-purple-500 text-black font-bold rounded-lg hover:bg-purple-400 transition-all duration-300 flex items-center justify-center gap-2">
+          <Zap />Generate Final Video
         </button>
-        
-        {isRendering && (
-          <div className="w-full bg-gray-700 rounded-full h-3 overflow-hidden">
-            <div 
-              className="bg-purple-500 h-full transition-all duration-500 rounded-full"
-              style={{ width: `${renderProgress}%` }}
-            ></div>
-          </div>
-        )}
-        
         <button className="w-full py-4 bg-blue-500 text-white font-bold rounded-lg hover:bg-blue-400 transition-all duration-300 flex items-center justify-center gap-2">
           <Save />Save Project
         </button>
@@ -925,8 +744,7 @@ const FinalEditorPage = ({ onBack, onNext }) => {
       </button>
     </div>
   </div>
-  );
-};
+);
 
 const ViewerPage = ({ onBack, onNext }) => (
   <div className="w-full h-full bg-black flex flex-col">
@@ -971,7 +789,7 @@ const LegalPage = ({ title, onBack, onNext }) => (
       </div>
 
       <footer className="text-center mt-16 text-sm text-gray-500">
-        MandaStrong Studio 2025 • Author of Doxy The School Bully • MandaStrong1.Etsy.com
+        MandaStrong1 © 2025 ~ Author of Doxy the School Bully ~ Find Me On MandaStrong1.Etsy.com
       </footer>
     </div>
   </div>
@@ -1017,7 +835,7 @@ const CommunityPage = ({ onBack, onNext }) => (
       </div>
 
       <footer className="text-center mt-16 text-sm text-gray-500">
-        MandaStrong Studio 2025 • Author of Doxy The School Bully • MandaStrong1.Etsy.com
+        MandaStrong1 © 2025 ~ Author of Doxy the School Bully ~ Find Me On MandaStrong1.Etsy.com
       </footer>
     </div>
   </div>
@@ -1059,7 +877,7 @@ const ContactPage = ({ onBack, onNext }) => (
       </div>
 
       <footer className="text-center mt-16 text-sm text-gray-500">
-        MandaStrong Studio 2025 • Author of Doxy The School Bully • MandaStrong1.Etsy.com
+        MandaStrong1 © 2025 ~ Author of Doxy the School Bully ~ Find Me On MandaStrong1.Etsy.com
       </footer>
     </div>
   </div>
@@ -1091,14 +909,12 @@ const ThankYouPage = ({ onBack }) => (
         That's All Folks!
       </div>
 
-      <div className="flex justify-center">
-        <button onClick={onBack} className="px-12 py-4 bg-gray-700 text-white font-bold rounded-lg hover:bg-gray-600 transition-all duration-300 flex items-center gap-2">
-          <ChevronLeft />Back
-        </button>
-      </div>
+      <button onClick={onBack} className="px-12 py-4 bg-gray-700 text-white font-bold rounded-lg hover:bg-gray-600 transition-all duration-300 flex items-center gap-2 mx-auto">
+        <ChevronLeft />Back
+      </button>
 
       <footer className="mt-16 text-sm text-gray-500">
-        MandaStrong Studio 2025 • Author of Doxy The School Bully • MandaStrong1.Etsy.com
+        MandaStrong1 © 2025 ~ Author of Doxy the School Bully ~ Find Me On MandaStrong1.Etsy.com
       </footer>
     </div>
   </div>
