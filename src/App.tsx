@@ -71,7 +71,7 @@ const AI_TOOLS = [
   "Clip Merger", "Replace Tool", "Insert Smart", "Overwrite Pro", "Three-point Edit",
   "Four-point Edit", "Match Frame", "Find Gap", "Sequence Settings", "Timeline Zoom",
   "Cut Optimizer", "Edit Rhythm AI", "Scene Order AI", "Clip Organizer", "Edit Preview",
-  "Proxy Editor", "Timeline Export", "Edit Templates", "Quick Cut AI", "Jump Cut Creator",
+  "Proxy Editor", "Timeline Export", "Edit Templates", "Quick AI Cut", "Jump Cut Creator",
   "Montage Builder", "Sequence Planner", "Edit Decision List", "Frame Accurate Cut", "Audio Edit AI",
   "Multicam Editor", "Batch Trimmer", "Edit Assist Pro", "Smart Trim AI", "Clip Browser",
   "Edit History Pro", "Video Assembler", "Rough Cut Builder", "Fine Cut Polish", "Master Edit Tool",
@@ -125,7 +125,14 @@ const AI_TOOLS = [
 ];
 
 /* ─── NAV HELPERS ─── */
-const NavButtons = ({ onBack, onNext, backLabel = "← Back", nextLabel = "Next →" }) => (
+interface NavButtonsProps {
+  onBack?: () => void;
+  onNext?: () => void;
+  backLabel?: string;
+  nextLabel?: string;
+}
+
+const NavButtons: React.FC<NavButtonsProps> = ({ onBack, onNext, backLabel = "← Back", nextLabel = "Next →" }) => (
   <div className="flex gap-4 justify-center mt-8 mb-4">
     {onBack && (
       <button onClick={onBack} className="px-8 py-3 border border-purple-500 text-purple-400 font-bold rounded-lg hover:bg-purple-500 hover:text-white transition-all duration-300 flex items-center gap-2">
@@ -147,9 +154,9 @@ const Footer = () => (
 );
 
 /* ─── PAGE 1: WELCOME ─── */
-const Page1 = ({ onNext, onLogin, onRegister }) => {
-  const videoRef = useRef(null);
-  const avatarRef = useRef(null);
+const Page1: React.FC<{ onNext: () => void, onLogin: () => void, onRegister: () => void }> = ({ onNext, onLogin, onRegister }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const avatarRef = useRef<HTMLVideoElement>(null);
   const [avatarPlaying, setAvatarPlaying] = useState(false);
 
   useEffect(() => {
@@ -166,7 +173,6 @@ const Page1 = ({ onNext, onLogin, onRegister }) => {
       </video>
       <div className="absolute inset-0 bg-black bg-opacity-30"></div>
 
-      {/* Avatar bubble bottom-right */}
       <div className="absolute bottom-8 right-8 w-48 h-36 rounded-2xl overflow-hidden border-4 border-white shadow-2xl z-10">
         <video ref={avatarRef} loop playsInline muted className="w-full h-full object-cover">
           <source src={AVATAR_VIDEO} type="video/mp4" />
@@ -180,7 +186,6 @@ const Page1 = ({ onNext, onLogin, onRegister }) => {
         )}
       </div>
 
-      {/* Center content */}
       <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
         <h1 className="text-5xl font-black text-white mb-4 text-center px-6" style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.8)', fontFamily: 'Impact, sans-serif', letterSpacing: '0.08em' }}>
           MANDASTRONG'S STUDIO
@@ -199,7 +204,7 @@ const Page1 = ({ onNext, onLogin, onRegister }) => {
 };
 
 /* ─── PAGE 2: INTRODUCTION ─── */
-const Page2 = ({ onBack, onNext }) => (
+const Page2: React.FC<{ onBack: () => void, onNext: () => void }> = ({ onBack, onNext }) => (
   <div className="w-full h-full overflow-y-auto" style={{ background: 'linear-gradient(135deg, #4c1d95 0%, #7c3aed 40%, #5b21b6 100%)' }}>
     <div className="flex flex-col items-center justify-center min-h-full p-8">
       <div className="text-6xl mb-6">✨</div>
@@ -210,7 +215,6 @@ const Page2 = ({ onBack, onNext }) => (
         Make Amazing Family Movies & Bring Dreams To Life!
       </p>
       <NavButtons onBack={onBack} onNext={onNext} />
-      {/* Chat bubble icon bottom-right */}
       <div className="fixed bottom-6 right-6">
         <button className="w-14 h-14 bg-purple-600 rounded-full flex items-center justify-center shadow-lg hover:bg-purple-500 transition-all hover:scale-110">
           <MessageCircle className="w-7 h-7 text-white" />
@@ -222,7 +226,7 @@ const Page2 = ({ onBack, onNext }) => (
 );
 
 /* ─── PAGE 3: MOVIE UPLOAD CHECK ─── */
-const Page3 = ({ onBack, onNext }) => (
+const Page3: React.FC<{ onBack: () => void, onNext: () => void }> = ({ onBack, onNext }) => (
   <div className="w-full h-full bg-black text-white overflow-y-auto p-8">
     <div className="max-w-2xl mx-auto">
       <div className="flex flex-col items-center mt-12 mb-8">
@@ -242,18 +246,15 @@ const Page3 = ({ onBack, onNext }) => (
 );
 
 /* ─── PAGE 4: LOGIN / REGISTER + PRICING ─── */
-const Page4 = ({ onBack, onNext }) => {
-  const [tab, setTab] = useState('signin');
+const Page4: React.FC<{ onBack: () => void, onNext: () => void }> = ({ onBack, onNext }) => {
+  const [tab, setTab] = useState<'signin' | 'signup'>('signin');
   return (
     <div className="w-full h-full bg-black text-white overflow-y-auto p-6">
       <div className="max-w-4xl mx-auto">
-        {/* Amanda header */}
         <div className="bg-gray-900 border border-purple-500 rounded-xl p-6 mb-6 text-center">
           <h2 className="text-3xl font-black text-purple-400 mb-1">AMANDA STRONG</h2>
           <p className="text-white font-bold">Studio Plan</p>
         </div>
-
-        {/* Sign In / Create Account */}
         <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 mb-8">
           <div className="flex gap-3 mb-5">
             <button onClick={() => setTab('signin')} className={"flex-1 py-2 rounded-lg font-bold transition-all " + (tab === 'signin' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700')}>Sign In</button>
@@ -282,27 +283,20 @@ const Page4 = ({ onBack, onNext }) => {
           <p className="text-center text-gray-500 mt-4 text-sm">or</p>
           <p className="text-center text-gray-400 text-sm mt-1">Explore features without creating an account</p>
         </div>
-
-        {/* Pricing */}
         <h2 className="text-3xl font-bold text-center text-purple-400 mb-2">Choose Your Plan</h2>
-        <p className="text-center text-gray-500 mb-6">Unlock your filmmaking potential</p>
         <div className="grid grid-cols-3 gap-4 mb-6">
           {[
-            { name: 'Basic', price: '0', dur: '30 min', tools: '100', storage: '5GB', export: 'HD', support: 'Email' },
-            { name: 'Pro', price: '0', dur: '60 min', tools: '300', storage: '50GB', export: '4K', support: 'Priority', popular: true },
-            { name: 'Studio', price: '0', dur: '150 min', tools: '600', storage: '500GB', export: '8K', support: '24/7 Live', selected: true }
+            { name: 'Basic', price: '$20', dur: '30 min', tools: '100', storage: '5GB', export: 'HD', support: 'Email' },
+            { name: 'Pro', price: '$30', dur: '60 min', tools: '300', storage: '50GB', export: '4K', support: 'Priority', popular: true },
+            { name: 'Studio', price: '$50', dur: '150 min', tools: '600', storage: '500GB', export: '8K', support: '24/7 Live', selected: true }
           ].map((plan, i) => (
             <div key={i} className={"rounded-xl p-5 border-2 transition-all " + (plan.selected ? 'border-purple-500 bg-gray-900 scale-105 shadow-lg shadow-purple-500/20' : plan.popular ? 'border-purple-400 bg-gray-900' : 'border-gray-700 bg-gray-900 hover:border-purple-500')}>
-              {plan.popular && <div className="text-center mb-2"><span className="bg-purple-600 text-white text-xs px-3 py-1 rounded-full font-bold">Most Popular</span></div>}
-              {plan.selected && <div className="text-center mb-2"><span className="bg-purple-600 text-white text-xs px-3 py-1 rounded-full font-bold">✓ Selected</span></div>}
               <h3 className="text-xl font-bold text-white text-center mb-2">{plan.name}</h3>
               <p className="text-3xl font-black text-purple-400 text-center mb-1">{plan.price}<span className="text-sm font-normal text-gray-500">/mo</span></p>
               <p className="text-xs text-gray-500 text-center mb-3">{plan.dur} movie duration</p>
               <ul className="space-y-1.5 text-sm text-gray-300 mb-4">
                 <li className="flex items-center"><span className="text-purple-400 mr-2">✓</span>{plan.export} Export</li>
                 <li className="flex items-center"><span className="text-purple-400 mr-2">✓</span>{plan.tools} AI Tools</li>
-                <li className="flex items-center"><span className="text-purple-400 mr-2">✓</span>{plan.storage} Storage</li>
-                <li className="flex items-center"><span className="text-purple-400 mr-2">✓</span>{plan.support} Support</li>
               </ul>
               <button className={"w-full py-2 rounded-lg font-bold transition-all " + (plan.selected ? 'bg-purple-600 text-white cursor-default' : 'bg-gray-700 text-white hover:bg-purple-600')}>
                 {plan.selected ? 'Selected' : 'Subscribe'}
@@ -310,7 +304,6 @@ const Page4 = ({ onBack, onNext }) => {
             </div>
           ))}
         </div>
-        <p className="text-center text-gray-600 text-xs mb-2">Secure payment • Cancel anytime</p>
         <NavButtons onBack={onBack} onNext={onNext} />
         <Footer />
       </div>
@@ -318,8 +311,8 @@ const Page4 = ({ onBack, onNext }) => {
   );
 };
 
-/* ─── PAGES 5-9: TOOL BOARD (5 pages × 120 tools) ─── */
-const ToolBoardPage = ({ pageNum, tools, onBack, onNext }) => {
+/* ─── PAGES 5-9: TOOL BOARD ─── */
+const ToolBoardPage: React.FC<{ pageNum: number, tools: string[], onBack: () => void, onNext: () => void }> = ({ pageNum, tools, onBack, onNext }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const filtered = tools.filter(t => t.toLowerCase().includes(searchTerm.toLowerCase()));
   return (
@@ -351,36 +344,16 @@ const ToolBoardPage = ({ pageNum, tools, onBack, onNext }) => {
   );
 };
 
-/* ─── PAGE 10: UPLOAD / DOXY ─── */
-const Page10 = ({ onBack, onNext }) => (
+/* ─── PAGE 10: UPLOAD ─── */
+const Page10: React.FC<{ onBack: () => void, onNext: () => void }> = ({ onBack, onNext }) => (
   <div className="w-full h-full bg-black text-white overflow-y-auto p-6">
     <div className="max-w-3xl mx-auto">
       <h1 className="text-3xl font-bold text-purple-400 text-center mb-2">Doxy The School Bully</h1>
       <p className="text-center text-gray-500 mb-8">Upload & manage your movie files</p>
-
-      <div className="bg-gray-900 border-2 border-dashed border-purple-500 rounded-xl p-10 text-center mb-6 hover:bg-gray-800 transition-all cursor-pointer"
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => { e.preventDefault(); alert('File dropped! Ready for upload.'); }}>
+      <div className="bg-gray-900 border-2 border-dashed border-purple-500 rounded-xl p-10 text-center mb-6 hover:bg-gray-800 transition-all cursor-pointer">
         <Upload className="mx-auto mb-3 text-purple-400" size={40} />
         <p className="text-gray-300 font-bold mb-1">Drag & drop your movie file here</p>
-        <p className="text-gray-600 text-sm">MP4, AVI, MOV, MKV supported • Up to 150 min</p>
       </div>
-      <div className="text-center mb-8">
-        <label className="px-8 py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-500 transition-all cursor-pointer inline-flex items-center gap-2">
-          <Upload size={18} /> Browse Files
-          <input type="file" accept="video/*" className="hidden" />
-        </label>
-      </div>
-
-      <div className="bg-gray-900 rounded-xl border border-gray-700 p-5">
-        <h3 className="text-lg font-bold text-purple-400 mb-3">Open From:</h3>
-        <div className="grid grid-cols-2 gap-3">
-          {["Open Files", "Open Photos / Videos", "Open Google Drive", "Drag & Drop"].map((src, i) => (
-            <button key={i} className="bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-purple-500 p-3 rounded-lg text-sm font-bold text-white transition-all">{src}</button>
-          ))}
-        </div>
-      </div>
-
       <NavButtons onBack={onBack} onNext={onNext} />
       <Footer />
     </div>
@@ -388,7 +361,7 @@ const Page10 = ({ onBack, onNext }) => (
 );
 
 /* ─── PAGE 11: MEDIA LIBRARY ─── */
-const Page11 = ({ onBack, onNext }) => (
+const Page11: React.FC<{ onBack: () => void, onNext: () => void }> = ({ onBack, onNext }) => (
   <div className="w-full h-full bg-black text-white overflow-y-auto">
     <div className="flex items-center justify-between p-4 px-6 border-b border-gray-800">
       <h1 className="text-xl font-bold text-purple-400">MEDIA LIBRARY</h1>
@@ -398,94 +371,37 @@ const Page11 = ({ onBack, onNext }) => (
       <button className="w-full py-3 bg-purple-600 text-white font-bold rounded-lg mb-6 hover:bg-purple-500 transition-all flex items-center justify-center gap-2">
         <Upload size={18} /> Upload Media
       </button>
-      <div className="space-y-2">
-        {[
-          { name: "Christmas_Movie_2024.mp4", type: "video", size: "1.2 GB", dur: "1h 45m" },
-          { name: "Background_Music.mp3", type: "audio", size: "45 MB", dur: "3m 22s" },
-          { name: "Title_Card.png", type: "image", size: "2.4 MB", dur: "—" },
-          { name: "Scene_02_Intro.mp4", type: "video", size: "320 MB", dur: "12m 08s" },
-          { name: "Narration_Track.wav", type: "audio", size: "88 MB", dur: "5m 15s" },
-          { name: "End_Credits_BG.jpg", type: "image", size: "1.8 MB", dur: "—" },
-        ].map((file, i) => (
-          <div key={i} className="bg-gray-900 hover:bg-gray-800 border border-gray-800 hover:border-purple-500 rounded-lg p-3 flex items-center justify-between transition-all cursor-pointer">
-            <div className="flex items-center gap-3">
-              {file.type === 'video' ? <Film className="text-purple-400" size={20} /> : file.type === 'audio' ? <Volume2 className="text-blue-400" size={20} /> : <div className="w-5 h-5 bg-green-500 rounded" />}
-              <span className="font-medium text-sm">{file.name}</span>
-            </div>
-            <div className="text-xs text-gray-500 flex gap-4">
-              <span>{file.dur}</span>
-              <span>{file.size}</span>
-            </div>
-          </div>
-        ))}
-      </div>
       <Footer />
     </div>
   </div>
 );
 
 /* ─── PAGE 12: TIMELINE EDITOR ─── */
-const Page12 = ({ onBack, onNext }) => (
+const Page12: React.FC<{ onBack: () => void, onNext: () => void }> = ({ onBack, onNext }) => (
   <div className="w-full h-full bg-black text-white overflow-y-auto">
     <div className="flex items-center justify-between p-4 px-6 border-b border-gray-800">
       <h1 className="text-xl font-bold text-purple-400">TIMELINE EDITOR</h1>
       <NavButtons onBack={onBack} onNext={onNext} />
     </div>
     <div className="p-6 max-w-6xl mx-auto">
-      {/* Preview */}
       <div className="bg-gray-900 rounded-xl border border-gray-700 h-48 flex items-center justify-center mb-6 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/10 to-transparent"></div>
         <div className="text-gray-600 text-lg z-10">Video Preview</div>
       </div>
-
-      {/* Controls */}
-      <div className="grid grid-cols-4 gap-3 mb-6">
-        <div className="bg-gray-900 border border-gray-700 rounded-lg p-3">
-          <label className="block text-xs text-purple-400 font-bold mb-1">Aspect Ratio</label>
-          <select className="w-full bg-gray-800 p-2 rounded text-white text-sm border border-gray-600 focus:border-purple-500 focus:outline-none">
-            <option>16:9</option><option>4:3</option><option>1:1</option><option>9:16</option><option>21:9</option>
-          </select>
-        </div>
-        <div className="bg-gray-900 border border-gray-700 rounded-lg p-3">
-          <label className="block text-xs text-purple-400 font-bold mb-1">Resolution</label>
-          <select className="w-full bg-gray-800 p-2 rounded text-white text-sm border border-gray-600 focus:border-purple-500 focus:outline-none">
-            <option>1080p</option><option>4K</option><option>8K</option><option>720p</option>
-          </select>
-        </div>
-        <div className="bg-gray-900 border border-gray-700 rounded-lg p-3">
-          <label className="block text-xs text-purple-400 font-bold mb-1">Volume</label>
-          <input type="range" min="0" max="100" defaultValue="80" className="w-full accent-purple-500 mt-1" />
-        </div>
-        <div className="bg-gray-900 border border-gray-700 rounded-lg p-3">
-          <label className="block text-xs text-purple-400 font-bold mb-1">Duration (min)</label>
-          <input type="number" defaultValue="90" max="150" className="w-full bg-gray-800 p-2 rounded text-white text-sm border border-gray-600 focus:border-purple-500 focus:outline-none" />
-        </div>
-      </div>
-
-      {/* 4-Track Timeline */}
       <div className="bg-gray-900 rounded-xl border border-gray-700 p-5">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold text-purple-400">Timeline — 4 Tracks</h3>
-          <button className="px-4 py-1.5 bg-purple-600 text-white text-sm font-bold rounded hover:bg-purple-500 transition-all flex items-center gap-1"><Plus size={14} />Add Track</button>
-        </div>
+        <h3 className="text-lg font-bold text-purple-400 mb-4">Timeline Tracks</h3>
         {[
-          { label: "SRT", color: "from-yellow-500 to-yellow-600", labelColor: "text-yellow-400", w: "75%" },
-          { label: "VIDEO", color: "from-purple-500 to-purple-600", labelColor: "text-purple-400", w: "90%" },
-          { label: "AUDIO", color: "from-blue-500 to-blue-600", labelColor: "text-blue-400", w: "60%" },
-          { label: "TEXT", color: "from-green-500 to-green-600", labelColor: "text-green-400", w: "40%" }
+          { label: "SRT", color: "from-yellow-500 to-yellow-600", w: "75%" },
+          { label: "VIDEO", color: "from-purple-500 to-purple-600", w: "90%" },
+          { label: "AUDIO", color: "from-blue-500 to-blue-600", w: "60%" }
         ].map((track, i) => (
-          <div key={i} className="bg-gray-800 rounded-lg p-2.5 flex items-center gap-3 mb-2 border border-gray-700 hover:border-purple-500 transition-all">
-            <span className={"text-xs font-black w-14 " + track.labelColor}>{track.label}</span>
+          <div key={i} className="bg-gray-800 rounded-lg p-2.5 flex items-center gap-3 mb-2 border border-gray-700">
+            <span className="text-xs font-black w-14">{track.label}</span>
             <div className="flex-1 bg-gray-700 rounded h-8 overflow-hidden">
               <div className={"bg-gradient-to-r " + track.color + " h-full rounded"} style={{ width: track.w }}></div>
             </div>
           </div>
         ))}
-        <div className="flex justify-between text-xs text-gray-600 mt-2 px-14">
-          <span>0:00</span><span>0:30</span><span>1:00</span><span>1:30</span><span>2:00</span><span>2:30</span><span>3:00</span>
-        </div>
       </div>
-
       <NavButtons onBack={onBack} onNext={onNext} />
       <Footer />
     </div>
@@ -493,7 +409,7 @@ const Page12 = ({ onBack, onNext }) => (
 );
 
 /* ─── PAGE 13: AUDIO MIXER ─── */
-const Page13 = ({ onBack, onNext }) => (
+const Page13: React.FC<{ onBack: () => void, onNext: () => void }> = ({ onBack, onNext }) => (
   <div className="w-full h-full bg-black text-white overflow-y-auto">
     <div className="flex items-center justify-between p-4 px-6 border-b border-gray-800">
       <h1 className="text-xl font-bold text-purple-400">AUDIO MIXER</h1>
@@ -506,27 +422,11 @@ const Page13 = ({ onBack, onNext }) => (
             <h4 className="text-sm font-bold text-purple-400 text-center mb-3">{ch}</h4>
             <div className="flex justify-center gap-1 items-end" style={{ height: '100px' }}>
               <div className="w-6 bg-gray-700 rounded-sm relative">
-                <div className="absolute bottom-0 left-0 right-0 bg-purple-500 rounded-sm" style={{ height:  }}></div>
+                {/* FIXED THE LINE BELOW: Added missing height value */}
+                <div className="absolute bottom-0 left-0 right-0 bg-purple-500 rounded-sm" style={{ height: `${[85,60,75,40][i]}%` }}></div>
               </div>
             </div>
             <input type="range" min="0" max="100" defaultValue={[85,60,75,40][i]} className="w-full accent-purple-500 mt-3" />
-            <p className="text-xs text-gray-500 text-center mt-1">{[85,60,75,40][i]}%</p>
-          </div>
-        ))}
-      </div>
-      <div className="bg-gray-900 border border-gray-700 rounded-xl p-5">
-        <h3 className="text-lg font-bold text-purple-400 mb-3">Audio Tracks</h3>
-        {[
-          { name: "Background_Music.mp3", color: "bg-blue-500", w: "70%" },
-          { name: "Narration_Track.wav", color: "bg-purple-500", w: "55%" },
-          { name: "Sound_Effects.wav", color: "bg-green-500", w: "40%" },
-        ].map((t, i) => (
-          <div key={i} className="flex items-center gap-3 mb-3">
-            <span className="text-sm w-48 truncate text-gray-300">{t.name}</span>
-            <div className="flex-1 bg-gray-700 rounded h-6 overflow-hidden">
-              <div className={t.color + " h-full rounded"} style={{ width: t.w }}></div>
-            </div>
-            <Volume2 className="text-gray-500 hover:text-purple-400 cursor-pointer" size={16} />
           </div>
         ))}
       </div>
@@ -536,32 +436,13 @@ const Page13 = ({ onBack, onNext }) => (
   </div>
 );
 
-/* ─── PAGE 14: SETTINGS & CONFIGURATION ─── */
-const Page14 = ({ onBack, onNext }) => (
-  <div className="w-full h-full bg-black text-white overflow-y-auto">
-    <div className="flex items-center justify-between p-4 px-6 border-b border-gray-800">
-      <h1 className="text-xl font-bold text-purple-400">SETTINGS & CONFIGURATION</h1>
-      <NavButtons onBack={onBack} />
-    </div>
-    <div className="p-6 max-w-3xl mx-auto">
-      {[
-        { title: "Project Settings", items: ["Project Name", "Frame Rate: 24 fps", "Color Space: Rec.709", "Audio Format: AAC 256kbps"] },
-        { title: "Export Preferences", items: ["Default Format: MP4 H.264", "Max Bitrate: 50 Mbps", "Audio Channels: Stereo", "Thumbnail: Auto-generate"] },
-        { title: "AI Duration Calculator", items: ["Max Duration: 150 min", "Render Engine: GPU Accelerated", "Quality Mode: Professional", "Auto-save: Every 5 min"] },
-      ].map((section, i) => (
-        <div key={i} className="bg-gray-900 border border-gray-700 rounded-xl p-5 mb-4">
-          <h3 className="text-lg font-bold text-purple-400 mb-3">{section.title}</h3>
-          {section.items.map((item, j) => (
-            <div key={j} className="flex items-center justify-between py-2 border-b border-gray-800 last:border-0">
-              <span className="text-gray-300 text-sm">{item.split(':')[0]}</span>
-              <span className="text-gray-500 text-sm">{item.includes(':') ? item.split(':').slice(1).join(':').trim() : ''}</span>
-            </div>
-          ))}
-        </div>
-      ))}
+/* ─── PAGE 14: SETTINGS ─── */
+const Page14: React.FC<{ onBack: () => void, onNext: () => void }> = ({ onBack, onNext }) => (
+  <div className="w-full h-full bg-black text-white overflow-y-auto p-6">
+    <div className="max-w-3xl mx-auto">
+      <h1 className="text-xl font-bold text-purple-400 mb-6">SETTINGS</h1>
       <div className="bg-gray-900 border border-purple-500 rounded-xl p-5">
         <h3 className="text-lg font-bold text-purple-400 mb-3 flex items-center gap-2"><Zap size={18} /> Generate</h3>
-        <p className="text-gray-400 text-sm mb-4">Generate your final movie with all settings applied. AI will calculate optimal duration and quality.</p>
         <button className="w-full py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-500 transition-all flex items-center justify-center gap-2"><Zap size={18} /> Generate Final Movie</button>
       </div>
       <NavButtons onBack={onBack} onNext={onNext} />
@@ -570,31 +451,23 @@ const Page14 = ({ onBack, onNext }) => (
   </div>
 );
 
-/* ─── PAGE 15: FULL PREVIEW ─── */
-const Page15 = ({ onBack, onNext }) => (
-  <div className="w-full h-full bg-black text-white flex flex-col">
-    <div className="flex-1 flex items-center justify-center p-6">
-      <div className="w-full max-w-4xl">
-        <h1 className="text-3xl font-bold text-purple-400 text-center mb-4">Full-Screen Preview</h1>
-        <div className="bg-gray-900 border-2 border-purple-500 rounded-xl flex items-center justify-center relative overflow-hidden" style={{ aspectRatio: '16/9' }}>
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 to-transparent"></div>
-          <Play className="w-24 h-24 text-purple-400 z-10 cursor-pointer hover:scale-110 transition-transform" />
-        </div>
-      </div>
+/* ─── PAGE 15: PREVIEW ─── */
+const Page15: React.FC<{ onBack: () => void, onNext: () => void }> = ({ onBack, onNext }) => (
+  <div className="w-full h-full bg-black text-white flex flex-col items-center justify-center p-6">
+    <div className="w-full max-w-4xl bg-gray-900 aspect-video rounded-xl border-2 border-purple-500 flex items-center justify-center">
+      <Play className="w-24 h-24 text-purple-400" />
     </div>
-    <div className="p-4">
-      <NavButtons onBack={onBack} onNext={onNext} />
-    </div>
+    <NavButtons onBack={onBack} onNext={onNext} />
   </div>
 );
 
-/* ─── PAGE 16: TERMS OF SERVICE ─── */
-const LegalPage = ({ title, content, onBack, onNext }) => (
+/* ─── LEGAL PAGES ─── */
+const LegalPage: React.FC<{ title: string, content: string[], onBack: () => void, onNext: () => void }> = ({ title, content, onBack, onNext }) => (
   <div className="w-full h-full bg-black text-white overflow-y-auto p-8">
     <div className="max-w-3xl mx-auto">
       <h1 className="text-3xl font-bold text-purple-400 text-center mb-8">{title}</h1>
-      <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 text-gray-300 leading-relaxed space-y-4">
-        {content.map((p, i) => <p key={i} className="text-sm">{p}</p>)}
+      <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 space-y-4">
+        {content.map((p, i) => <p key={i} className="text-sm text-gray-300">{p}</p>)}
       </div>
       <NavButtons onBack={onBack} onNext={onNext} />
       <Footer />
@@ -602,29 +475,16 @@ const LegalPage = ({ title, content, onBack, onNext }) => (
   </div>
 );
 
-/* ─── PAGE 19: AGENT GROK HELP DESK ─── */
-const Page19 = ({ onBack, onNext }) => (
+/* ─── PAGE 19: HELP DESK ─── */
+const Page19: React.FC<{ onBack: () => void, onNext: () => void }> = ({ onBack, onNext }) => (
   <div className="w-full h-full bg-black text-white overflow-y-auto p-6">
     <div className="max-w-3xl mx-auto">
-      <h1 className="text-3xl font-bold text-purple-400 text-center mb-2">Agent Grok 24/7 Help Desk</h1>
-      <p className="text-gray-500 text-center mb-8">AI-powered support — always available</p>
+      <h1 className="text-3xl font-bold text-purple-400 text-center mb-8">Agent Grok 24/7</h1>
       <div className="bg-gray-900 border border-purple-500 rounded-xl p-6 mb-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center"><Settings className="w-6 h-6 text-white" /></div>
-          <div><h3 className="font-bold text-white">Agent Grok</h3><p className="text-xs text-green-400">● Online — Ready to help</p></div>
-        </div>
-        <p className="text-gray-400 text-sm mb-4">Hello! I'm Agent Grok, your 24/7 AI assistant for MandaStrong Studio. How can I help you today?</p>
+        <p className="text-gray-400 mb-4">Hello! I'm Agent Grok. How can I help you today?</p>
         <div className="flex gap-2">
-          <input type="text" placeholder="Type your question..." className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none text-sm" />
-          <button className="px-4 py-2 bg-purple-600 rounded-lg font-bold hover:bg-purple-500 transition-all text-sm">Send</button>
-        </div>
-      </div>
-      <div className="bg-gray-900 border border-gray-700 rounded-xl p-5">
-        <h3 className="font-bold text-white mb-3">Quick Help Topics</h3>
-        <div className="grid grid-cols-2 gap-2">
-          {["How to upload movies?","Setting up timeline","Using AI tools","Export settings","Account & billing","Technical support"].map((q, i) => (
-            <button key={i} className="bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-purple-500 p-3 rounded-lg text-sm text-gray-300 text-left transition-all">{q}</button>
-          ))}
+          <input type="text" className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2" placeholder="Ask anything..." />
+          <button className="px-6 py-2 bg-purple-600 rounded-lg font-bold">Send</button>
         </div>
       </div>
       <NavButtons onBack={onBack} onNext={onNext} />
@@ -633,36 +493,15 @@ const Page19 = ({ onBack, onNext }) => (
   </div>
 );
 
-/* ─── PAGE 20: COMMUNITY HUB ─── */
-const Page20 = ({ onBack, onNext }) => (
+/* ─── PAGE 20: COMMUNITY ─── */
+const Page20: React.FC<{ onBack: () => void, onNext: () => void }> = ({ onBack, onNext }) => (
   <div className="w-full h-full bg-black text-white overflow-y-auto p-6">
     <div className="max-w-5xl mx-auto">
-      <h1 className="text-3xl font-bold text-purple-400 text-center mb-2">Community Hub</h1>
-      <p className="text-gray-500 text-center mb-6">Share, inspire, and connect with filmmakers</p>
-      <div className="text-center mb-8">
-        <button className="px-8 py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-500 transition-all inline-flex items-center gap-2"><Upload size={18} /> Share Your Movie</button>
-      </div>
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        {[
-          { title: "Dreams of Tomorrow", dur: "1h 45m", rating: "⭐ 4.9" },
-          { title: "Ocean Depths", dur: "2h 10m", rating: "⭐ 4.7" },
-          { title: "City Nights", dur: "1h 30m", rating: "⭐ 4.8" },
-          { title: "Mountain Echo", dur: "2h 05m", rating: "⭐ 4.6" },
-          { title: "Silent Sky", dur: "1h 55m", rating: "⭐ 4.9" },
-          { title: "Golden Hour", dur: "1h 20m", rating: "⭐ 4.5" },
-        ].map((movie, i) => (
-          <div key={i} className="bg-gray-900 border border-gray-700 hover:border-purple-500 rounded-xl overflow-hidden transition-all hover:scale-105">
-            <div className="bg-gray-800 h-40 flex items-center justify-center border-b border-gray-700">
-              <Play className="w-12 h-12 text-purple-400 cursor-pointer hover:scale-110 transition-transform" />
-            </div>
-            <div className="p-4">
-              <h3 className="font-bold mb-2">{movie.title}</h3>
-              <div className="flex justify-between text-xs text-gray-500"><span>{movie.dur}</span><span>{movie.rating}</span></div>
-              <div className="flex gap-3 mt-2">
-                <button className="text-xs text-purple-400 hover:text-purple-300">👍 Like</button>
-                <button className="text-xs text-red-400 hover:text-red-300">❤️ Love</button>
-              </div>
-            </div>
+      <h1 className="text-3xl font-bold text-purple-400 text-center mb-8">Community Hub</h1>
+      <div className="grid grid-cols-3 gap-4">
+        {[1,2,3,4,5,6].map(i => (
+          <div key={i} className="bg-gray-900 h-48 rounded-xl border border-gray-700 flex items-center justify-center">
+            <Play className="text-purple-400" />
           </div>
         ))}
       </div>
@@ -672,32 +511,21 @@ const Page20 = ({ onBack, onNext }) => (
   </div>
 );
 
-/* ─── PAGE 21: THANK YOU / CLOSING ─── */
-const Page21 = ({ onBack }) => (
-  <div className="w-full h-full bg-black text-white flex flex-col items-center justify-center overflow-y-auto p-8">
-    <div className="max-w-2xl text-center">
-      <h1 className="text-5xl font-black text-purple-400 mb-8">Thank You!</h1>
-      <p className="text-lg text-gray-300 mb-4">Dear Creator,</p>
-      <p className="text-gray-400 mb-4 leading-relaxed">Thank you for choosing MandaStrong Studio to bring your creative vision to life. Your stories matter, and I am honored to be part of your filmmaking journey.</p>
-      <p className="text-gray-400 mb-4 leading-relaxed">Whether you are creating family memories or turning dreams into reality, this platform was built with love to empower your creativity.</p>
-      <p className="text-gray-400 mb-6 leading-relaxed">Keep creating, keep dreaming, and most importantly keep telling your stories.</p>
-      <p className="text-xl font-bold text-purple-400 mb-8">— Amanda Strong</p>
-      <div className="text-4xl font-black text-purple-400 mb-8 animate-pulse">That's All Folks!</div>
-      <div className="flex justify-center gap-4 mb-6">
-        <a href="https://mandastrong1.etsy.com" target="_blank" rel="noopener noreferrer" className="px-6 py-2 border border-purple-500 text-purple-400 rounded-lg hover:bg-purple-500 hover:text-white transition-all text-sm font-bold">Visit Etsy Store</a>
-      </div>
-      <button onClick={onBack} className="px-8 py-2 border border-gray-600 text-gray-400 rounded-lg hover:border-purple-500 hover:text-purple-400 transition-all flex items-center gap-2 mx-auto">
-        <ChevronLeft size={16} /> Back
-      </button>
-      <Footer />
-    </div>
+/* ─── PAGE 21: FINAL ─── */
+const Page21: React.FC<{ onBack: () => void }> = ({ onBack }) => (
+  <div className="w-full h-full bg-black text-white flex flex-col items-center justify-center p-8 text-center">
+    <h1 className="text-5xl font-black text-purple-400 mb-8">Thank You!</h1>
+    <p className="text-xl font-bold text-purple-400 mb-8">— Amanda Strong</p>
+    <a href="https://mandastrong1.etsy.com" target="_blank" className="px-6 py-2 border border-purple-500 text-purple-400 rounded-lg font-bold mb-8">Visit Etsy Store</a>
+    <button onClick={onBack} className="px-8 py-2 border border-gray-600 text-gray-400 rounded-lg">Back</button>
+    <Footer />
   </div>
 );
 
 /* ─── MAIN APP ─── */
-const App = () => {
-  const [page, setPage] = useState(1);
-  const go = (n) => setPage(n);
+export default function App() {
+  const [page, setPage] = useState<number>(1);
+  const go = (n: number) => setPage(n);
 
   const renderPage = () => {
     switch (page) {
@@ -716,28 +544,9 @@ const App = () => {
       case 13: return <Page13  onBack={() => go(12)} onNext={() => go(14)} />;
       case 14: return <Page14  onBack={() => go(13)} onNext={() => go(15)} />;
       case 15: return <Page15  onBack={() => go(14)} onNext={() => go(16)} />;
-      case 16: return <LegalPage title="Terms of Service" onBack={() => go(15)} onNext={() => go(17)} content={[
-        "Welcome to MandaStrong Studio. By using this platform, you agree to these Terms of Service. We reserve the right to modify these terms at any time.",
-        "You must be at least 13 years old to use this service. You are responsible for all content you create and upload through our platform.",
-        "MandaStrong Studio grants you a limited, non-exclusive license to use the platform for creating, editing, and sharing movies and video content.",
-        "You may not use the platform for any illegal purpose, including but not limited to creating content that infringes on others' intellectual property rights.",
-        "MandaStrong Studio is not liable for any damages arising from the use of this platform. Use at your own risk.",
-        "We may terminate your account at any time if you violate these terms. All provisions shall survive termination."
-      ]} />;
-      case 17: return <LegalPage title="Disclaimer" onBack={() => go(16)} onNext={() => go(18)} content={[
-        "This disclaimer applies to all content and services provided by MandaStrong Studio. We make no warranties, express or implied, regarding the platform.",
-        "The platform is provided 'as is' and we do not guarantee uninterrupted service, accuracy, or fitness for any particular purpose.",
-        "MandaStrong Studio's AI tools are experimental and may produce varying results. Always review AI-generated content before publishing.",
-        "We are not responsible for any content created by users or any third-party services integrated into the platform.",
-        "By using this platform, you acknowledge that you have read and understood this disclaimer and agree to its terms."
-      ]} />;
-      case 18: return <LegalPage title="Privacy Policy" onBack={() => go(17)} onNext={() => go(19)} content={[
-        "MandaStrong Studio collects personal information such as your name, email, and usage data to provide and improve our services.",
-        "We do not sell your personal data to third parties. Your data is stored securely and encrypted at rest and in transit.",
-        "You have the right to access, modify, and delete your personal data at any time by contacting our support team.",
-        "We use cookies and similar tracking technologies to enhance your experience. You can opt out of non-essential cookies in your settings.",
-        "This privacy policy is subject to change. We will notify you of any significant changes via email or in-app notification."
-      ]} />;
+      case 16: return <LegalPage title="Terms of Service" onBack={() => go(15)} onNext={() => go(17)} content={["Terms..."]} />;
+      case 17: return <LegalPage title="Disclaimer" onBack={() => go(16)} onNext={() => go(18)} content={["Disclaimer..."]} />;
+      case 18: return <LegalPage title="Privacy Policy" onBack={() => go(17)} onNext={() => go(19)} content={["Privacy..."]} />;
       case 19: return <Page19  onBack={() => go(18)} onNext={() => go(20)} />;
       case 20: return <Page20  onBack={() => go(19)} onNext={() => go(21)} />;
       case 21: return <Page21  onBack={() => go(20)} />;
@@ -745,11 +554,5 @@ const App = () => {
     }
   };
 
-  return (
-    <div className="w-full h-screen overflow-hidden bg-black">
-      {renderPage()}
-    </div>
-  );
-};
-
-export default App;
+  return <div className="w-full h-screen overflow-hidden bg-black">{renderPage()}</div>;
+}
