@@ -506,7 +506,7 @@ const Page13 = ({ onBack, onNext }) => (
             <h4 className="text-sm font-bold text-purple-400 text-center mb-3">{ch}</h4>
             <div className="flex justify-center gap-1 items-end" style={{ height: '100px' }}>
               <div className="w-6 bg-gray-700 rounded-sm relative">
-                <div className="absolute bottom-0 left-0 right-0 bg-purple-500 rounded-sm" style={{ height: '50%' }}></div>
+                <div className="absolute bottom-0 left-0 right-0 bg-purple-500 rounded-sm" style={{ height:  }}></div>
               </div>
             </div>
             <input type="range" min="0" max="100" defaultValue={[85,60,75,40][i]} className="w-full accent-purple-500 mt-3" />
