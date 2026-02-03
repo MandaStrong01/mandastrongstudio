@@ -1,52 +1,18 @@
 import React, { useState } from 'react';
 
-// Theme Constants
-const COLORS = {
-  black: '#000000',
-  white: '#FFFFFF',
-  purple: '#4B0082', // Deep Purple
-};
-
 export default function App() {
   const [page, setPage] = useState(1);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // Centered Navigation Component
-  const Navigation = () => (
-    <div style={{ 
-      display: 'flex', 
-      justifyContent: 'center', 
-      gap: '20px', 
-      padding: '20px', 
-      marginTop: 'auto' 
-    }}>
-      <button 
-        onClick={() => setPage(Math.max(1, page - 1))}
-        style={{ backgroundColor: COLORS.purple, color: COLORS.white, padding: '10px 20px', border: 'none', borderRadius: '5px' }}
-      >
-        Back
-      </button>
-      <button 
-        onClick={() => setPage(Math.min(21, page + 1))}
-        style={{ backgroundColor: COLORS.purple, color: COLORS.white, padding: '10px 20px', border: 'none', borderRadius: '5px' }}
-      >
-        Next
-      </button>
-    </div>
-  );
-
-  // Authentication Page (Login)
+  // AUTH PAGE
   if (!isLoggedIn) {
     return (
-      <div style={{ backgroundColor: COLORS.black, color: COLORS.white, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <h1 style={{ color: COLORS.purple }}>Login</h1>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '300px' }}>
-          <input type="email" placeholder="Email" style={{ padding: '10px' }} />
+      <div style={{ backgroundColor: '#000000', color: '#FFFFFF', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <h1 style={{ color: '#4B0082' }}>Login</h1> 
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <input type="text" placeholder="Username" style={{ padding: '10px' }} />
           <input type="password" placeholder="Password" style={{ padding: '10px' }} />
-          <button 
-            onClick={() => setIsLoggedIn(true)}
-            style={{ backgroundColor: COLORS.purple, color: COLORS.white, padding: '10px', border: 'none' }}
-          >
+          <button onClick={() => setIsLoggedIn(true)} style={{ backgroundColor: '#4B0082', color: '#FFFFFF', border: 'none', padding: '10px 20px', cursor: 'pointer' }}>
             Login
           </button>
         </div>
@@ -55,51 +21,67 @@ export default function App() {
   }
 
   return (
-    <div style={{ backgroundColor: COLORS.black, color: COLORS.white, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Page Content */}
-      <div style={{ flex: 1, padding: '40px', textAlign: 'center' }}>
+    <div style={{ backgroundColor: '#000000', color: '#FFFFFF', minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+      
+      {/* MAIN CONTENT AREA */}
+      <div style={{ flex: 1, padding: '20px' }}>
         
+        {/* PAGE 1: PLANS */}
         {page === 1 && (
-          <div>
-            <h1 style={{ color: COLORS.purple }}>Choose Your Plan</h1>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '20px' }}>
-              <div style={{ border: `1px solid ${COLORS.purple}`, padding: '20px' }}>Basic - $20/month</div>
-              <div style={{ border: `1px solid ${COLORS.purple}`, padding: '20px' }}>Pro - $30/month</div>
-              <div style={{ border: `2px solid ${COLORS.white}`, padding: '20px', backgroundColor: COLORS.purple }}>Studio - $50/month</div>
+          <div style={{ textAlign: 'center' }}>
+            <h2 style={{ color: '#4B0082' }}>Choose Your Plan</h2>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '20px' }}>
+              <div style={{ border: '1px solid #4B0082', padding: '20px' }}>Basic $20/month</div>
+              <div style={{ border: '1px solid #4B0082', padding: '20px' }}>Pro $30/month</div>
+              <div style={{ border: '1px solid #FFFFFF', backgroundColor: '#4B0082', padding: '20px' }}>Studio $50/month</div>
             </div>
           </div>
         )}
 
+        {/* PAGE 5: CREATIVE STUDIO */}
         {page === 5 && (
-          <div>
-            <h1 style={{ color: COLORS.purple }}>Creative Studio</h1>
-            <p>Your Plan: <strong>Studio</strong></p>
+          <div style={{ textAlign: 'center' }}>
+            <h2 style={{ color: '#4B0082' }}>Creative Studio</h2>
+            <p>Your Plan: <span style={{ color: '#4B0082', fontWeight: 'bold' }}>Studio</span></p>
           </div>
         )}
 
+        {/* PAGE 15: EDITOR'S CHOICE */}
         {page === 15 && (
-          <div>
-            <h1 style={{ color: COLORS.purple }}>Editor's Choice</h1>
-            {/* "no movies yet" word removed */}
+          <div style={{ textAlign: 'center' }}>
+            <h2 style={{ color: '#4B0082' }}>Editor's Choice</h2>
+            {/* "no movies yet" text removed */}
           </div>
         )}
 
+        {/* PAGE 21: FINAL PAGE */}
         {page === 21 && (
-          <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-            <video width="100%" controls autoPlay style={{ marginBottom: '20px' }}>
+          <div style={{ textAlign: 'center', maxWidth: '900px', margin: '0 auto' }}>
+            <video width="100%" controls autoPlay style={{ border: '2px solid #4B0082', marginBottom: '20px' }}>
               <source src="/thatsallfolks.mp4" type="video/mp4" />
             </video>
-            <h1 style={{ color: COLORS.purple }}>THAT'S ALL FOLKS!</h1>
-            <p>Visit our fundraiser at MandaStrong1.Etsy.com</p>
+            <h2 style={{ color: '#4B0082' }}>THAT'S ALL FOLKS!</h2>
+            <p>Visit our fundraiser at <a href="https://MandaStrong1.Etsy.com" style={{ color: '#FFFFFF' }}>MandaStrong1.Etsy.com</a></p>
           </div>
         )}
-
       </div>
 
-      {/* Persistent Navigation at Bottom */}
-      <Navigation />
+      {/* FIXED NAVIGATION AT BOTTOM */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', padding: '30px', backgroundColor: '#000000' }}>
+        <button 
+          onClick={() => setPage(Math.max(1, page - 1))}
+          style={{ backgroundColor: '#4B0082', color: '#FFFFFF', border: '1px solid #FFFFFF', padding: '10px 40px', cursor: 'pointer' }}
+        >
+          Back
+        </button>
+        <button 
+          onClick={() => setPage(Math.min(21, page + 1))}
+          style={{ backgroundColor: '#4B0082', color: '#FFFFFF', border: '1px solid #FFFFFF', padding: '10px 40px', cursor: 'pointer' }}
+        >
+          Next
+        </button>
+      </div>
 
-      {/* Bolt Watermark intentionally excluded */}
     </div>
   );
 }
