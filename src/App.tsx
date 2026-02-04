@@ -27,7 +27,7 @@ export default function App() {
           </div>
         )}
 
-        {/* PAGE 1: CHOOSE YOUR PLAN - Only 3 Paid Plans */}
+        {/* PAGE 1: CHOOSE YOUR PLAN - No Free Plan */}
         {page === 1 && (
           <div style={{ textAlign: 'center' }}>
             <h2 style={{ color: COLORS.purple, fontSize: '2.5rem' }}>Choose Your Plan</h2>
@@ -39,7 +39,7 @@ export default function App() {
           </div>
         )}
 
-        {/* PAGE 5: CREATIVE STUDIO - Plan Display Fixed */}
+        {/* PAGE 5: CREATIVE STUDIO - Plan Display */}
         {page === 5 && (
           <div style={{ textAlign: 'center' }}>
             <h2 style={{ color: COLORS.purple, fontSize: '3rem' }}>Creative Studio</h2>
@@ -54,7 +54,7 @@ export default function App() {
           </div>
         )}
 
-        {/* PAGE 21: FINALE - Video at Top */}
+        {/* PAGE 21: FINALE - Video Asset thatsallfolks.mp4 */}
         {page === 21 && (
           <div style={{ textAlign: 'center', maxWidth: '1000px', margin: '0 auto' }}>
             <video width="100%" controls autoPlay style={{ border: `5px solid ${COLORS.purple}`, marginBottom: '30px' }}>
