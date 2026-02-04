@@ -27,7 +27,7 @@ export default function App() {
           </div>
         )}
 
-        {/* PAGE 1: CHOOSE YOUR PLAN (Free Removed) */}
+        {/* PAGE 1: CHOOSE YOUR PLAN - Only 3 Paid Plans */}
         {page === 1 && (
           <div style={{ textAlign: 'center' }}>
             <h2 style={{ color: COLORS.purple, fontSize: '2.5rem' }}>Choose Your Plan</h2>
@@ -39,7 +39,7 @@ export default function App() {
           </div>
         )}
 
-        {/* PAGE 5: CREATIVE STUDIO (Plan: Studio) */}
+        {/* PAGE 5: CREATIVE STUDIO - Plan Display Fixed */}
         {page === 5 && (
           <div style={{ textAlign: 'center' }}>
             <h2 style={{ color: COLORS.purple, fontSize: '3rem' }}>Creative Studio</h2>
@@ -47,14 +47,14 @@ export default function App() {
           </div>
         )}
 
-        {/* PAGE 15: EDITOR'S CHOICE (Text Removed) */}
+        {/* PAGE 15: EDITOR'S CHOICE - Clean Layout */}
         {page === 15 && (
           <div style={{ textAlign: 'center' }}>
             <h2 style={{ color: COLORS.purple, fontSize: '2.5rem' }}>Editor's Choice</h2>
           </div>
         )}
 
-        {/* PAGE 21: FINALE (Video at top) */}
+        {/* PAGE 21: FINALE - Video at Top */}
         {page === 21 && (
           <div style={{ textAlign: 'center', maxWidth: '1000px', margin: '0 auto' }}>
             <video width="100%" controls autoPlay style={{ border: `5px solid ${COLORS.purple}`, marginBottom: '30px' }}>
@@ -66,7 +66,7 @@ export default function App() {
         )}
       </div>
 
-      {/* NAVIGATION: Side-by-side & Centered at bottom */}
+      {/* NAVIGATION: Side-by-side & Centered at Bottom */}
       {page !== 0 && (
         <div style={{ display: 'flex', justifyContent: 'center', gap: '40px', padding: '50px', backgroundColor: COLORS.black }}>
           <button 
