@@ -54,7 +54,7 @@ export default function App() {
           </div>
         )}
 
-        {/* PAGE 21: FINALE - Video Asset thatsallfolks.mp4 */}
+        {/* PAGE 21: FINALE - Video at Top */}
         {page === 21 && (
           <div style={{ textAlign: 'center', maxWidth: '1000px', margin: '0 auto' }}>
             <video width="100%" controls autoPlay style={{ border: `5px solid ${COLORS.purple}`, marginBottom: '30px' }}>
