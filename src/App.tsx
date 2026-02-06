@@ -4,9 +4,9 @@ import {
   CheckCircle, Play, Upload, MessageCircle, 
   Home, Send, Mic, Video as VideoIcon, 
   PenTool, Zap, Camera, Shield, Heart, Share2, Music,
-  ImageIcon, Download, Settings, Sliders, Eye,
+  Image as ImageIcon, Download, Settings, Sliders, Eye,
   Database, FileVideo, TrendingUp, BookOpen, Clock, Search, X,
-  Lock, UserPlus, CreditCard, Mail, Key, User
+  Lock, UserPlus, CreditCard, Mail, Key, User, Film
 } from 'lucide-react';
 
 // --- PRODUCTION AI TOOLSET GENERATOR (600 TOTAL) ---
@@ -34,13 +34,38 @@ const BOARD_DATA = {
   Motion: generateTools("Motion")
 };
 
+// FIX 1: SPLASH PAGE COMPONENT
+const SplashPage = ({ onContinue }) => (
+  <div onClick={onContinue} className="h-screen bg-black flex flex-col justify-center items-center text-center cursor-pointer animate-in fade-in duration-1000">
+    <div className="absolute inset-0" style={{background:'radial-gradient(ellipse at center, rgba(147,51,234,0.5) 0%, #000 75%)'}}></div>
+    <div className="relative z-10">
+      <div className="w-56 h-56 mx-auto rounded-full border-4 border-purple-700 flex items-center justify-center mb-12" style={{boxShadow:'0 0 80px rgba(147,51,234,0.6)'}}>
+        <Film className="w-32 h-32 text-purple-400" strokeWidth={1.5} />
+      </div>
+      <h1 className="text-9xl font-black text-white mb-4 uppercase" style={{fontFamily:'Impact,sans-serif',letterSpacing:'0.15em',textShadow:'0 0 60px rgba(147,51,234,0.8)'}}>
+        MANDASTRONG
+      </h1>
+      <h2 className="text-6xl font-bold text-purple-400 mb-16 uppercase" style={{letterSpacing:'0.4em'}}>STUDIO</h2>
+      <div className="w-36 h-1 rounded-full mx-auto mb-14 bg-purple-600"></div>
+      <p className="text-white text-2xl animate-pulse">Tap anywhere to continue</p>
+    </div>
+  </div>
+);
+
 export default function App() {
-  const [page, setPage] = useState(0);
+  // FIX 2: ADD SHOWSPLASH STATE
+  const [showSplash, setShowSplash] = useState(true);
+  const [page, setPage] = useState(1);
   const [menuOpen, setMenuOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState('Studio');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [duration, setDuration] = useState(90);
   const videoRef = useRef(null);
+
+  // FIX 3: SPLASH RENDER CHECK
+  if (showSplash) {
+    return <SplashPage onContinue={() => setShowSplash(false)} />;
+  }
 
   useEffect(() => { window.scrollTo(0, 0); }, [page]);
 
@@ -59,23 +84,27 @@ export default function App() {
     setMenuOpen(false); 
   };
 
-  // --- CENTERED NAVIGATION (Back / Next) AT BOTTOM ---
+  // FIX 4: CENTERED NAVIGATION
   const Navigation = () => {
-    if (page === 0 || page === 1 || page === 21) return null;
+    if (page === 1 || page === 21) return null;
     return (
-      <div className="fixed bottom-12 left-0 w-full flex justify-center gap-6 z-[400] px-4 pointer-events-none">
-        <button 
-          onClick={() => setPage(page - 1)}
-          className="pointer-events-auto bg-zinc-950 border border-[#9333ea] px-10 py-2.5 rounded-full font-black uppercase text-[#9333ea] hover:bg-[#9333ea] hover:text-white transition-all shadow-2xl flex items-center gap-2 backdrop-blur-md active:scale-95 text-xs tracking-widest"
-        >
-          <ChevronLeft size={16} /> Back
-        </button>
-        <button 
-          onClick={() => setPage(page + 1)}
-          className="pointer-events-auto bg-[#9333ea] border border-[#9333ea] px-10 py-2.5 rounded-full font-black uppercase text-white hover:bg-purple-700 transition-all shadow-2xl flex items-center gap-2 active:scale-95 text-xs tracking-widest"
-        >
-          Next <ChevronRight size={16} />
-        </button>
+      <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[400] flex gap-6 pointer-events-auto">
+        {page > 1 && (
+          <button 
+            onClick={() => setPage(page - 1)}
+            className="bg-zinc-950 border border-[#9333ea] px-10 py-2.5 rounded-full font-black uppercase text-[#9333ea] hover:bg-[#9333ea] hover:text-white transition-all shadow-2xl flex items-center gap-2 backdrop-blur-md active:scale-95 text-xs tracking-widest"
+          >
+            <ChevronLeft size={16} /> Back
+          </button>
+        )}
+        {page < 21 && (
+          <button 
+            onClick={() => setPage(page + 1)}
+            className="bg-[#9333ea] border border-[#9333ea] px-10 py-2.5 rounded-full font-black uppercase text-white hover:bg-purple-700 transition-all shadow-2xl flex items-center gap-2 active:scale-95 text-xs tracking-widest"
+          >
+            Next <ChevronRight size={16} />
+          </button>
+        )}
       </div>
     );
   };
@@ -83,14 +112,53 @@ export default function App() {
   return (
     <div className="min-h-screen bg-black text-white overflow-x-hidden font-sans selection:bg-[#9333ea] selection:text-white">
       
-      {/* PERSISTENT HELP BUBBLE */}
+      {/* FIX 5: WATERMARK HIDING CSS */}
+      <style dangerouslySetInnerHTML={{__html:`
+        [data-bolt-badge], .bolt-badge, #bolt-badge,
+        a[href*="bolt"], div[class*="fixed"][class*="bottom"] iframe,
+        [class*="made-in"], [id*="bolt"],
+        footer[class*="bolt"] { display: none !important; visibility: hidden !important; }
+        
+        @keyframes loading-bar { 0% { width: 0%; } 50% { width: 70%; } 100% { width: 100%; } }
+        .animate-loading-bar { animation: loading-bar 2.5s infinite ease-in-out; }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #000; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #9333ea; border-radius: 10px; border: 2px solid black; }
+        input::placeholder { color: rgba(147, 51, 234, 0.4); font-style: italic; }
+        .shadow-3xl { box-shadow: 0 0 100px rgba(0,0,0,0.8); }
+        .animate-in { animation-duration: 0.5s; animation-fill-mode: both; }
+        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+        .fade-in { animation-name: fade-in; }
+      `}}/>
+
+      {/* QUICK ACCESS MENU */}
       {page > 0 && (
+        <div className="fixed top-6 right-6 z-[300]">
+          <button onClick={() => setMenuOpen(!menuOpen)} className="bg-[#9333ea] p-3 rounded-full shadow-2xl text-white hover:scale-110 transition-transform">
+            <Menu size={20} />
+          </button>
+          {menuOpen && (
+            <div className="absolute top-14 right-0 bg-zinc-950 border border-[#9333ea] p-4 rounded-2xl w-56 shadow-2xl">
+              <div className="flex flex-col gap-1">
+                {[{p:1, l:"Home"}, {p:4, l:"AI Hub"}, {p:11, l:"Editor"}, {p:21, l:"Finish"}].map((item) => (
+                  <button key={item.p} onClick={() => goTo(item.p)} className="text-right text-[10px] font-black uppercase text-[#9333ea] p-2.5 hover:bg-[#9333ea] hover:text-white rounded-lg transition-all border border-[#9333ea]/10">
+                    {item.l}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* HELP BUBBLE - FROM PAGE 1 */}
+      {page >= 1 && (
         <button onClick={() => setPage(19)} className="fixed bottom-6 right-6 z-[500] bg-[#9333ea] p-3.5 rounded-full shadow-[0_0_30px_rgba(147,51,234,0.5)] border border-white/20 hover:scale-110 transition-transform">
           <MessageCircle size={24} className="text-white" />
         </button>
       )}
 
-      {/* PERSISTENT FOOTER (Starts Page 3) */}
+      {/* FOOTER */}
       {page >= 3 && (
         <div className="fixed bottom-0 left-0 w-full bg-black/95 py-2.5 text-center z-[350] border-t border-[#9333ea]/20 backdrop-blur-md">
           <p className="text-[10px] uppercase font-black text-white/80 tracking-[0.2em] px-4">
@@ -101,7 +169,7 @@ export default function App() {
 
       <Navigation />
 
-      {/* VIDEO BACKGROUND FOUNDATION */}
+      {/* VIDEO BACKGROUND */}
       {[1, 2, 10, 21].includes(page) && (
         <div className="absolute inset-0 z-0 bg-black">
           <video ref={videoRef} autoPlay loop muted playsInline className="w-full h-full object-cover opacity-50">
@@ -112,22 +180,7 @@ export default function App() {
 
       <main className="relative z-10 min-h-screen">
         
-        {/* PAGE 0: SPLASH SCREEN (FIX 1) */}
-        {page === 0 && (
-          <div className="h-screen bg-black flex flex-col justify-center items-center text-center animate-in fade-in duration-1000">
-            <Sparkles size={80} className="text-[#9333ea] mb-6 animate-pulse" />
-            <h1 className="text-4xl font-black text-white uppercase italic tracking-tighter mb-2">MANDASTRONG</h1>
-            <p className="text-[#9333ea] font-black uppercase tracking-[0.5em] text-xs mb-10">Cinema Intelligence</p>
-            <div className="w-48 h-1 bg-zinc-900 rounded-full overflow-hidden">
-              <div className="h-full bg-[#9333ea] animate-loading-bar" />
-            </div>
-            <button onClick={() => setPage(1)} className="mt-16 bg-white text-black px-12 py-3.5 rounded-full font-black uppercase tracking-widest hover:scale-105 transition-all shadow-2xl active:scale-95">
-              Launch Studio
-            </button>
-          </div>
-        )}
-
-        {/* PAGE 1: LANDING (FIX 2 & 3) */}
+        {/* PAGE 1: LANDING - FIX 6: LOGIN/REGISTER/NEXT BUTTONS */}
         {page === 1 && (
           <div className="h-screen flex flex-col justify-center items-center text-center px-6">
             <h1 className="text-6xl md:text-[9rem] font-black text-white uppercase italic tracking-tighter leading-none mb-4 drop-shadow-2xl">
@@ -153,7 +206,7 @@ export default function App() {
           </div>
         )}
 
-        {/* PAGE 3: AUTH & PRICING (FIX 6, 7, 8, 9, 10, 11) */}
+        {/* PAGE 3: AUTH & PRICING - FIX 7: NO FREE PLAN, BASIC $20, PRO $30, STUDIO $50 */}
         {page === 3 && (
           <div className="p-6 pt-16 pb-40 max-w-7xl mx-auto overflow-y-auto custom-scrollbar">
             {isLoggedIn && (
@@ -194,9 +247,14 @@ export default function App() {
             <h2 className="text-3xl font-black text-center mb-10 uppercase italic text-[#9333ea]">Choose Your Plan</h2>
             <p className="text-center text-zinc-500 text-xs mb-10 font-bold uppercase tracking-widest">Start free, upgrade anytime</p>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
+            {/* FIX 8: STUDIO PLAN TEXT UNDER AMANDA STRONG */}
+            <div className="text-center mb-8">
+              <h3 className="text-2xl font-black text-white uppercase">AMANDA STRONG</h3>
+              <p className="text-sm font-bold text-[#9333ea] uppercase tracking-widest">Studio Plan</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-16">
               {[
-                {t:'Free', p:'0', d:['720p Export', '50 AI Tools', 'Basic Templates', '1GB Storage', 'Community Support']},
                 {t:'Basic', p:'20', d:['HD Export', '100 AI Tools', 'Basic Templates', '10GB Storage', 'Email Support']},
                 {t:'Pro', p:'30', d:['4K Export', '300 AI Tools', 'Premium Templates', '100GB Storage', 'Priority Support', 'Commercial License']},
                 {t:'Studio', p:'50', d:['8K Export', 'All 600 AI Tools', 'Unlimited Templates', '1TB Storage', '24/7 Live Support', 'Full Commercial Rights', 'Team Collaboration']}
@@ -280,13 +338,49 @@ export default function App() {
           </div>
         )}
 
-        {/* PAGE 21: FINALE */}
+        {/* PAGE 11-18: PLACEHOLDER PAGES */}
+        {page >= 11 && page <= 18 && (
+          <div className="min-h-screen p-8 pt-20 pb-40">
+            <h1 className="text-4xl font-black uppercase italic text-[#9333ea] mb-8">Page {page}</h1>
+            <div className="bg-zinc-950 border border-zinc-900 rounded-3xl p-10">
+              <p className="text-white/50 font-bold">Content for page {page}</p>
+            </div>
+          </div>
+        )}
+
+        {/* PAGE 19: HELP DESK */}
+        {page === 19 && (
+           <div className="h-screen flex flex-col justify-center items-center text-center p-10">
+              <MessageCircle size={64} className="text-[#9333ea] mb-6" />
+              <h1 className="text-6xl font-black uppercase italic mb-8">Agent Grok</h1>
+              <div className="w-full max-w-2xl bg-zinc-950 border-2 border-[#9333ea] p-10 rounded-[30px] text-lg font-bold">
+                 Welcome back. Your Studio Master status is verified. How can I assist your movie making process today?
+              </div>
+           </div>
+        )}
+
+        {/* PAGE 20: COMMUNITY */}
+        {page === 20 && (
+          <div className="min-h-screen p-8 pt-20 pb-40">
+            <h1 className="text-4xl font-black uppercase italic text-[#9333ea] mb-8">Community Hub</h1>
+            <div className="bg-zinc-950 border border-zinc-900 rounded-3xl p-10">
+              <p className="text-white/50 font-bold">Community content coming soon</p>
+            </div>
+          </div>
+        )}
+
+        {/* PAGE 21: FINALE - FIX 9: THATSALLFOLKS VIDEO */}
         {page === 21 && (
-          <div className="h-screen flex flex-col justify-center items-center text-center p-10 bg-black">
+          <div className="h-screen flex flex-col justify-center items-center text-center p-10 bg-black pb-40">
+            <div className="mb-8 w-full max-w-3xl">
+              <video autoPlay loop muted playsInline className="w-full rounded-xl border-4 border-purple-700">
+                <source src="/ThatsAllFolks.MP4" type="video/mp4" />
+              </video>
+            </div>
             <h1 className="text-[12rem] font-black text-[#9333ea] uppercase italic mb-8 leading-none tracking-tighter drop-shadow-2xl">THAT'S ALL FOLKS!</h1>
             <div className="max-w-4xl mb-16 space-y-8">
               <p className="text-4xl font-black uppercase italic text-white tracking-tight leading-none drop-shadow-lg">
-                "Amanda’s Thank you to creators now in future. Supporting cinematic innovation through our Veteran Fundraiser mission."
+                "Amanda's Thank you to creators now in future. Supporting cinematic innovation through our Veteran Fundraiser mission."
               </p>
               <a href="https://MandaStrong1.Etsy.com" target="_blank" className="inline-block text-7xl font-black text-purple-400 hover:text-white transition-all underline underline-offset-[20px] decoration-8 decoration-[#9333ea]/50">MandaStrong1.Etsy.com</a>
             </div>
@@ -297,19 +391,6 @@ export default function App() {
           </div>
         )}
       </main>
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes loading-bar { 0% { width: 0%; } 50% { width: 70%; } 100% { width: 100%; } }
-        .animate-loading-bar { animation: loading-bar 2.5s infinite ease-in-out; }
-        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #000; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #9333ea; border-radius: 10px; border: 2px solid black; }
-        input::placeholder { color: rgba(147, 51, 234, 0.4); font-style: italic; }
-        .shadow-3xl { box-shadow: 0 0 100px rgba(0,0,0,0.8); }
-        .animate-in { animation-duration: 0.5s; animation-fill-mode: both; }
-        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-        .fade-in { animation-name: fade-in; }
-      `}} />
     </div>
   );
 }
