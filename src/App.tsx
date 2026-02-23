@@ -1,19 +1,20 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Menu, Sparkles, MessageCircle, ChevronLeft, ChevronRight, CheckCircle, Play, Upload, Film, Mic, Zap, Shield, Music, Sliders, Database, FileVideo, TrendingUp, BookOpen, Clock, ThumbsUp, Heart, HelpCircle, Plus, Settings, Eye, Layers, X, Download, Save, Wand2, Trash2, Share2, Search } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
+// SUPABASE BACKEND
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL || '',
   import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 );
-
-
+// 600+ AI TOOLS - COMPLETE LIST
 const AI_TOOLS = {
-  Writing: ["Text to Video","Text to Scene","Text to Animation","Text to Film","Script to Movie","Story to Video","Prompt to Video","Description to Scene","Narrative to Film","Dialogue to Animation","Plot to Video","Character to Scene","Action to Animation","Drama to Video","Comedy to Scene","Thriller to Film","Horror to Animation","Romance to Video","Sci-Fi to Scene","Fantasy to Film","Documentary Style","Commercial Creator","Trailer Maker","Music Video","Short Film Gen","Feature Film","Web Series","TV Episode","Podcast Video","Social Media","Vertical Video","Square Video","Widescreen","Ultra Wide","360 Video","VR Scene","AR Content","Hologram","Projection Map","LED Wall","Green Screen","Motion Graphics","Title Sequence","Credits Roll","Lower Thirds","Captions","Subtitles","Voiceover","Narration","Sound Design","Foley","Ambient Sound","Music Score","Theme Song","Jingle","Sound Effect","Transition Sound","Impact","Riser","Drop","Whoosh","Swoosh","Glitch","Digital","Analog","Vintage","Modern","Futuristic","Retro","Classic","Contemporary","Experimental","Abstract","Realistic","Stylized","Cartoon","Anime","3D Animation","2D Animation","Stop Motion","Claymation","Rotoscope","Motion Capture","CGI","VFX","Practical FX","Miniatures","Matte Painting","Compositing","Keying","Tracking","Stabilization","Color Grade","LUT Apply","Film Look","Digital Look","Broadcast","Cinema","IMAX","Anamorphic","Spherical","Wide Angle","Telephoto","Macro","Tilt Shift","Fisheye","Drone Shot","Aerial View","Birds Eye","Worms Eye","POV","First Person","Third Person","Isometric","Top Down","Side Scroller","Parallax","Ken Burns","Time Lapse","Hyperlapse"],
-  Voice: ["Text to Speech","Voice Clone","Character Voice","Narrator Voice","Accent British","Accent American","Accent Australian","Accent Irish","Accent Scottish","Accent Indian","Accent French","Accent German","Accent Spanish","Accent Italian","Accent Japanese","Accent Chinese","Accent Korean","Accent Russian","Accent Arabic","Accent Portuguese","Age Child","Age Teen","Age Adult","Age Elderly","Gender Male","Gender Female","Gender Neutral","Emotion Happy","Emotion Sad","Emotion Angry","Emotion Excited","Emotion Calm","Emotion Scared","Emotion Surprised","Emotion Disgusted","Emotion Neutral","Emotion Love","Emotion Hate","Tone Formal","Tone Casual","Tone Professional","Tone Friendly","Tone Serious","Tone Playful","Tone Dramatic","Tone Comedic","Tone Sarcastic","Tone Sincere","Style News Anchor","Style Radio DJ","Style Podcast","Style Audiobook","Style Commercial","Style Trailer","Style Documentary","Style Tutorial","Style Gaming","Style ASMR","Style Meditation","Style Hypnosis","Style Sports Cast","Style Weather","Style Movie Promo","Voice Whisper","Voice Shout","Voice Scream","Voice Laugh","Voice Cry","Voice Sigh","Voice Gasp","Voice Cough","Voice Sneeze","Effect Robot","Effect Alien","Effect Monster","Effect Demon","Effect Angel","Effect Ghost","Effect Zombie","Effect Chipmunk","Effect Deep Bass","Effect High Pitch","Effect Echo","Effect Reverb","Effect Delay","Effect Chorus","Effect Flanger","Effect Phaser","Effect Distortion","Effect Bitcrush","Effect Lo-Fi","Effect Radio","Effect Phone","Effect Megaphone","Effect Underwater","Effect Space","Effect Cave","Effect Stadium","Effect Concert Hall","Effect Small Room","Effect Large Hall","Effect Cathedral","Effect Forest","Effect City","Effect Traffic","Effect Crowd","Effect Applause","Effect Cheer","Effect Boo","Effect Murmur","Speed Slow","Speed Fast","Speed Normal","Pitch Up","Pitch Down","Volume Loud","Volume Soft","Clarity HD","Clarity Clear"],
-  Image: ["Text to Image","Image Upscale","Photo Enhance","Style Transfer","Image to Video","Still to Motion","Photo Animation","Portrait Animate","Landscape Pan","Product Showcase","Food Styling","Fashion Photo","Architecture Render","Interior Design","Car Render","Jewelry Photo","Tech Product","Nature Photo","Wildlife Shot","Pet Portrait","Baby Photo","Wedding Photo","Event Photo","Concert Photo","Sports Photo","Action Shot","Macro Photo","Aerial Photo","Drone Image","Satellite View","Street Photo","Urban Scene","Rural Scene","Beach Scene","Mountain Scene","Forest Scene","Desert Scene","Snow Scene","Rain Scene","Fog Scene","Sunset Photo","Sunrise Photo","Night Photo","Starry Sky","Moon Photo","Aurora Photo","Lightning Photo","Rainbow Photo","Cloud Photo","Storm Photo","Weather Photo","Season Spring","Season Summer","Season Fall","Season Winter","Time Dawn","Time Morning","Time Noon","Time Afternoon","Time Evening","Time Dusk","Time Night","Time Midnight","Light Natural","Light Studio","Light Golden Hour","Light Blue Hour","Light Harsh","Light Soft","Light Dramatic","Light Flat","Color Vibrant","Color Muted","Color BW","Color Sepia","Color Tinted","Color Graded","Color Corrected","Mood Happy","Mood Sad","Mood Energetic","Mood Calm","Mood Dramatic","Mood Romantic","Mood Scary","Mood Mysterious","Mood Nostalgic","Mood Futuristic","Filter Vintage","Filter Modern","Filter Retro","Filter Cinematic","Filter HDR","Filter Soft Focus","Filter Sharp","Filter Blur","Filter Grain","Filter Clean","Effect Bokeh","Effect Lens Flare","Effect Light Leak","Effect Vignette","Effect Glow","Effect Sparkle","Effect Glitter","Effect Shine","Effect Shadow","Effect Reflection"],
-  Video: ["Video Upscale","Video Enhance","Slow Motion","Time Lapse","Reverse Video","Loop Video","Stabilize Video","Color Grade Video","LUT Video","Denoise Video","Sharpen Video","Blur Video","Zoom Video","Pan Video","Tilt Video","Rotate Video","Flip Video","Crop Video","Resize Video","Speed Up","Speed Down","Freeze Frame","Split Screen","Picture in Picture","Green Screen","Chroma Key","Motion Track","Face Track","Object Track","Camera Track","Stabilization 2D","Stabilization 3D","Warp Stabilizer","Rolling Shutter","Lens Distort Fix","Remove Objects","Remove People","Clone Video","Time Remap","Optical Flow","Frame Blend","Frame Mix","Frame Hold","Frame Skip","Cut Video","Trim Video","Split Video","Merge Video","Concatenate","Crossfade","Dissolve","Fade In","Fade Out","Wipe Left","Wipe Right","Wipe Up","Wipe Down","Push","Slide","Zoom In Trans","Zoom Out Trans","Spin","Rotate Trans","Flip Trans","Page Peel","Cube Spin","Ripple","Wave","Glitch Trans","Digital Trans","Light Trans","Blur Trans","Morph","Distort Trans","Pixelate","Mosaic","Kaleidoscope","Mirror","Symmetry","Prism","Rainbow","Chromatic","RGB Split","Anaglyph","VHS","Film Burn","Dust Scratch","Light Leak Video","Vignette Video","Bloom","Glow Video","God Rays","Volumetric Light","Lens Flare Video","Sun Flare","Star Filter","Bokeh Video","Depth Field Video","Tilt Shift Video","Miniature","Toy Camera","Lomography","Polaroid","Instant Film","Negative","Solarize","Posterize","Threshold","Equalize","Invert","Gamma","Contrast","Brightness Video","Saturation Video","Hue Shift Video","Temperature Video","Tint Video"],
-  Motion: ["Motion Blur","Radial Blur","Zoom Blur","Directional Blur","Camera Shake","Earthquake","Explosion Shake","Impact Shake","Wobble","Wiggle","Wave Motion","Ripple Motion","Bounce","Elastic","Spring","Pendulum","Rotate Continuous","Spin","Spiral","Orbit","Circle","Arc","Figure 8","Random","Noise","Turbulence","Wind","Gravity","Attraction","Repulsion","Vortex","Swirl","Twist","Bend","Warp","Bulge","Pinch","Spherize","Displace","Offset","Slide Motion","Drift","Float","Rise","Fall","Ascend","Descend","Levitate","Hover","Bob","Sway","Rock","Swing","Jitter","Vibrate","Tremble","Quake","Pulse","Beat","Throb","Flicker","Flash","Strobe","Blink","Fade Motion","Appear","Disappear","Materialize","Dematerialize","Teleport","Warp Motion","Portal","Door Open","Door Close","Curtain","Blinds","Shutter","Iris","Reveal","Conceal","Unfold","Fold","Expand","Collapse","Grow","Shrink","Scale Up","Scale Down","Stretch","Squeeze","Compress","Inflate","Deflate","Morph Motion","Liquefy","Melt","Drip","Pour","Splash","Spray","Burst","Shatter","Break","Crack","Crumble","Disintegrate","Particle Burst","Particle Trail","Particle Swarm","Particle Rain","Particle Snow","Particle Dust","Particle Smoke","Particle Fire","Particle Sparks","Particle Stars","Particle Confetti","Particle Leaves","Particle Petals","Particle Bubbles"]
+  Writing: ["Text to Video - Cinematic","Text to Video - Realistic","Text to Video - Animated","Script to Movie","Story to Video","Dialogue Writer","Plot Generator","Scene Writer","Story Outliner","Character Developer","Script Formatter","Three Act Builder","Backstory Generator","Theme Generator","Plot Twist Creator","Scene Analyzer","World Builder","Subplot Generator","Character Voice","Pacing Analyzer","Opening Hook","Climax Designer","Character Mapper","Flashback Creator","Foreshadowing Tool","Beat Sheet","Story Structure","Character Arc","Plot Device","Narrative Flow","Story Consultant","Character Interview","Scene Setting","Emotional Arc","Story Question","Character Flaw","Story Goal","Inciting Incident","Midpoint Tool","Dark Night","Growth Tracker","Tag Optimizer","Action Line","Scene Heading","Parenthetical","Script Timer","Format Checker","Name Generator","Location Database","Prop List","Costume Designer","Scene Number","Page Counter","Reading Timer","Coverage Writer","Logline Generator","Synopsis Writer","Treatment Format","Pitch Deck","Character Bio","World Bible","Magic System","Tech Inventor","Culture Creator","Language Builder","Religion Designer","Government Tool","Economy Builder","Geography Map","History Timeline","Mythology","Legend Writer","Prophecy","Quest Designer","MacGuffin","Plot Hole Detector","Continuity Check","Character Check","Timeline Validator","Research Helper","Fact Checker","Trope Finder","Cliche Detector","Originality Score","Genre Analyzer","Tone Checker","Voice Tool","POV Analyzer","Tense Checker","Grammar Polish","Spell Check","Readability","Engagement Meter","Pacing Visual","Story Arc Map","Network Graph","Distribution Chart","Word Counter","Goal Setter","Sprint Timer","Dashboard","Collab Hub","Version Control","Comment System","Revision Track"],
+  Voice: ["Text to Speech - Natural","Voice Cloning - Instant","AI Voice Generator","Voice Narrator","Voice Actor Generator","Text to Speech - Multiple Voices","Voice Maker","Voice Cloner","Voice Creator","Voice Recorder","Speech Converter","Voice Builder","Voice Generator","Premium Voice","Emotion Voice","Natural Voice","Narrator Voice","Voice Imitator","Accent Generator","Pitch Controller","Tone Adjuster","Lip Sync AI","Voice Coach","Audiobook Creator","Commercial Voice","Trailer Voice","Documentary Voice","News Anchor Voice","Radio DJ Voice","Sports Cast Voice","Game Show Host","Meditation Voice","Hypnosis Voice","ASMR Creator","Whisper Generator","Shout Creator","Scream Generator","Laugh Creator","Cry Generator","Sigh Creator","Gasp Generator","Cough Creator","Throat Clear","Voice Warm-up","Range Finder","Pitch Training","Articulation","Diction Drill","Health Monitor","Strain Detector","Rest Reminder","Hydration Alert","Posture Guide","Breathing Coach","Vocal Workout","Range Expander","Stamina Builder","Endurance Train","Quality Enhance","Clarity Boost","Richness Amp","Warmth Add","Brightness Mix","Darkness Mix","Raspy Tool","Smooth Filter","Texture Design","Timbre Modifier","Resonance Tune","Projection Boost","Volume Expander","Dynamic Range","Compression","EQ Voice","De-esser","Pop Filter","Noise Gate","Reverb Voice","Echo Voice","Delay Voice","Chorus FX","Flanger FX","Phaser FX","Distortion FX","Bitcrush","Lo-fi Voice","Radio Effect","Phone Effect","Megaphone","Robot Voice","Alien Voice","Monster Voice","Demon Voice","Angel Voice","Chipmunk Voice","Deep Voice","High Voice","Child Voice","Elderly Voice","Speed Modifier","Volume Normal"],
+  Image: ["Image to Video - Motion","Photo to Animation","AI Image Animator","Image Generator","Asset Architect","Texture Mapper","VFX Synthesis","Matte Logic","Color Palette","Background Generator","Character Design","Lighting Designer","Scene Composite","Photo Enhance","Image Upscale","Style Transfer","Text to Image","Color Grading","Tone Mapper","Film Grain","Bokeh Generator","Sky Replace","Cloud Generator","Prop Creator","Depth Map","Normal Map","Albedo Map","Roughness Map","Metallic Map","Emission Map","Ambient Occlude","Shadow Generator","Highlight","Rim Light","Fill Light","Key Light","3-Point Light","Studio Light","Natural Light","Golden Hour","Blue Hour","Night Scene","Day Scene","Sunrise FX","Sunset FX","Moonlight","Starlight","Fire Light","Candle Light","Neon Light","LED Effect","LUT Creator","Contrast Adjust","Brightness","Saturation","Hue Shift","Temperature","Tint Control","Exposure Fix","HDR Merge","Panorama Stitch","360 Image","Fisheye Fix","Lens Distort","Chromatic Aberr","Vignette","Noise Add","Scratch Add","Dust Particles","Light Leaks","Depth Field","Motion Blur","Radial Blur","Zoom Blur","Gaussian Blur","Smart Blur","Sharpen","Edge Enhance","Detail Boost","Clarity","Structure","Dehaze","Weather FX","Rain Creator","Snow Effect","Fog Generator","Mist Tool","Haze Creator","Smoke FX","Steam Generator","Fire Creator","Explosion","Spark Generator","Lightning","Aurora FX","Rainbow","Lens Flare","God Rays","Volumetric","Caustics"],
+  Video: ["Video Upscaler to 4K","Video Upscaler to 8K","Frame Rate Booster","60FPS Converter","Slow Motion Generator","Video Extender","Scene Generator","Motion Video Maker","Video Creator","Avatar Generator","Video Synthesizer","Video Studio","Image to Motion","Dynamic Pan","Tilt Shot","Tracking Shot","Crane Movement","Steadycam","Shot Transition","Close-up","Wide Shot","POV Shot","Zoom In","Dolly In","Time Lapse","Slow Motion","Speed Ramp","Flow Generator","Video Craft","Style Tool","Temporal Flow","Frame Blend","Track Shot","Crane Move","Handheld FX","Shot Transit","Establish Shot","Medium Shot","Over Shoulder","Dutch Angle","Whip Pan","Swish Pan","Zoom Out","Dolly Out","Truck Left","Truck Right","Pedestal Up","Pedestal Down","Arc Shot","Orbit Shot","Boom Up","Boom Down","Jib Shot","Drone Shot","Aerial View","Birds Eye","Ground Level","Low Angle","High Angle","Eye Level","Worms Eye","Canted Frame","Symmetry","Rule Thirds","Golden Ratio","Leading Lines","Frame Frame","Negative Space","Depth Layers","Video Stabilizer","Color Grading Pro","Background Remover","Old Film Restorer","Black & White Colorizer"],
+  Motion: ["Particle Effect Generator","VFX Generator - All Types","Style Transfer - Any Style","Motion Tracker","Mocap Logic","Physics Engine","Cloth Dynamics","Skeleton Animator","Facial Rigging","Body Movement","Camera Tracker","Particle System","Fluid Dynamics","Spring System","Keyframe Tool","Graph Editor","Timeline Editor","Ease In","Ease Out","Bounce Effect","Elastic Motion","Anticipation","Follow Through","Tracker Pro","Object Physics","Gravity Sim","Collision Detect","Soft Body","Rigid Body","Particle System","Fluid Dynamic","Smoke Sim","Fire Dynamic","Water Physics","Wind Effect","Force Field","Turbulence","Vortex","Attraction","Repulsion","Gravity Well","Rope Physics","Chain Dynamic","Hair Sim","Fur Dynamic","Cloth Drape","Flag Wave","Curtain Motion","Dress Physics","Cape Sim","Muscle System","Skin Deform","Explosion Effect","Fire Effect","Smoke Effect","Water Effect","Lightning Effect","Magic Effect","Energy Beam","Glitch Effect","Hologram Effect","Portal Effect","Teleportation","Invisibility","Force Field","Laser Effect","Plasma Effect","Shockwave","Dust Effect"],
+  Enhancement: ["AI 8K Upscaling","Video Denoiser","Audio Enhancer","Noise Cancellation","Face Enhancement","Cinematic Grain","Motion Stabilization","Deep HDR Boost","Face Retouch Pro","Neural Noise Reduction","Auto Color Balance","Dynamic Range Expansion","Lens Flare Synth","Shadow Recovery","Highlight Rolloff","Skin Tone Uniformity","Optical Flow Smooth","Atmospheric Haze","Sharpen Intelligence","De-Banding Pro","Moire Removal","Color Space Transform","Anamorphic Stretch","Flicker Reduction","Low Light Clarity","Texture Enhancement","Micro-Contrast Adjust","Vignette Pro","Film Stock Emulation","Glow Synthesis","Edge Refinement","Smart Saturation","Tone Mapping Pro","Gamma Correction","Black Point Calibration","White Balance AI","Color Match Pro","Temporal Denoise","Digital Intermediate","Chromatic Correction","Film Grain Advanced","Halation Effect","Bloom Control","Light Wrap","Contrast Enhancer","Brightness Optimizer","Saturation Booster","HDR Video Creator","Night Video Enhancer","Quality Optimizer","Resolution Multiplier","Detail Enhancer","Clarity Booster","Sharpness Enhancer","Blur Remover","Artifact Remover","Scratch Remover","Flicker Fixer","Sky Replacement","Background Replacer","Object Remover","Watermark Remover","Echo Remover","Reverb Remover","Hum Remover","Pop Remover","Click Remover","Breath Remover","Room Tone Remover"]
 };
 
 const ENHANCEMENT_TOOLS = ["AI 8K Upscaling","Cinematic Grain","Motion Stabilization","Deep HDR Boost","Face Retouch Pro","Neural Noise Reduction","Auto Color Balance","Dynamic Range Expansion","Lens Flare Synth","Shadow Recovery","Highlight Rolloff","Skin Tone Uniformity","Optical Flow Smooth","Atmospheric Haze","Sharpen Intelligence","De-Banding Pro","Moire Removal","Color Space Transform","Anamorphic Stretch","Flicker Reduction","Low Light Clarity","Texture Enhancement","Micro-Contrast Adjust","Vignette Pro","Film Stock Emulation","Glow Synthesis","Edge Refinement","Smart Saturation","Tone Mapping Pro","Gamma Correction","Black Point Calibration","White Balance AI","Color Match Pro","Temporal Denoise","Digital Intermediate","Chromatic Correction","Film Grain Advanced","Halation Effect","Bloom Control","Light Wrap"];
@@ -21,7 +22,6 @@ const ENHANCEMENT_TOOLS = ["AI 8K Upscaling","Cinematic Grain","Motion Stabiliza
 export default function App() {
   const [page, setPage] = useState(1);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [toolSearch, setToolSearch] = useState('');
   const [duration, setDuration] = useState(90);
   const [selectedTool, setSelectedTool] = useState(null);
   const [selectedEnhancement, setSelectedEnhancement] = useState(null);
@@ -43,11 +43,12 @@ export default function App() {
     {id:4,title:'Music Video',user:'Alex T.',emoji:'🎵',likes:5234,loves:4012,comments:[]}
   ]);
   const [newComment, setNewComment] = useState({});
-  
+  const [toolSearch, setToolSearch] = useState('');
+  const [userPlan] = useState('Studio • Admin');
+
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
 
-  // REAL FILE UPLOAD
   const handleFileUpload = useCallback((e) => {
     const files = Array.from(e.target.files);
     files.forEach(file => {
@@ -68,10 +69,8 @@ export default function App() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
 
-  // AI GENERATION
   const handleAIGenerate = useCallback(() => {
     if (!aiPrompt.trim()) return;
-    
     setGenerating(true);
     setTimeout(() => {
       const newAsset = {
@@ -91,7 +90,6 @@ export default function App() {
     }, 2000);
   }, [aiPrompt, selectedTool]);
 
-  // DRAG & DROP TO TIMELINE
   const handleDrop = useCallback((track) => {
     if (!draggedItem) return;
     setTimeline(prev => ({
@@ -101,7 +99,6 @@ export default function App() {
     setDraggedItem(null);
   }, [draggedItem]);
 
-  // REMOVE FROM TIMELINE
   const removeFromTimeline = useCallback((track, index) => {
     setTimeline(prev => ({
       ...prev,
@@ -109,12 +106,10 @@ export default function App() {
     }));
   }, []);
 
-  // DELETE FROM MEDIA LIBRARY
   const deleteFromLibrary = useCallback((id) => {
     setMediaLibrary(prev => prev.filter(item => item.id !== id));
   }, []);
 
-  // APPLY ENHANCEMENT
   const applyEnhancement = useCallback(() => {
     const enhancedAsset = {
       id: Date.now(),
@@ -131,11 +126,9 @@ export default function App() {
     setSelectedEnhancement(null);
   }, [selectedEnhancement, enhancementSettings]);
 
-  // RENDER VIDEO
   const handleRender = useCallback(() => {
     setRendering(true);
     setRenderProgress(0);
-    
     const interval = setInterval(() => {
       setRenderProgress(prev => {
         if (prev >= 100) {
@@ -166,7 +159,6 @@ export default function App() {
     }, 100);
   }, [duration, exportSettings]);
 
-  // DOWNLOAD FILE
   const handleDownload = useCallback((asset) => {
     const link = document.createElement('a');
     link.href = asset.url;
@@ -174,7 +166,6 @@ export default function App() {
     link.click();
   }, []);
 
-  // COMMUNITY INTERACTIONS
   const handleLike = useCallback((postId) => {
     setCommunityPosts(prev => prev.map(post => 
       post.id === postId ? { ...post, likes: post.likes + 1 } : post
@@ -190,7 +181,6 @@ export default function App() {
   const handleComment = useCallback((postId) => {
     const comment = newComment[postId];
     if (!comment || !comment.trim()) return;
-    
     setCommunityPosts(prev => prev.map(post => 
       post.id === postId ? { 
         ...post, 
@@ -207,7 +197,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-black text-white relative">
-      
       <style>{`
         [data-bolt-badge], .bolt-badge, #bolt-badge, a[href*="bolt"],
         div[class*="fixed"][class*="bottom"] iframe, [class*="made"],
@@ -217,7 +206,6 @@ export default function App() {
         .scrollbar::-webkit-scrollbar-thumb{background:#7c3aed;border-radius:10px;}
       `}</style>
 
-      {/* Hidden File Input */}
       <input 
         ref={fileInputRef}
         type="file" 
@@ -235,13 +223,18 @@ export default function App() {
           </button>
           {menuOpen && (
             <div className="absolute top-20 left-0 bg-zinc-950 border border-[#7c3aed] p-6 rounded-2xl w-72 shadow-2xl max-h-[80vh] overflow-y-auto scrollbar">
+              <div className="bg-gradient-to-r from-[#7c3aed] to-[#6d28d9] p-4 rounded-xl mb-6 text-center">
+                <div className="text-xs font-bold text-white/70 mb-1">CURRENT PLAN</div>
+                <div className="text-2xl font-black text-white">{userPlan}</div>
+                <div className="text-xs text-white/90 mt-2">8K Export • 600 AI Tools • 1TB Storage</div>
+              </div>
               <h3 className="text-lg font-black uppercase mb-4 text-[#7c3aed]">Quick Access</h3>
               {[
                 {p:1,l:"Home"},{p:2,l:"Welcome"},{p:3,l:"Login/Pricing"},{p:4,l:"Writing Tools"},{p:5,l:"Voice Tools"},
-                {p:6,l:"Image Tools"},{p:7,l:"Video Tools"},{p:8,l:"Motion Tools"},{p:10,l:"Upload Media"},
-                {p:11,l:"Editor Suite"},{p:12,l:"Timeline & Library"},{p:13,l:"Enhancement"},{p:14,l:"Audio Mixer"},
-                {p:15,l:"Preview"},{p:16,l:"Export"},{p:17,l:"Tutorials"},{p:18,l:"Terms"},{p:19,l:"Agent Grok"},
-                {p:20,l:"Community"},{p:21,l:"Thank You"}
+                {p:6,l:"Image Tools"},{p:7,l:"Video Tools"},{p:8,l:"Motion Tools"},{p:9,l:"Enhancement"},
+                {p:10,l:"Upload Media"},{p:11,l:"Editor Suite"},{p:12,l:"Timeline & Library"},{p:13,l:"Enhancement"},
+                {p:14,l:"Audio Mixer"},{p:15,l:"Preview"},{p:16,l:"Export"},{p:17,l:"Tutorials"},{p:18,l:"Terms"},
+                {p:19,l:"Agent Grok"},{p:20,l:"Community"},{p:21,l:"Thank You"}
               ].map(i => (
                 <button key={i.p} onClick={() => {setPage(i.p);setMenuOpen(false);}} className="w-full text-left text-sm font-bold uppercase text-white p-3 hover:bg-[#7c3aed] rounded-lg transition">
                   {i.l}
@@ -249,6 +242,30 @@ export default function App() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* SEARCH TOOL BUTTON - Pages 4-9 */}
+      {(page >= 4 && page <= 9) && (
+        <div className="fixed top-6 left-32 z-50">
+          <div className="relative">
+            <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#7c3aed]"/>
+            <input
+              type="text"
+              value={toolSearch}
+              onChange={(e) => setToolSearch(e.target.value)}
+              placeholder="Search 600+ AI Tools..."
+              className="bg-zinc-950 border-2 border-[#7c3aed] pl-12 pr-6 py-3 rounded-full text-white placeholder-zinc-500 outline-none w-96 font-bold"
+            />
+            {toolSearch && (
+              <button
+                onClick={() => setToolSearch('')}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
+              >
+                <X size={18}/>
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -283,7 +300,7 @@ export default function App() {
           <div className="h-screen flex flex-col justify-center items-center text-center px-6">
             <Sparkles size={64} className="text-[#7c3aed] mb-8 animate-pulse"/>
             <h1 className="text-7xl md:text-9xl font-black text-[#7c3aed] uppercase mb-6">MANDASTRONG STUDIO</h1>
-            <p className="text-xl md:text-2xl font-bold text-[#7c3aed] max-w-3xl mb-16">Welcome To The All In One Make Your Own Longer Movies App!</p>
+            <p className="text-xl md:text-2xl font-bold text-[#7c3aed] max-w-3xl mb-16">Welcome To An All In One Make Your Own Longer Movies!</p>
             <button onClick={() => setPage(2)} className="bg-[#7c3aed] text-white px-16 py-4 rounded-full font-black uppercase text-xl hover:scale-105 transition shadow-2xl">START CREATING</button>
           </div>
         )}
@@ -318,9 +335,9 @@ export default function App() {
               <h2 className="text-4xl font-black text-center mb-12 uppercase text-white">Choose Your Plan</h2>
               <div className="grid md:grid-cols-3 gap-6">
                 {[
-                  {t:'Basic',p:'20',s:'https://buy.stripe.com/test_14k00SfE88Wn5K85kk',f:['HD Export (1080p)','100 AI Tools','10GB Storage','Email Support']},
-                  {t:'Pro',p:'30',s:'https://buy.stripe.com/test_6oE00SfE8cit65G002',f:['4K Export (2160p)','300 AI Tools','100GB Storage','Priority Support','Commercial License']},
-                  {t:'Studio',p:'50',s:'https://buy.stripe.com/test_dR68wwdvZ8Wn4E43cc',f:['8K Export (4320p)','600 AI Tools','1TB Storage','24/7 Support','Full Rights','API Access']}
+                  {t:'Basic',p:'20',s:'https://buy.stripe.com/test_basic',f:['HD Export (1080p)','100 AI Tools','10GB Storage','Email Support']},
+                  {t:'Pro',p:'30',s:'https://buy.stripe.com/test_pro',f:['4K Export (2160p)','300 AI Tools','100GB Storage','Priority Support','Commercial License']},
+                  {t:'Studio',p:'50',s:'https://buy.stripe.com/test_studio',f:['8K Export (4320p)','600 AI Tools','1TB Storage','24/7 Support','Full Rights','API Access']}
                 ].map(plan => (
                   <div key={plan.t} className="bg-zinc-950 border-2 border-[#7c3aed]/30 rounded-3xl p-8 hover:border-[#7c3aed] transition">
                     <h3 className="text-2xl font-black uppercase mb-2 text-white">{plan.t}</h3>
@@ -338,42 +355,37 @@ export default function App() {
 
         {/* PAGES 4-9: AI TOOL BOARDS */}
         {(page >= 4 && page <= 9) && (() => {
-          const boards = ["Writing","Voice","Image","Video","Motion","Image"];
+          const boards = ["Writing","Voice","Image","Video","Motion","Enhancement"];
           const allTools = AI_TOOLS[boards[page-4]] || [];
-          const tools = toolSearch ? allTools.filter(t => t.toLowerCase().includes(toolSearch.toLowerCase())) : allTools;
+          const tools = toolSearch.trim()
+            ? allTools.filter(tool => tool.toLowerCase().includes(toolSearch.toLowerCase()))
+            : allTools;
           return (
             <div className="h-screen flex flex-col pt-20 pb-40">
-              <h2 className="text-5xl font-black uppercase text-[#7c3aed] text-center mb-6">AI TOOL BOARD</h2>
-              
-              {/* SEARCH BAR */}
-              <div className="px-8 mb-6">
-                <div className="relative max-w-xl">
-                  <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#7c3aed]"/>
-                  <input 
-                    value={toolSearch} 
-                    onChange={e => setToolSearch(e.target.value)} 
-                    placeholder="🔍 Search Tools..." 
-                    className="w-full bg-zinc-900 border-2 border-[#7c3aed] pl-12 pr-10 py-4 rounded-xl text-white outline-none text-lg font-bold"
-                  />
-                  {toolSearch && <button onClick={() => setToolSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"><X size={20}/></button>}
-                </div>
-              </div>
-
+              <h2 className="text-5xl font-black uppercase text-[#7c3aed] text-center mb-2">AI TOOL BOARD</h2>
+              <p className="text-center text-zinc-400 mb-6">{boards[page-4]} Category • {tools.length} Tools {toolSearch.trim() ? `Found for "${toolSearch}"` : 'Available'}</p>
               <div className="flex-1 overflow-y-auto px-8 scrollbar">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-8">
-                  {tools.map((tool,i) => (
-                    <button key={i} onClick={() => setSelectedTool(tool)} className="bg-black border-2 border-[#7c3aed] p-6 rounded-2xl hover:bg-[#7c3aed]/10 transition group">
-                      <Sparkles size={18} className="text-[#7c3aed] mb-2 group-hover:animate-spin"/>
-                      <span className="text-sm font-bold uppercase text-white">{tool}</span>
-                    </button>
-                  ))}
-                </div>
+                {tools.length === 0 ? (
+                  <div className="text-center py-20">
+                    <p className="text-zinc-500 text-xl font-bold">No tools found matching "{toolSearch}"</p>
+                    <button onClick={() => setToolSearch('')} className="mt-4 text-[#7c3aed] underline">Clear Search</button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-8">
+                    {tools.map((tool,i) => (
+                      <button key={i} onClick={() => setSelectedTool(tool)} className="bg-black border-2 border-[#7c3aed] p-6 rounded-2xl hover:bg-[#7c3aed]/10 transition group">
+                        <Sparkles size={18} className="text-[#7c3aed] mb-2 group-hover:animate-spin"/>
+                        <span className="text-sm font-bold uppercase text-white">{tool}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           );
         })()}
 
-        {/* AI TOOL MODAL - WORKING UPLOAD & GENERATION */}
+        {/* AI TOOL MODAL */}
         {selectedTool && (
           <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-8">
             <div className="bg-zinc-950 border-2 border-[#7c3aed] rounded-3xl p-8 max-w-2xl w-full">
@@ -381,46 +393,16 @@ export default function App() {
                 <h2 className="text-3xl font-black uppercase text-white">{selectedTool}</h2>
                 <button onClick={() => {setSelectedTool(null);setAiPrompt('');}} className="text-white hover:text-red-500 transition"><X size={32}/></button>
               </div>
-              
-              {/* 3 BUTTONS: UPLOAD, PASTE, GENERATE */}
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                <button onClick={() => fileInputRef.current?.click()} className="aspect-square bg-zinc-900 border-2 border-[#7c3aed] rounded-2xl flex flex-col items-center justify-center hover:bg-[#7c3aed]/20 transition">
-                  <Upload size={40} className="text-[#7c3aed] mb-2"/>
-                  <p className="font-black text-white text-sm">UPLOAD</p>
-                </button>
-
-                <button onClick={async () => {
-                  try {
-                    const text = await navigator.clipboard.readText();
-                    if (text && text.trim()) {
-                      const isUrl = text.startsWith('http') || text.startsWith('data:');
-                      const newItem = {
-                        id: Date.now(),
-                        name: isUrl ? `pasted-${Date.now()}.mp4` : `text-${Date.now()}.txt`,
-                        type: isUrl ? 'video' : 'text',
-                        size: '0 MB',
-                        url: isUrl ? text : `data:text/plain;charset=utf-8,${encodeURIComponent(text)}`,
-                        content: text,
-                        timestamp: new Date().toISOString()
-                      };
-                      setMediaLibrary(prev => [...prev, newItem]);
-                      setSelectedTool(null);
-                    }
-                  } catch (err) {
-                    console.error('Paste error:', err);
-                  }
-                }} className="aspect-square bg-zinc-900 border-2 border-[#7c3aed] rounded-2xl flex flex-col items-center justify-center hover:bg-[#7c3aed]/20 transition cursor-pointer">
-                  <Layers size={40} className="text-[#7c3aed] mb-2"/>
-                  <p className="font-black text-white text-sm">PASTE</p>
-                </button>
-
-                <div className="aspect-square bg-zinc-900 border-2 border-[#7c3aed] rounded-2xl flex flex-col items-center justify-center">
-                  <Sparkles size={40} className="text-[#7c3aed] mb-2"/>
-                  <p className="font-black text-white text-sm">GENERATE</p>
-                </div>
-              </div>
-
               <div className="space-y-6">
+                <div className="bg-black border border-[#7c3aed]/30 rounded-xl p-6">
+                  <h3 className="font-bold mb-4 text-white flex items-center gap-2">
+                    <Upload size={20} className="text-[#7c3aed]"/>
+                    Upload Existing Media
+                  </h3>
+                  <button onClick={() => fileInputRef.current?.click()} className="w-full bg-zinc-900 border-2 border-[#7c3aed] p-4 rounded-lg text-white hover:bg-[#7c3aed]/20 transition font-bold">
+                    📁 BROWSE FILES
+                  </button>
+                </div>
                 <div className="bg-black border border-[#7c3aed]/30 rounded-xl p-6">
                   <h3 className="font-bold mb-4 text-white flex items-center gap-2">
                     <Sparkles size={20} className="text-[#7c3aed]"/>
@@ -544,7 +526,7 @@ export default function App() {
           </div>
         )}
 
-        {/* PAGE 12 - MEDIA LIBRARY & TIMELINE (WORKING DRAG & DROP) */}
+        {/* PAGE 12 - MEDIA LIBRARY & TIMELINE */}
         {page === 12 && (
           <div className="min-h-screen flex pb-32">
             <div className="w-1/3 bg-zinc-950 border-r-4 border-[#7c3aed] p-6 overflow-y-auto scrollbar">
@@ -592,7 +574,7 @@ export default function App() {
                         </div>
                       )}
                       {asset.enhanced && (
-                        <div className="text-xs bg-[#7c3aed] text-white px-2 py-1 rounded inline-block mt-2">
+                        <div className="text-xs bg-green-600 text-white px-2 py-1 rounded inline-block mt-2">
                           ✨ Enhanced
                         </div>
                       )}
@@ -661,7 +643,7 @@ export default function App() {
           </div>
         )}
 
-        {/* PAGE 13 - ENHANCEMENT STUDIO (WORKING SLIDERS) */}
+        {/* PAGE 13 - ENHANCEMENT STUDIO */}
         {page === 13 && (
           <div className="min-h-screen p-8 pt-20 pb-40">
             <h1 className="text-5xl font-black uppercase text-[#7c3aed] mb-4 text-center">ENHANCEMENT STUDIO</h1>
@@ -679,7 +661,6 @@ export default function App() {
               ))}
             </div>
 
-            {/* ENHANCEMENT MODAL - WORKING CONTROLS */}
             {selectedEnhancement && (
               <div className="fixed inset-0 z-50 bg-black/95 p-10 flex flex-col">
                 <div className="flex justify-between items-center mb-8">
@@ -740,7 +721,7 @@ export default function App() {
           </div>
         )}
 
-        {/* PAGE 14 - AUDIO MIXER (WORKING SLIDERS) */}
+        {/* PAGE 14 - AUDIO MIXER */}
         {page === 14 && (
           <div className="min-h-screen p-8 pt-20 pb-40">
             <h1 className="text-4xl font-black uppercase mb-12 text-white text-center">PROFESSIONAL AUDIO MIXER</h1>
@@ -813,7 +794,7 @@ export default function App() {
                   <Play size={24}/>
                   PLAY PREVIEW
                 </button>
-                <button onClick={handleRender} className="bg-[#7c3aed] px-12 py-4 rounded-xl font-black uppercase flex items-center gap-3 hover:bg-[#6d28d9] transition">
+                <button onClick={handleRender} className="bg-green-600 px-12 py-4 rounded-xl font-black uppercase flex items-center gap-3 hover:bg-green-700 transition">
                   <Zap size={24}/>
                   START RENDER
                 </button>
@@ -843,7 +824,7 @@ export default function App() {
           </div>
         )}
 
-        {/* PAGE 16 - EXPORT & DOWNLOAD (WORKING) */}
+        {/* PAGE 16 - EXPORT & DOWNLOAD */}
         {page === 16 && (
           <div className="h-screen flex items-center justify-center p-8">
             <div className="max-w-4xl w-full bg-zinc-950 border-4 border-[#7c3aed] rounded-3xl p-12">
@@ -901,27 +882,17 @@ export default function App() {
                 </button>
                 <button 
                   disabled={!currentVideo}
-                  className="bg-[#7c3aed] py-6 rounded-xl font-black uppercase text-xl hover:bg-[#6d28d9] transition disabled:opacity-50 flex items-center justify-center gap-3"
+                  className="bg-green-600 py-6 rounded-xl font-black uppercase text-xl hover:bg-green-700 transition disabled:opacity-50 flex items-center justify-center gap-3"
                 >
                   <Save size={24}/>
                   SAVE TO CLOUD
                 </button>
               </div>
 
-              <h3 className="text-2xl font-black mb-6 text-white text-center">SHARE TO SOCIAL MEDIA</h3>
-              <div className="grid grid-cols-3 gap-4 mb-8">
-                <button disabled={!currentVideo} className="bg-red-600 py-4 rounded-xl font-bold hover:bg-red-700 transition disabled:opacity-50">📺 YOUTUBE</button>
-                <button disabled={!currentVideo} className="bg-blue-600 py-4 rounded-xl font-bold hover:bg-blue-700 transition disabled:opacity-50">📘 FACEBOOK</button>
-                <button disabled={!currentVideo} className="bg-gradient-to-r from-purple-600 to-pink-600 py-4 rounded-xl font-bold hover:opacity-90 transition disabled:opacity-50">📸 INSTAGRAM</button>
-                <button disabled={!currentVideo} className="bg-black py-4 rounded-xl font-bold hover:bg-zinc-900 transition disabled:opacity-50 border border-white">𝕏 TWITTER</button>
-                <button disabled={!currentVideo} className="bg-pink-600 py-4 rounded-xl font-bold hover:bg-pink-700 transition disabled:opacity-50">🎵 TIKTOK</button>
-                <button disabled={!currentVideo} className="bg-blue-500 py-4 rounded-xl font-bold hover:bg-blue-600 transition disabled:opacity-50">🎬 VIMEO</button>
-              </div>
-
               <button 
                 onClick={() => setPage(20)}
                 disabled={!currentVideo}
-                className="w-full bg-[#7c3aed] py-6 rounded-xl font-black uppercase text-xl hover:bg-[#6d28d9] transition disabled:opacity-50 flex items-center justify-center gap-3"
+                className="w-full bg-blue-600 py-6 rounded-xl font-black uppercase text-xl hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-3"
               >
                 <Share2 size={24}/>
                 SHARE TO COMMUNITY HUB
@@ -1081,7 +1052,7 @@ export default function App() {
                     {['File Upload','AI Generation','Timeline Editor','Enhancement Tools','Audio Mixer','Render Engine'].map(s => (
                       <div key={s} className="flex justify-between items-center bg-black/50 p-4 rounded-xl">
                         <span className="font-bold text-white">{s}</span>
-                        <span className="text-[#a78bfa] flex items-center gap-2 font-bold">● Operational</span>
+                        <span className="text-green-400 flex items-center gap-2 font-bold">● Operational</span>
                       </div>
                     ))}
                   </div>
@@ -1091,7 +1062,7 @@ export default function App() {
           </div>
         )}
 
-        {/* PAGE 20 - COMMUNITY HUB (WORKING LIKES/COMMENTS) */}
+        {/* PAGE 20 - COMMUNITY HUB */}
         {page === 20 && (
           <div className="min-h-screen p-8 pt-20 pb-40">
             <div className="flex justify-between items-center mb-12">
@@ -1175,7 +1146,7 @@ export default function App() {
               
               <div className="mb-16">
                 <video autoPlay loop muted playsInline className="w-full rounded-3xl border-4 border-[#7c3aed] shadow-2xl">
-                  <source src="/ThatsAllFolks.MP4" type="video/mp4"/>
+                  <source src="/ThatsAllFolks.mp4" type="video/mp4"/>
                 </video>
               </div>
 
@@ -1195,9 +1166,9 @@ export default function App() {
                 <BookOpen size={80} className="mx-auto text-[#7c3aed] mb-8"/>
                 <h3 className="text-4xl font-black text-white uppercase mb-6">HOW TO USE GUIDE</h3>
                 <p className="text-zinc-400 font-bold text-xl uppercase mb-8">Complete Instructional Manual</p>
-                <a href="/MandaStrong_User_Guide.pdf" download className="inline-block px-16 py-6 bg-[#7c3aed] text-white rounded-full font-black text-2xl shadow-2xl hover:bg-[#6d28d9] transition">
+                <button className="px-16 py-6 bg-[#7c3aed] text-white rounded-full font-black text-2xl shadow-2xl hover:bg-[#6d28d9] transition">
                   📥 DOWNLOAD GUIDE
-                </a>
+                </button>
               </div>
 
               <div className="bg-gradient-to-r from-[#7c3aed] to-[#6d28d9] rounded-3xl p-12 text-center mb-16">
@@ -1208,19 +1179,13 @@ export default function App() {
                 </a>
               </div>
 
-              <div className="flex gap-8 justify-center mb-12">
+              <div className="flex gap-8 justify-center">
                 <button onClick={() => setPage(1)} className="px-20 py-8 bg-white text-black rounded-full font-black uppercase text-3xl hover:scale-105 transition shadow-2xl">
                   🏠 HOME
                 </button>
                 <button onClick={() => window.close()} className="px-20 py-8 bg-red-600 text-white rounded-full font-black uppercase text-3xl hover:scale-105 transition shadow-2xl">
                   ✕ CLOSE APP
                 </button>
-              </div>
-
-              <div className="text-center">
-                <a href="https://thatsallfolks.com" target="_blank" rel="noopener noreferrer" className="text-[#7c3aed] text-2xl font-black hover:text-[#a78bfa] transition">
-                  ThatsAllFolks.com
-                </a>
               </div>
             </div>
           </div>
