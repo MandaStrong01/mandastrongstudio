@@ -5,14 +5,14 @@ import {
   Target, MousePointer2, Camera, Wind,
   Maximize, Activity, Radio, Loader2,
   Film, Scissors, CheckCircle, Type, Music,
-  FileText, ShieldCheck, Play, MoveHorizontal,
-  Layout, HardDrive, Download, ZapOff
+  FileText, ShieldCheck, ZapOff, Play,
+  MoveHorizontal, Layout, Square, HardDrive, Download
 } from 'lucide-react';
 
 /**
  * MANDASTRONG STUDIO: THE STUDIO MASTER RELEASE (75s)
  * --------------------------------------------------
- * Logic: Auto-Start (Immediate Ignition)
+ * Logic: Auto-Start (Zero Latency Ignition)
  * Aesthetic: High-Contrast Cinema / Liquid Titanium UI
  * Features: Steady Creator Mode™ Scaling / Bottom-Anchored SRT Sync Track
  */
@@ -247,7 +247,7 @@ const App = () => {
                         className="absolute bottom-2 left-2 right-2 bg-gradient-to-t from-zinc-950 via-purple-700 to-white rounded-[65px] transition-all duration-[40ms] shadow-[0_0_80px_rgba(126,34,206,0.6)]"
                         style={{ height: `${30 + Math.sin(time * 35 + i) * 60}%` }}
                       >
-                         <div className="absolute top-0 left-0 w-full h-[8px] bg-white blur-[3px] opacity-90 animate-pulse"></div>
+                         <div className="absolute top-0 left-0 w-full h-[8px] bg-white blur-[2px] opacity-90 animate-pulse"></div>
                       </div>
                    </div>
                    <p className="text-4xl font-black text-zinc-900 group-hover:text-white transition-all tracking-[0.5em] italic leading-none uppercase">{ch}</p>
@@ -278,6 +278,17 @@ const App = () => {
                   <p className="text-6xl font-mono font-black text-purple-600 drop-shadow-white-intense">{Math.floor(renderProgress)}%</p>
                </div>
             </div>
+            {time > 61.5 && (
+              <div className="absolute inset-0 z-[300] flex items-center justify-center overflow-hidden pointer-events-none">
+                {Array.from({length: 120}).map((_, i) => (
+                  <div key={i} className="confetti-shard" style={{ 
+                    left: `${Math.random() * 100}%`, 
+                    backgroundColor: i % 2 === 0 ? '#7e22ce' : '#ffffff',
+                    animationDuration: '1.2s',
+                  }} />
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -404,7 +415,7 @@ const App = () => {
         }
         @keyframes fall-phys { to { transform: translateY(110vh) rotate(1440deg) skew(45deg); } }
         
-        .animate-shatter { animation: shat-ter 4.5s ease-out forwards; }
+        .animate-shatter { animation: shat-ter 5s ease-out forwards; }
         
         .shadow-glow-white { box-shadow: 0 0 100px rgba(255,255,255,0.4); }
 
