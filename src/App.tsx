@@ -145,7 +145,7 @@ const App = () => {
               <div className="flex justify-between items-baseline">
                 <span className="text-white/5 text-[15vw] font-black italic tracking-tighter uppercase leading-none">Instant</span>
                 <span className="text-white text-[25vw] font-black italic tracking-tighter leading-none drop-shadow-white-intense animate-pop-in">
-                  3 <span className="text-purple-700 italic uppercase">Hours</span>
+                  3 <span className="text-purple-700 italic">HOURS</span>
                 </span>
               </div>
             </div>
@@ -171,7 +171,7 @@ const App = () => {
             </div>
 
             <div className="space-y-4 max-w-[95vw] mx-auto w-full relative">
-              {['CINEMA_RAW_SOURCE', 'HUMAN_VOCAL_SYNTH', 'VFX_LUMA_GRADE', 'SRT_SUBTITLE_ENGINE'].map((track, i) => (
+              {['CINEMA_RAW_8K', 'VOCAL_CLONE_MASTER', 'VFX_PLATE_COMPS', 'SRT_SUBTITLE_ENGINE'].map((track, i) => (
                 <div key={track} className={`h-28 bg-black border border-white/5 rounded-3xl flex items-center px-16 relative overflow-hidden group transition-all backdrop-blur-2xl ${track === 'SRT_SUBTITLE_ENGINE' ? 'border-purple-500/60 bg-purple-950/10 shadow-[0_0_80px_rgba(126,34,206,0.2)] mt-16 ring-2 ring-purple-500/20' : ''}`}>
                   <div className="flex items-center gap-10 z-10">
                      {track === 'SRT_SUBTITLE_ENGINE' ? <Type size={36} className="text-purple-500 animate-pulse" /> : <Layers size={24} className="opacity-10" />}
@@ -182,7 +182,7 @@ const App = () => {
                   
                   <div className="absolute inset-0 bg-gradient-to-r from-purple-900/10 via-transparent to-transparent w-full animate-scrub-cinema"></div>
                   
-                  {/* SRT Track Foundation: Foundational track at the bottom with Drag visual */}
+                  {/* SRT Track Foundation: Visual Drop Zone */}
                   {track === 'SRT_SUBTITLE_ENGINE' && (
                     <div className="absolute inset-y-0 right-20 flex items-center gap-16 z-20 animate-reveal-pro">
                        <div className="flex flex-col items-end opacity-40">
@@ -199,7 +199,6 @@ const App = () => {
                        </div>
                     </div>
                   )}
-                  {/* Magnetic Precision Snap Visual */}
                   <div className="absolute left-1/3 top-0 bottom-0 w-[2px] bg-white/40 z-10 hidden group-hover:block animate-pulse shadow-glow-white"></div>
                 </div>
               ))}
