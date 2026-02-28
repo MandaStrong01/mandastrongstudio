@@ -10,10 +10,10 @@ import {
 } from 'lucide-react';
 
 /**
- * MANDASTRONG STUDIO: THE STUDIO MASTER RELEASE (75s)
+ * MANDASTRONG STUDIO: THE OFFICIAL STUDIO MASTER (75s)
  * --------------------------------------------------
  * Logic: Auto-Start (Zero Latency Ignition)
- * Aesthetic: High-Contrast Cinema / Liquid Titanium UI
+ * Aesthetic: Photorealistic Cinema / Liquid Titanium UI
  * Features: Steady Creator Mode™ Scaling / Bottom-Anchored SRT Sync Track
  */
 
@@ -36,7 +36,7 @@ const App = () => {
     { id: 8, start: 62, end: 75, label: "THE FINALE" }
   ];
 
-  // Auto-Start Production Engine
+  // Auto-Start Production Engine initialization
   useEffect(() => {
     timerRef.current = setInterval(() => {
       setTime(prev => {
@@ -54,14 +54,14 @@ const App = () => {
     const current = SCRIPT_TIMINGS.find(s => time >= s.start && time < s.end);
     if (current) setScene(current.id);
 
-    // Scene 4 Logic: Steady Mode™ Activation (30s - 36s)
+    // Scene 4 Logic: Steady Mode™ Activation (Triggering at 30s)
     if (time >= 30 && time < 36) {
       setIsSteadyMode(true);
     } else {
       setIsSteadyMode(false);
     }
 
-    // Scene 7 Logic: High-Octane Render Progress
+    // Scene 7 Logic: Render Progress Bar Dynamics
     if (time >= 56 && time < 61) {
       setRenderProgress(((time - 56) / 5) * 100);
     } else if (time >= 61) {
@@ -72,7 +72,7 @@ const App = () => {
   return (
     <div className="w-full h-screen bg-black text-white overflow-hidden flex flex-col font-sans antialiased selection:bg-purple-900">
       
-      {/* CINEMATIC VIEWPORT (LUMA-SYNCED) */}
+      {/* CINEMATIC VIEWPORT (REACTIVE SCALE FOR STEADY MODE) */}
       <div className={`flex-1 relative overflow-hidden transition-all duration-[1200ms] ease-in-out ${isSteadyMode ? 'scale-[1.12] ring-[20px] ring-purple-900/10' : 'scale-100'}`}>
         
         {/* OPTICAL CINEMA ENGINE: Grain, Anamorphic Vignette, Volumetric Rays */}
@@ -145,7 +145,7 @@ const App = () => {
               <div className="flex justify-between items-baseline">
                 <span className="text-white/5 text-[15vw] font-black italic tracking-tighter uppercase leading-none">Instant</span>
                 <span className="text-white text-[25vw] font-black italic tracking-tighter leading-none drop-shadow-white-intense animate-pop-in">
-                  3 <span className="text-purple-700 italic">HOURS</span>
+                  3 <span className="text-purple-700 italic uppercase">Hours</span>
                 </span>
               </div>
             </div>
@@ -171,11 +171,11 @@ const App = () => {
             </div>
 
             <div className="space-y-4 max-w-[95vw] mx-auto w-full relative">
-              {['CINEMA_RAW_8K', 'VOCAL_CLONE_MASTER', 'VFX_PLATE_COMPS', 'SRT_SUBTITLE_ENGINE'].map((track, i) => (
+              {['CINEMA_RAW_SOURCE', 'HUMAN_VOCAL_SYNTH', 'VFX_LUMA_GRADE', 'SRT_SUBTITLE_ENGINE'].map((track, i) => (
                 <div key={track} className={`h-28 bg-black border border-white/5 rounded-3xl flex items-center px-16 relative overflow-hidden group transition-all backdrop-blur-2xl ${track === 'SRT_SUBTITLE_ENGINE' ? 'border-purple-500/60 bg-purple-950/10 shadow-[0_0_80px_rgba(126,34,206,0.2)] mt-16 ring-2 ring-purple-500/20' : ''}`}>
                   <div className="flex items-center gap-10 z-10">
                      {track === 'SRT_SUBTITLE_ENGINE' ? <Type size={36} className="text-purple-500 animate-pulse" /> : <Layers size={24} className="opacity-10" />}
-                     <span className={`text-2xl font-black tracking-[0.8em] uppercase italic ${track === 'SRT_SUBTITLE_ENGINE' ? 'text-purple-500' : 'text-white/5'}`}>
+                     <span className={`text-2xl font-black tracking-[0.8em] uppercase italic ${track === 'SRT_SUBTITLE_ENGINE' ? 'text-purple-500 font-black' : 'text-white/5'}`}>
                         {track}
                      </span>
                   </div>
@@ -199,6 +199,7 @@ const App = () => {
                        </div>
                     </div>
                   )}
+                  {/* Magnetic Precision Snap Visual */}
                   <div className="absolute left-1/3 top-0 bottom-0 w-[2px] bg-white/40 z-10 hidden group-hover:block animate-pulse shadow-glow-white"></div>
                 </div>
               ))}
@@ -247,7 +248,7 @@ const App = () => {
                         className="absolute bottom-2 left-2 right-2 bg-gradient-to-t from-zinc-950 via-purple-700 to-white rounded-[65px] transition-all duration-[40ms] shadow-[0_0_80px_rgba(126,34,206,0.6)]"
                         style={{ height: `${30 + Math.sin(time * 35 + i) * 60}%` }}
                       >
-                         <div className="absolute top-0 left-0 w-full h-[8px] bg-white blur-[2px] opacity-90 animate-pulse"></div>
+                         <div className="absolute top-0 left-0 w-full h-[8px] bg-white blur-[3px] opacity-90 animate-pulse"></div>
                       </div>
                    </div>
                    <p className="text-4xl font-black text-zinc-900 group-hover:text-white transition-all tracking-[0.5em] italic leading-none uppercase">{ch}</p>
@@ -301,7 +302,7 @@ const App = () => {
              </h1>
              <div className="relative group bg-zinc-950 border border-white/5 px-60 py-40 rounded-[140px] shadow-3xl overflow-hidden backdrop-blur-3xl transition-all duration-1000 hover:scale-105">
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-900/15 via-transparent to-transparent"></div>
-                <p className="text-6xl font-bold mb-20 tracking-[0.5em] uppercase text-zinc-700 italic opacity-60 leading-none uppercase">From Imagination To Reality</p>
+                <p className="text-6xl font-bold mb-20 tracking-[0.5em] uppercase text-zinc-700 italic opacity-60 leading-none">From Imagination To Reality</p>
                 <a 
                   href="https://MandaStrong1.Etsy.com" 
                   target="_blank" 
