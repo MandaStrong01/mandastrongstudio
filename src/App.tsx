@@ -1449,7 +1449,7 @@ function MusicVideoStudio({ onClose, onSave }) {
             <div style={{display:"flex",flexDirection:"column",background:"#000",overflow:"hidden"}}>
               {/* Video player */}
               <div style={{position:"relative",background:"#000"}}>
-                <canvas ref={canvasRef} style={{position:"fixed",left:0,bottom:0,width:2,height:2,opacity:0.01,pointerEvents:"none",zIndex:-1}}/>
+                <canvas ref={canvasRef} style={{position:"fixed",right:8,bottom:8,width:160,height:90,opacity:1,pointerEvents:"none",zIndex:9999,border:"1px solid #e8c96d",background:"#000"}}/>
                 <video ref={videoRef} src={videoUrl} playsInline
                   style={{width:"100%",aspectRatio:"16/9",display:"block",background:"#000"}}
                   onTimeUpdate={()=>setCurrentTime(videoRef.current?.currentTime||0)}
@@ -1537,7 +1537,7 @@ function MusicVideoStudio({ onClose, onSave }) {
           )}
 
           {/* Canvas for rendering (always hidden) */}
-          {!videoUrl&&<canvas ref={canvasRef} style={{position:"fixed",left:0,bottom:0,width:2,height:2,opacity:0.01,pointerEvents:"none",zIndex:-1}}/>}
+          {!videoUrl&&<canvas ref={canvasRef} style={{position:"fixed",right:8,bottom:8,width:160,height:90,opacity:1,pointerEvents:"none",zIndex:9999,border:"1px solid #e8c96d",background:"#000"}}/>}
         </div>
 
         {/* Bottom nav */}
@@ -2144,7 +2144,7 @@ Write the drawFrame body now.`}]
 
   return (
     <div style={{minHeight:"100vh",background:"#000",color:WHITE,fontFamily:"'Rajdhani',sans-serif",paddingBottom:160}}>
-      <canvas ref={canvasRef} style={{position:"fixed",left:0,bottom:0,width:2,height:2,opacity:0.01,pointerEvents:"none",zIndex:-1}}/>
+      <canvas ref={canvasRef} style={{position:"fixed",right:8,bottom:8,width:160,height:90,opacity:1,pointerEvents:"none",zIndex:9999,border:"1px solid #e8c96d",background:"#000"}}/>
       <div style={{padding:"12px 20px",borderBottom:"1px solid "+GOLDDIM+"",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
         <div>
           <div style={{fontSize:11,color:GOLD,letterSpacing:4,fontWeight:700}}>MANDASTRONG ENGINE v2 · CINEMA-GRADE RENDERER</div>
@@ -3605,7 +3605,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
 
   return (
     <div style={{...Sp,padding:0}}>
-      <canvas ref={canvasRef} style={{position:"fixed",left:0,bottom:0,width:2,height:2,opacity:0.01,pointerEvents:"none",zIndex:-1}}/>
+      <canvas ref={canvasRef} style={{position:"fixed",right:8,bottom:8,width:160,height:90,opacity:1,pointerEvents:"none",zIndex:9999,border:"1px solid #e8c96d",background:"#000"}}/>
       <div style={{padding:"12px 24px",borderBottom:"1px solid "+GOLDDIM+"",background:"#020200",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
         <div>
           <div style={{fontSize:10,color:GOLD,letterSpacing:4,fontWeight:700}}>PRODUCTION ENGINE — STAGE 6</div>
