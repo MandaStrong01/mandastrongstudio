@@ -3921,7 +3921,7 @@ function TutCanvas({drawFn}){
 
 function P19({ go }) {
   const [active,setActive]=useState(null);
-  const [generating,setGenerating]=useState(null);kkkmmmmmi
+  const [generating,setGenerating]=useState(null);
   const [drawFns,setDrawFns]=useState({});
 
   const tuts=[
@@ -4793,4 +4793,4 @@ export default function App() {
       <Footer page={page} go={go} onSave={saveProject} onHistory={()=>setShowHistory(true)}/>
     </div>
   );
-}   
+}
