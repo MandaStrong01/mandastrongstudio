@@ -1,4 +1,4 @@
- @ts-nocheck
+// @ts-nocheck
 import { useState, useRef, useEffect } from "react";
 
 // IndexedDB helpers for persistent clip storage
@@ -304,6 +304,7 @@ function speakText(voiceId, txt, onStart, onEnd) {
     .replace(/([.!?])\s+([A-Z])/g,"$1 $2")
     .slice(0,200000);
   const doSpeak = () => {
+    if (typeof window === "undefined" || !window.speechSynthesis) { if (typeof onEnd === "function") onEnd(); return; }
     const allVoices = window.speechSynthesis.getVoices();
     const voiceChar = typeof VOICE_CHARACTERS !== "undefined"
       ? VOICE_CHARACTERS.find(v=>v.id===voiceId) : null;
@@ -385,6 +386,7 @@ function speakText(voiceId, txt, onStart, onEnd) {
     };
     speakNext();
   };
+  if (typeof window === "undefined" || !window.speechSynthesis) { if (typeof onEnd === "function") onEnd(); return; }
   if(window.speechSynthesis.getVoices().length===0){
     window.speechSynthesis.onvoiceschanged=()=>{ window.speechSynthesis.onvoiceschanged=null; doSpeak(); };
   } else { doSpeak(); }
@@ -1931,7 +1933,7 @@ function P6Voice({ onSave, setMediaLib }) {
   };
 
   useEffect(()=>{
-    const load=()=>setSysVoices(window.speechSynthesis.getVoices().filter(v=>v.lang&&v.lang.startsWith("en")));
+    const load=()=>{ if(typeof window==="undefined"||!window.speechSynthesis){return;} setSysVoices(window.speechSynthesis.getVoices().filter(v=>v.lang&&v.lang.startsWith("en"))); };
     load(); window.speechSynthesis.onvoiceschanged=load;
     return()=>{window.speechSynthesis.cancel();if(timerRef.current)clearTimeout(timerRef.current);};
   },[]);
@@ -1953,7 +1955,7 @@ function P6Voice({ onSave, setMediaLib }) {
   const selected=mineSel||VOICE_CHARACTERS.find(v=>v.id===selVoice)||VOICE_CHARACTERS[0];
 
   const pickSysVoice=(vc)=>{
-    const allRaw=sysVoices.length?sysVoices:window.speechSynthesis.getVoices().filter(v=>v.lang&&v.lang.startsWith("en"));
+    const allRaw=sysVoices.length?sysVoices:((typeof window!=="undefined"&&window.speechSynthesis)?window.speechSynthesis.getVoices().filter(v=>v.lang&&v.lang.startsWith("en")):[]);
     if(!allRaw.length)return null;
     // ── QUALITY FIRST — use Enhanced/Premium/Siri/Neural voices when present ──
     const isHiQ=(v)=>/premium|enhanced|siri|neural|natural|online|multilingual/i.test((v.name||"")+" "+(v.voiceURI||""));
@@ -2008,7 +2010,7 @@ function P6Voice({ onSave, setMediaLib }) {
       utt.onerror=()=>{idxRef.current=idx+1;next();};
       window.speechSynthesis.speak(utt);
     };
-    window.speechSynthesis.getVoices().length>0?setTimeout(next,50):window.speechSynthesis.onvoiceschanged=()=>{window.speechSynthesis.onvoiceschanged=null;setTimeout(next,50);};
+    if(typeof window==="undefined"||!window.speechSynthesis){setTimeout(next,50);} else { window.speechSynthesis.getVoices().length>0?setTimeout(next,50):window.speechSynthesis.onvoiceschanged=()=>{window.speechSynthesis.onvoiceschanged=null;setTimeout(next,50);}; }
   };
 
   // Engine voice first. Identical on every device. Device voice only if the engine cannot deliver.
@@ -5597,4 +5599,3 @@ export default function App() {
     </div>
   );
 }
-
