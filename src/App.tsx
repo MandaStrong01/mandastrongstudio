@@ -65,6 +65,28 @@ async function engineSpeak(text,meta){
   return "";
 }
 
+// ── HIDDEN: mint a personal cloned voice from a sample recording ──
+// Sends the sample to the engine's clone core and returns an opaque
+// MandaStrong voice id. Store it; later pass it as meta.voice to speak
+// in the cloned voice. Provider is never surfaced.
+async function engineCloneVoice(sample){
+  try{
+    const res=await fetch(VOICE_URL,{method:"POST",headers:engineHeaders,body:JSON.stringify({clone:true,sample:String(sample||"")})});
+    let d=await res.json();
+    if(d&&d.voice_id) return d.voice_id;
+    if(d&&d.id){
+      for(let i=0;i<40;i++){
+        await new Promise(r=>setTimeout(r,1500));
+        const p=await fetch(VOICE_URL,{method:"POST",headers:engineHeaders,body:JSON.stringify({id:d.id})});
+        const pd=await p.json();
+        if(pd&&pd.voice_id) return pd.voice_id;
+        if(pd&&(pd.status==="failed"||pd.status==="canceled")) return "";
+      }
+    }
+  }catch(e){}
+  return "";
+}
+
 function playEngineAudio(url,volume){
   return new Promise((resolve)=>{
     try{
@@ -151,7 +173,7 @@ const autoPruneClips=async(keepNewest)=>{
     const all=await getAllClipsFromDB();
     if(all.length<=keepNewest)return 0;
     // Oldest first by timestamp embedded in id (Date.now-based ids sort correctly as strings of similar length)
-    const sortable=all.filter(c=>c.id!=="render_final");
+    const sortable=all.filter(c=>c.id!=="render_final"&&!String(c.id).startsWith("poc_"));
     sortable.sort((a,b)=>{
       const na=parseInt(String(a.id).replace(/\D/g,""))||0;
       const nb=parseInt(String(b.id).replace(/\D/g,""))||0;
@@ -211,6 +233,7 @@ const autoFreeStorage=async()=>{
     let freed=0;
     for(const c of sorted){
       if(c.id==="render_final")continue; // never delete the finished film
+      if(String(c.id).startsWith("poc_"))continue; // never delete showcase proof-of-concept films
       await deleteClipFromDB(c.id);
       freed++;
       pct=await getStoragePct();
@@ -270,6 +293,7 @@ let currentUtterance = null;
 
 function speakText(voiceId, txt, onStart, onEnd) {
   if (!txt||!txt.trim()) return;
+  if (typeof window === "undefined" || !window.speechSynthesis) { if(onEnd) onEnd(); return; }
   window.speechSynthesis.cancel();
   currentUtterance = null;
   const clean = txt
@@ -280,6 +304,7 @@ function speakText(voiceId, txt, onStart, onEnd) {
     .replace(/([.!?])\s+([A-Z])/g,"$1 $2")
     .slice(0,200000);
   const doSpeak = () => {
+    if (typeof window === "undefined" || !window.speechSynthesis) { if (typeof onEnd === "function") onEnd(); return; }
     const allVoices = window.speechSynthesis.getVoices();
     const voiceChar = typeof VOICE_CHARACTERS !== "undefined"
       ? VOICE_CHARACTERS.find(v=>v.id===voiceId) : null;
@@ -361,6 +386,7 @@ function speakText(voiceId, txt, onStart, onEnd) {
     };
     speakNext();
   };
+  if (typeof window === "undefined" || !window.speechSynthesis) { if (typeof onEnd === "function") onEnd(); return; }
   if(window.speechSynthesis.getVoices().length===0){
     window.speechSynthesis.onvoiceschanged=()=>{ window.speechSynthesis.onvoiceschanged=null; doSpeak(); };
   } else { doSpeak(); }
@@ -521,7 +547,8 @@ function Footer({ page, go, onSave, onHistory }) {
   return (
     <footer style={{position:"fixed",bottom:0,left:0,right:0,zIndex:400,background:"#000",borderTop:"1px solid "+GOLD+"",padding:"6px 20px 8px",display:"flex",flexDirection:"column",gap:4}}>
       <div style={{textAlign:"center"}}>
-        <span style={{color:GOLD,fontSize:11,letterSpacing:1,fontWeight:700}}>MANDASTRONG STUDIO 2026 · PROFESSIONAL CINEMA SYNTHESIS · MandaStrong1.Etsy.com</span>
+        <span style={{color:GOLD,fontSize:11,letterSpacing:1,fontWeight:700}}>MANDASTRONG STUDIO · PROFESSIONAL CINEMA SYNTHESIS · MandaStrong1.Etsy.com</span>
+        {page===1&&<span style={{color:GOLD,fontSize:11,letterSpacing:1,fontWeight:700,opacity:0.75}}> · CREATED 2025</span>}
       </div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:10,flexWrap:"wrap"}}>
         <button onClick={()=>go(Math.max(1,page-1))} disabled={page===1} style={{...G("out",true),opacity:page===1?0.3:1}}>◀ BACK</button>
@@ -1508,19 +1535,8 @@ function MusicVideoStudio({ onClose, onSave }) {
                   style={{...inp,height:160,resize:"vertical",lineHeight:1.8,border:"1px solid "+GOLD}}
                 />
                 {label("DURATION")}
-                <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
-                  {["2 Minutes","3 Minutes","4 Minutes","5 Minutes"].map(d=>(
-                    <button key={d} onClick={()=>set("duration",d)}
-                      style={{background:config.duration===d?GOLD:"#111",border:"1px solid "+(config.duration===d?"#000":GOLDDIM),color:config.duration===d?"#000":WHITE,padding:"5px 12px",cursor:"pointer",fontSize:11,fontWeight:900}}>
-                      {d}
-                    </button>
-                  ))}
-                </div>
-                <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <input type="range" min={1} max={60} value={parseInt(config.duration)||3}
-                    onChange={e=>set("duration",e.target.value+" Minutes")}
-                    style={{flex:1,accentColor:GOLD}}/>
-                  <span style={{color:GOLD,fontSize:12,fontWeight:900,letterSpacing:1,minWidth:82,textAlign:"right"}}>{parseInt(config.duration)||3} MIN</span>
+                <div style={{color:GOLDDIM,fontSize:11,lineHeight:1.7,padding:"8px 12px",border:"1px solid "+GOLDDIM,background:"#0a0a0a",marginBottom:8}}>
+                  🎵 The video automatically matches the length of your song. Upload or record your track on the SONG step and the film runs exactly as long as the music.
                 </div>
               </div>
             )}
@@ -1623,14 +1639,4 @@ function MusicVideoStudio({ onClose, onSave }) {
                 </div>
 
                 <button onClick={generateVideo} disabled={generating}
-                  style={{background:"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",border:"none",color:"#000",width:"100%",padding:"18px",fontSize:14,letterSpacing:3,cursor:generating?"not-allowed":"pointer",fontWeight:900,fontFamily:"'Rajdhani',sans-serif",opacity:generating?0.7:1,marginBottom:10}}>
-                  {generating?"⟳ RENDERING... "+renderProgress+"%":"🎬 GENERATE MUSIC VIDEO"}
-                </button>
-                {generating&&(
-                  <div>
-                    <div style={{height:5,background:"#111",marginBottom:6}}>
-                      <div style={{width:renderProgress+"%",height:"100%",background:"linear-gradient(90deg,#a07820,#e8c96d)",transition:"width .3s"}}/>
-                    </div>
-                    <div style={{background:"#000",border:"1px solid "+GOLDDIM,padding:10,maxHeight:140,overflowY:"auto"}}>
-                      {renderLog.map((l,i)=>(
-                        <div key={i} style={{color
+                  style={{background:"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",border:"none",color:"#000",width:"100%",padding:"18px",fontSiz
