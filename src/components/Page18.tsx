@@ -34,7 +34,7 @@ export default function Page18({ onNext, onBack }: Page18Props) {
                 <strong>4. Service Availability:</strong> We strive to provide continuous service but do not guarantee uninterrupted access. The service is provided "as is" without warranties.
               </p>
               <p>
-                <strong>5. Intellectual Property:</strong> All AI tools, interface designs, and MandaStrong Studio branding are intellectual property of MandaStrong01.
+                <strong>5. Intellectual Property:</strong> All AI tools, interface designs, and MandaStrong Studio branding are intellectual property of MandaStrong1.
               </p>
               <p>
                 <strong>6. Privacy:</strong> We respect your privacy. User data is stored securely and will not be shared without consent.
@@ -57,7 +57,7 @@ export default function Page18({ onNext, onBack }: Page18Props) {
                 <strong>No Warranty:</strong> MandaStrong Studio is provided WITHOUT WARRANTY of any kind, either express or implied, including but not limited to fitness for a particular purpose.
               </p>
               <p>
-                <strong>Limitation of Liability:</strong> MandaStrong01 shall not be liable for any damages arising from use of this service, including but not limited to data loss, project corruption, or service interruptions.
+                <strong>Limitation of Liability:</strong> MandaStrong1 shall not be liable for any damages arising from use of this service, including but not limited to data loss, project corruption, or service interruptions.
               </p>
               <p>
                 <strong>Third-Party Services:</strong> We may integrate with third-party AI services. We are not responsible for their performance or availability.
@@ -82,12 +82,12 @@ export default function Page18({ onNext, onBack }: Page18Props) {
               For questions, support, or concerns regarding these terms, please visit:
             </p>
             <a
-              href="https://MandaStrong01.Etsy.com"
+              href="https://MandaStrong1.Etsy.com"
               target="_blank"
               rel="noopener noreferrer"
               className="text-green-400 hover:text-green-300 underline font-bold"
             >
-              MandaStrong01.Etsy.com
+              MandaStrong1.Etsy.com
             </a>
           </div>
         </div>
@@ -108,7 +108,7 @@ export default function Page18({ onNext, onBack }: Page18Props) {
         </div>
 
         <footer className="border-t-2 border-purple-500 pt-6 mt-8 text-center text-white text-sm">
-          <p>MandaStrong01 2025 ~ Author Of Doxy The School Bully ~ Also Find Me On MandaStrong01.Etsy.com</p>
+          <p>MandaStrong1 2025 ~ Author Of Doxy The School Bully ~ Also Find Me On MandaStrong1.Etsy.com</p>
         </footer>
       </div>
     </div>

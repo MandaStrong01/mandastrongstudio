@@ -19,7 +19,7 @@ export default function Page10({ onNext, onBack }: Page10Props) {
         <h1 className="font-serif text-5xl md:text-6xl font-bold text-purple-400 mb-4">
           🎬 Doxy: The School Bully
         </h1>
-        <p className="text-purple-300 text-xl mb-6">A MandaStrong01 Film - 120 Minutes</p>
+        <p className="text-purple-300 text-xl mb-6">A MandaStrong1 Film - 120 Minutes</p>
 
         <div className="border-2 border-purple-500 rounded-2xl overflow-hidden shadow-2xl mb-8 max-w-5xl mx-auto relative">
           <iframe
@@ -44,7 +44,7 @@ export default function Page10({ onNext, onBack }: Page10Props) {
             Experience the compelling 120-minute story of Doxy, a powerful narrative about courage, friendship, and standing up against bullying.
           </p>
           <p className="text-purple-300 mb-6">
-            Written and directed by MandaStrong01
+            Written and directed by MandaStrong1
           </p>
         </div>
 
@@ -65,7 +65,7 @@ export default function Page10({ onNext, onBack }: Page10Props) {
 
         <footer className="border-t-2 border-purple-500 pt-6 mt-12">
           <p className="text-white text-sm">
-            MandaStrong01 2025 ~ Author Of Doxy The School Bully ~ Also Find Me On MandaStrong01.Etsy.com
+            MandaStrong1 2025 ~ Author Of Doxy The School Bully ~ Also Find Me On MandaStrong1.Etsy.com
           </p>
         </footer>
       </div>

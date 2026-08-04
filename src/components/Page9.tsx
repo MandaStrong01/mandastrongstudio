@@ -67,7 +67,7 @@ export default function Page9({ onNext, onBack }: Page9Props) {
         </div>
 
         <footer className="mt-8 py-4 border-t border-purple-500 text-center text-white text-sm">
-          <p>MandaStrong01 2025 ~ Author Of Doxy The School Bully ~ Also Find Me On MandaStrong01.Etsy.com</p>
+          <p>MandaStrong1 2025 ~ Author Of Doxy The School Bully ~ Also Find Me On MandaStrong1.Etsy.com</p>
         </footer>
       </div>
 
