@@ -747,6 +747,44 @@ function ToolPanel({ tool, onClose, onSave }) {
   );
 }
 
+// ── PAGE 5 WRITING BOXES — Producer Directions / Script / Production Directions
+function WritingBoxes({ onSave }) {
+  const BOXES=[
+    {key:"producer",title:"PRODUCER DIRECTIONS",icon:"🎬",hint:"Vision, tone, casting notes, the feeling you want the film to leave behind.",ph:"Producer's directions — the vision, mood, casting and overall intent for this project..."},
+    {key:"script",title:"SCRIPT",icon:"📝",hint:"Scenes, dialogue and narration — the words of your film.",ph:"Your script — scenes, dialogue, narration lines..."},
+    {key:"production",title:"PRODUCTION DIRECTIONS",icon:"🎥",hint:"Shot list, camera moves, lighting, locations — how each scene is made.",ph:"Production directions — shots, camera moves, lighting, locations, timing..."},
+  ];
+  const [docs,setDocs]=useState(()=>{try{return JSON.parse(localStorage.getItem("ms_writing_boxes")||"{}");}catch{return {};}});
+  const [saved,setSaved]=useState("");
+  const set=(k,v)=>setDocs(p=>{const n={...p,[k]:v};try{localStorage.setItem("ms_writing_boxes",JSON.stringify(n));}catch{}return n;});
+  const saveBox=async(b)=>{
+    const body=(docs[b.key]||"").trim();
+    if(!body){alert("Write something in "+b.title+" first, then save it.");return;}
+    const id="doc_"+b.key+"_"+Date.now();
+    const asset={id,name:b.title+" — "+new Date().toLocaleDateString(),type:"document",docKind:b.key,text:body,date:new Date().toISOString()};
+    try{await safeSaveClipToDB(id,new Blob([body],{type:"text/plain"}),asset.name,"document");}catch(e){}
+    if(onSave)onSave(asset);
+    setSaved(b.key);setTimeout(()=>setSaved(""),2500);
+  };
+  const ta={width:"100%",background:"#000",border:"1px solid "+GOLDDIM,padding:"12px 14px",color:WHITE,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"'Rajdhani',sans-serif",lineHeight:1.8,height:150,resize:"vertical"};
+  return (
+    <div style={{padding:"0 12px 16px"}}>
+      <div style={{color:GOLD,fontSize:12,letterSpacing:3,fontWeight:900,margin:"6px 2px 10px"}}>📂 PROJECT DOCUMENTS — SAVED TO YOUR MEDIA LIBRARY &amp; TIMELINE</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:12}}>
+        {BOXES.map(b=>(
+          <div key={b.key} style={{background:"#050500",border:"2px solid "+GOLD,padding:"14px 16px",display:"flex",flexDirection:"column"}}>
+            <div style={{color:GOLD,fontWeight:900,fontSize:13,letterSpacing:2,marginBottom:3}}>{b.icon} {b.title}</div>
+            <div style={{color:GOLDDIM,fontSize:11,lineHeight:1.6,marginBottom:8}}>{b.hint}</div>
+            <textarea value={docs[b.key]||""} onChange={e=>set(b.key,e.target.value)} placeholder={b.ph} style={ta}/>
+            <button onClick={()=>saveBox(b)} style={{marginTop:10,background:"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",border:"none",color:"#000",padding:"11px",cursor:"pointer",fontSize:12,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif"}}>💾 SAVE TO MEDIA LIBRARY</button>
+            {saved===b.key&&<div style={{color:"#22c55e",fontSize:11,fontWeight:900,letterSpacing:1,marginTop:8,textAlign:"center"}}>✓ SAVED — LINKED TO MEDIA LIBRARY &amp; TIMELINE</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ToolPage({ title, subtitle, tools, onSave }) {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(null);
@@ -772,6 +810,7 @@ function ToolPage({ title, subtitle, tools, onSave }) {
         {filtered.map(t=><ToolCard key={t} name={t} onOpen={setOpen}/>)}
       </div>
       {open&&<ToolPanel tool={open} onClose={()=>setOpen(null)} onSave={onSave}/>}
+      {title==="WRITING TOOLS"&&<WritingBoxes onSave={onSave}/>}
       {title==="WRITING TOOLS"&&(
         <div style={{padding:"0 12px 12px"}}>
           <div style={{background:"#050500",border:"2px solid "+GOLD,padding:"16px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
@@ -873,6 +912,7 @@ function MusicVideoStudio({ onClose, onSave }) {
       videoStyle:"Cinematic Narrative", colorGrade:"Cinematic Teal & Orange",
       effects:["Slow Motion","Film Grain","Vignette"],
       cuts:"Long Takes", aspectRatio:"16:9", duration:"3 Minutes",
+      durationMin:0, stereo:true,
       visualDesc:"", lipSync:true, refMedia:null,
     };
   });
@@ -914,6 +954,9 @@ function MusicVideoStudio({ onClose, onSave }) {
       const durationMap = {"2 Minutes":120,"3 Minutes":180,"4 Minutes":240,"5 Minutes":300};
       let totalDur = Math.max(30, Number(durationMap[config.duration])||180);
       if(!isFinite(totalDur)||isNaN(totalDur)) totalDur = 180;
+      const overrideMin = Number(config.durationMin)||0;
+      const overrideSec = overrideMin>0 ? overrideMin*60 : 0;
+      if(overrideSec>0){ totalDur = overrideSec; addLog("Duration override: film locked to "+overrideMin+" min ("+overrideSec+"s)"); }
       let beatGrid = [];
       let audioCtx = null, audioDest = null, audioSource = null;
 
@@ -922,7 +965,7 @@ function MusicVideoStudio({ onClose, onSave }) {
           audioCtx = new (window.AudioContext||window.webkitAudioContext)();
           const ab = await audioFile.arrayBuffer();
           const buf = await audioCtx.decodeAudioData(ab);
-          totalDur = buf.duration;
+          if(overrideSec>0){ totalDur = overrideSec; } else { totalDur = buf.duration; }
           // Energy-based beat detection
           const data = buf.getChannelData(0);
           const sr = buf.sampleRate;
@@ -942,13 +985,23 @@ function MusicVideoStudio({ onClose, onSave }) {
           audioDest = audioCtx.createMediaStreamDestination();
           audioSource = audioCtx.createBufferSource();
           audioSource.buffer = buf;
+          if(overrideSec>buf.duration+0.5){ audioSource.loop=true; addLog("Song ("+buf.duration.toFixed(1)+"s) will loop to fill "+overrideSec+"s"); }
           const gain = audioCtx.createGain(); gain.gain.value=0.92;
-          // Stereo panner — adds width to the mix
-          const panner = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null;
-          if(panner){ panner.pan.value=0; audioSource.connect(gain); gain.connect(panner); panner.connect(audioDest); panner.connect(audioCtx.destination); }
-          else { audioSource.connect(gain); gain.connect(audioDest); gain.connect(audioCtx.destination); }
-          // Lock totalFrames to exact audio duration so video ends with audio
-          totalDur = buf.duration;
+          if(config.stereo!==false && audioCtx.createStereoPanner){
+            addLog("🔊 Stereo sound ON — baking full stereo field into the film");
+            const wet=audioCtx.createGain(); wet.gain.value=0.5;
+            audioSource.connect(gain); gain.connect(audioDest); gain.connect(audioCtx.destination);
+            [[-0.85,0.014],[0.85,0.021]].forEach(([pan,dl])=>{
+              const d=audioCtx.createDelay(); d.delayTime.value=dl;
+              const p=audioCtx.createStereoPanner(); p.pan.value=pan;
+              gain.connect(d); d.connect(p); p.connect(wet);
+            });
+            wet.connect(audioDest); wet.connect(audioCtx.destination);
+          } else {
+            addLog("Mono sound — stereo toggle off");
+            audioSource.connect(gain); gain.connect(audioDest); gain.connect(audioCtx.destination);
+          }
+          if(overrideSec>0){ totalDur = overrideSec; } else { totalDur = buf.duration; }
         }catch(e){ addLog("Audio: "+e.message); audioCtx=null; }
       } else {
         addLog("No audio — generating "+totalDur+"s visual");
@@ -1498,9 +1551,29 @@ function MusicVideoStudio({ onClose, onSave }) {
                 {label("GENRE")}{sel("genre",GENRES)}
                 {label("MOOD")}{sel("mood",MOODS)}
                 {label("TEMPO")}{sel("tempo",TEMPOS)}
+                {label("⬆ UPLOAD YOUR SONG — OR RECORD IT BELOW")}
+                <div style={{background:"#000",border:"2px dashed "+(audioFile?GOLD:GOLDDIM),padding:"18px 12px",cursor:"pointer",transition:"all .2s"}}
+                  onClick={()=>audioInputRef.current&&audioInputRef.current.click()}
+                  onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.background="#0a0500";}}
+                  onDragLeave={e=>{e.currentTarget.style.borderColor=audioFile?GOLD:GOLDDIM;e.currentTarget.style.background="#000";}}
+                  onDrop={e=>{
+                    e.preventDefault();e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.background="#000";
+                    const f=e.dataTransfer.files&&e.dataTransfer.files[0];
+                    if(f&&f.type.startsWith("audio/")){setAudioFile(f);setAudioUrl(URL.createObjectURL(f));setAudioName(f.name);}
+                    else if(f){alert("Please drop an audio file — MP3, WAV or M4A.");}
+                  }}>
+                  <div style={{color:audioFile?"#22c55e":GOLD,fontWeight:900,fontSize:13,letterSpacing:2,textAlign:"center"}}>
+                    {audioFile?"✓ "+audioName:"⬆ DRAG & DROP YOUR SONG HERE"}
+                  </div>
+                  <div style={{color:GOLDDIM,fontSize:10,marginTop:4,textAlign:"center",letterSpacing:1}}>{audioFile?"Tap to replace":"or tap to browse — MP3 · WAV · M4A"}</div>
+                </div>
+                <input ref={audioInputRef} type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg" style={{display:"none"}} onChange={handleAudioUpload}/>
                 <RecordYourOwnSong onRecorded={(blob,name)=>{setAudioFile(blob);const u=URL.createObjectURL(blob);setAudioUrl(u);setAudioName(name);}}/>
-                {audioFile&&<div style={{color:"#22c55e",fontSize:11,fontWeight:900,letterSpacing:2,marginTop:6}}>✓ {audioName}</div>}
-                {audioFile&&<button onClick={()=>{setAudioFile(null);setAudioUrl("");setAudioName("");}} style={{background:"none",border:"1px solid #ef4444",color:"#ef4444",padding:"3px 10px",cursor:"pointer",fontSize:10,fontWeight:900,marginTop:4}}>✕ REMOVE AUDIO</button>}
+                {audioFile&&<button onClick={()=>{setAudioFile(null);setAudioUrl("");setAudioName("");}} style={{background:"none",border:"1px solid #ef4444",color:"#ef4444",padding:"3px 10px",cursor:"pointer",fontSize:10,fontWeight:900,marginTop:6}}>✕ REMOVE AUDIO</button>}
+                <div onClick={()=>set("stereo",!config.stereo)} style={{display:"flex",alignItems:"center",gap:10,marginTop:14,padding:"10px 12px",background:"#0a0a0a",border:"1px solid "+(config.stereo?GOLD:GOLDDIM),cursor:"pointer"}}>
+                  <div style={{width:20,height:20,borderRadius:4,border:"2px solid "+(config.stereo?GOLD:GOLDDIM),background:config.stereo?GOLD:"transparent",color:"#000",fontWeight:900,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{config.stereo?"✓":""}</div>
+                  <div><div style={{color:config.stereo?GOLD:WHITE,fontWeight:900,fontSize:12,letterSpacing:1}}>🔊 USE STEREO SOUND</div><div style={{color:GOLDDIM,fontSize:10,marginTop:1}}>Full stereo width baked into the exported video</div></div>
+                </div>
               </div>
             )}
 
@@ -1535,8 +1608,22 @@ function MusicVideoStudio({ onClose, onSave }) {
                   style={{...inp,height:160,resize:"vertical",lineHeight:1.8,border:"1px solid "+GOLD}}
                 />
                 {label("DURATION")}
-                <div style={{color:GOLDDIM,fontSize:11,lineHeight:1.7,padding:"8px 12px",border:"1px solid "+GOLDDIM,background:"#0a0a0a",marginBottom:8}}>
-                  🎵 The video automatically matches the length of your song. Upload or record your track on the SONG step and the film runs exactly as long as the music.
+                <div style={{padding:"12px 14px",border:"1px solid "+GOLD,background:"#0a0a0a",marginBottom:8}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                    <span style={{color:GOLDDIM,fontSize:11,fontWeight:900,letterSpacing:2}}>FILM LENGTH</span>
+                    <span style={{color:GOLD,fontSize:13,fontWeight:900}}>{config.durationMin>0?(config.durationMin+" min"):"AUTO — match song"}</span>
+                  </div>
+                  <input type="range" min={0} max={180} step={1} value={config.durationMin||0}
+                    onChange={e=>set("durationMin",+e.target.value)}
+                    style={{width:"100%",accentColor:GOLD}}/>
+                  <div style={{display:"flex",justifyContent:"space-between",color:GOLDDIM,fontSize:9,letterSpacing:1,marginTop:2}}>
+                    <span>0 (AUTO)</span><span>90 min</span><span>180 min</span>
+                  </div>
+                  <div style={{color:config.durationMin>0?GOLD:GOLDDIM,fontSize:11,lineHeight:1.7,marginTop:8}}>
+                    {config.durationMin>0
+                      ? "⏱ This overrides the song length — the film will run exactly "+config.durationMin+" minute"+(config.durationMin===1?"":"s")+", looping or trimming the audio to fit."
+                      : "🎵 At 0 the video automatically matches your song's length. Drag right to set a fixed length (up to 180 minutes) that overrides the music."}
+                  </div>
                 </div>
               </div>
             )}
@@ -2099,7 +2186,7 @@ function P6Voice({ onSave, setMediaLib }) {
               </div>
             ))}
             {filtered.map(v=>(
-              <div key={v.id} onClick={()=>setSelVoice(v.id)} style={{padding:"10px 12px",marginBottom:4,background:selVoice===v.id?"#0a0800":"#000",border:"2px solid "+selVoice===v.id?GOLD:GOLDDIM,cursor:"pointer"}}>
+              <div key={v.id} onClick={()=>setSelVoice(v.id)} style={{padding:"10px 12px",marginBottom:4,background:selVoice===v.id?"#0a0800":"#000",border:"2px solid "+(selVoice===v.id?GOLD:GOLDDIM),cursor:"pointer"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
                   <div style={{display:"flex",alignItems:"center",gap:6}}>
                     <span style={{fontSize:18}}>{v.emoji}</span>
@@ -2151,9 +2238,9 @@ function P6Voice({ onSave, setMediaLib }) {
           </div>
           <button onClick={()=>{
             if(!text.trim())return;
-            speakText(selVoice, text, ()=>setSpeaking(true), ()=>setSpeaking(false));
-          }} disabled={!text.trim()||speaking} style={{background:"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",border:"none",color:"#000",width:"100%",padding:"16px",fontSize:14,fontWeight:900,letterSpacing:3,cursor:!text.trim()?"not-allowed":"pointer",fontFamily:"'Rajdhani',sans-serif",opacity:!text.trim()?0.5:1,marginBottom:8}}>
-            {speaking?"⏺ SPEAKING...":"✦ PREPARE TO SPEAK"}
+            speaking?stop():processAndSpeak();
+          }} disabled={!text.trim()} style={{background:"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",border:"none",color:"#000",width:"100%",padding:"16px",fontSize:14,fontWeight:900,letterSpacing:3,cursor:!text.trim()?"not-allowed":"pointer",fontFamily:"'Rajdhani',sans-serif",opacity:!text.trim()?0.5:1,marginBottom:8}}>
+            {speaking?"⏹ STOP":"✦ PREPARE TO SPEAK"}
           </button>
           <button onClick={async()=>{
             if(!text.trim())return;
@@ -3238,12 +3325,12 @@ function P4({ go, setUser }) {
           ))}
         </div>
 
-        {/* ── BUY CREDITS ── one-time render top-up ── */}
+        {/* ── PURCHASE USAGE CREDITS ── one-time top-up at the bottom of the page ── */}
         <div style={{marginTop:40,padding:"28px 24px",background:"#050500",border:"2px solid "+GOLD,textAlign:"center",boxShadow:"0 0 24px "+GOLD+"22"}}>
-          <div style={{fontSize:11,color:GOLD,letterSpacing:4,fontWeight:900,marginBottom:6}}>NEED MORE RENDERS?</div>
-          <h3 style={{...H1,fontSize:20,marginBottom:8}}>BUY RENDER CREDITS</h3>
-          <p style={{color:WHITE,fontSize:13,lineHeight:1.7,maxWidth:520,margin:"0 auto 18px"}}>Top up your account with extra render credits — pay once, render when you're ready. Credits never expire.</p>
-          <button onClick={()=>window.open(STRIPE.studio,"_blank")} style={{...G("gold",false),padding:"14px 44px",fontSize:14}}>💳 BUY CREDITS</button>
+          <div style={{fontSize:11,color:GOLD,letterSpacing:4,fontWeight:900,marginBottom:6}}>NEED MORE USAGE?</div>
+          <h3 style={{...H1,fontSize:20,marginBottom:8}}>PURCHASE USAGE CREDITS</h3>
+          <p style={{color:WHITE,fontSize:13,lineHeight:1.7,maxWidth:520,margin:"0 auto 18px"}}>Top up your account with extra usage credits — pay once, use them for renders and generations whenever you're ready. Credits never expire.</p>
+          <button onClick={()=>window.open(STRIPE.studio,"_blank")} style={{...G("gold",false),padding:"14px 44px",fontSize:14}}>💳 PURCHASE USAGE CREDITS</button>
         </div>
       </div>
     </div>
@@ -5302,23 +5389,41 @@ function IntroDoors({ onEnter }){
     try{
       const ctx=new (window.AudioContext||window.webkitAudioContext)();
       const now=ctx.currentTime;
-      const notes=[110,164.81,220,329.63,440];
+      const master=ctx.createGain(); master.gain.value=0.9; master.connect(ctx.destination);
+      const drone=ctx.createOscillator(); const dg=ctx.createGain();
+      drone.type="sine"; drone.frequency.value=55;
+      dg.gain.setValueAtTime(0,now);
+      dg.gain.linearRampToValueAtTime(0.10,now+0.9);
+      dg.gain.exponentialRampToValueAtTime(0.001,now+4.4);
+      drone.connect(dg); dg.connect(master); drone.start(now); drone.stop(now+4.6);
+      const notes=[130.81,196.00,261.63,392.00,523.25,659.25];
       notes.forEach((f,i)=>{
         const o=ctx.createOscillator(); const g=ctx.createGain();
+        const o2=ctx.createOscillator();
         o.type=i<2?"sine":"triangle"; o.frequency.value=f;
-        const t0=now+i*0.18;
+        o2.type="sine"; o2.frequency.value=f*2;
+        const t0=now+i*0.16;
         g.gain.setValueAtTime(0,t0);
-        g.gain.linearRampToValueAtTime(0.16,t0+0.25);
-        g.gain.exponentialRampToValueAtTime(0.001,t0+3.2);
-        o.connect(g); g.connect(ctx.destination); o.start(t0); o.stop(t0+3.4);
+        g.gain.linearRampToValueAtTime(0.15,t0+0.22);
+        g.gain.exponentialRampToValueAtTime(0.001,t0+3.4);
+        const pan=ctx.createStereoPanner?ctx.createStereoPanner():null;
+        if(pan){pan.pan.value=(i%2===0?-0.35:0.35);o.connect(g);o2.connect(g);g.connect(pan);pan.connect(master);}
+        else {o.connect(g);o2.connect(g);g.connect(master);}
+        o.start(t0); o.stop(t0+3.6); o2.start(t0); o2.stop(t0+3.6);
       });
       const sh=ctx.createOscillator(); const sg=ctx.createGain();
-      sh.type="sine"; sh.frequency.value=880;
+      sh.type="sine"; sh.frequency.value=1046.5;
       sg.gain.setValueAtTime(0,now+0.5);
-      sg.gain.linearRampToValueAtTime(0.05,now+1.2);
-      sg.gain.exponentialRampToValueAtTime(0.001,now+3.5);
-      sh.connect(sg); sg.connect(ctx.destination); sh.start(now+0.5); sh.stop(now+3.6);
-      setTimeout(()=>{try{ctx.close();}catch(e){}},4200);
+      sg.gain.linearRampToValueAtTime(0.045,now+1.4);
+      sg.gain.exponentialRampToValueAtTime(0.001,now+4.0);
+      sh.connect(sg); sg.connect(master); sh.start(now+0.5); sh.stop(now+4.1);
+      const bell=ctx.createOscillator(); const bg=ctx.createGain();
+      bell.type="triangle"; bell.frequency.value=784;
+      bg.gain.setValueAtTime(0,now+2.4);
+      bg.gain.linearRampToValueAtTime(0.12,now+2.6);
+      bg.gain.exponentialRampToValueAtTime(0.001,now+4.6);
+      bell.connect(bg); bg.connect(master); bell.start(now+2.4); bell.stop(now+4.7);
+      setTimeout(()=>{try{ctx.close();}catch(e){}},5200);
     }catch(e){}
   };
   const enter=()=>{
@@ -5329,9 +5434,9 @@ function IntroDoors({ onEnter }){
   };
   const opening=phase==="opening"||phase==="gone";
   const halfM=(side)=>(
-    <svg viewBox={side==="left"?"0 0 150 200":"150 0 150 200"} width="min(40vw,320px)" height="min(56vh,420px)"
+    <svg viewBox={side==="left"?"0 0 150 200":"150 0 150 200"} width="min(46vw,340px)" height="min(50vh,440px)"
       preserveAspectRatio={side==="left"?"xMaxYMid meet":"xMinYMid meet"}
-      style={{filter:"drop-shadow(0 0 30px rgba(232,201,109,0.5))",overflow:"visible",marginTop:"-16vh"}}>
+      style={{filter:"drop-shadow(0 0 30px rgba(232,201,109,0.5))",overflow:"visible",marginTop:"-12vh",maxWidth:"46vw"}}>
       <defs>
         <linearGradient id={"goldM"+side} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#fff6d0"/><stop offset="0.35" stopColor="#e8c96d"/>
@@ -5349,7 +5454,7 @@ function IntroDoors({ onEnter }){
         borderRight:"1px solid "+GOLD,boxShadow:"inset -40px 0 80px rgba(0,0,0,0.9), inset 0 0 120px rgba(232,201,109,0.08)",
         transform:opening?"perspective(1600px) rotateY(-105deg)":"perspective(1600px) rotateY(0deg)",
         transformOrigin:"left center",transition:"transform 3s cubic-bezier(0.7,0,0.3,1)",
-        display:"flex",alignItems:"flex-start",justifyContent:"flex-end",paddingTop:"9vh",overflow:"hidden"}}>
+        display:"flex",alignItems:"center",justifyContent:"flex-end",paddingTop:0,overflow:"hidden"}}>
         {halfM("left")}
       </div>
       <div style={{position:"absolute",top:0,right:0,width:"50%",height:"100%",
@@ -5357,7 +5462,7 @@ function IntroDoors({ onEnter }){
         borderLeft:"1px solid "+GOLD,boxShadow:"inset 40px 0 80px rgba(0,0,0,0.9), inset 0 0 120px rgba(232,201,109,0.08)",
         transform:opening?"perspective(1600px) rotateY(105deg)":"perspective(1600px) rotateY(0deg)",
         transformOrigin:"right center",transition:"transform 3s cubic-bezier(0.7,0,0.3,1)",
-        display:"flex",alignItems:"flex-start",justifyContent:"flex-start",paddingTop:"9vh",overflow:"hidden"}}>
+        display:"flex",alignItems:"center",justifyContent:"flex-start",paddingTop:0,overflow:"hidden"}}>
         {halfM("right")}
       </div>
       <div style={{position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",
