@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 
 // IndexedDB helpers for persistent clip storage
 const DB_NAME="mandastrong_db",DB_VER=1,STORE="clips";
-c.  onst openDB=()=>new Promise((res,rej)=>{const r=indexedDB.open(DB_NAME,DB_VER);r.onupgradeneeded=e=>e.target.result.createObjectStore(STORE,{keyPath:"id"});r.onsuccess=e=>res(e.target.result);r.onerror=rej;});
+const openDB=()=>new Promise((res,rej)=>{const r=indexedDB.open(DB_NAME,DB_VER);r.onupgradeneeded=e=>e.target.result.createObjectStore(STORE,{keyPath:"id"});r.onsuccess=e=>res(e.target.result);r.onerror=rej;});
 
 function buildChunks(text){const clean=text.replace(/\s+/g," ").trim();const sentences=clean.match(/[^.!?]+[.!?]+[\s]*/g)||[clean];const chunks=[];for(const s of sentences){const trimmed=s.trim();if(trimmed.length>0){const type=trimmed.endsWith("?")?"question":trimmed.endsWith("!")?"exclaim":"sentence";chunks.push({text:trimmed,type});}}return chunks.length>0?chunks:[{text:clean.slice(0,200),type:"sentence"}];}
 
@@ -388,7 +388,7 @@ function speakText(voiceId, txt, onStart, onEnd) {
   };
   if (typeof window === "undefined" || !window.speechSynthesis) { if (typeof onEnd === "function") onEnd(); return; }
   if(window.speechSynthesis.getVoices().length===0){
-    window.speechSynthesis.onvoiceschanged=()=>{ window.speechSynthesis.onvoiceschanged=null; doSpeak(); };
+    if(typeof window!=="undefined"&&window.speechSynthesis){window.speechSynthesis.onvoiceschanged=()=>{ window.speechSynthesis.onvoiceschanged=null; doSpeak(); };}
   } else { doSpeak(); }
 }
 
@@ -1934,7 +1934,7 @@ function P6Voice({ onSave, setMediaLib }) {
 
   useEffect(()=>{
     const load=()=>{ if(typeof window==="undefined"||!window.speechSynthesis){return;} setSysVoices(window.speechSynthesis.getVoices().filter(v=>v.lang&&v.lang.startsWith("en"))); };
-    load(); window.speechSynthesis.onvoiceschanged=load;
+    load(); if(typeof window!=="undefined"&&window.speechSynthesis){window.speechSynthesis.onvoiceschanged=load;}
     return()=>{window.speechSynthesis.cancel();if(timerRef.current)clearTimeout(timerRef.current);};
   },[]);
 
