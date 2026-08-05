@@ -580,6 +580,9 @@ function ToolPanel({ tool, onClose, onSave }) {
   const isWritingTool = ["Script to Movie","Text to Script","Script to Screenplay","Prompt to Story","Feature Film Script","Short Film Script","Documentary Script","Plot Generator","Story Outline","Beat Sheet Builder","Character Bio Writer","Logline Generator","Synopsis Writer","Scene Writer","Dialogue Generator","Narration Writer","Voiceover Script"].includes(tool);
   const [mode, setMode] = useState(isVoice?"voice":(isVideoTool||isImageTool||isWritingTool)?"ai":"upload");
   const [describe, setDescribe] = useState("");
+  const [s2mProducer, setS2mProducer] = useState("");
+  const [s2mProduction, setS2mProduction] = useState("");
+  const [s2mWired, setS2mWired] = useState(false);
   const [result, setResult] = useState("");
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -718,7 +721,35 @@ function ToolPanel({ tool, onClose, onSave }) {
             <button onClick={saveAsset} style={{...G("gold",false),marginTop:8,width:"100%",padding:"12px"}}>SAVE TO MEDIA LIBRARY</button>
           </div>
         )}
-        {mode==="ai"&&(
+        {mode==="ai"&&tool==="Script to Movie"&&(
+          <div style={{marginBottom:14}}>
+            <div style={{color:GOLD,fontSize:12,letterSpacing:3,fontWeight:900,marginBottom:2}}>🎬 SCRIPT TO MOVIE</div>
+            <div style={{color:GOLDDIM,fontSize:11,lineHeight:1.6,marginBottom:12}}>Fill the three boxes, then WIRE INTO RENDER — the video generator on Page 8 uses them to drive every scene.</div>
+            <div style={{color:GOLD,fontSize:11,letterSpacing:2,fontWeight:900,marginBottom:3}}>🎬 PRODUCER</div>
+            <textarea value={s2mProducer} onChange={e=>setS2mProducer(e.target.value)} placeholder="Producer's directions — vision, mood, casting, overall intent..." style={{...inp,height:80,resize:"vertical",lineHeight:1.6,marginBottom:10}}/>
+            <div style={{color:GOLD,fontSize:11,letterSpacing:2,fontWeight:900,marginBottom:3}}>🎞 DESCRIBE</div>
+            <textarea value={describe} onChange={e=>setDescribe(e.target.value)} placeholder="Describe your film — scene by scene, what happens on screen..." style={{...inp,height:80,resize:"vertical",lineHeight:1.6,marginBottom:10}}/>
+            <div style={{color:GOLD,fontSize:11,letterSpacing:2,fontWeight:900,marginBottom:3}}>🎥 PRODUCTION NOTES</div>
+            <textarea value={s2mProduction} onChange={e=>setS2mProduction(e.target.value)} placeholder="Production notes — shots, camera moves, lighting, locations, timing..." style={{...inp,height:80,resize:"vertical",lineHeight:1.6,marginBottom:10}}/>
+            <button onClick={runAI} disabled={loading||!describe.trim()} style={{...G("gold",false),width:"100%",padding:"13px",opacity:loading||!describe.trim()?0.5:1,fontSize:13,letterSpacing:2,marginBottom:8}}>{loading?"⟳ CREATING...":"✍ WRITE SCRIPT ✦"}</button>
+            <button onClick={()=>{
+              const brief=(s2mProducer.trim()?"PRODUCER DIRECTION:\n"+s2mProducer.trim()+"\n\n":"")+(describe.trim()?"SCENE DESCRIPTION:\n"+describe.trim()+"\n\n":"")+(s2mProduction.trim()?"PRODUCTION NOTES:\n"+s2mProduction.trim()+"\n":"");
+              if(!brief.trim()){alert("Fill in at least one box first.");return;}
+              try{localStorage.setItem("ms_render_brief",JSON.stringify({producer:s2mProducer.trim(),describe:describe.trim(),production:s2mProduction.trim(),brief,ts:Date.now()}));}catch(e){}
+              const id="brief_"+Date.now();
+              if(onSave)onSave({id,name:"SCRIPT-TO-MOVIE BRIEF — "+new Date().toLocaleDateString(),type:"document",docKind:"brief",text:brief,date:new Date().toISOString(),renderBrief:true});
+              setS2mWired(true);setTimeout(()=>setS2mWired(false),4000);
+            }} style={{width:"100%",background:"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",border:"none",color:"#000",padding:"14px",cursor:"pointer",fontSize:13,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif"}}>⚡ WIRE INTO RENDER — DRIVE THE VIDEO GENERATOR</button>
+            {s2mWired&&<div style={{color:"#22c55e",fontSize:11,fontWeight:900,letterSpacing:1,marginTop:10,textAlign:"center"}}>✓ WIRED — Page 8 will use your Producer, Describe &amp; Production notes.</div>}
+            {result&&(
+              <div style={{marginTop:14}}>
+                <textarea value={result} onChange={e=>setResult(e.target.value)} style={{...inp,height:140,resize:"none",lineHeight:1.7}}/>
+                <button onClick={saveAsset} style={{...G("gold",false),marginTop:8,width:"100%",padding:"12px"}}>GENERATE & SAVE</button>
+              </div>
+            )}
+          </div>
+        )}
+        {mode==="ai"&&tool!=="Script to Movie"&&(
           <div style={{marginBottom:14}}>
             <div style={{color:GOLD,fontSize:12,letterSpacing:3,fontWeight:900,marginBottom:4}}>
               {isVideoTool?"DESCRIBE YOUR SCENE OR FILM IDEA":isImageTool?"DESCRIBE YOUR IMAGE":isWritingTool?"DESCRIBE YOUR STORY OR SCRIPT":"DESCRIBE WHAT YOU WANT"}
@@ -750,12 +781,14 @@ function ToolPanel({ tool, onClose, onSave }) {
 // ── PAGE 5 WRITING BOXES — Producer Directions / Script / Production Directions
 function WritingBoxes({ onSave }) {
   const BOXES=[
-    {key:"producer",title:"PRODUCER DIRECTIONS",icon:"🎬",hint:"Vision, tone, casting notes, the feeling you want the film to leave behind.",ph:"Producer's directions — the vision, mood, casting and overall intent for this project..."},
-    {key:"script",title:"SCRIPT",icon:"📝",hint:"Scenes, dialogue and narration — the words of your film.",ph:"Your script — scenes, dialogue, narration lines..."},
-    {key:"production",title:"PRODUCTION DIRECTIONS",icon:"🎥",hint:"Shot list, camera moves, lighting, locations — how each scene is made.",ph:"Production directions — shots, camera moves, lighting, locations, timing..."},
+    {key:"producer",title:"PRODUCER",icon:"🎬",hint:"Vision, tone, casting, the feeling the film should leave behind.",ph:"Producer's directions — vision, mood, casting, overall intent..."},
+    {key:"describe",title:"DESCRIBE",icon:"🎞",hint:"Describe the film scene by scene — what happens, what we see.",ph:"Describe your film — scene by scene, what happens on screen..."},
+    {key:"production",title:"PRODUCTION NOTES",icon:"🎥",hint:"Shots, camera moves, lighting, locations, timing.",ph:"Production notes — shots, camera moves, lighting, locations, timing..."},
   ];
   const [docs,setDocs]=useState(()=>{try{return JSON.parse(localStorage.getItem("ms_writing_boxes")||"{}");}catch{return {};}});
   const [saved,setSaved]=useState("");
+  const [wiring,setWiring]=useState(false);
+  const [wired,setWired]=useState(false);
   const set=(k,v)=>setDocs(p=>{const n={...p,[k]:v};try{localStorage.setItem("ms_writing_boxes",JSON.stringify(n));}catch{}return n;});
   const saveBox=async(b)=>{
     const body=(docs[b.key]||"").trim();
@@ -766,21 +799,49 @@ function WritingBoxes({ onSave }) {
     if(onSave)onSave(asset);
     setSaved(b.key);setTimeout(()=>setSaved(""),2500);
   };
+  // ── WIRE INTO RENDER ──────────────────────────────────────────────
+  // Combine the three boxes into a single director brief and store it as
+  // ms_render_brief. The video generator (Page 8) reads this brief and
+  // prepends it to every scene render so Producer + Describe + Production
+  // all drive the actual output.
+  const wireToRender=async()=>{
+    const producer=(docs.producer||"").trim();
+    const describe=(docs.describe||"").trim();
+    const production=(docs.production||"").trim();
+    if(!producer&&!describe&&!production){alert("Fill in at least one box first.");return;}
+    setWiring(true);
+    const brief=
+      (producer?"PRODUCER DIRECTION:\n"+producer+"\n\n":"")+
+      (describe?"SCENE DESCRIPTION:\n"+describe+"\n\n":"")+
+      (production?"PRODUCTION NOTES:\n"+production+"\n":"");
+    try{
+      localStorage.setItem("ms_render_brief",JSON.stringify({producer,describe,production,brief,ts:Date.now()}));
+    }catch(e){}
+    // Also drop a project-brief document into the media library / timeline
+    const id="brief_"+Date.now();
+    const asset={id,name:"SCRIPT-TO-MOVIE BRIEF — "+new Date().toLocaleDateString(),type:"document",docKind:"brief",text:brief,date:new Date().toISOString(),renderBrief:true};
+    try{await safeSaveClipToDB(id,new Blob([brief],{type:"text/plain"}),asset.name,"document");}catch(e){}
+    if(onSave)onSave(asset);
+    setTimeout(()=>{setWiring(false);setWired(true);setTimeout(()=>setWired(false),4000);},500);
+  };
   const ta={width:"100%",background:"#000",border:"1px solid "+GOLDDIM,padding:"12px 14px",color:WHITE,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"'Rajdhani',sans-serif",lineHeight:1.8,height:150,resize:"vertical"};
   return (
     <div style={{padding:"0 12px 16px"}}>
-      <div style={{color:GOLD,fontSize:12,letterSpacing:3,fontWeight:900,margin:"6px 2px 10px"}}>📂 PROJECT DOCUMENTS — SAVED TO YOUR MEDIA LIBRARY &amp; TIMELINE</div>
+      <div style={{color:GOLD,fontSize:13,letterSpacing:3,fontWeight:900,margin:"6px 2px 4px"}}>🎬 SCRIPT TO MOVIE</div>
+      <div style={{color:GOLDDIM,fontSize:11,letterSpacing:1,margin:"0 2px 12px"}}>Fill the three boxes, then WIRE INTO RENDER — the video generator on Page 8 uses them to drive every scene. Each box also saves to your Media Library &amp; timeline.</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:12}}>
         {BOXES.map(b=>(
           <div key={b.key} style={{background:"#050500",border:"2px solid "+GOLD,padding:"14px 16px",display:"flex",flexDirection:"column"}}>
             <div style={{color:GOLD,fontWeight:900,fontSize:13,letterSpacing:2,marginBottom:3}}>{b.icon} {b.title}</div>
             <div style={{color:GOLDDIM,fontSize:11,lineHeight:1.6,marginBottom:8}}>{b.hint}</div>
             <textarea value={docs[b.key]||""} onChange={e=>set(b.key,e.target.value)} placeholder={b.ph} style={ta}/>
-            <button onClick={()=>saveBox(b)} style={{marginTop:10,background:"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",border:"none",color:"#000",padding:"11px",cursor:"pointer",fontSize:12,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif"}}>💾 SAVE TO MEDIA LIBRARY</button>
-            {saved===b.key&&<div style={{color:"#22c55e",fontSize:11,fontWeight:900,letterSpacing:1,marginTop:8,textAlign:"center"}}>✓ SAVED — LINKED TO MEDIA LIBRARY &amp; TIMELINE</div>}
+            <button onClick={()=>saveBox(b)} style={{marginTop:10,background:"transparent",border:"1px solid "+GOLD,color:GOLD,padding:"9px",cursor:"pointer",fontSize:11,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif"}}>💾 SAVE TO MEDIA LIBRARY</button>
+            {saved===b.key&&<div style={{color:"#22c55e",fontSize:11,fontWeight:900,letterSpacing:1,marginTop:8,textAlign:"center"}}>✓ SAVED</div>}
           </div>
         ))}
       </div>
+      <button onClick={wireToRender} disabled={wiring} style={{marginTop:14,width:"100%",background:"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",border:"none",color:"#000",padding:"15px",cursor:"pointer",fontSize:14,fontWeight:900,letterSpacing:3,fontFamily:"'Rajdhani',sans-serif"}}>{wiring?"⟳ WIRING...":"⚡ WIRE INTO RENDER — DRIVE THE VIDEO GENERATOR"}</button>
+      {wired&&<div style={{color:"#22c55e",fontSize:12,fontWeight:900,letterSpacing:1,marginTop:10,textAlign:"center"}}>✓ WIRED — Page 8 will now use your Producer, Describe &amp; Production notes on every scene.</div>}
     </div>
   );
 }
@@ -810,7 +871,6 @@ function ToolPage({ title, subtitle, tools, onSave }) {
         {filtered.map(t=><ToolCard key={t} name={t} onOpen={setOpen}/>)}
       </div>
       {open&&<ToolPanel tool={open} onClose={()=>setOpen(null)} onSave={onSave}/>}
-      {title==="WRITING TOOLS"&&<WritingBoxes onSave={onSave}/>}
       {title==="WRITING TOOLS"&&(
         <div style={{padding:"0 12px 12px"}}>
           <div style={{background:"#050500",border:"2px solid "+GOLD,padding:"16px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
@@ -951,12 +1011,13 @@ function MusicVideoStudio({ onClose, onSave }) {
       setRenderProgress(4);
 
       // ── BEAT ANALYSIS ─────────────────────────────────────────────
-      const durationMap = {"2 Minutes":120,"3 Minutes":180,"4 Minutes":240,"5 Minutes":300};
-      let totalDur = Math.max(30, Number(durationMap[config.duration])||180);
-      if(!isFinite(totalDur)||isNaN(totalDur)) totalDur = 180;
+      // ── DURATION ── single source of truth is the slider (config.durationMin).
+      // 0 = AUTO: match the audio length. Above 0 = fixed length that overrides.
+      let totalDur = 180;
       const overrideMin = Number(config.durationMin)||0;
       const overrideSec = overrideMin>0 ? overrideMin*60 : 0;
-      if(overrideSec>0){ totalDur = overrideSec; addLog("Duration override: film locked to "+overrideMin+" min ("+overrideSec+"s)"); }
+      if(overrideSec>0){ totalDur = overrideSec; addLog("Duration: locked to "+overrideMin+" min ("+overrideSec+"s)"); }
+      else { addLog("Duration: AUTO — will match the song length"); }
       let beatGrid = [];
       let audioCtx = null, audioDest = null, audioSource = null;
 
@@ -1702,7 +1763,7 @@ function MusicVideoStudio({ onClose, onSave }) {
                 {/* Summary */}
                 <div style={{background:"#0a0500",border:"1px solid "+GOLDDIM,padding:14,marginBottom:14}}>
                   <div style={{color:GOLD,fontSize:11,letterSpacing:2,marginBottom:8,fontWeight:900}}>YOUR MUSIC VIDEO</div>
-                  {[["TITLE",config.title||"—"],["ARTIST",config.artist||"—"],["GENRE",config.genre||"—"],["MOOD",config.mood||"—"],["STYLE",config.videoStyle||"—"],["GRADE",config.colorGrade||"—"],["DURATION",config.duration||"—"],["AUDIO",audioName||"No audio uploaded"]].map(([k,v])=>(
+                  {[["TITLE",config.title||"—"],["ARTIST",config.artist||"—"],["GENRE",config.genre||"—"],["MOOD",config.mood||"—"],["STYLE",config.videoStyle||"—"],["GRADE",config.colorGrade||"—"],["DURATION",config.durationMin>0?(config.durationMin+" min"):"Auto — match song"],["AUDIO",audioName||"No audio uploaded"]].map(([k,v])=>(
                     <div key={k} style={{display:"flex",justifyContent:"space-between",fontSize:12,padding:"3px 0",borderBottom:"1px solid #0a0800"}}>
                       <span style={{color:GOLDDIM,letterSpacing:2}}>{k}</span>
                       <span style={{color:WHITE,fontWeight:700}}>{v}</span>
@@ -1869,6 +1930,7 @@ function MusicVideoStudio({ onClose, onSave }) {
 }
 
 const VOICE_CHARACTERS = [
+  {id:"amanda",name:"Amanda",emoji:"⭐",gender:"Female",age:"Adult",origin:"Founder",region:"MandaStrong",style:"Your voice · Narrator",pitch:1.0,rate:0.85,desc:"Amanda's own voice — your recorded narration.",isOwner:true},
   {id:"james",name:"James",emoji:"🎩",gender:"Male",age:"Adult",origin:"British",region:"London",style:"Sarcastic · Deadpan · Witty",pitch:0.86,rate:0.62,desc:"Dry British wit. Devastating things said with complete calm."},
   {id:"aurora",name:"Aurora",emoji:"🌅",gender:"Female",age:"Adult",origin:"British",region:"London",style:"Warm · Documentary · Authoritative",pitch:1.08,rate:0.80,desc:"Calm authority. The voice you trust completely."},
   {id:"edward",name:"Edward",emoji:"🎭",gender:"Male",age:"Adult",origin:"British",region:"London",style:"Theatrical · Grand · Classical",pitch:0.85,rate:0.75,desc:"Shakespearean gravitas. Every sentence carved in stone."},
@@ -2289,6 +2351,10 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
   // ── BACKGROUND MUSIC ──────────────────────────────────────────
   const [addMusic,setAddMusic]=useState(false);
   const [musicTrack,setMusicTrack]=useState("");
+  const [genStereo,setGenStereo]=useState(true);
+  const [useBrief,setUseBrief]=useState(true);
+  const [hasBrief,setHasBrief]=useState(false);
+  useEffect(()=>{try{const b=JSON.parse(localStorage.getItem("ms_render_brief")||"null");setHasBrief(!!(b&&b.brief));}catch{setHasBrief(false);}},[]);
   const MUSIC_LIBRARY=[
     {id:"epic",     label:"⚔️ Epic / Trailer",       url:"https://cdn.pixabay.com/audio/2022/03/15/audio_c8c8a73467.mp3"},
     {id:"drama",    label:"🎭 Drama / Powerful",     url:"https://cdn.pixabay.com/audio/2023/01/29/audio_5bf2f9f5b0.mp3"},
@@ -2399,7 +2465,16 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
     try{
       addLog("Cinema Engine — synthesising photorealistic footage...");
       setProgress(12);
-      const engineUrl=await engineRender(prompt.trim(),{
+      // ── SCRIPT-TO-MOVIE BRIEF ── Page 5's Producer/Describe/Production
+      // notes, if the user wired them into the render, drive every scene.
+      let effectivePrompt=prompt.trim();
+      if(useBrief){
+        try{
+          const bd=JSON.parse(localStorage.getItem("ms_render_brief")||"null");
+          if(bd&&bd.brief){ effectivePrompt=bd.brief+"\nSHOT FOR THIS SCENE:\n"+effectivePrompt; addLog("✦ Using Script-to-Movie brief (Producer + Describe + Production) from Page 5"); }
+        }catch(e){}
+      }
+      const engineUrl=await engineRender(effectivePrompt,{
         duration,
         image:refDataUrl||"",
         onTick:(i)=>{ setProgress(Math.min(88,12+i*2)); addLog("Cinema Engine rendering — "+Math.min(88,12+i*2)+"%"); }
@@ -2594,7 +2669,19 @@ Write the drawFrame body now.`}]
           musicSource=musicCtx.createBufferSource();
           musicSource.buffer=buf; musicSource.loop=true;
           const gain=musicCtx.createGain(); gain.gain.value=0.35;
-          musicSource.connect(gain); gain.connect(dest);
+          if(genStereo && musicCtx.createStereoPanner){
+            addLog("🔊 Stereo sound ON — widening the music bed");
+            musicSource.connect(gain); gain.connect(dest);
+            const wet=musicCtx.createGain(); wet.gain.value=0.5;
+            [[-0.85,0.014],[0.85,0.021]].forEach(([pan,dl])=>{
+              const d=musicCtx.createDelay(); d.delayTime.value=dl;
+              const p=musicCtx.createStereoPanner(); p.pan.value=pan;
+              gain.connect(d); d.connect(p); p.connect(wet);
+            });
+            wet.connect(dest);
+          } else {
+            musicSource.connect(gain); gain.connect(dest);
+          }
           dest.stream.getAudioTracks().forEach(tk=>stream.addTrack(tk));
           addLog("✓ Background music ready — mixing into film");
         }
@@ -2913,6 +3000,18 @@ Write the drawFrame body now.`}]
               </div>
             )}
           </div>
+          {/* ── USE STEREO SOUND ─────────────────────────────────── */}
+          <div onClick={()=>setGenStereo(s=>!s)} style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,padding:"12px 14px",background:"#0a0a0a",border:"1px solid "+(genStereo?GOLD:GOLDDIM),cursor:"pointer"}}>
+            <div style={{width:20,height:20,borderRadius:4,border:"2px solid "+(genStereo?GOLD:GOLDDIM),background:genStereo?GOLD:"transparent",color:"#000",fontWeight:900,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{genStereo?"✓":""}</div>
+            <div><div style={{color:genStereo?GOLD:WHITE,fontWeight:900,fontSize:12,letterSpacing:1}}>🔊 USE STEREO SOUND</div><div style={{color:GOLDDIM,fontSize:10,marginTop:1}}>Full stereo width baked into the generated video's audio</div></div>
+          </div>
+          {/* ── SCRIPT-TO-MOVIE BRIEF (from Page 5) ──────────────── */}
+          {hasBrief&&(
+            <div onClick={()=>setUseBrief(b=>!b)} style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,padding:"12px 14px",background:"#0a0a0a",border:"1px solid "+(useBrief?GOLD:GOLDDIM),cursor:"pointer"}}>
+              <div style={{width:20,height:20,borderRadius:4,border:"2px solid "+(useBrief?GOLD:GOLDDIM),background:useBrief?GOLD:"transparent",color:"#000",fontWeight:900,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{useBrief?"✓":""}</div>
+              <div><div style={{color:useBrief?GOLD:WHITE,fontWeight:900,fontSize:12,letterSpacing:1}}>🎬 USE SCRIPT-TO-MOVIE BRIEF</div><div style={{color:GOLDDIM,fontSize:10,marginTop:1}}>Your Producer, Describe &amp; Production notes from Page 5 drive this render</div></div>
+            </div>
+          )}
           <button onClick={generateVideo} disabled={generating||!prompt.trim()}
             style={{background:"linear-gradient(135deg,#a07820,#e8c96d)",border:"none",color:"#000",width:"100%",padding:"20px",fontSize:15,letterSpacing:3,cursor:generating||!prompt.trim()?"not-allowed":"pointer",fontWeight:900,fontFamily:"'Rajdhani',sans-serif",opacity:generating||!prompt.trim()?0.5:1}}>
             {generating?"⟳ MANDASTRONG ENGINE RENDERING... "+progress+"%":"🎬 GENERATE SCENE"}
@@ -3329,7 +3428,7 @@ function P4({ go, setUser }) {
         <div style={{marginTop:40,padding:"28px 24px",background:"#050500",border:"2px solid "+GOLD,textAlign:"center",boxShadow:"0 0 24px "+GOLD+"22"}}>
           <div style={{fontSize:11,color:GOLD,letterSpacing:4,fontWeight:900,marginBottom:6}}>NEED MORE USAGE?</div>
           <h3 style={{...H1,fontSize:20,marginBottom:8}}>PURCHASE USAGE CREDITS</h3>
-          <p style={{color:WHITE,fontSize:13,lineHeight:1.7,maxWidth:520,margin:"0 auto 18px"}}>Top up your account with extra usage credits — pay once, use them for renders and generations whenever you're ready. Credits never expire.</p>
+          <p style={{color:WHITE,fontSize:13,lineHeight:1.7,maxWidth:520,margin:"0 auto 18px"}}>You've already had your usage replaced once. To top up again, purchase extra usage credits here — pay once, use them for renders and generations whenever you're ready, and they never expire. Proceeds from MandaStrong1.Etsy.com are donated to humanitarian causes.</p>
           <button onClick={()=>window.open(STRIPE.studio,"_blank")} style={{...G("gold",false),padding:"14px 44px",fontSize:14}}>💳 PURCHASE USAGE CREDITS</button>
         </div>
       </div>
@@ -5034,21 +5133,45 @@ function P22() {
 function HowToGuide() {
   const [open,setOpen]=useState(null);
   const SECTIONS=[
-    {t:"GETTING STARTED",c:"Open mandastrong01.bolt.host. Log in with your credentials or start a free trial. Use the ☰ hamburger menu top left to jump to any of the 24 pages. AUTOSAVE ON is real — your work saves automatically every time you change page, generate a clip, or update your timeline. Hit 💾 SAVE PROJECT to create a named restore point you can return to from MY PROJECTS."},
-    {t:"PAGE 5 — WRITING TOOLS",c:"100+ AI writing tools. Type a description into any tool and hit AI CREATE for instant professional results. Use the search bar to find specific tools. Paste your full narration script and director instructions here using Script to Movie — the AI generates complete video prompts for every chapter. All results save to your Media Library automatically."},
-    {t:"PAGE 6 — VOICE ENGINE",c:"54 cinematic voices. Filter by gender, age, and origin. Hit TEST on any voice card to hear it. Paste your narration script into the text box. Hit PREPARE TO SPEAK to hear it aloud through your chosen voice. Hit SAVE TO MEDIA LIBRARY to save the narration — it auto-adds to the Audio Track on your timeline. No dragging needed. Blaze voice recommended for the AI For Humanity documentary. Music Video Studio button is top right on this page."},
-    {t:"PAGE 8 — VIDEO GENERATOR",c:"Upload a reference photo first — the engine builds the scene around your real photo for photorealistic output. Then paste your scene prompt and hit Generate Scene. Clips save automatically to your Media Library and auto-populate the Video Track on your timeline. The memory guard clears old clips before each render so the browser has room to work. Generate all your scenes then go to Page 13."},
-    {t:"PAGE 11 — UPLOAD MEDIA",c:"Upload your own video, audio, images, and files here. Drag and drop or click to browse. Uploaded assets auto-save to your Media Library and route to the correct timeline track automatically — video to the video track, audio to the audio track. Use the Reload Clips from Storage button to recover clips after a page refresh."},
-    {t:"PAGE 13 — TIMELINE EDITOR",c:"Hit ⚡ SYNC ALL TRACKS to auto-populate your timeline in the correct order. Your narration audio clip appears in the Audio Track automatically. Use ⬆ UPLOAD MEDIA next to CLEAR ALL to add more content at any time. Drag clips to reorder. Set your film duration — 60, 90, or 180 minutes. When satisfied hit → RENDER or navigate to Page 16."},
-    {t:"PAGE 15 — AUDIO MIXER",c:"Documentary: Voice 85 · Music 40 · Effects 50 · Master 85. Music Video: Voice 60 · Music 75 · Effects 40 · Master 85. Narrative Film: Voice 80 · Music 50 · Effects 60 · Master 85. Hit Apply Mix when done before going to Page 16."},
-    {t:"PAGE 16 — RENDER ENGINE",c:"Choose quality — 480p, 720p, 1080p, or 4K. Auto-enhancement runs automatically on every frame during render — contrast boost, warm gold colour grade, sharpness, and noise reduction — no settings needed. A priority save fires before render starts so a crash never loses your session. Do not close the browser tab while rendering. Download button appears when complete."},
-    {t:"PAGE 17 & 18 — PREVIEW & EXPORT",c:"Page 17: your completed film loads automatically from storage — press play to watch. Page 18: download to your device and share directly to YouTube, Instagram, TikTok, Facebook, X, and Vimeo using the platform buttons."},
-    {t:"PAGE 19 — TUTORIALS",c:"12 lessons covering every page and workflow. Hit Generate to Watch on any lesson — an animated tutorial plays instantly. Each lesson has Pro Tips and an Open Page button. Lesson 12 is a complete documentary production case study from script to 4K render."},
-    {t:"PAGE 21 — AGENT GROK",c:"Your 24/7 AI production consultant. Ask anything about the platform, workflow, filmmaking, or your project. Type your question and hit Send. Agent Grok has full knowledge of every tool and workflow on the platform."},
-    {t:"PAGE 24 — CHARACTER STUDIO",c:"Create and save reusable characters for your films. Upload a reference photo, assign a voice from the 54-character library, add appearance notes. Hit USE IN SCENE to send the character to your Media Library ready for any scene. Characters persist across sessions."},
-    {t:"MUSIC VIDEO STUDIO",c:"Open from Page 6 top right. Step 1: Song title, artist, genre, mood, tempo — drag and drop your audio file or click to upload, or hit RECORD YOUR OWN SONG. Step 2: Video style, colour grade, effects, aspect ratio. Step 3: Describe your scene in detail. Step 4: Hit Generate Music Video. The engine builds a full beat-synced video. Download or Save to Media Library when done."},
-    {t:"SAVING & RECOVERING WORK",c:"AUTOSAVE ON saves automatically as you work. 💾 SAVE PROJECT creates a named session — give it a meaningful name. 📂 MY PROJECTS shows your full history. Hit CONTINUE PROJECT to fully restore a session including all clips from storage. Emergency save fires automatically if the browser tab closes or crashes — your work is never permanently lost."},
-    {t:"RECOMMENDED WORKFLOW",c:"Page 5 → Paste director instructions and narration script into Script to Movie. Page 6 → Select Blaze voice → PREPARE TO SPEAK → SAVE TO MEDIA LIBRARY. Page 8 → Upload reference photo → paste scene prompt → Generate → repeat for all scenes. Page 13 → SYNC ALL TRACKS. Page 15 → Set audio mix. Page 16 → Choose quality → Render. Page 17 → Preview. Page 18 → Export and share."},
+    {t:"WELCOME — HOW TO READ THIS BOOK",c:"This is more than a how-to. It is a complete guide to making films with AI on MandaStrong Studio (mandastrong01.bolt.host) AND a plain-English education in what AI actually is, so you are never at its mercy. Read Part One to understand the machine you are working with. Read Part Two to master the studio page by page. Read Part Three for the craft — prompting, voice, story, and ethics. You do not need any technical background. Every idea here is explained the way you would explain it to a friend across a kitchen table."},
+
+    {t:"PART ONE · WHAT AI ACTUALLY IS",c:"AI does not think, feel, or know things the way you do. A large language model — the kind of AI behind most creative tools — is a very powerful pattern machine. It has read an enormous amount of human writing and images and learned which words and shapes tend to follow which. When you ask it for something, it is not looking up an answer; it is predicting, piece by piece, the most likely continuation of your request. That is why it can sound confident and still be wrong. Understanding this one fact changes how you use it: you are the director, it is the crew. It is fast and tireless and knows a thousand styles, but it has no judgement about YOUR story. That judgement is yours, and it always will be."},
+
+    {t:"PART ONE · WHY AI SOMETIMES GETS IT WRONG",c:"Because AI predicts rather than knows, it can 'hallucinate' — state something untrue with total confidence, invent a fact, or misread what you wanted. This is normal and expected, not a fault in you. The fix is always the same: be more specific, give an example, or break the task into smaller steps. If a render or a line of narration comes out wrong, it is almost never because you did something stupid — it is because the machine guessed and guessed poorly. Re-roll it, refine your wording, and move on. Treat every output as a first draft from a talented but literal-minded assistant."},
+
+    {t:"PART ONE · PROMPTING — TALKING TO THE MACHINE",c:"A prompt is simply your instruction to the AI. The single biggest skill in the whole studio is learning to prompt well, and it comes down to specificity. 'A man walking' gives the machine nothing to hold onto. 'A weathered fisherman in his sixties walking along a stormy grey beach at dawn, wind pulling at his yellow raincoat, shot from behind, cinematic, muted cold colour grade' gives it everything. Name the subject, the setting, the light, the mood, the camera angle, and the style. Show, don't summarise. When in doubt, describe it as if to someone who cannot see what is in your head — because that is exactly the situation."},
+
+    {t:"PART ONE · AI AND YOU — STAYING IN CHARGE",c:"AI is a tool, like a camera or a pen. It amplifies whoever holds it. It has no taste of its own, so your taste is the whole game. Never let a machine talk you out of a creative instinct, and never assume its confident answer is correct without checking. Keep your own copies of everything important. Understand that what you type may be processed on servers you don't control, so don't paste anything you'd be uncomfortable sharing. And remember the deeper point behind this whole studio: AI should widen the door to creativity, not replace the human standing in it. You are not being replaced. You are being equipped."},
+
+    {t:"PART TWO · GETTING STARTED",c:"Open mandastrong01.bolt.host. Log in with your credentials or start a free trial. Use the ☰ hamburger menu top left to jump to any of the 24 pages. AUTOSAVE ON is real — your work saves automatically every time you change page, generate a clip, or update your timeline. Hit 💾 SAVE PROJECT to create a named restore point you can return to from MY PROJECTS. Your plan and remaining usage are always visible from your account panel — tap the avatar top right."},
+
+    {t:"PART TWO · PAGE 1 — HOME & INSTALL",c:"The front door of mandastrong01.bolt.host. The DOWNLOAD APP button installs the studio to your device like a real app, using your browser's built-in install prompt — on iPhone and iPad use Share then Add to Home Screen, as Apple does not allow one-tap install. The whole page is built to fit any screen, phone or laptop. From here, enter the studio and begin."},
+
+    {t:"PART TWO · PAGE 4 — PLANS & USAGE CREDITS",c:"Three plans: Basic $20, Pro $30, Studio $50 — pick the one that fits how much you create. At the very bottom is PURCHASE USAGE CREDITS: a one-time top-up for extra renders and generations when you need more than your plan includes. Credits never expire. All payments run through Stripe's secure checkout — the studio never sees your card details."},
+
+    {t:"PART TWO · PAGE 5 — WRITING TOOLS & SCRIPT TO MOVIE",c:"100+ AI writing tools. Type a description into any tool and hit AI CREATE for professional results. At the top sits SCRIPT TO MOVIE — three boxes: PRODUCER (your vision, tone, casting), DESCRIBE (the film scene by scene), and PRODUCTION NOTES (shots, camera, lighting, locations). Fill them, save each to your Media Library, then hit WIRE INTO RENDER. From that moment the video generator on Page 8 uses your three boxes to drive every scene it makes. This is how your written vision becomes moving pictures."},
+
+    {t:"PART TWO · PAGE 6 — VOICE ENGINE",c:"Cinematic voices that sound human, not robotic. Filter by gender, age, and origin. Tap any voice card to hear it. Paste your narration into the text box and hit PREPARE TO SPEAK to hear it in your chosen voice with your exact speed, pitch, and mood settings. RECORD MY VOICE lets you narrate yourself; UPLOAD lets you bring in a recording. On the right, USE MY VOICE AS NARRATION turns your own recording into the film's narration, with a duration option. Hit SAVE TO MEDIA LIBRARY and the narration auto-adds to your timeline's audio track. The MUSIC VIDEO STUDIO button lives up top."},
+
+    {t:"PART TWO · PAGE 8 — VIDEO GENERATOR",c:"The heart of the studio. Upload a reference photo first and the engine builds the scene around your real image for photorealistic output. Paste your scene prompt — or let your wired Script to Movie brief drive it — pick your options, and hit GENERATE SCENE. You can add background music from the built-in library with a live preview, and toggle USE STEREO SOUND for a full stereo mix. Clips save automatically and populate your timeline's video track. Generate all your scenes, then move to the timeline."},
+
+    {t:"PART TWO · THE TIMELINE, MIX & RENDER",c:"Page 13: hit ⚡ SYNC ALL TRACKS to lay your clips and narration in order — drag to reorder. Page 15: set your audio mix so voice sits above music. Page 16: choose quality up to 4K and render — auto-enhancement (warm grade, contrast, sharpness) runs on every frame, and an emergency save fires before rendering so a crash never costs you the session. Do not close the tab while rendering. Page 17 previews the finished film; Page 18 exports and shares to YouTube, Instagram, TikTok, Facebook, X, and Vimeo."},
+
+    {t:"PART TWO · MUSIC VIDEO STUDIO",c:"Open from Page 6, top right. SONG step: enter title, artist, genre, mood, tempo; drag and drop your audio, click to upload, or hit RECORD YOUR OWN SONG; toggle USE STEREO SOUND. The DURATION slider runs freely from AUTO up to 180 minutes — at AUTO the film matches your song's length exactly; drag it up to lock a fixed length that overrides the music. STYLE step: video look, colour grade, effects. SCENE step: describe what we see. GENERATE builds a full beat-synced video. Download or save when done."},
+
+    {t:"PART TWO · PAGE 24 — CHARACTER STUDIO",c:"Build reusable characters. Drag and drop a reference photo or tap to choose one, assign a voice, and record appearance notes — hair, eyes, costume, personality, role. Save the character and reuse them across every scene so your cast stays consistent. Characters persist across sessions. From here, HOME returns to the studio and EXIT APP signs you out."},
+
+    {t:"PART THREE · THE CRAFT OF PROMPTING FOR FILM",c:"For video, think like a cinematographer. Always specify five things: subject (who or what), setting (where and when), light (dawn, neon, candlelight), motion (what moves and how), and style (film stock, colour grade, mood). Add a camera instruction — wide establishing shot, slow push-in, handheld, aerial. Contradictions confuse the machine, so keep your prompt coherent. If a scene comes out flat, add sensory and lighting detail rather than more objects. Consistency across scenes comes from reusing the same style language every time."},
+
+    {t:"PART THREE · WRITING NARRATION THAT LANDS",c:"Narration is written to be heard, not read. Short sentences. Natural breath points. Read every line aloud before you save it — if you stumble, the voice engine will too. Punctuation is your friend: a full stop is a real pause, a comma a small one. Match the voice to the story — a documentary wants warmth and authority; a thriller wants restraint. Use the PREPARE TO SPEAK button as your rehearsal room, and tune speed and pitch until it feels like a person, not a reader."},
+
+    {t:"PART THREE · STORY FIRST, ALWAYS",c:"The most photorealistic render in the world means nothing without a reason to watch. Decide what your film is really about before you generate a single frame — the feeling you want to leave behind. Use the Script to Movie PRODUCER box to write that down and keep yourself honest. AI can make anything look good; only you can make it mean something. Structure beats spectacle. A clear beginning, a turn in the middle, and an earned ending will carry a simple film further than dazzling clips with no spine."},
+
+    {t:"PART THREE · ETHICS & RESPONSIBILITY",c:"With these tools you can make almost anything, which means the responsibility is yours. Don't put real people's faces or voices into films they never agreed to. Be honest when something is AI-generated if presenting it as real could mislead. Respect others' work rather than copying a living artist's style wholesale and calling it your own. And remember MandaStrong's founding mission — these tools exist to spread kindness, understanding, and hope, with proceeds supporting veterans' mental health and anti-bullying work. Make things that would make that mission proud."},
+
+    {t:"SAVING, RECOVERING & GETTING HELP",c:"AUTOSAVE ON saves as you work. 💾 SAVE PROJECT creates a named session — name it meaningfully. 📂 MY PROJECTS shows your history; CONTINUE PROJECT restores a session including all clips. An emergency save fires if the tab closes or crashes, so work is never permanently lost. Stuck? Agent Grok on Page 21 is your 24/7 production consultant with full knowledge of every page and workflow. This guide lives on your closing page at mandastrong01.bolt.host and is updated as the studio grows."},
+
+    {t:"RECOMMENDED WORKFLOW — START TO FINISH",c:"Page 5 → fill Script to Movie's Producer, Describe, Production boxes → WIRE INTO RENDER. Page 6 → choose a voice → PREPARE TO SPEAK → SAVE TO MEDIA LIBRARY. Page 8 → upload a reference photo → generate each scene (your brief drives them) → add background music and stereo if you like. Page 13 → SYNC ALL TRACKS. Page 15 → set the mix. Page 16 → choose quality → render. Page 17 → preview. Page 18 → export and share. That is a finished film, made by you, at mandastrong01.bolt.host."},
   ];
   return(
     <div style={{padding:"20px 32px 40px",maxWidth:860,margin:"0 auto"}}>
@@ -5232,7 +5355,20 @@ function P24CharacterStudio({ onSave, go }) {
                 <button onClick={()=>{setPhoto(null);setPhotoName("");}} style={{position:"absolute",top:5,right:5,background:"#000",border:"1px solid "+GOLD,color:GOLD,padding:"2px 8px",cursor:"pointer",fontSize:11,fontWeight:900}}>✕</button>
               </div>
             ):(
-              <button onClick={()=>fileRef.current&&fileRef.current.click()} style={{width:"100%",background:"linear-gradient(135deg,#1a0800,#2a1200)",border:"2px solid "+GOLD,color:GOLD,padding:"14px",cursor:"pointer",fontSize:12,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",marginBottom:12}}>🖼 CHOOSE FROM PHOTOS</button>
+              <div
+                onClick={()=>fileRef.current&&fileRef.current.click()}
+                onDragOver={e=>{e.preventDefault();e.currentTarget.style.background="#2a1200";}}
+                onDragLeave={e=>{e.currentTarget.style.background="linear-gradient(135deg,#1a0800,#2a1200)";}}
+                onDrop={e=>{
+                  e.preventDefault();e.currentTarget.style.background="linear-gradient(135deg,#1a0800,#2a1200)";
+                  const f=e.dataTransfer.files&&e.dataTransfer.files[0];
+                  if(f&&f.type.startsWith("image/")){const r=new FileReader();r.onload=ev=>{setPhoto(ev.target.result);setPhotoName(f.name);};r.readAsDataURL(f);}
+                  else if(f){alert("Please drop an image file.");}
+                }}
+                style={{width:"100%",background:"linear-gradient(135deg,#1a0800,#2a1200)",border:"2px dashed "+GOLD,color:GOLD,padding:"18px 14px",cursor:"pointer",fontSize:12,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",marginBottom:12,textAlign:"center"}}>
+                <div>🖼 DRAG & DROP A PHOTO HERE</div>
+                <div style={{color:GOLDDIM,fontSize:9,marginTop:4,fontWeight:700}}>or tap to choose from your photos</div>
+              </div>
             )}
             <input ref={fileRef} type="file" accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.heic,.heif" style={{display:"none"}} onChange={handlePhoto}/>
 
@@ -5303,6 +5439,8 @@ function P24CharacterStudio({ onSave, go }) {
 function P23({ go }) {
   const bgRef = useRef(null);
   const [howOpen, setHowOpen] = useState(false);
+  const [savedMsg, setSavedMsg] = useState(false);
+  const [vidNeedsTap, setVidNeedsTap] = useState(false);
   useEffect(()=>{
     const v=bgRef.current;
     if(!v)return;
@@ -5311,21 +5449,30 @@ function P23({ go }) {
     v.loop=true;
     v.playsInline=true;
     v.preload="auto";
-    // Smooth playback: wait until the video is fully buffered before starting,
-    // then let the native loop handle itself. Only nudge play on stall/pause.
-    const tryPlay=()=>{v.play().catch(()=>{});};
-    if(v.readyState>=4){tryPlay();}
-    else{v.addEventListener("canplaythrough",tryPlay,{once:true});}
+    try{v.load();}catch{}
+    const tryPlay=()=>{
+      const p=v.play();
+      if(p&&p.then){p.then(()=>setVidNeedsTap(false)).catch(()=>setVidNeedsTap(true));}
+    };
+    // Try immediately and again once data is ready
+    tryPlay();
+    if(v.readyState>=2){tryPlay();}
+    v.addEventListener("loadeddata",tryPlay);
+    v.addEventListener("canplay",tryPlay);
+    v.addEventListener("canplaythrough",tryPlay);
     v.addEventListener("pause",tryPlay);
     v.addEventListener("stalled",tryPlay);
     v.addEventListener("waiting",tryPlay);
     return()=>{
+      v.removeEventListener("loadeddata",tryPlay);
+      v.removeEventListener("canplay",tryPlay);
       v.removeEventListener("canplaythrough",tryPlay);
       v.removeEventListener("pause",tryPlay);
       v.removeEventListener("stalled",tryPlay);
       v.removeEventListener("waiting",tryPlay);
     };
   },[]);
+  const tapPlayVideo=()=>{const v=bgRef.current;if(!v)return;v.muted=true;v.play().then(()=>setVidNeedsTap(false)).catch(()=>{});};
   const exitApp = () => {
     try{localStorage.removeItem("ms_user");}catch{}
     window.location.reload();
@@ -5334,6 +5481,22 @@ function P23({ go }) {
     <div style={{...Sp,padding:0,background:"#000",position:"relative",minHeight:"100vh",overflow:"hidden"}}>
       <div style={{position:"relative",zIndex:1,padding:"30px 24px 80px"}}>
         <div style={{maxWidth:880,margin:"0 auto",textAlign:"center"}}>
+          <div style={{width:"100%",maxHeight:"34vh",overflow:"hidden",position:"relative",display:"flex",alignItems:"center",justifyContent:"center",background:"#000",border:"1px solid "+GOLDDIM,marginBottom:26}}>
+            <video ref={bgRef} autoPlay loop playsInline muted preload="auto"
+              onLoadedMetadata={(e)=>{try{if(e.currentTarget.currentTime<0.1)e.currentTarget.currentTime=0.1;}catch{}}}
+              style={{display:"block",width:"100%",maxHeight:"34vh",objectFit:"cover",background:"#000"}}>
+              <source src="/background.mp4" type="video/mp4"/>
+              <source src="background.mp4" type="video/mp4"/>
+              <source src="./background.mp4" type="video/mp4"/>
+              <source src="/background_5.mp4" type="video/mp4"/>
+              <source src="background_5.mp4" type="video/mp4"/>
+              <source src="./background_5.mp4" type="video/mp4"/>
+              <source src="/thatsallfolks.mp4" type="video/mp4"/>
+            </video>
+            {vidNeedsTap&&(
+              <button onClick={tapPlayVideo} style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.45)",border:"none",color:GOLD,fontSize:16,fontWeight:900,letterSpacing:3,cursor:"pointer",fontFamily:"'Cinzel',serif",display:"flex",alignItems:"center",justifyContent:"center"}}>▶ TAP TO PLAY</button>
+            )}
+          </div>
           <div style={{fontSize:10,color:GOLD,letterSpacing:6,marginBottom:8,fontWeight:700}}>MANDASTRONG STUDIO · CINEMA INTELLIGENCE PLATFORM</div>
           <h1 style={{fontFamily:"'Cinzel',serif",color:GOLD,fontSize:"clamp(32px,5vw,52px)",fontWeight:900,letterSpacing:8,textShadow:"0 0 40px "+GOLD+"99",marginBottom:28}}>THAT'S ALL FOLKS</h1>
           <div style={{height:1,background:"linear-gradient(90deg,transparent,"+GOLD+",transparent)",marginBottom:28}}/>
@@ -5350,28 +5513,16 @@ function P23({ go }) {
             <p style={{color:WHITE,fontSize:13,lineHeight:1.9,margin:0}}>All proceeds from <strong style={{color:GOLD}}>MandaStrong1.Etsy.com</strong> are donated directly to humanitarian causes — veterans mental health, anti-bullying programmes in schools, and children in need.</p>
           </div>
           <button onClick={()=>setHowOpen(o=>!o)} style={{width:"100%",background:howOpen?"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")":"#050500ee",border:"2px solid "+GOLD,color:howOpen?"#000":GOLD,padding:"18px 24px",cursor:"pointer",fontFamily:"'Cinzel',serif",fontSize:15,fontWeight:900,letterSpacing:4,marginBottom:howOpen?0:28,display:"flex",justifyContent:"space-between",alignItems:"center",boxShadow:"0 0 30px "+GOLD+"44"}}>
-            <span>📖 MANDASTRONG STUDIO HOW TO USE GUIDE</span>
+            <span>📖 MANDASTRONG STUDIO — THE COMPLETE GUIDE &amp; AI HANDBOOK</span>
             <span style={{fontSize:18}}>{howOpen?"▲":"▼"}</span>
           </button>
           {howOpen&&<div style={{background:"#030200ee",border:"2px solid "+GOLD,borderTop:"none",marginBottom:28}}><HowToGuide/></div>}
           <a href="https://MandaStrong1.Etsy.com" target="_blank" rel="noreferrer" style={{display:"block",background:"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",color:"#000",padding:"16px 24px",fontWeight:900,fontSize:14,letterSpacing:3,textDecoration:"none",marginBottom:28,fontFamily:"'Cinzel',serif"}}>📚 HUMANITY FOR FUTURE AI — MANDASTRONG1.ETSY.COM</a>
           <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>
-            <button onClick={()=>go(22)} style={{...G("out",false),padding:"14px 40px",fontSize:13,letterSpacing:3}}>← BACK</button>
-            <button onClick={()=>go(24)} style={{...G("gold",false),padding:"14px 40px",fontSize:13,letterSpacing:3}}>NEXT →</button>
+            <button onClick={()=>{try{localStorage.setItem("ms_last_saved",new Date().toISOString());}catch{} setSavedMsg(true); setTimeout(()=>setSavedMsg(false),2500);}} style={{...G("gold",false),padding:"14px 40px",fontSize:13,letterSpacing:3}}>💾 SAVE</button>
+            <button onClick={()=>go(24)} style={{...G("out",false),padding:"14px 40px",fontSize:13,letterSpacing:3}}>NEXT →</button>
           </div>
-        </div>
-        <div style={{width:"100%",maxHeight:"42vh",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",background:"#000",borderTop:"1px solid "+GOLDDIM,marginTop:30}}>
-          <video ref={bgRef} autoPlay loop playsInline muted preload="auto"
-            onLoadedMetadata={(e)=>{try{if(e.currentTarget.currentTime<0.1)e.currentTarget.currentTime=0.1;}catch{}}}
-            style={{display:"block",width:"100%",maxHeight:"42vh",objectFit:"cover",background:"#000"}}>
-            <source src="/background.mp4" type="video/mp4"/>
-            <source src="background.mp4" type="video/mp4"/>
-            <source src="./background.mp4" type="video/mp4"/>
-            <source src="/background_5.mp4" type="video/mp4"/>
-            <source src="background_5.mp4" type="video/mp4"/>
-            <source src="./background_5.mp4" type="video/mp4"/>
-            <source src="/thatsallfolks.mp4" type="video/mp4"/>
-          </video>
+          {savedMsg&&<div style={{color:"#22c55e",fontSize:12,fontWeight:900,letterSpacing:2,marginTop:12}}>✓ PROJECT SAVED</div>}
         </div>
       </div>
     </div>
@@ -5389,41 +5540,47 @@ function IntroDoors({ onEnter }){
     try{
       const ctx=new (window.AudioContext||window.webkitAudioContext)();
       const now=ctx.currentTime;
-      const master=ctx.createGain(); master.gain.value=0.9; master.connect(ctx.destination);
+      const master=ctx.createGain(); master.gain.value=0.95; master.connect(ctx.destination);
+      // Deep mysterious sub-drone bed
       const drone=ctx.createOscillator(); const dg=ctx.createGain();
-      drone.type="sine"; drone.frequency.value=55;
+      drone.type="sine"; drone.frequency.value=41.20; // low E
       dg.gain.setValueAtTime(0,now);
-      dg.gain.linearRampToValueAtTime(0.10,now+0.9);
-      dg.gain.exponentialRampToValueAtTime(0.001,now+4.4);
-      drone.connect(dg); dg.connect(master); drone.start(now); drone.stop(now+4.6);
-      const notes=[130.81,196.00,261.63,392.00,523.25,659.25];
+      dg.gain.linearRampToValueAtTime(0.14,now+1.4);
+      dg.gain.exponentialRampToValueAtTime(0.001,now+6.0);
+      drone.connect(dg); dg.connect(master); drone.start(now); drone.stop(now+6.2);
+      // Second darker drone a fifth above for tension
+      const drone2=ctx.createOscillator(); const dg2=ctx.createGain();
+      drone2.type="triangle"; drone2.frequency.value=61.74; // low B
+      dg2.gain.setValueAtTime(0,now+0.3);
+      dg2.gain.linearRampToValueAtTime(0.08,now+1.8);
+      dg2.gain.exponentialRampToValueAtTime(0.001,now+5.6);
+      drone2.connect(dg2); dg2.connect(master); drone2.start(now+0.3); drone2.stop(now+5.8);
+      // Slow, minor, mysterious rising line (E minor feel)
+      const notes=[82.41,98.00,123.47,164.81,196.00]; // E2 G2 B2 E3 G3
       notes.forEach((f,i)=>{
         const o=ctx.createOscillator(); const g=ctx.createGain();
-        const o2=ctx.createOscillator();
-        o.type=i<2?"sine":"triangle"; o.frequency.value=f;
-        o2.type="sine"; o2.frequency.value=f*2;
-        const t0=now+i*0.16;
+        o.type="triangle"; o.frequency.value=f;
+        const t0=now+0.4+i*0.42; // slower, more deliberate
         g.gain.setValueAtTime(0,t0);
-        g.gain.linearRampToValueAtTime(0.15,t0+0.22);
-        g.gain.exponentialRampToValueAtTime(0.001,t0+3.4);
-        const pan=ctx.createStereoPanner?ctx.createStereoPanner():null;
-        if(pan){pan.pan.value=(i%2===0?-0.35:0.35);o.connect(g);o2.connect(g);g.connect(pan);pan.connect(master);}
-        else {o.connect(g);o2.connect(g);g.connect(master);}
-        o.start(t0); o.stop(t0+3.6); o2.start(t0); o2.stop(t0+3.6);
+        g.gain.linearRampToValueAtTime(0.12,t0+0.5);
+        g.gain.exponentialRampToValueAtTime(0.001,t0+3.8);
+        o.connect(g); g.connect(master); o.start(t0); o.stop(t0+4.0);
       });
+      // Distant high shimmer for cinematic air
       const sh=ctx.createOscillator(); const sg=ctx.createGain();
-      sh.type="sine"; sh.frequency.value=1046.5;
-      sg.gain.setValueAtTime(0,now+0.5);
-      sg.gain.linearRampToValueAtTime(0.045,now+1.4);
-      sg.gain.exponentialRampToValueAtTime(0.001,now+4.0);
-      sh.connect(sg); sg.connect(master); sh.start(now+0.5); sh.stop(now+4.1);
+      sh.type="sine"; sh.frequency.value=659.25;
+      sg.gain.setValueAtTime(0,now+1.5);
+      sg.gain.linearRampToValueAtTime(0.035,now+2.6);
+      sg.gain.exponentialRampToValueAtTime(0.001,now+5.5);
+      sh.connect(sg); sg.connect(master); sh.start(now+1.5); sh.stop(now+5.6);
+      // Low resolving bell
       const bell=ctx.createOscillator(); const bg=ctx.createGain();
-      bell.type="triangle"; bell.frequency.value=784;
-      bg.gain.setValueAtTime(0,now+2.4);
-      bg.gain.linearRampToValueAtTime(0.12,now+2.6);
-      bg.gain.exponentialRampToValueAtTime(0.001,now+4.6);
-      bell.connect(bg); bg.connect(master); bell.start(now+2.4); bell.stop(now+4.7);
-      setTimeout(()=>{try{ctx.close();}catch(e){}},5200);
+      bell.type="triangle"; bell.frequency.value=164.81;
+      bg.gain.setValueAtTime(0,now+2.6);
+      bg.gain.linearRampToValueAtTime(0.10,now+2.9);
+      bg.gain.exponentialRampToValueAtTime(0.001,now+6.0);
+      bell.connect(bg); bg.connect(master); bell.start(now+2.6); bell.stop(now+6.1);
+      setTimeout(()=>{try{ctx.close();}catch(e){}},6400);
     }catch(e){}
   };
   const enter=()=>{
