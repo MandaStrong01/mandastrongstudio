@@ -2081,6 +2081,47 @@ function P6Voice({ onSave, setMediaLib }) {
     }catch(e){setCloning(false);alert("Voice clone failed — try again.");}
   };
 
+  // ── CONSENT + COMPLETE-NARRATION ────────────────────────────────
+  // Consent gate: no one's voice becomes narrator without agreeing.
+  const [narrConsent,setNarrConsent]=useState(()=>{try{return localStorage.getItem("ms_narr_consent")||"";}catch{return "";}});
+  const setConsent=(v)=>{setNarrConsent(v);try{localStorage.setItem("ms_narr_consent",v);}catch{}};
+  const [narrBusy,setNarrBusy]=useState(false);
+  // Record just the first paragraph in your own voice; the engine clones it
+  // and reads the WHOLE narration script (the YOUR NARRATION SCRIPT box) in
+  // your voice, then saves it to the media library / timeline for the render.
+  const engineCompleteNarration=async()=>{
+    const mine=myVoices.find(v=>v.id===selVoice);
+    if(!mine){alert("Record or pick your own voice first.");return;}
+    const script=(text||"").trim();
+    if(!script){alert("Paste your narration into YOUR NARRATION SCRIPT first.");return;}
+    setNarrBusy(true);
+    try{
+      let vid=mine.clonedVoiceId;
+      if(!vid){
+        let blob=null;
+        try{const st=await loadClipFromDB(mine.dbId||mine.id);if(st&&st.blob)blob=st.blob;}catch(e){}
+        if(!blob&&mine.url){try{blob=await (await fetch(mine.url)).blob();}catch(e){}}
+        if(!blob){setNarrBusy(false);alert("Could not find that recording's audio — try recording again.");return;}
+        const dataUri=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(blob);});
+        vid=await engineCloneVoice(dataUri);
+        if(!vid){setNarrBusy(false);alert("Voice clone did not complete. Check the engine has credit, then try again.");return;}
+        const upd=myVoices.map(v=>v.id===mine.id?{...v,clonedVoiceId:vid,engineVoice:vid}:v);
+        setMyVoices(upd);
+        try{localStorage.setItem("ms_my_voices",JSON.stringify(upd.map(v=>({...v,url:undefined}))));}catch{}
+      }
+      // Bake the whole script through the engine in the cloned voice.
+      const buf=await engineSpeak(script,{voice:vid});
+      const id="narr_myvoice_full_"+Date.now();
+      const asset={id,name:"Full Narration (my cloned voice) - "+new Date().toLocaleTimeString(),type:"audio/myvoice",dbId:id,clonedVoiceId:vid,engineVoice:vid,narrText:script,date:new Date().toISOString()};
+      if(buf){try{const b=(buf instanceof Blob)?buf:new Blob([buf],{type:"audio/mpeg"});await safeSaveClipToDB(id,b,asset.name,"audio/myvoice");}catch(e){}}
+      if(onSave)onSave(asset);
+      if(setMediaLib)setMediaLib(p=>[...p,asset]);
+      setNarrBusy(false);
+      setSavedToLib(true);setTimeout(()=>setSavedToLib(false),3000);
+      alert("Done — the engine narrated your full script in your voice and saved it to the timeline for the render.");
+    }catch(e){setNarrBusy(false);alert("Could not complete the narration — try again.");}
+  };
+
   useEffect(()=>{
     const load=()=>{ if(typeof window==="undefined"||!window.speechSynthesis){return;} setSysVoices(window.speechSynthesis.getVoices().filter(v=>v.lang&&v.lang.startsWith("en"))); };
     load(); if(typeof window!=="undefined"&&window.speechSynthesis){window.speechSynthesis.onvoiceschanged=load;}
@@ -2228,9 +2269,18 @@ function P6Voice({ onSave, setMediaLib }) {
               <button onClick={startMyRecording} style={{width:"100%",background:"linear-gradient(135deg,#7a0000,#ef4444)",border:"none",color:"#fff",padding:"10px",cursor:"pointer",fontSize:11,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",marginBottom:6}}>● RECORD MY VOICE NOW</button>
             )}
             <button onClick={()=>myVoiceInputRef.current&&myVoiceInputRef.current.click()} style={{width:"100%",background:"linear-gradient(135deg,#1a0800,#2a1200)",border:"2px solid "+GOLD,color:GOLD,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",marginBottom:6}}>＋ ADD YOUR OWN VOICE (FILE)</button>
-            {myVoices.some(v=>v.id===selVoice)&&(
-              <button onClick={saveMyVoiceAsNarration} style={{width:"100%",background:"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",border:"none",color:"#000",padding:"11px",cursor:"pointer",fontSize:11,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",marginBottom:6}}>🎙 USE MY VOICE AS NARRATION</button>
-            )}
+            {myVoices.some(v=>v.id===selVoice)&&(<>
+              <div style={{color:GOLDDIM,fontSize:10,lineHeight:1.5,marginBottom:6,letterSpacing:0.5}}>Record just the FIRST PARAGRAPH in your own voice — the engine clones your voice and reads the rest of the narration to the end in YOUR voice, wired into the generator and render.</div>
+              <div style={{color:GOLD,fontSize:10,letterSpacing:2,fontWeight:900,marginBottom:4}}>USE MY VOICE AS NARRATOR?</div>
+              <div style={{display:"flex",gap:6,marginBottom:8}}>
+                <button onClick={()=>setConsent("yes")} style={{flex:1,background:narrConsent==="yes"?GOLD:"#000",border:"2px solid "+GOLD,color:narrConsent==="yes"?"#000":GOLD,padding:"7px",cursor:"pointer",fontSize:10,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif"}}>YES</button>
+                <button onClick={()=>setConsent("no")} style={{flex:1,background:narrConsent==="no"?"#7a0000":"#000",border:"2px solid #7a0000",color:narrConsent==="no"?"#fff":"#ef4444",padding:"7px",cursor:"pointer",fontSize:10,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif"}}>NO</button>
+              </div>
+              {narrConsent==="yes"&&(<>
+                <button onClick={saveMyVoiceAsNarration} style={{width:"100%",background:"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",border:"none",color:"#000",padding:"11px",cursor:"pointer",fontSize:11,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",marginBottom:6}}>🎙 USE MY VOICE AS NARRATION</button>
+                <button onClick={engineCompleteNarration} disabled={narrBusy} style={{width:"100%",background:narrBusy?"#1a0800":"linear-gradient(135deg,#1a0800,#2a1200)",border:"2px solid "+GOLD,color:GOLD,padding:"11px",cursor:narrBusy?"wait":"pointer",fontSize:11,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",marginBottom:6}}>{narrBusy?"⟳ CLONING & COMPLETING…":"🎧 USE ENGINE TO COMPLETE FULL NARRATION"}</button>
+              </>)}
+            </>)}
             {myVoices.map(v=>(
               <div key={v.id} onClick={()=>setSelVoice(v.id)} style={{padding:"10px 12px",marginBottom:4,background:selVoice===v.id?"#0a0800":"#000",border:"2px solid "+(selVoice===v.id?GOLD:GOLDDIM),cursor:"pointer"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -4080,6 +4130,41 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
       let audioSource=null,audioBuffer=null;
       let liveNarration=false;
       if(audioAsset){
+        // ── CLONED-VOICE FULL NARRATION ──────────────────────────────────────
+        // If the audio asset carries a clone id + the script text (from page 6's
+        // "USE ENGINE TO COMPLETE FULL NARRATION"), narrate the WHOLE script through
+        // the engine in the cloned voice and bake it in. Falls back to the stored
+        // recording if the clone can't be reached.
+        if(audioAsset.clonedVoiceId&&audioAsset.narrText){
+          try{
+            log("Baking FULL narration in your cloned voice...");
+            const cChunks=buildChunks(audioAsset.narrText);
+            const decoded=[];
+            for(const c of cChunks){
+              if(!c||!c.text) continue;
+              const u=await engineSpeak(c.text,{voice:audioAsset.clonedVoiceId});
+              if(!u) continue;
+              try{ const r=await fetch(u); const ab=await r.arrayBuffer(); decoded.push(await audioCtx.decodeAudioData(ab)); }catch(e){}
+            }
+            if(decoded.length){
+              const total=decoded.reduce((s,b)=>s+b.duration,0);
+              const merged=audioCtx.createBuffer(1,Math.max(1,Math.ceil(total*audioCtx.sampleRate)),audioCtx.sampleRate);
+              const out=merged.getChannelData(0); let off=0;
+              for(const b of decoded){ out.set(b.getChannelData(0),Math.floor(off*audioCtx.sampleRate)); off+=b.duration; }
+              audioBuffer=merged;
+              log("✓ Full narration baked in your cloned voice: "+total.toFixed(1)+"s");
+            }
+          }catch(e){log("Cloned-voice narration error — trying the recording: "+e.message);}
+          // Fall through to the recording if the clone produced nothing.
+          if(!audioBuffer){
+            try{
+              const dbId=audioAsset.dbId||audioAsset.id;
+              let audioBlob=null;
+              if(dbId){const stored=await loadClipFromDB(dbId);if(stored&&stored.blob)audioBlob=stored.blob;}
+              if(audioBlob){const arrayBuf=await audioBlob.arrayBuffer();audioBuffer=await audioCtx.decodeAudioData(arrayBuf);log("✓ Played your recording instead: "+audioBuffer.duration.toFixed(1)+"s");}
+            }catch(e){}
+          }
+        } else
         // NARRATION: bake through the Cinema Voice Engine so it RECORDS into the film.
         // Device speech (speechSynthesis) plays out the speaker and never enters the
         // captured audio graph, so on iPad the film came out silent / "voice unavailable".
@@ -5007,7 +5092,7 @@ function P20() {
             {sec("CHANGES TO THIS DISCLAIMER",<>{p("MandaStrong Studio reserves the right to update this disclaimer at any time. Continued use of the platform following any update constitutes your acceptance of the revised terms.")}</>)}
 
             <div style={{background:"#050500",border:"1px solid "+GOLDDIM,padding:"12px 16px",marginTop:8}}>
-              <p style={{color:GOLDDIM,fontSize:11,margin:0,letterSpacing:1}}>— AMANDA WOOLLEY · FOUNDER · MANDASTRONG STUDIO · MARCH 2026 · mandastrong01.bolt.host</p>
+              <p style={{color:GOLDDIM,fontSize:11,margin:0,letterSpacing:1}}>— AMANDA WOOLLEY · FOUNDER · MANDASTRONG STUDIO · MARCH 2026 · mandastrong-01.bolt.host</p>
             </div>
           </div>
         )}
@@ -5133,7 +5218,7 @@ function P22() {
 function HowToGuide() {
   const [open,setOpen]=useState(null);
   const SECTIONS=[
-    {t:"WELCOME — HOW TO READ THIS BOOK",c:"This is more than a how-to. It is a complete guide to making films with AI on MandaStrong Studio (mandastrong01.bolt.host) AND a plain-English education in what AI actually is, so you are never at its mercy. Read Part One to understand the machine you are working with. Read Part Two to master the studio page by page. Read Part Three for the craft — prompting, voice, story, and ethics. You do not need any technical background. Every idea here is explained the way you would explain it to a friend across a kitchen table."},
+    {t:"WELCOME — HOW TO READ THIS BOOK",c:"This is more than a how-to. It is a complete guide to making films with AI on MandaStrong Studio (mandastrong-01.bolt.host) AND a plain-English education in what AI actually is, so you are never at its mercy. Read Part One to understand the machine you are working with. Read Part Two to master the studio page by page. Read Part Three for the craft — prompting, voice, story, and ethics. You do not need any technical background. Every idea here is explained the way you would explain it to a friend across a kitchen table."},
 
     {t:"PART ONE · WHAT AI ACTUALLY IS",c:"AI does not think, feel, or know things the way you do. A large language model — the kind of AI behind most creative tools — is a very powerful pattern machine. It has read an enormous amount of human writing and images and learned which words and shapes tend to follow which. When you ask it for something, it is not looking up an answer; it is predicting, piece by piece, the most likely continuation of your request. That is why it can sound confident and still be wrong. Understanding this one fact changes how you use it: you are the director, it is the crew. It is fast and tireless and knows a thousand styles, but it has no judgement about YOUR story. That judgement is yours, and it always will be."},
 
@@ -5143,9 +5228,9 @@ function HowToGuide() {
 
     {t:"PART ONE · AI AND YOU — STAYING IN CHARGE",c:"AI is a tool, like a camera or a pen. It amplifies whoever holds it. It has no taste of its own, so your taste is the whole game. Never let a machine talk you out of a creative instinct, and never assume its confident answer is correct without checking. Keep your own copies of everything important. Understand that what you type may be processed on servers you don't control, so don't paste anything you'd be uncomfortable sharing. And remember the deeper point behind this whole studio: AI should widen the door to creativity, not replace the human standing in it. You are not being replaced. You are being equipped."},
 
-    {t:"PART TWO · GETTING STARTED",c:"Open mandastrong01.bolt.host. Log in with your credentials or start a free trial. Use the ☰ hamburger menu top left to jump to any of the 24 pages. AUTOSAVE ON is real — your work saves automatically every time you change page, generate a clip, or update your timeline. Hit 💾 SAVE PROJECT to create a named restore point you can return to from MY PROJECTS. Your plan and remaining usage are always visible from your account panel — tap the avatar top right."},
+    {t:"PART TWO · GETTING STARTED",c:"Open mandastrong-01.bolt.host. Log in with your credentials or start a free trial. Use the ☰ hamburger menu top left to jump to any of the 24 pages. AUTOSAVE ON is real — your work saves automatically every time you change page, generate a clip, or update your timeline. Hit 💾 SAVE PROJECT to create a named restore point you can return to from MY PROJECTS. Your plan and remaining usage are always visible from your account panel — tap the avatar top right."},
 
-    {t:"PART TWO · PAGE 1 — HOME & INSTALL",c:"The front door of mandastrong01.bolt.host. The DOWNLOAD APP button installs the studio to your device like a real app, using your browser's built-in install prompt — on iPhone and iPad use Share then Add to Home Screen, as Apple does not allow one-tap install. The whole page is built to fit any screen, phone or laptop. From here, enter the studio and begin."},
+    {t:"PART TWO · PAGE 1 — HOME & INSTALL",c:"The front door of mandastrong-01.bolt.host. The DOWNLOAD APP button installs the studio to your device like a real app, using your browser's built-in install prompt — on iPhone and iPad use Share then Add to Home Screen, as Apple does not allow one-tap install. The whole page is built to fit any screen, phone or laptop. From here, enter the studio and begin."},
 
     {t:"PART TWO · PAGE 4 — PLANS & USAGE CREDITS",c:"Three plans: Basic $20, Pro $30, Studio $50 — pick the one that fits how much you create. At the very bottom is PURCHASE USAGE CREDITS: a one-time top-up for extra renders and generations when you need more than your plan includes. Credits never expire. All payments run through Stripe's secure checkout — the studio never sees your card details."},
 
@@ -5169,9 +5254,9 @@ function HowToGuide() {
 
     {t:"PART THREE · ETHICS & RESPONSIBILITY",c:"With these tools you can make almost anything, which means the responsibility is yours. Don't put real people's faces or voices into films they never agreed to. Be honest when something is AI-generated if presenting it as real could mislead. Respect others' work rather than copying a living artist's style wholesale and calling it your own. And remember MandaStrong's founding mission — these tools exist to spread kindness, understanding, and hope, with proceeds supporting veterans' mental health and anti-bullying work. Make things that would make that mission proud."},
 
-    {t:"SAVING, RECOVERING & GETTING HELP",c:"AUTOSAVE ON saves as you work. 💾 SAVE PROJECT creates a named session — name it meaningfully. 📂 MY PROJECTS shows your history; CONTINUE PROJECT restores a session including all clips. An emergency save fires if the tab closes or crashes, so work is never permanently lost. Stuck? Agent Grok on Page 21 is your 24/7 production consultant with full knowledge of every page and workflow. This guide lives on your closing page at mandastrong01.bolt.host and is updated as the studio grows."},
+    {t:"SAVING, RECOVERING & GETTING HELP",c:"AUTOSAVE ON saves as you work. 💾 SAVE PROJECT creates a named session — name it meaningfully. 📂 MY PROJECTS shows your history; CONTINUE PROJECT restores a session including all clips. An emergency save fires if the tab closes or crashes, so work is never permanently lost. Stuck? Agent Grok on Page 21 is your 24/7 production consultant with full knowledge of every page and workflow. This guide lives on your closing page at mandastrong-01.bolt.host and is updated as the studio grows."},
 
-    {t:"RECOMMENDED WORKFLOW — START TO FINISH",c:"Page 5 → fill Script to Movie's Producer, Describe, Production boxes → WIRE INTO RENDER. Page 6 → choose a voice → PREPARE TO SPEAK → SAVE TO MEDIA LIBRARY. Page 8 → upload a reference photo → generate each scene (your brief drives them) → add background music and stereo if you like. Page 13 → SYNC ALL TRACKS. Page 15 → set the mix. Page 16 → choose quality → render. Page 17 → preview. Page 18 → export and share. That is a finished film, made by you, at mandastrong01.bolt.host."},
+    {t:"RECOMMENDED WORKFLOW — START TO FINISH",c:"Page 5 → fill Script to Movie's Producer, Describe, Production boxes → WIRE INTO RENDER. Page 6 → choose a voice → PREPARE TO SPEAK → SAVE TO MEDIA LIBRARY. Page 8 → upload a reference photo → generate each scene (your brief drives them) → add background music and stereo if you like. Page 13 → SYNC ALL TRACKS. Page 15 → set the mix. Page 16 → choose quality → render. Page 17 → preview. Page 18 → export and share. That is a finished film, made by you, at mandastrong-01.bolt.host."},
   ];
   return(
     <div style={{padding:"20px 32px 40px",maxWidth:860,margin:"0 auto"}}>
@@ -5540,46 +5625,49 @@ function IntroDoors({ onEnter }){
     try{
       const ctx=new (window.AudioContext||window.webkitAudioContext)();
       const now=ctx.currentTime;
-      const master=ctx.createGain(); master.gain.value=0.95; master.connect(ctx.destination);
-      // Deep mysterious sub-drone bed
+      const master=ctx.createGain(); master.gain.value=1.0; master.connect(ctx.destination);
+      // Cinematic reverb tail for space
+      const conv=ctx.createConvolver();
+      const len=Math.floor(ctx.sampleRate*2.6); const imp=ctx.createBuffer(2,len,ctx.sampleRate);
+      for(let ch=0;ch<2;ch++){const d=imp.getChannelData(ch);for(let i=0;i<len;i++){d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.6);}}
+      conv.buffer=imp; const rev=ctx.createGain(); rev.gain.value=0.35; conv.connect(rev); rev.connect(master);
+      // 1) DEEP IMPACT BOOM — the off-guard hit
+      const boom=ctx.createOscillator(); const bg=ctx.createGain();
+      boom.type="sine"; boom.frequency.setValueAtTime(120,now); boom.frequency.exponentialRampToValueAtTime(28,now+1.2);
+      bg.gain.setValueAtTime(0.9,now); bg.gain.exponentialRampToValueAtTime(0.001,now+1.8);
+      boom.connect(bg); bg.connect(master); bg.connect(conv); boom.start(now); boom.stop(now+1.9);
+      // 2) SUB DRONE BED — tension underneath
       const drone=ctx.createOscillator(); const dg=ctx.createGain();
-      drone.type="sine"; drone.frequency.value=41.20; // low E
-      dg.gain.setValueAtTime(0,now);
-      dg.gain.linearRampToValueAtTime(0.14,now+1.4);
-      dg.gain.exponentialRampToValueAtTime(0.001,now+6.0);
-      drone.connect(dg); dg.connect(master); drone.start(now); drone.stop(now+6.2);
-      // Second darker drone a fifth above for tension
-      const drone2=ctx.createOscillator(); const dg2=ctx.createGain();
-      drone2.type="triangle"; drone2.frequency.value=61.74; // low B
-      dg2.gain.setValueAtTime(0,now+0.3);
-      dg2.gain.linearRampToValueAtTime(0.08,now+1.8);
-      dg2.gain.exponentialRampToValueAtTime(0.001,now+5.6);
-      drone2.connect(dg2); dg2.connect(master); drone2.start(now+0.3); drone2.stop(now+5.8);
-      // Slow, minor, mysterious rising line (E minor feel)
-      const notes=[82.41,98.00,123.47,164.81,196.00]; // E2 G2 B2 E3 G3
-      notes.forEach((f,i)=>{
-        const o=ctx.createOscillator(); const g=ctx.createGain();
-        o.type="triangle"; o.frequency.value=f;
-        const t0=now+0.4+i*0.42; // slower, more deliberate
-        g.gain.setValueAtTime(0,t0);
-        g.gain.linearRampToValueAtTime(0.12,t0+0.5);
-        g.gain.exponentialRampToValueAtTime(0.001,t0+3.8);
-        o.connect(g); g.connect(master); o.start(t0); o.stop(t0+4.0);
+      drone.type="sawtooth"; drone.frequency.value=41.20;
+      const lp=ctx.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=180;
+      dg.gain.setValueAtTime(0,now); dg.gain.linearRampToValueAtTime(0.22,now+1.6); dg.gain.exponentialRampToValueAtTime(0.001,now+5.5);
+      drone.connect(lp); lp.connect(dg); dg.connect(master); drone.start(now); drone.stop(now+5.7);
+      // 3) RISING MINOR STAB LINE — drama building to the doors
+      const rise=[110.00,130.81,164.81,196.00,246.94,329.63];
+      rise.forEach((f,i)=>{
+        const o=ctx.createOscillator(); const g=ctx.createGain(); const o2=ctx.createOscillator();
+        o.type="sawtooth"; o2.type="square"; o.frequency.value=f; o2.frequency.value=f*1.005;
+        const flt=ctx.createBiquadFilter(); flt.type="lowpass"; flt.frequency.setValueAtTime(600,now); flt.frequency.linearRampToValueAtTime(3200,now+2.8);
+        const t0=now+0.5+i*0.30;
+        g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(0.16,t0+0.12); g.gain.exponentialRampToValueAtTime(0.001,t0+1.6);
+        o.connect(flt); o2.connect(flt); flt.connect(g); g.connect(master); g.connect(conv);
+        o.start(t0); o.stop(t0+1.7); o2.start(t0); o2.stop(t0+1.7);
       });
-      // Distant high shimmer for cinematic air
-      const sh=ctx.createOscillator(); const sg=ctx.createGain();
-      sh.type="sine"; sh.frequency.value=659.25;
-      sg.gain.setValueAtTime(0,now+1.5);
-      sg.gain.linearRampToValueAtTime(0.035,now+2.6);
-      sg.gain.exponentialRampToValueAtTime(0.001,now+5.5);
-      sh.connect(sg); sg.connect(master); sh.start(now+1.5); sh.stop(now+5.6);
-      // Low resolving bell
-      const bell=ctx.createOscillator(); const bg=ctx.createGain();
-      bell.type="triangle"; bell.frequency.value=164.81;
-      bg.gain.setValueAtTime(0,now+2.6);
-      bg.gain.linearRampToValueAtTime(0.10,now+2.9);
-      bg.gain.exponentialRampToValueAtTime(0.001,now+6.0);
-      bell.connect(bg); bg.connect(master); bell.start(now+2.6); bell.stop(now+6.1);
+      // 4) SHIMMER TOP — cinematic air
+      [1318.51,1567.98,1975.53].forEach((f,i)=>{
+        const sh=ctx.createOscillator(); const sg=ctx.createGain();
+        sh.type="sine"; sh.frequency.value=f;
+        const t0=now+1.4+i*0.15;
+        sg.gain.setValueAtTime(0,t0); sg.gain.linearRampToValueAtTime(0.04,t0+0.6); sg.gain.exponentialRampToValueAtTime(0.001,t0+3.2);
+        sh.connect(sg); sg.connect(master); sg.connect(conv); sh.start(t0); sh.stop(t0+3.3);
+      });
+      // 5) RESOLVING HERO HIT — lands as the doors open (~2.4s)
+      const hit=ctx.createOscillator(); const hitG=ctx.createGain();
+      hit.type="triangle"; hit.frequency.value=110.00;
+      const hit2=ctx.createOscillator(); hit2.type="sine"; hit2.frequency.value=220.00;
+      hitG.gain.setValueAtTime(0,now+2.4); hitG.gain.linearRampToValueAtTime(0.5,now+2.5); hitG.gain.exponentialRampToValueAtTime(0.001,now+5.8);
+      hit.connect(hitG); hit2.connect(hitG); hitG.connect(master); hitG.connect(conv);
+      hit.start(now+2.4); hit.stop(now+5.9); hit2.start(now+2.4); hit2.stop(now+5.9);
       setTimeout(()=>{try{ctx.close();}catch(e){}},6400);
     }catch(e){}
   };
@@ -5638,14 +5726,14 @@ function IntroDoors({ onEnter }){
           boxShadow:"0 0 40px rgba(232,201,109,0.6)",borderRadius:0}}>
           ▶ ENTER
         </button>
-        <div style={{color:GOLDDIM,fontSize:11,letterSpacing:3,marginTop:16}}>mandastrong01.bolt.host</div>
+        <div style={{color:GOLDDIM,fontSize:11,letterSpacing:3,marginTop:16}}>mandastrong-01.bolt.host</div>
       </div>
     </div>
   );
 }
 
 export default function App() {
-  const [page,setPage]=useState(1);
+  const [page,setPage]=useState(()=>{try{return JSON.parse(localStorage.getItem("ms_page")||"1");}catch{return 1;}});
   // ── CINEMATIC INTRO — gold doors open to reveal the app ──
   const [showIntro,setShowIntro]=useState(true);
   const [menu,setMenu]=useState(false);
