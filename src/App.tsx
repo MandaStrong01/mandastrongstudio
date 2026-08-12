@@ -2085,6 +2085,8 @@ function P6Voice({ onSave, setMediaLib }) {
   // Consent gate: no one's voice becomes narrator without agreeing.
   const [narrConsent,setNarrConsent]=useState(()=>{try{return localStorage.getItem("ms_narr_consent")||"";}catch{return "";}});
   const setConsent=(v)=>{setNarrConsent(v);try{localStorage.setItem("ms_narr_consent",v);}catch{}};
+  const [cloneConsent,setCloneConsent]=useState(()=>{try{return localStorage.getItem("ms_clone_consent")||"";}catch{return "";}});
+  const setCloneOk=(v)=>{setCloneConsent(v);try{localStorage.setItem("ms_clone_consent",v);}catch{}};
   const [narrBusy,setNarrBusy]=useState(false);
   // Record just the first paragraph in your own voice; the engine clones it
   // and reads the WHOLE narration script (the YOUR NARRATION SCRIPT box) in
@@ -2271,6 +2273,11 @@ function P6Voice({ onSave, setMediaLib }) {
             <button onClick={()=>myVoiceInputRef.current&&myVoiceInputRef.current.click()} style={{width:"100%",background:"linear-gradient(135deg,#1a0800,#2a1200)",border:"2px solid "+GOLD,color:GOLD,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",marginBottom:6}}>＋ ADD YOUR OWN VOICE (FILE)</button>
             {myVoices.some(v=>v.id===selVoice)&&(<>
               <div style={{color:GOLDDIM,fontSize:10,lineHeight:1.5,marginBottom:6,letterSpacing:0.5}}>Record just the FIRST PARAGRAPH in your own voice — the engine clones your voice and reads the rest of the narration to the end in YOUR voice, wired into the generator and render.</div>
+              <div style={{color:GOLD,fontSize:10,letterSpacing:2,fontWeight:900,marginBottom:4}}>ALLOW ENGINE TO CLONE VOICE?</div>
+              <div style={{display:"flex",gap:6,marginBottom:8}}>
+                <button onClick={()=>setCloneOk("yes")} style={{flex:1,background:cloneConsent==="yes"?GOLD:"#000",border:"2px solid "+GOLD,color:cloneConsent==="yes"?"#000":GOLD,padding:"7px",cursor:"pointer",fontSize:10,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif"}}>YES</button>
+                <button onClick={()=>setCloneOk("no")} style={{flex:1,background:cloneConsent==="no"?"#7a0000":"#000",border:"2px solid #7a0000",color:cloneConsent==="no"?"#fff":"#ef4444",padding:"7px",cursor:"pointer",fontSize:10,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif"}}>NO</button>
+              </div>
               <div style={{color:GOLD,fontSize:10,letterSpacing:2,fontWeight:900,marginBottom:4}}>USE MY VOICE AS NARRATOR?</div>
               <div style={{display:"flex",gap:6,marginBottom:8}}>
                 <button onClick={()=>setConsent("yes")} style={{flex:1,background:narrConsent==="yes"?GOLD:"#000",border:"2px solid "+GOLD,color:narrConsent==="yes"?"#000":GOLD,padding:"7px",cursor:"pointer",fontSize:10,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif"}}>YES</button>
@@ -5624,8 +5631,9 @@ function IntroDoors({ onEnter }){
   const playChime=()=>{
     try{
       const ctx=new (window.AudioContext||window.webkitAudioContext)();
+      if(ctx.state==="suspended"){try{ctx.resume();}catch(e){}}
       const now=ctx.currentTime;
-      const master=ctx.createGain(); master.gain.value=1.0; master.connect(ctx.destination);
+      const master=ctx.createGain(); master.gain.value=2.2; master.connect(ctx.destination);
       // Cinematic reverb tail for space
       const conv=ctx.createConvolver();
       const len=Math.floor(ctx.sampleRate*2.6); const imp=ctx.createBuffer(2,len,ctx.sampleRate);
