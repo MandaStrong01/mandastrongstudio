@@ -4041,9 +4041,23 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
   };
 
   const getAudioTrack=()=>{
-    const tAudio=Object.values(timeline||{}).flat().filter(a=>a&&a.type&&(a.type.startsWith("audio")||a.type==="audio/narration"||a.type==="narration"||a.type==="audio/webm"));
-    if(tAudio.length>0)return tAudio[0];
-    return (mediaLib||[]).find(a=>a.type&&(a.type.startsWith("audio")||a.type==="audio/narration"||a.type==="audio/webm"));
+    // Every audio-ish asset on the timeline, then in the media library.
+    const pool=[
+      ...Object.values(timeline||{}).flat(),
+      ...(mediaLib||[])
+    ].filter(a=>a&&a.type&&(a.type.startsWith("audio")||a.type==="audio/narration"||a.type==="narration"||a.type==="audio/webm"));
+    if(!pool.length)return undefined;
+    // PRIORITY 1: the cloned-voice FULL narration (carries clonedVoiceId + narrText).
+    // This is what "USE ENGINE TO COMPLETE FULL NARRATION" saves. It MUST win, or
+    // the render picks a plain narration sitting earlier in the list and defaults
+    // to a preset voice — which is exactly why your voice never continued.
+    const cloned=pool.find(a=>a.clonedVoiceId&&a.narrText);
+    if(cloned)return cloned;
+    // PRIORITY 2: your recorded-voice narration saved with "USE MY VOICE AS NARRATION".
+    const myVoice=pool.find(a=>a.type==="audio/myvoice");
+    if(myVoice)return myVoice;
+    // PRIORITY 3: anything else audio, first one wins (old behaviour).
+    return pool[0];
   };
 
   // Background music bed. A music asset is any audio the user tagged as music,
