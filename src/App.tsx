@@ -3177,23 +3177,33 @@ function P1({ go }) {
             const isIOS = /iphone|ipad|ipod/.test(ua) || (/(macintosh)/.test(ua) && navigator.maxTouchPoints>1);
             const isAndroid = /android/.test(ua);
             const isStandalone = (window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone===true;
-            if(isStandalone){
-              alert("✓ MandaStrong Studio is already installed on this device.\n\nYou're using the installed app right now. Look for the gold M icon on your home screen to open it any time.");
-              return;
-            }
+            // REAL DOWNLOAD: save a standalone launcher file to the user's computer.
+            // Double-clicking it opens MandaStrong Studio full-screen in their browser.
+            try{
+              const APP_URL="https://mandastrong-01.bolt.host";
+              const launcher='<!doctype html><html><head><meta charset="utf-8"><title>MandaStrong Studio</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;background:#000}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body><iframe src="'+APP_URL+'" allow="camera;microphone;autoplay;fullscreen;clipboard-write" allowfullscreen></iframe><script>try{if(location.protocol==="file:"){location.href="'+APP_URL+'";}}catch(e){location.href="'+APP_URL+'";}<\\/script></body></html>';
+              const blob=new Blob([launcher],{type:"text/html"});
+              const url=URL.createObjectURL(blob);
+              const a=document.createElement("a");
+              a.href=url; a.download="MandaStrong Studio.html";
+              document.body.appendChild(a); a.click();
+              setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1500);
+            }catch(e){}
+            // Then also offer native install where the browser supports it.
+            if(isStandalone){return;}
             if(window.deferredInstallPrompt){
               try{
                 window.deferredInstallPrompt.prompt();
                 const choice=await window.deferredInstallPrompt.userChoice;
                 window.deferredInstallPrompt=null;
                 if(choice&&choice.outcome==="accepted") alert("✓ Installing MandaStrong Studio to your home screen. Look for the gold M icon.");
-              }catch(e){ alert("To install: use your browser menu → 'Add to Home Screen' or 'Install App'."); }
+              }catch(e){}
             } else if(isIOS){
-              alert("Install MandaStrong Studio on iPhone/iPad:\n\n1. Tap the Share button ⬆ (Safari, at the bottom or top)\n2. Scroll down and tap 'Add to Home Screen'\n3. Tap 'Add'\n\nThe gold M icon will appear on your home screen and open full screen.\n\n(Note: on iPhone/iPad this only works in the Safari browser, not Chrome.)");
+              alert("✓ MandaStrong Studio.html downloaded to your device.\n\nTo also add it to your home screen on iPhone/iPad:\n1. Tap the Share button ⬆ in Safari\n2. Scroll down and tap 'Add to Home Screen'\n3. Tap 'Add'");
             } else if(isAndroid){
-              alert("Install MandaStrong Studio on Android:\n\n1. Tap the menu ⋮ in Chrome (top right)\n2. Tap 'Add to Home screen' or 'Install app'\n3. Tap Install\n\nThe gold M icon will appear on your home screen and open full screen.");
+              alert("✓ MandaStrong Studio downloaded.\n\nTo also install it as an app:\n1. Tap the menu ⋮ in Chrome\n2. Tap 'Add to Home screen' or 'Install app'");
             } else {
-              alert("Install MandaStrong Studio on Desktop:\n\n1. Look for the install icon ⊕ in your browser's address bar (right side)\n2. Click it and select Install\n\nOr open your browser menu and choose 'Install MandaStrong Studio'.\nChrome or Edge give the best result.");
+              alert("✓ MandaStrong Studio.html downloaded to your computer.\n\nDouble-click the file any time to open the studio full-screen.\n\nTo also install it: look for the install icon ⊕ in your browser's address bar.");
             }
           }} style={{background:"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",border:"none",color:"#000",padding:"14px 32px",fontSize:14,fontWeight:900,letterSpacing:3,cursor:"pointer",fontFamily:"'Rajdhani',sans-serif",width:"100%",maxWidth:320}}>
             ⬇ DOWNLOAD APP
@@ -5656,7 +5666,7 @@ function IntroDoors({ onEnter }){
         const o=ctx.createOscillator(); const g=ctx.createGain(); const o2=ctx.createOscillator();
         o.type="sawtooth"; o2.type="square"; o.frequency.value=f; o2.frequency.value=f*1.005;
         const flt=ctx.createBiquadFilter(); flt.type="lowpass"; flt.frequency.setValueAtTime(600,now); flt.frequency.linearRampToValueAtTime(3200,now+2.8);
-        const t0=now+0.5+i*0.30;
+        const t0=now+0.3+i*0.22;
         g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(0.16,t0+0.12); g.gain.exponentialRampToValueAtTime(0.001,t0+1.6);
         o.connect(flt); o2.connect(flt); flt.connect(g); g.connect(master); g.connect(conv);
         o.start(t0); o.stop(t0+1.7); o2.start(t0); o2.stop(t0+1.7);
@@ -5669,62 +5679,73 @@ function IntroDoors({ onEnter }){
         sg.gain.setValueAtTime(0,t0); sg.gain.linearRampToValueAtTime(0.04,t0+0.6); sg.gain.exponentialRampToValueAtTime(0.001,t0+3.2);
         sh.connect(sg); sg.connect(master); sg.connect(conv); sh.start(t0); sh.stop(t0+3.3);
       });
-      // 5) RESOLVING HERO HIT — lands as the doors open (~2.4s)
+      // 5) RESOLVING HERO HIT — lands immediately AS the doors open (t=0)
       const hit=ctx.createOscillator(); const hitG=ctx.createGain();
       hit.type="triangle"; hit.frequency.value=110.00;
       const hit2=ctx.createOscillator(); hit2.type="sine"; hit2.frequency.value=220.00;
-      hitG.gain.setValueAtTime(0,now+2.4); hitG.gain.linearRampToValueAtTime(0.5,now+2.5); hitG.gain.exponentialRampToValueAtTime(0.001,now+5.8);
+      hitG.gain.setValueAtTime(0,now); hitG.gain.linearRampToValueAtTime(0.5,now+0.08); hitG.gain.exponentialRampToValueAtTime(0.001,now+3.4);
       hit.connect(hitG); hit2.connect(hitG); hitG.connect(master); hitG.connect(conv);
-      hit.start(now+2.4); hit.stop(now+5.9); hit2.start(now+2.4); hit2.stop(now+5.9);
+      hit.start(now); hit.stop(now+3.5); hit2.start(now); hit2.stop(now+3.5);
       setTimeout(()=>{try{ctx.close();}catch(e){}},6400);
     }catch(e){}
   };
   const enter=()=>{
     if(phase!=="closed")return;
+    // Music and doors start together; the powerful hit is front-loaded in playChime
+    // so the impact lands the instant the doors begin to part.
     playChime(); setPhase("opening");
-    setTimeout(()=>setPhase("gone"),3200);
-    setTimeout(()=>{ if(onEnter)onEnter(); },4200);
+    setTimeout(()=>setPhase("gone"),2800);
+    setTimeout(()=>{ if(onEnter)onEnter(); },3900);
   };
   const opening=phase==="opening"||phase==="gone";
   const halfM=(side)=>(
     <svg viewBox={side==="left"?"0 0 150 200":"150 0 150 200"} width="min(46vw,340px)" height="min(50vh,440px)"
       preserveAspectRatio={side==="left"?"xMaxYMid meet":"xMinYMid meet"}
-      style={{filter:"drop-shadow(0 0 30px rgba(232,201,109,0.5))",overflow:"visible",marginTop:"-12vh",maxWidth:"46vw"}}>
+      style={{filter:"drop-shadow(0 0 34px rgba(232,201,109,0.6))",overflow:"visible",marginTop:"-12vh",maxWidth:"46vw"}}>
       <defs>
         <linearGradient id={"goldM"+side} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#fff6d0"/><stop offset="0.35" stopColor="#e8c96d"/>
-          <stop offset="0.7" stopColor="#a07820"/><stop offset="1" stopColor="#5a3f10"/>
+          <stop offset="0" stopColor="#fffbe8"/><stop offset="0.2" stopColor="#f4dd8f"/>
+          <stop offset="0.4" stopColor="#e8c96d"/><stop offset="0.62" stopColor="#c79a3a"/>
+          <stop offset="0.82" stopColor="#8a6418"/><stop offset="1" stopColor="#4a340d"/>
+        </linearGradient>
+        <linearGradient id={"sheen"+side} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0.85"/><stop offset="0.18" stopColor="#ffffff" stopOpacity="0"/>
+          <stop offset="0.55" stopColor="#ffffff" stopOpacity="0"/><stop offset="0.7" stopColor="#fff3c4" stopOpacity="0.45"/><stop offset="1" stopColor="#ffffff" stopOpacity="0"/>
         </linearGradient>
       </defs>
-      <text x="150" y="150" textAnchor="middle" fontFamily="Georgia,serif" fontSize="200" fontWeight="900" fill={"url(#goldM"+side+")"}>M</text>
+      <text x="150" y="150" textAnchor="middle" fontFamily="Georgia,serif" fontSize="200" fontWeight="900" fill={"url(#goldM"+side+")"} stroke="#fff3c4" strokeWidth="0.6">M</text>
+      <text x="150" y="150" textAnchor="middle" fontFamily="Georgia,serif" fontSize="200" fontWeight="900" fill={"url(#sheen"+side+")"}>M</text>
     </svg>
   );
+  // Brushed-metallic door face: layered gold gradients + vertical sheen streaks + highlight edge
+  const metalLeft="linear-gradient(95deg,#000 0%,#0c0a04 20%,#241a06 40%,#3a2b0a 50%,#4a3810 55%,#2a2008 62%,#0e0b04 80%,#000 100%), repeating-linear-gradient(90deg,rgba(232,201,109,0.06) 0px,rgba(232,201,109,0.06) 1px,transparent 1px,transparent 5px)";
+  const metalRight="linear-gradient(265deg,#000 0%,#0c0a04 20%,#241a06 40%,#3a2b0a 50%,#4a3810 55%,#2a2008 62%,#0e0b04 80%,#000 100%), repeating-linear-gradient(90deg,rgba(232,201,109,0.06) 0px,rgba(232,201,109,0.06) 1px,transparent 1px,transparent 5px)";
   return (
     <div style={{position:"fixed",inset:0,zIndex:100000,background:"#000",overflow:"hidden",
-      opacity:phase==="gone"?0:1,transition:"opacity 1s ease",pointerEvents:phase==="gone"?"none":"auto"}}>
+      opacity:phase==="gone"?0:1,transition:"opacity 1.1s ease",pointerEvents:phase==="gone"?"none":"auto"}}>
       <div style={{position:"absolute",top:0,left:0,width:"50%",height:"100%",
-        background:"linear-gradient(100deg,#050505 0%,#1a1305 30%,#2a2008 45%,#0a0803 60%,#000 100%)",
-        borderRight:"1px solid "+GOLD,boxShadow:"inset -40px 0 80px rgba(0,0,0,0.9), inset 0 0 120px rgba(232,201,109,0.08)",
-        transform:opening?"perspective(1600px) rotateY(-105deg)":"perspective(1600px) rotateY(0deg)",
-        transformOrigin:"left center",transition:"transform 3s cubic-bezier(0.7,0,0.3,1)",
-        display:"flex",alignItems:"center",justifyContent:"flex-end",paddingTop:0,overflow:"hidden"}}>
+        background:metalLeft,backgroundBlendMode:"screen",
+        borderRight:"2px solid "+GOLD,boxShadow:"inset -50px 0 90px rgba(0,0,0,0.9), inset 0 0 140px rgba(232,201,109,0.12), 8px 0 40px rgba(0,0,0,0.8)",
+        transform:opening?"translateX(-102%)":"translateX(0)",
+        transition:"transform 2.6s cubic-bezier(0.76,0,0.24,1)",
+        display:"flex",alignItems:"center",justifyContent:"flex-end",overflow:"hidden"}}>
         {halfM("left")}
       </div>
       <div style={{position:"absolute",top:0,right:0,width:"50%",height:"100%",
-        background:"linear-gradient(260deg,#050505 0%,#1a1305 30%,#2a2008 45%,#0a0803 60%,#000 100%)",
-        borderLeft:"1px solid "+GOLD,boxShadow:"inset 40px 0 80px rgba(0,0,0,0.9), inset 0 0 120px rgba(232,201,109,0.08)",
-        transform:opening?"perspective(1600px) rotateY(105deg)":"perspective(1600px) rotateY(0deg)",
-        transformOrigin:"right center",transition:"transform 3s cubic-bezier(0.7,0,0.3,1)",
-        display:"flex",alignItems:"center",justifyContent:"flex-start",paddingTop:0,overflow:"hidden"}}>
+        background:metalRight,backgroundBlendMode:"screen",
+        borderLeft:"2px solid "+GOLD,boxShadow:"inset 50px 0 90px rgba(0,0,0,0.9), inset 0 0 140px rgba(232,201,109,0.12), -8px 0 40px rgba(0,0,0,0.8)",
+        transform:opening?"translateX(102%)":"translateX(0)",
+        transition:"transform 2.6s cubic-bezier(0.76,0,0.24,1)",
+        display:"flex",alignItems:"center",justifyContent:"flex-start",overflow:"hidden"}}>
         {halfM("right")}
       </div>
       <div style={{position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",
-        width:opening?"5px":"2px",height:opening?"100%":"0%",
-        background:"linear-gradient(180deg,#fff6d0,#e8c96d,#a07820)",
-        boxShadow:"0 0 30px 6px rgba(232,201,109,0.8)",
-        transition:"height 0.9s ease-out, width 0.9s ease-out",zIndex:5}}/>
+        width:opening?"6px":"2px",height:opening?"100%":"0%",
+        background:"linear-gradient(180deg,#fffbe8,#e8c96d,#a07820)",
+        boxShadow:"0 0 40px 10px rgba(232,201,109,0.9)",opacity:opening?0:1,
+        transition:"height 0.9s ease-out, width 0.9s ease-out, opacity 2s ease 0.6s",zIndex:5}}/>
       <div style={{position:"absolute",left:0,right:0,bottom:"6%",display:"flex",flexDirection:"column",alignItems:"center",
-        zIndex:6,opacity:opening?0:1,transition:"opacity 0.7s",pointerEvents:opening?"none":"auto"}}>
+        zIndex:6,opacity:opening?0:1,transition:"opacity 0.6s",pointerEvents:opening?"none":"auto"}}>
         <div style={{fontFamily:"'Cinzel',serif",color:GOLD,fontSize:"clamp(22px,5.5vw,50px)",fontWeight:900,letterSpacing:8,textShadow:"0 0 30px rgba(232,201,109,0.6)"}}>MANDASTRONG</div>
         <div style={{fontFamily:"'Cinzel',serif",color:WHITE,fontSize:"clamp(11px,2vw,18px)",letterSpacing:14,marginTop:4}}>STUDIO</div>
         <div style={{color:GOLDDIM,fontSize:"clamp(8px,1.4vw,11px)",letterSpacing:3,marginTop:12,textAlign:"center",padding:"0 16px"}}>CINEMA INTELLIGENCE PLATFORM · 600+ AI TOOLS · UP TO 3-HOUR FILMS</div>
@@ -5741,7 +5762,7 @@ function IntroDoors({ onEnter }){
 }
 
 export default function App() {
-  const [page,setPage]=useState(()=>{try{return JSON.parse(localStorage.getItem("ms_page")||"1");}catch{return 1;}});
+  const [page,setPage]=useState(1);
   // ── CINEMATIC INTRO — gold doors open to reveal the app ──
   const [showIntro,setShowIntro]=useState(true);
   const [menu,setMenu]=useState(false);
