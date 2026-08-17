@@ -1,8 +1,10 @@
 import { createRoot } from "react-dom/client";
-import App from "./App"; 
+import App from "./App";
+import { CareCoverApp } from "./CareCover";
 import "./index.css";
 
 const rootElement = document.getElementById("root");
 if (rootElement) {
-  createRoot(rootElement).render(<App />);
+  const isCareCover = window.location.pathname.startsWith("/carecover");
+  createRoot(rootElement).render(isCareCover ? <CareCoverApp /> : <App />);
 }
