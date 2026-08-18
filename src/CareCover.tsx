@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheckgithub.com/MandaStrong01/mandastrongstudio/edit/main/src/CareCover.tsx
 import { useState, useEffect, useMemo, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
@@ -675,7 +675,7 @@ function CoverPanel({ visit, candidates, onAssign, onLeaveOpen, onClose }) {
         </>
       )}
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 20 }}>
-        <button onClick={() => onLeaveOpen(visit)} style={danger}>Leave uncovered</button>
+        <button onClick={() => onLeaveOpenj(visit)} style={danger}>Leave uncovered</button>
         <button onClick={onClose} style={outline}>Cancel</button>
       </div>
     </Modal>
