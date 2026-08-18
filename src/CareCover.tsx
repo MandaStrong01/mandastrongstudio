@@ -1,4 +1,4 @@
-// @ts-nocheckgithub.com/MandaStrong01/mandastrongstudio/edit/main/src/CareCover.tsx
+// @ts-nocheck
 import { useState, useEffect, useMemo, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
@@ -164,6 +164,7 @@ function useData(session) {
   const [absences, setAbsences] = useState(() => load("cc_absences", seedAbsences()));
   const [role, setRole] = useState("coordinator");   // coordinator | manager | carer
   const [myStaffId, setMyStaffId] = useState(null);
+  const [joinCode, setJoinCode] = useState("DEMO-CODE");
   const agencyId = useRef(null);
 
   // demo persistence
@@ -180,7 +181,10 @@ function useData(session) {
     (async () => {
       // who am I / which agency / role
       const { data: me } = await sb.from("members").select("agency_id,role,staff_id").eq("id", session.user.id).single();
-      if (me) { agencyId.current = me.agency_id; setRole(me.role || "coordinator"); setMyStaffId(me.staff_id || null); }
+      if (me) { agencyId.current = me.agency_id; setRole(me.role || "coordinator"); setMyStaffId(me.staff_id || null);
+        const { data: ag } = await sb.from("agencies").select("join_code").eq("id", me.agency_id).single();
+        if (ag?.join_code) setJoinCode(ag.join_code);
+      }
       await refreshAll();
       // realtime: any change to shared tables refreshes everyone
       channel = sb.channel("cc")
@@ -261,7 +265,7 @@ function useData(session) {
     if (LIVE) { const s = staff.find((x) => x.id === staffId); const f = { ...(s?.festive || {}), [year]: worked }; await sb.from("staff").update({ festive: f }).eq("id", staffId); }
   }
 
-  return { staff, visits, clients, msgs, absences, role, myStaffId, saveClient, deleteClient, patchVisit, postMsg, setStaffStatus, allocateClient, addAbsence, removeAbsence, setFestive };
+  return { staff, visits, clients, msgs, absences, role, myStaffId, joinCode, saveClient, deleteClient, patchVisit, postMsg, setStaffStatus, allocateClient, addAbsence, removeAbsence, setFestive };
 }
 const isManager = (role) => role === "manager" || role === "coordinator";
 
@@ -305,6 +309,7 @@ const mapVisit = (r) => ({ id: r.id, client: r.client, client_id: r.client_id, a
 export function CareCoverApp() {
   const [session, setSession] = useState(null);
   const [booting, setBooting] = useState(true);
+  const [entered, setEntered] = useState(false);
 
   useEffect(() => {
     if (!LIVE) { setBooting(false); return; }
@@ -314,9 +319,64 @@ export function CareCoverApp() {
   }, []);
 
   if (booting) return <Splash />;
+  if (!entered) return <Entrance onEnter={() => setEntered(true)} />;
   // In demo mode we skip auth and go straight in. In live mode, require sign-in.
   if (LIVE && !session) return <AuthGate />;
   return <Studio session={session} />;
+}
+
+// ============================================================
+//  ENTRANCE — teal doors that open with a soft chime
+// ============================================================
+function Entrance({ onEnter }) {
+  const [opening, setOpening] = useState(false);
+  const [gone, setGone] = useState(false);
+
+  function open() {
+    if (opening) return;
+    setOpening(true);
+    // soft two-note chime on open (Web Audio, no file needed)
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AC();
+      const now = ctx.currentTime;
+      const notes = [523.25, 659.25, 783.99]; // C5 E5 G5 — bright, welcoming
+      notes.forEach((f, i) => {
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.type = "sine"; o.frequency.value = f;
+        o.connect(g); g.connect(ctx.destination);
+        const t = now + i * 0.14;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.22, t + 0.04);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 1.1);
+        o.start(t); o.stop(t + 1.2);
+      });
+    } catch (e) {}
+    setTimeout(() => setGone(true), 1400);
+    setTimeout(onEnter, 1650);
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "#04141a", overflow: "hidden", fontFamily: UI, display: gone ? "none" : "block" }}>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet" />
+      <style>{`a[href*="bolt.new"],a[href*="bolt.host"][target="_blank"],[class*="bolt-badge"],[id*="bolt-badge"],.bolt-badge{display:none!important;visibility:hidden!important;}`}</style>
+
+      {/* left door */}
+      <div style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: "50%", background: `linear-gradient(135deg, ${BRANDDK}, #06333f 60%, #04141a)`, borderRight: `1px solid ${BRAND}55`, transform: opening ? "translateX(-100%)" : "translateX(0)", transition: "transform 1.35s cubic-bezier(.7,0,.2,1)", boxShadow: "inset -20px 0 40px rgba(0,0,0,.4)" }} />
+      {/* right door */}
+      <div style={{ position: "absolute", top: 0, bottom: 0, right: 0, width: "50%", background: `linear-gradient(225deg, ${BRANDDK}, #06333f 60%, #04141a)`, borderLeft: `1px solid ${BRAND}55`, transform: opening ? "translateX(100%)" : "translateX(0)", transition: "transform 1.35s cubic-bezier(.7,0,.2,1)", boxShadow: "inset 20px 0 40px rgba(0,0,0,.4)" }} />
+
+      {/* centre content sits above the doors, fades as they open */}
+      <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", textAlign: "center", opacity: opening ? 0 : 1, transition: "opacity .5s ease", pointerEvents: opening ? "none" : "auto", padding: 20 }}>
+        <div>
+          <div style={{ width: 76, height: 76, borderRadius: 20, background: `linear-gradient(135deg,${BRAND},${BRANDDK})`, display: "grid", placeItems: "center", color: "#fff", fontFamily: DISPLAY, fontWeight: 600, fontSize: 42, margin: "0 auto 22px", boxShadow: "0 8px 30px rgba(14,116,144,.5)" }}>C</div>
+          <div style={{ fontFamily: DISPLAY, fontWeight: 600, fontSize: 46, color: "#eafcff", letterSpacing: -0.5 }}>CareCover</div>
+          <div style={{ fontSize: 16, color: "#8fd4e2", marginTop: 8, maxWidth: 420 }}>Coordination for care teams — cover, sorted before it becomes a crisis.</div>
+          <button onClick={open} style={{ marginTop: 30, border: "none", borderRadius: 12, padding: "15px 40px", fontSize: 16, fontWeight: 800, letterSpacing: 1, cursor: "pointer", fontFamily: UI, background: `linear-gradient(135deg,${BRAND},${BRANDDK})`, color: "#fff", boxShadow: "0 6px 24px rgba(14,116,144,.5)" }}>▶  ENTER</button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ============================================================
@@ -403,7 +463,7 @@ function AuthGate() {
 // ============================================================
 function Studio({ session }) {
   const D = useData(session);
-  const { staff, visits, clients, msgs, role, myStaffId } = D;
+  const { staff, visits, clients, msgs, role, myStaffId, joinCode } = D;
   const mgr = isManager(role);
   const [tab, setTab] = useState("board");
   const [coverFor, setCoverFor] = useState(null);
@@ -465,8 +525,8 @@ function Studio({ session }) {
   const agencyName = session?.user?.user_metadata?.agency_name || "Demo Agency";
   const waitingCount = clients.filter((c) => !c.allocated && !c.regular_staff_id).length;
   const tabs = mgr
-    ? [["board", "Cover board"], ["allocate", "Allocate"], ["clients", "Clients"], ["team", "Team"], ["leave", "Leave & training"], ["rota", "Rota"], ["messages", "Messages"], ["plans", "Plans"]]
-    : [["board", "My visits"], ["clients", "My clients"], ["leave", "My leave"], ["messages", "Messages"]];
+    ? [["board", "Cover board"], ["allocate", "Allocate"], ["clients", "Clients"], ["team", "Team"], ["leave", "Leave & training"], ["rota", "Rota"], ["messages", "Messages"], ["guide", "Guide"], ["plans", "Plans"]]
+    : [["board", "My visits"], ["clients", "My clients"], ["leave", "My leave"], ["messages", "Messages"], ["guide", "Guide"]];
 
   return (
     <Shell>
@@ -476,12 +536,13 @@ function Studio({ session }) {
         {tab === "board" && <Board visits={myVisits} staff={staff} staffById={staffById} clients={clients} onCallOff={setCoverFor} onPickUp={pickUp} onDone={markDone} canManage={mgr} />}
         {tab === "allocate" && mgr && <Allocate clients={clients} staff={staff} onAllocate={(cid, sid, auto) => { D.allocateClient(cid, sid); const s = staff.find((x) => x.id === sid); const c = clients.find((x) => x.id === cid); D.postMsg(`${c?.name} allocated to ${s?.name}${auto ? " (auto, local area)" : ""}.`, "System"); ping(`${c?.name} → ${s?.name}`); }} />}
         {tab === "clients" && <Clients clients={myClients} canManage={mgr} onSave={D.saveClient} onDelete={D.deleteClient} ping={ping} />}
-        {tab === "team" && mgr && <Team staff={staff} toggleStatus={toggleStatus} />}
+        {tab === "team" && mgr && <Team staff={staff} toggleStatus={toggleStatus} joinCode={joinCode} ping={ping} />}
         {tab === "leave" && <LeaveTraining absences={absences} staff={staff} canManage={mgr} myStaffId={myStaffId}
           onAdd={(rec) => { D.addAbsence(rec); coverForAbsence(rec.staffId, rec.date, rec.type); }}
           onRemove={D.removeAbsence} onSetFestive={D.setFestive} ping={ping} />}
         {tab === "rota" && mgr && <RotaGrid visits={visits} staff={staff} />}
         {tab === "messages" && <Messages msgs={msgs} onSend={(t) => D.postMsg(t)} />}
+        {tab === "guide" && <Guide canManage={mgr} agencyName={agencyName} />}
         {tab === "plans" && mgr && <Plans ping={ping} />}
       </main>
       {coverFor && <CoverPanel visit={coverFor} candidates={findCover(coverFor)} onAssign={assignCover} onLeaveOpen={leaveOpen} onClose={() => setCoverFor(null)} />}
@@ -675,7 +736,7 @@ function CoverPanel({ visit, candidates, onAssign, onLeaveOpen, onClose }) {
         </>
       )}
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 20 }}>
-        <button onClick={() => onLeaveOpenj(visit)} style={danger}>Leave uncovered</button>
+        <button onClick={() => onLeaveOpen(visit)} style={danger}>Leave uncovered</button>
         <button onClick={onClose} style={outline}>Cancel</button>
       </div>
     </Modal>
@@ -1017,14 +1078,18 @@ function ClientEditor({ rec, canManage, onSave, onDelete, onClose }) {
 }
 
 // ---------- TEAM ----------
-function Team({ staff, toggleStatus }) {
+function Team({ staff, toggleStatus, joinCode, ping }) {
   const tone = { in: GREEN, break: AMBER, off: FAINT };
   const soft = { in: GREENSOFT, break: AMBERSOFT, off: CANVAS };
   const label = { in: "On shift", break: "On break", off: "Off" };
   const inCount = staff.filter((s) => s.status === "in").length;
+  const [invite, setInvite] = useState(false);
   return (
     <div>
-      <PageHead kicker="Live" title="Team" sub={`${inCount} on shift now. Tap a card to change status — only ‘on shift’ carers are offered for cover.`} />
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
+        <PageHead kicker="Live" title="Team" sub={`${inCount} on shift now. Tap a card to change status — only ‘on shift’ carers are offered for cover.`} />
+        <button onClick={() => setInvite(true)} style={primary}>+ Invite carers</button>
+      </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(250px,1fr))", gap: 12 }}>
         {staff.map((s) => (
           <button key={s.id} onClick={() => toggleStatus(s.id)} style={{ textAlign: "left", background: CARD, border: `1px solid ${LINE}`, borderRadius: 13, padding: 15, cursor: "pointer", fontFamily: UI }}>
@@ -1044,11 +1109,29 @@ function Team({ staff, toggleStatus }) {
           </button>
         ))}
       </div>
+      {invite && (
+        <Modal onClose={() => setInvite(false)}>
+          <Kicker text="Invite carers" />
+          <div style={{ fontFamily: DISPLAY, fontSize: 22, fontWeight: 600, margin: "3px 0 10px" }}>Add your team</div>
+          <div style={{ fontSize: 14, color: MUTE, marginBottom: 16 }}>Share this join code with your carers. They go to your CareCover link, tap <b>Join with a code</b>, enter it, pick their area — and they're in. They'll only ever see their own visits and clients.</div>
+          <div style={{ fontSize: 12.5, color: FAINT, fontWeight: 700, letterSpacing: 1, marginBottom: 6 }}>YOUR JOIN CODE</div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div style={{ flex: 1, background: BRANDSOFT, border: `1.5px dashed ${BRAND}`, borderRadius: 11, padding: "14px 16px", fontFamily: DISPLAY, fontSize: 24, fontWeight: 600, color: BRANDDK, textAlign: "center", letterSpacing: 1 }}>{joinCode}</div>
+            <button onClick={() => { try { navigator.clipboard.writeText(joinCode); ping("Join code copied"); } catch { ping("Code: " + joinCode); } }} style={primary}>Copy</button>
+          </div>
+          <div style={{ marginTop: 16, background: CANVAS, borderRadius: 10, padding: "12px 14px", fontSize: 13.5, color: SUBINK }}>
+            <b>How your carer joins:</b><br/>
+            1. Open your CareCover link<br/>
+            2. Tap <b>Join with a code</b><br/>
+            3. Enter <b>{joinCode}</b>, their name, and choose their area<br/>
+            4. Done — they appear here in your Team.
+          </div>
+          <div style={{ textAlign: "right", marginTop: 16 }}><button onClick={() => setInvite(false)} style={outline}>Close</button></div>
+        </Modal>
+      )}
     </div>
   );
 }
-
-// ---------- ROTA ----------
 function RotaGrid({ visits, staff }) {
   const hours = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
   return (
@@ -1106,6 +1189,90 @@ function Messages({ msgs, onSend }) {
   );
 }
 
+// ---------- GUIDE (how-to handbook) ----------
+function Guide({ canManage, agencyName }) {
+  const [open, setOpen] = useState(0);
+  const sections = canManage ? [
+    { t: "Getting started", b: [
+      "You're the manager/coordinator for " + (agencyName || "your agency") + ". You see everything; carers see only their own visits and clients.",
+      "Add your carers by sharing your join code (Team → invite, or from your dashboard). They register themselves and pick their working area.",
+      "Add your clients in the Clients tab — name, address, area, visit days, needs, key info.",
+    ]},
+    { t: "The Cover board — your day at a glance", b: [
+      "Every visit for today, with uncovered ones in red at the top, imminent ones amber, covered ones green.",
+      "Report a call-off on any visit → the app shows qualified, available carers, least busy first → assign in one tap.",
+      "If nobody's free, leave it uncovered and it stays red at the top until you fill it.",
+      "Mark a visit Done when it's completed, so you can see what's outstanding versus finished.",
+    ]},
+    { t: "Allocating new clients", b: [
+      "New clients waiting for care appear in the Allocate tab with a count badge.",
+      "The app suggests the best carer — local area first, then skills, then who has spare capacity.",
+      "Tap Auto-allocate all, or choose a carer manually. Existing clients are never moved off their regular carer.",
+    ]},
+    { t: "Leave, training & holidays", b: [
+      "Book any carer out for Training, Shadowing, a Course, Annual leave or Sickness.",
+      "Their visits for that day are sent straight to the Cover board so others can pick them up.",
+      "Christmas & New Year rotate fairly and automatically — work one this year, you're off it next year.",
+    ]},
+    { t: "Messaging & records", b: [
+      "The Messages tab is one thread for the whole team. Every call-off, cover and completed visit posts here automatically.",
+      "Client records hold key info, access codes and notes — tap a client name anywhere to open the record.",
+    ]},
+    { t: "Billing", b: [
+      "Your plan is on the Plans tab. Start on the free trial; upgrade when you're ready.",
+      "Plans scale by team size — Starter, Agency, Multi-branch.",
+    ]},
+  ] : [
+    { t: "Welcome", b: [
+      "You're signed in as a carer. You see your own visits and your own clients — nothing else.",
+      "Set yourself On shift when you start, On break, or Off — only On-shift carers get offered cover.",
+    ]},
+    { t: "Your visits", b: [
+      "My visits shows your day in order. Tap a client's name to open their record — address, key info, and notes.",
+      "If a visit needs cover and you can take it, tap Pick this up — it becomes yours and the team is told.",
+      "Tap Mark done when you finish a visit.",
+    ]},
+    { t: "Your clients & messages", b: [
+      "My clients holds the records for the people you visit — key info, access codes, care needs.",
+      "Messages is the team thread — you'll see cover requests and updates here.",
+    ]},
+    { t: "Your leave", b: [
+      "My leave shows any training, courses or time off your coordinator has booked for you.",
+    ]},
+  ];
+  return (
+    <div style={{ maxWidth: 760 }}>
+      <PageHead kicker="Handbook" title="How to use CareCover" sub="Everything you need, in plain steps. Tap a section to open it." />
+      <div style={{ display: "grid", gap: 10 }}>
+        {sections.map((s, i) => {
+          const isOpen = open === i;
+          return (
+            <div key={i} style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 13, overflow: "hidden" }}>
+              <button onClick={() => setOpen(isOpen ? -1 : i)} style={{ width: "100%", textAlign: "left", border: "none", background: isOpen ? BRANDSOFT : CARD, cursor: "pointer", fontFamily: UI, padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontWeight: 700, fontSize: 15.5, color: INK }}>{i + 1}. {s.t}</span>
+                <span style={{ color: BRAND, fontSize: 18, fontWeight: 700 }}>{isOpen ? "–" : "+"}</span>
+              </button>
+              {isOpen && (
+                <div style={{ padding: "6px 18px 16px" }}>
+                  {s.b.map((line, j) => (
+                    <div key={j} style={{ display: "flex", gap: 10, marginTop: 10 }}>
+                      <span style={{ color: BRAND, fontWeight: 800, flexShrink: 0 }}>›</span>
+                      <span style={{ fontSize: 14.5, color: SUBINK, lineHeight: 1.5 }}>{line}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ marginTop: 20, background: BRANDSOFT, border: `1px solid #bde3ec`, borderRadius: 12, padding: "14px 16px", fontSize: 14, color: BRANDDK }}>
+        Need a hand? Email <b>SupportCareCover@gmail.com</b> and we'll help you get set up.
+      </div>
+    </div>
+  );
+}
+
 // ---------- PLANS ----------
 function Plans({ ping }) {
   const plans = [
@@ -1151,6 +1318,12 @@ function Shell({ children }) {
   return (
     <div style={{ minHeight: "100vh", background: PAPER, color: INK, fontFamily: UI }}>
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet" />
+      <style>{`
+        /* hide the Made in Bolt badge */
+        a[href*="bolt.new"], a[href*="bolt.host"][target="_blank"],
+        [class*="bolt-badge"], [id*="bolt-badge"],
+        .bolt-badge, div[style*="Made in Bolt"] { display: none !important; visibility: hidden !important; }
+      `}</style>
       {children}
     </div>
   );
