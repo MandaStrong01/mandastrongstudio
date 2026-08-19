@@ -311,6 +311,26 @@ export function CareCoverApp() {
   const [booting, setBooting] = useState(true);
   const [entered, setEntered] = useState(false);
 
+  // Actively remove the "Made in Bolt" badge — CSS alone can miss it,
+  // so we also delete the element and keep watching in case it re-injects.
+  useEffect(() => {
+    const kill = () => {
+      const nodes = document.querySelectorAll('a[href*="bolt.new"], a[href*="bolt.host"], [class*="bolt"], [id*="bolt"]');
+      nodes.forEach((n) => {
+        const t = (n.textContent || "").toLowerCase();
+        if (t.includes("bolt") || (n.getAttribute("href") || "").includes("bolt")) {
+          const box = n.closest("div") || n;
+          try { box.remove(); } catch (e) { try { n.remove(); } catch (e2) {} }
+        }
+      });
+    };
+    kill();
+    const iv = setInterval(kill, 1000);
+    const obs = new MutationObserver(kill);
+    try { obs.observe(document.body, { childList: true, subtree: true }); } catch (e) {}
+    return () => { clearInterval(iv); obs.disconnect(); };
+  }, []);
+
   useEffect(() => {
     if (!LIVE) { setBooting(false); return; }
     sb.auth.getSession().then(({ data }) => { setSession(data.session); setBooting(false); });
@@ -371,7 +391,10 @@ function Entrance({ onEnter }) {
         <div>
           <div style={{ width: 76, height: 76, borderRadius: 20, background: `linear-gradient(135deg,${BRAND},${BRANDDK})`, display: "grid", placeItems: "center", color: "#fff", fontFamily: DISPLAY, fontWeight: 600, fontSize: 42, margin: "0 auto 22px", boxShadow: "0 8px 30px rgba(14,116,144,.5)" }}>C</div>
           <div style={{ fontFamily: DISPLAY, fontWeight: 600, fontSize: 46, color: "#eafcff", letterSpacing: -0.5 }}>CareCover</div>
-          <div style={{ fontSize: 16, color: "#8fd4e2", marginTop: 8, maxWidth: 420 }}>Coordination for care teams — cover, sorted before it becomes a crisis.</div>
+          <div style={{ fontSize: 16, color: "#8fd4e2", marginTop: 8, maxWidth: 440, marginLeft: "auto", marginRight: "auto" }}>Coordination for care teams — cover, sorted before it becomes a crisis.</div>
+          <p style={{ fontSize: 14.5, color: "#cdeef5", marginTop: 20, maxWidth: 520, marginLeft: "auto", marginRight: "auto", lineHeight: 1.6 }}>
+            CareCover is built for care and nursing agencies, care homes, and any team that sends staff out to clients. When a carer calls off sick, it instantly finds qualified, available cover — matched by skill, area, and who's free — and reassigns the visit in one tap. New clients are matched to a local carer with spare capacity, existing clients stay with their regular carer, and training, leave and holidays are handled automatically. One live board keeps the whole team in step, so vulnerable people stay covered and coordinators stay sane.
+          </p>
           <button onClick={open} style={{ marginTop: 30, border: "none", borderRadius: 12, padding: "15px 40px", fontSize: 16, fontWeight: 800, letterSpacing: 1, cursor: "pointer", fontFamily: UI, background: `linear-gradient(135deg,${BRAND},${BRANDDK})`, color: "#fff", boxShadow: "0 6px 24px rgba(14,116,144,.5)" }}>▶  ENTER</button>
         </div>
       </div>
