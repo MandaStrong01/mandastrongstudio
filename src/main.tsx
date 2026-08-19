@@ -5,6 +5,8 @@ import "./index.css";
 
 const rootElement = document.getElementById("root");
 if (rootElement) {
-  const isCareCover = window.location.pathname.startsWith("/carecover");
+  const path = window.location.pathname.toLowerCase();
+  const host = window.location.hostname.toLowerCase();
+  const isCareCover = path.startsWith("/carecover") || host.includes("-cc.");
   createRoot(rootElement).render(isCareCover ? <CareCoverApp /> : <App />);
 }
