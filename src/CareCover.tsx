@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 import { useState, useEffect, useMemo, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
@@ -383,15 +382,9 @@ function Entrance({ onEnter }) {
       <style>{`a[href*="bolt.new"],a[href*="bolt.host"][target="_blank"],[class*="bolt-badge"],[id*="bolt-badge"],.bolt-badge{display:none!important;visibility:hidden!important;}`}</style>
 
       {/* left door */}
-      <div style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: "50%", background: `linear-gradient(135deg, ${BRANDDK}, #06333f 60%, #04141a)`, borderRight: `1px solid ${BRAND}55`, transform: opening ? "translateX(-100%)" : "translateX(0)", transition: "transform 1.35s cubic-bezier(.7,0,.2,1)", boxShadow: "inset -20px 0 40px rgba(0,0,0,.4)" }}>
-        <div style={{ position: "absolute", top: "50%", right: 14, width: 6, height: 64, borderRadius: 4, background: `${BRAND}aa`, transform: "translateY(-50%)", boxShadow: `0 0 14px ${BRAND}88` }} />
-      </div>
+      <div style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: "50%", background: `linear-gradient(135deg, ${BRANDDK}, #06333f 60%, #04141a)`, borderRight: `1px solid ${BRAND}55`, transform: opening ? "translateX(-100%)" : "translateX(0)", transition: "transform 1.35s cubic-bezier(.7,0,.2,1)", boxShadow: "inset -20px 0 40px rgba(0,0,0,.4)" }} />
       {/* right door */}
-      <div style={{ position: "absolute", top: 0, bottom: 0, right: 0, width: "50%", background: `linear-gradient(225deg, ${BRANDDK}, #06333f 60%, #04141a)`, borderLeft: `1px solid ${BRAND}55`, transform: opening ? "translateX(100%)" : "translateX(0)", transition: "transform 1.35s cubic-bezier(.7,0,.2,1)", boxShadow: "inset 20px 0 40px rgba(0,0,0,.4)" }}>
-        <div style={{ position: "absolute", top: "50%", left: 14, width: 6, height: 64, borderRadius: 4, background: `${BRAND}aa`, transform: "translateY(-50%)", boxShadow: `0 0 14px ${BRAND}88` }} />
-      </div>
-      {/* centre seam glow */}
-      <div style={{ position: "absolute", top: 0, bottom: 0, left: "50%", width: 2, background: `linear-gradient(to bottom, transparent, ${BRAND}, transparent)`, transform: "translateX(-1px)", opacity: opening ? 0 : 0.7, transition: "opacity .5s ease" }} />
+      <div style={{ position: "absolute", top: 0, bottom: 0, right: 0, width: "50%", background: `linear-gradient(225deg, ${BRANDDK}, #06333f 60%, #04141a)`, borderLeft: `1px solid ${BRAND}55`, transform: opening ? "translateX(100%)" : "translateX(0)", transition: "transform 1.35s cubic-bezier(.7,0,.2,1)", boxShadow: "inset 20px 0 40px rgba(0,0,0,.4)" }} />
 
       {/* centre content sits above the doors, fades as they open */}
       <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", textAlign: "center", opacity: opening ? 0 : 1, transition: "opacity .5s ease", pointerEvents: opening ? "none" : "auto", padding: 20 }}>
