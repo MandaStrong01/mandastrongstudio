@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect, useMemo, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { Landing } from "./Landing";
 
 /* ============================================================
    CARECOVER â€” coordination for care & nursing agencies
@@ -339,7 +340,7 @@ export function CareCoverApp() {
   }, []);
 
   if (booting) return <Splash />;
-  if (!entered) return <Entrance onEnter={() => setEntered(true)} />;
+  if (!entered) return <Landing onEnter={() => setEntered(true)} />;
   // In demo mode we skip auth and go straight in. In live mode, require sign-in.
   if (LIVE && !session) return <AuthGate />;
   return <Studio session={session} />;
