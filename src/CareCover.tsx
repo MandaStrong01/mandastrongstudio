@@ -1,3 +1,548 @@
+
+// @ts-nocheck
+import { useState, useEffect, useMemo, useRef } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+/* ============================================================
+   CARECOVER — coordination for care & nursing agencies
+   Built by a coordinator, for coordinators.
+   Hero: a call-off instantly finds qualified, available cover.
+
+   Stack: single-file React (Bolt) + Supabase + Stripe.
+   - Real email/password auth via Supabase.
+   - Live shared data across the whole agency via Supabase tables
+     + realtime; falls back to local demo mode if keys are absent,
+     so it always runs the moment it is pasted into Bolt.
+   Wiring points are marked  // WIRE:
+   ============================================================ */
+
+// ---------- Supabase (set these in Bolt env or inline) ----------
+// WIRE: paste your project URL + anon key. Until then, DEMO mode runs.
+const SUPABASE_URL = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_SUPABASE_URL) || "https://njqfexhltjwpgvctmyaw.supabase.co";
+const SUPABASE_ANON = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) || "sb_publishable_wqRnYf5pnp68Qo6-McfwyA_JNYrh2VC";
+const LIVE = Boolean(SUPABASE_URL && SUPABASE_ANON);
+const sb = LIVE ? createClient(SUPABASE_URL, SUPABASE_ANON) : null;
+
+// ---------- Stripe ----------
+// WIRE: paste your Stripe Payment Link URL for each plan (Stripe → Payment links).
+// Leave "" to keep a button in "coming soon" state. Same approach as MandaStrong.
+const STRIPE_LINKS = {
+  "Starter": "https://buy.stripe.com/fZucN78NQ0oT3oHemCafS06",
+  "Agency": "https://buy.stripe.com/bJe8wRfce7Rl2kD2DUafS07",
+  "Multi-branch": "https://buy.stripe.com/8x200l7JMdbF7EX1zQafS08",
+};
+
+// ---------- design tokens: "clinical calm", precise and quiet ----------
+const INK = "#101828";
+const SUBINK = "#475467";
+const PAPER = "#f8fafc";
+const CANVAS = "#f1f5f9";
+const CARD = "#ffffff";
+const LINE = "#e4e9f0";
+const MUTE = "#667085";
+const FAINT = "#98a2b3";
+const BRAND = "#0e7490";       // deep cyan — trustworthy, medical, not techy-neon
+const BRANDDK = "#0b5566";
+const BRANDSOFT = "#e0f2f7";
+const GREEN = "#12805c";
+const GREENSOFT = "#dcfae6";
+const AMBER = "#b54708";
+const AMBERSOFT = "#fef0c7";
+const RED = "#b42318";
+const REDSOFT = "#fee4e2";
+
+const DISPLAY = "'Fraunces','Georgia',serif";   // characterful display, used with restraint
+const UI = "'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif";
+
+// ---------- helpers ----------
+const uid = () => Math.random().toString(36).slice(2, 9);
+const nowISO = () => new Date().toISOString();
+const todayKey = () => new Date().toISOString().slice(0, 10);
+const fmtTime = (h, m = 0) => `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+const surname = (n) => n.split(" ").slice(-1)[0];
+function load(k, fb) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? fb; } catch { return fb; } }
+function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+
+// ---------- seed demo data ----------
+const SEED_STAFF = [
+  { id: "s1", name: "Amara Okafor", role: "Senior Carer", phone: "07700 900001", skills: ["Meds", "Hoist", "Dementia"], status: "in", area: "North", capacity: 6, festive: { 2025: "xmas" } },
+  { id: "s2", name: "Bea Whitfield", role: "Care Assistant", phone: "07700 900002", skills: ["Personal care", "Meals"], status: "in", area: "North", capacity: 6, festive: { 2025: "ny" } },
+  { id: "s3", name: "Chloe Adeyemi", role: "Care Assistant", phone: "07700 900003", skills: ["Personal care", "Dementia"], status: "off", area: "South", capacity: 5, festive: { 2025: "xmas" } },
+  { id: "s4", name: "Danny Rees", role: "Support Worker", phone: "07700 900004", skills: ["Meds", "Driving"], status: "in", area: "South", capacity: 6, festive: { 2025: "ny" } },
+  { id: "s5", name: "Esther Mbeki", role: "Senior Carer", phone: "07700 900005", skills: ["Meds", "Hoist", "Wound care"], status: "break", area: "North", capacity: 5, festive: {} },
+  { id: "s6", name: "Farah Nawaz", role: "Care Assistant", phone: "07700 900006", skills: ["Personal care", "Meals", "Driving"], status: "off", area: "East", capacity: 6, festive: {} },
+];
+const AREAS = ["North", "South", "East", "West", "Central"];
+// a couple of demo absences (dates relative to today so they show as upcoming)
+function seedAbsences() {
+  const d = (offset) => { const x = new Date(); x.setDate(x.getDate() + offset); return x.toISOString().slice(0, 10); };
+  return [
+    { id: "a1", staffId: "s2", type: "Training", date: d(2), note: "Moving & handling refresher" },
+    { id: "a2", staffId: "s4", type: "Annual leave", date: d(5), note: "" },
+    { id: "a3", staffId: "s1", type: "Course", date: d(9), note: "Medication competency" },
+  ];
+}
+const ABSENCE_TYPES = ["Training", "Shadowing", "Course", "Annual leave", "Sickness"];
+const ABSENCE_TONE = { "Training": "#2563eb", "Shadowing": "#7c3aed", "Course": "#0e7490", "Annual leave": "#12805c", "Sickness": "#b54708" };
+
+// ---------- festive fairness ----------
+// Fully automatic: if a carer worked Christmas last year, they get Christmas OFF this
+// year (and work New Year), and vice versa. Driven by stored history per carer.
+function festivePlan(staff, year) {
+  // staff[i].festive = { [year]: "xmas" | "ny" }  -> which they WORKED that year
+  return staff.map((s) => {
+    const lastYear = (s.festive || {})[year - 1];
+    let worksXmas, worksNY;
+    if (lastYear === "xmas") { worksXmas = false; worksNY = true; }
+    else if (lastYear === "ny") { worksXmas = true; worksNY = false; }
+    else { worksXmas = null; worksNY = null; } // no history yet
+    return { staff: s, worksXmas, worksNY, lastYear };
+  });
+}
+function seedVisits() {
+  const t = todayKey();
+  // days: array of weekday numbers this client is visited (0=Sun..6=Sat)
+  // file: the client's care-file reference/URL the coordinator can open
+  const mk = (id, cid, client, addr, start, dur, staffId, skills, days) => ({
+    id, client_id: cid, client, addr, date: t, start, dur, staffId, skills, days,
+    status: staffId ? "assigned" : "open",
+    history: staffId ? [{ at: nowISO(), who: staffId, note: "Assigned on rota" }] : [],
+  });
+  return [
+    mk("v1", "c1", "Mr J. Patel", "12 Elm Court", 8, 45, "s1", ["Meds"], [1, 3, 5]),
+    mk("v2", "c2", "Mrs D. Okonkwo", "4 Birch Rise", 9, 60, "s2", ["Personal care"], [1, 2, 3, 4, 5]),
+    mk("v3", "c3", "Mr R. Campbell", "88 Oak Lane", 10, 30, "s4", ["Meds", "Driving"], [2, 4]),
+    mk("v4", "c4", "Ms L. Fenwick", "2 Cedar Mews", 11, 45, "s1", ["Dementia"], [1, 3, 5]),
+    mk("v5", "c5", "Mr A. Simko", "31 Maple Grove", 13, 60, "s5", ["Wound care"], [0, 3, 6]),
+    mk("v6", "c6", "Mrs P. Ncube", "7 Willow Walk", 14, 45, "s2", ["Hoist"], [1, 2, 3, 4, 5, 6, 0]),
+    mk("v7", "c7", "Mr T. Bianchi", "19 Ash Close", 16, 30, null, ["Personal care"], [2, 4, 6]),
+  ];
+}
+// Day shorthand: Mon–Sun -> M T W T F S S, with weekdays shown in CAPITALS the coordinator's way.
+const DAY_LETTER = ["S", "M", "T", "W", "T", "F", "S"]; // index = 0..6 (Sun..Sat)
+const DAY_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+function daysShort(days) {
+  if (!days || !days.length) return "";
+  if (days.length === 7) return "Every day";
+  // order Mon-first for reading, capital letters e.g. MWF
+  const order = [1, 2, 3, 4, 5, 6, 0];
+  return order.filter((d) => days.includes(d)).map((d) => DAY_LETTER[d]).join("");
+}
+function daysFull(days) {
+  if (!days || !days.length) return "";
+  if (days.length === 7) return "Every day";
+  const order = [1, 2, 3, 4, 5, 6, 0];
+  return order.filter((d) => days.includes(d)).map((d) => DAY_FULL[d]).join(", ");
+}
+
+// ---------- seed client records (generic: care client, resident, cleaning site) ----------
+function seedClients() {
+  const mk = (id, name, ref, addr, area, cName, cPhone, days, needs, keyInfo, notes, regular) =>
+    ({ id, name, ref, addr, area, contact_name: cName, contact_phone: cPhone, days, needs, key_info: keyInfo, notes, regular_staff_id: regular, allocated: Boolean(regular) });
+  return [
+    mk("c1", "Mr J. Patel", "CL-1042", "12 Elm Court", "North", "Priya Patel (daughter)", "07811 220145", [1, 3, 5], ["Meds"], "Key safe 4471, front door", "Prefers morning calls. Diabetic — meds before breakfast.", "s1"),
+    mk("c2", "Mrs D. Okonkwo", "CL-1043", "4 Birch Rise", "North", "Emeka Okonkwo (son)", "07811 220146", [1, 2, 3, 4, 5], ["Personal care"], "Ring bell twice, carer has key", "Hard of hearing on left side.", "s2"),
+    mk("c3", "Mr R. Campbell", "CL-1044", "88 Oak Lane", "South", "Fiona Campbell (wife)", "07811 220147", [2, 4], ["Meds", "Driving"], "Parking on driveway only", "Needs lift to day centre Tue/Thu.", "s4"),
+    mk("c4", "Ms L. Fenwick", "CL-1045", "2 Cedar Mews", "North", "Social worker: A. Bright", "07811 220148", [1, 3, 5], ["Dementia"], "Key safe 9820", "Gentle reminders, keep routine identical each visit.", "s1"),
+    mk("c5", "Mr A. Simko", "CL-1046", "31 Maple Grove", "North", "Marta Simko (wife)", "07811 220149", [0, 3, 6], ["Wound care"], "Flat 3, buzzer 31", "Dressing change on schedule — district nurse Mondays.", "s5"),
+    mk("c6", "Mrs P. Ncube", "CL-1047", "7 Willow Walk", "North", "Thabo Ncube (son)", "07811 220150", [1, 2, 3, 4, 5, 6, 0], ["Hoist"], "Key safe 2205, side gate", "Two-carer hoist call — never attempt alone.", "s2"),
+    // Waiting for care — not yet allocated to anyone
+    mk("c7", "Mr T. Bianchi", "CL-1048", "19 Ash Close", "East", "Self", "07811 220151", [2, 4, 6], ["Personal care"], "Knock loudly, slow to door", "Lives alone, values a chat.", null),
+    mk("c8", "Mrs H. Kaur", "CL-1049", "5 Rowan Drive", "South", "Jaspreet Kaur (daughter)", "07811 220152", [1, 3, 5], ["Personal care", "Meals"], "Key safe 3390", "New referral — awaiting a regular carer.", null),
+  ];
+}
+
+// ============================================================
+//  SHARED DATA HOOK
+//  Live mode: reads/writes Supabase + realtime, shared across
+//  every device in the company. Demo mode: localStorage only.
+// ============================================================
+function useData(session) {
+  const [staff, setStaff] = useState(() => load("cc_staff", SEED_STAFF));
+  const [visits, setVisits] = useState(() => load("cc_visits", seedVisits()));
+  const [clients, setClients] = useState(() => load("cc_clients", seedClients()));
+  const [msgs, setMsgs] = useState(() => load("cc_msgs", [{ id: uid(), who: "System", text: "This is your live day. Report a call-off, pick up a visit, or mark one done — the whole team sees it.", at: nowISO() }]));
+  const [absences, setAbsences] = useState(() => load("cc_absences", seedAbsences()));
+  const [role, setRole] = useState("coordinator");   // coordinator | manager | carer
+  const [myStaffId, setMyStaffId] = useState(null);
+  const [joinCode, setJoinCode] = useState("DEMO-CODE");
+  const agencyId = useRef(null);
+
+  // demo persistence
+  useEffect(() => { if (!LIVE) save("cc_staff", staff); }, [staff]);
+  useEffect(() => { if (!LIVE) save("cc_visits", visits); }, [visits]);
+  useEffect(() => { if (!LIVE) save("cc_clients", clients); }, [clients]);
+  useEffect(() => { if (!LIVE) save("cc_msgs", msgs); }, [msgs]);
+  useEffect(() => { if (!LIVE) save("cc_absences", absences); }, [absences]);
+
+  // live load + realtime
+  useEffect(() => {
+    if (!LIVE || !session) return;
+    let channel;
+    (async () => {
+      // who am I / which agency / role
+      const { data: me } = await sb.from("members").select("agency_id,role,staff_id").eq("id", session.user.id).single();
+      if (me) { agencyId.current = me.agency_id; setRole(me.role || "coordinator"); setMyStaffId(me.staff_id || null);
+        const { data: ag } = await sb.from("agencies").select("join_code").eq("id", me.agency_id).single();
+        if (ag?.join_code) setJoinCode(ag.join_code);
+      }
+      await refreshAll();
+      // realtime: any change to shared tables refreshes everyone
+      channel = sb.channel("cc")
+        .on("postgres_changes", { event: "*", schema: "public", table: "visits" }, refreshAll)
+        .on("postgres_changes", { event: "*", schema: "public", table: "staff" }, refreshAll)
+        .on("postgres_changes", { event: "*", schema: "public", table: "clients" }, refreshAll)
+        .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, refreshAll)
+        .subscribe();
+    })();
+    return () => { if (channel) sb.removeChannel(channel); };
+  }, [session]);
+
+  async function refreshAll() {
+    if (!LIVE) return;
+    const [st, vi, cl, ms] = await Promise.all([
+      sb.from("staff").select("*").order("name"),
+      sb.from("visits").select("*").order("start_hour"),
+      sb.from("clients").select("*").order("name"),
+      sb.from("messages").select("*").order("created_at", { ascending: false }).limit(100),
+    ]);
+    if (st.data) setStaff(st.data.map(mapStaff));
+    if (vi.data) setVisits(vi.data.map(mapVisit));
+    if (cl.data) setClients(cl.data);
+    if (ms.data) setMsgs(ms.data.map((m) => ({ id: m.id, who: m.who, text: m.text, at: m.created_at })));
+  }
+
+  // ---- writes (live -> Supabase, demo -> local state) ----
+  async function saveClient(rec) {
+    if (LIVE) {
+      const row = { ...rec, agency_id: agencyId.current };
+      if (rec.id && !String(rec.id).startsWith("c")) await sb.from("clients").update(row).eq("id", rec.id);
+      else { delete row.id; await sb.from("clients").insert(row); }
+      await refreshAll();
+    } else {
+      setClients((prev) => rec.id && prev.some((c) => c.id === rec.id)
+        ? prev.map((c) => c.id === rec.id ? rec : c)
+        : [...prev, { ...rec, id: rec.id || "c" + uid() }]);
+    }
+  }
+  async function deleteClient(id) {
+    if (LIVE) { await sb.from("clients").delete().eq("id", id); await refreshAll(); }
+    else setClients((prev) => prev.filter((c) => c.id !== id));
+  }
+  async function patchVisit(id, patch, note) {
+    setVisits((prev) => prev.map((v) => v.id === id ? { ...v, ...patch, history: note ? [...(v.history || []), { at: nowISO(), who: patch.staffId ?? v.staffId, note }] : v.history } : v));
+    if (LIVE) {
+      const row = { status: patch.status, staff_id: patch.staffId === undefined ? undefined : patch.staffId };
+      await sb.from("visits").update(clean(row)).eq("id", id);
+    }
+  }
+  async function postMsg(text, who = "You") {
+    const m = { id: uid(), who, text, at: nowISO() };
+    setMsgs((prev) => [m, ...prev]);
+    if (LIVE) await sb.from("messages").insert({ agency_id: agencyId.current, who, text });
+  }
+  async function setStaffStatus(id, status) {
+    setStaff((prev) => prev.map((s) => s.id === id ? { ...s, status } : s));
+    if (LIVE) await sb.from("staff").update({ status }).eq("id", id);
+  }
+  // allocate a waiting client to a carer as their regular — does not affect anyone else
+  async function allocateClient(clientId, staffId) {
+    setClients((prev) => prev.map((c) => c.id === clientId ? { ...c, regular_staff_id: staffId, allocated: true } : c));
+    if (LIVE) await sb.from("clients").update({ regular_staff_id: staffId, allocated: true }).eq("id", clientId);
+  }
+  // book an absence (training/shadowing/course/leave/sickness) for a staff member
+  async function addAbsence(rec) {
+    const row = { ...rec, id: rec.id || "a" + uid() };
+    setAbsences((prev) => [...prev, row]);
+    if (LIVE) await sb.from("absences").insert({ agency_id: agencyId.current, staff_id: rec.staffId, type: rec.type, date: rec.date, note: rec.note });
+  }
+  async function removeAbsence(id) {
+    setAbsences((prev) => prev.filter((a) => a.id !== id));
+    if (LIVE) await sb.from("absences").delete().eq("id", id);
+  }
+  // record who worked which festive period, so next year flips automatically
+  async function setFestive(staffId, year, worked) {
+    setStaff((prev) => prev.map((s) => s.id === staffId ? { ...s, festive: { ...(s.festive || {}), [year]: worked } } : s));
+    if (LIVE) { const s = staff.find((x) => x.id === staffId); const f = { ...(s?.festive || {}), [year]: worked }; await sb.from("staff").update({ festive: f }).eq("id", staffId); }
+  }
+
+  return { staff, visits, clients, msgs, absences, role, myStaffId, joinCode, saveClient, deleteClient, patchVisit, postMsg, setStaffStatus, allocateClient, addAbsence, removeAbsence, setFestive };
+}
+const isManager = (role) => role === "manager" || role === "coordinator";
+
+// ============================================================
+//  AUTO-ALLOCATION ENGINE
+//  Matches clients WAITING for care to a carer with spare
+//  capacity — local area first, then skills. NEVER removes a
+//  client from their existing regular carer.
+// ============================================================
+function currentLoad(clients) {
+  const load = {};
+  clients.forEach((c) => { if (c.regular_staff_id) load[c.regular_staff_id] = (load[c.regular_staff_id] || 0) + 1; });
+  return load;
+}
+// best carer for one waiting client; returns {staff, reason} or null
+function bestCarerFor(client, staff, clients) {
+  const load = currentLoad(clients);
+  const hasCapacity = (s) => (load[s.id] || 0) < (s.capacity || 6);
+  const qualified = (s) => (client.needs || []).every((n) => (s.skills || []).includes(n));
+  const available = staff.filter((s) => s.status !== "off" && hasCapacity(s) && qualified(s));
+  if (available.length === 0) return null;
+  // local area first, then least loaded
+  const local = available.filter((s) => s.area === client.area);
+  const pool = local.length ? local : available;
+  const pick = [...pool].sort((a, b) => (load[a.id] || 0) - (load[b.id] || 0))[0];
+  return { staff: pick, reason: local.length ? `Local (${client.area}), spare capacity` : `Nearest available, spare capacity` };
+}
+// everything waiting, with its suggested carer
+function allocationPlan(clients, staff) {
+  return clients.filter((c) => !c.allocated && !c.regular_staff_id)
+    .map((c) => ({ client: c, match: bestCarerFor(c, staff, clients) }));
+}
+const clean = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined));
+const mapStaff = (r) => ({ id: r.id, name: r.name, role: r.role, phone: r.phone, skills: r.skills || [], status: r.status || "off" });
+const mapVisit = (r) => ({ id: r.id, client: r.client, client_id: r.client_id, addr: r.addr, date: r.date, start: r.start_hour, dur: r.dur, staffId: r.staff_id, skills: r.skills || [], status: r.status, days: r.days || [], history: r.history || [] });
+
+
+// ============================================================
+//  ROOT
+// ============================================================
+export function CareCoverApp() {
+  const [session, setSession] = useState(null);
+  const [booting, setBooting] = useState(true);
+  const [entered, setEntered] = useState(false);
+
+  // Actively remove the "Made in Bolt" badge — CSS alone can miss it,
+  // so we also delete the element and keep watching in case it re-injects.
+  useEffect(() => {
+    const kill = () => {
+      const nodes = document.querySelectorAll('a[href*="bolt.new"], a[href*="bolt.host"], [class*="bolt"], [id*="bolt"]');
+      nodes.forEach((n) => {
+        const t = (n.textContent || "").toLowerCase();
+        if (t.includes("bolt") || (n.getAttribute("href") || "").includes("bolt")) {
+          const box = n.closest("div") || n;
+          try { box.remove(); } catch (e) { try { n.remove(); } catch (e2) {} }
+        }
+      });
+    };
+    kill();
+    const iv = setInterval(kill, 1000);
+    const obs = new MutationObserver(kill);
+    try { obs.observe(document.body, { childList: true, subtree: true }); } catch (e) {}
+    return () => { clearInterval(iv); obs.disconnect(); };
+  }, []);
+
+  useEffect(() => {
+    if (!LIVE) { setBooting(false); return; }
+    sb.auth.getSession().then(({ data }) => { setSession(data.session); setBooting(false); });
+    const { data: sub } = sb.auth.onAuthStateChange((_e, s) => setSession(s));
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  if (booting) return <Splash />;
+  if (!entered) return <Entrance onEnter={() => setEntered(true)} />;
+  // In demo mode we skip auth and go straight in. In live mode, require sign-in.
+  if (LIVE && !session) return <AuthGate />;
+  return <Studio session={session} />;
+}
+
+// ============================================================
+//  ENTRANCE — teal doors that open with a soft chime
+// ============================================================
+function Entrance({ onEnter }) {
+  const [opening, setOpening] = useState(false);
+  const [gone, setGone] = useState(false);
+
+  function open() {
+    if (opening) return;
+    setOpening(true);
+    // soft two-note chime on open (Web Audio, no file needed)
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AC();
+      const now = ctx.currentTime;
+      const notes = [523.25, 659.25, 783.99]; // C5 E5 G5 — bright, welcoming
+      notes.forEach((f, i) => {
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.type = "sine"; o.frequency.value = f;
+        o.connect(g); g.connect(ctx.destination);
+        const t = now + i * 0.14;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.22, t + 0.04);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 1.1);
+        o.start(t); o.stop(t + 1.2);
+      });
+    } catch (e) {}
+    setTimeout(() => setGone(true), 1400);
+    setTimeout(onEnter, 1650);
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "#04141a", overflow: "hidden", fontFamily: UI, display: gone ? "none" : "block" }}>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet" />
+      <style>{`a[href*="bolt.new"],a[href*="bolt.host"][target="_blank"],[class*="bolt-badge"],[id*="bolt-badge"],.bolt-badge{display:none!important;visibility:hidden!important;}`}</style>
+
+      {/* left door */}
+      <div style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: "50%", background: `linear-gradient(135deg, ${BRANDDK}, #06333f 60%, #04141a)`, borderRight: `1px solid ${BRAND}55`, transform: opening ? "translateX(-100%)" : "translateX(0)", transition: "transform 1.35s cubic-bezier(.7,0,.2,1)", boxShadow: "inset -20px 0 40px rgba(0,0,0,.4)" }}>
+        <div style={{ position: "absolute", top: "50%", right: 14, width: 6, height: 64, borderRadius: 4, background: `${BRAND}aa`, transform: "translateY(-50%)", boxShadow: `0 0 14px ${BRAND}88` }} />
+      </div>
+      {/* right door */}
+      <div style={{ position: "absolute", top: 0, bottom: 0, right: 0, width: "50%", background: `linear-gradient(225deg, ${BRANDDK}, #06333f 60%, #04141a)`, borderLeft: `1px solid ${BRAND}55`, transform: opening ? "translateX(100%)" : "translateX(0)", transition: "transform 1.35s cubic-bezier(.7,0,.2,1)", boxShadow: "inset 20px 0 40px rgba(0,0,0,.4)" }}>
+        <div style={{ position: "absolute", top: "50%", left: 14, width: 6, height: 64, borderRadius: 4, background: `${BRAND}aa`, transform: "translateY(-50%)", boxShadow: `0 0 14px ${BRAND}88` }} />
+      </div>
+      {/* centre seam glow */}
+      <div style={{ position: "absolute", top: 0, bottom: 0, left: "50%", width: 2, background: `linear-gradient(to bottom, transparent, ${BRAND}, transparent)`, transform: "translateX(-1px)", opacity: opening ? 0 : 0.7, transition: "opacity .5s ease" }} />
+
+      {/* centre content sits above the doors, fades as they open */}
+      <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", textAlign: "center", opacity: opening ? 0 : 1, transition: "opacity .5s ease", pointerEvents: opening ? "none" : "auto", padding: 20 }}>
+        <div>
+          <div style={{ width: 76, height: 76, borderRadius: 20, background: `linear-gradient(135deg,${BRAND},${BRANDDK})`, display: "grid", placeItems: "center", color: "#fff", fontFamily: DISPLAY, fontWeight: 600, fontSize: 42, margin: "0 auto 22px", boxShadow: "0 8px 30px rgba(14,116,144,.5)" }}>C</div>
+          <div style={{ fontFamily: DISPLAY, fontWeight: 600, fontSize: 46, color: "#eafcff", letterSpacing: -0.5 }}>CareCover</div>
+          <div style={{ fontSize: 16, color: "#8fd4e2", marginTop: 8, maxWidth: 440, marginLeft: "auto", marginRight: "auto" }}>Coordination for care teams — cover, sorted before it becomes a crisis.</div>
+          <p style={{ fontSize: 14.5, color: "#cdeef5", marginTop: 20, maxWidth: 520, marginLeft: "auto", marginRight: "auto", lineHeight: 1.6 }}>
+            CareCover is built for care and nursing agencies, care homes, and any team that sends staff out to clients. When a carer calls off sick, it instantly finds qualified, available cover — matched by skill, area, and who's free — and reassigns the visit in one tap. New clients are matched to a local carer with spare capacity, existing clients stay with their regular carer, and training, leave and holidays are handled automatically. One live board keeps the whole team in step, so vulnerable people stay covered and coordinators stay sane.
+          </p>
+          <button onClick={open} style={{ marginTop: 30, border: "none", borderRadius: 12, padding: "15px 40px", fontSize: 16, fontWeight: 800, letterSpacing: 1, cursor: "pointer", fontFamily: UI, background: `linear-gradient(135deg,${BRAND},${BRANDDK})`, color: "#fff", boxShadow: "0 6px 24px rgba(14,116,144,.5)" }}>▶  ENTER</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+//  AUTH  (live mode only)
+// ============================================================
+function AuthGate() {
+  const [mode, setMode] = useState("in");   // in | up | join
+  const [agency, setAgency] = useState("");
+  const [name, setName] = useState("");
+  const [joinCode, setJoinCode] = useState("");
+  const [area, setArea] = useState(AREAS[0]);
+  const [email, setEmail] = useState("");
+  const [pw, setPw] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function go() {
+    setErr(""); setBusy(true);
+    try {
+      if (mode === "up") {
+        // Manager creates a new agency. A DB trigger reads this metadata to create
+        // the agency row + a manager membership + a join code. (See setup SQL.)
+        const { error } = await sb.auth.signUp({ email, password: pw, options: { data: { signup_kind: "agency", agency_name: agency, full_name: name, role: "manager", plan: "trial" } } });
+        if (error) throw error;
+      } else if (mode === "join") {
+        // New staff joins an existing agency with its code. The trigger creates a
+        // carer staff row in that agency, sets their area, and links the login.
+        const { error } = await sb.auth.signUp({ email, password: pw, options: { data: { signup_kind: "staff", join_code: joinCode.trim().toUpperCase(), full_name: name, role: "carer", area } } });
+        if (error) throw error;
+      } else {
+        const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+        if (error) throw error;
+      }
+    } catch (e) { setErr(e.message || "Something went wrong"); }
+    setBusy(false);
+  }
+
+  const title = mode === "up" ? "Start your agency" : mode === "join" ? "Join your team" : "Welcome back";
+  const subtitle = mode === "up" ? "3 days free. No card needed to start." : mode === "join" ? "Enter the code your coordinator gave you." : "Sign in to your desk.";
+  const cta = busy ? "One moment…" : mode === "up" ? "Create agency account" : mode === "join" ? "Join team" : "Sign in";
+
+  return (
+    <Shell>
+      <div style={{ maxWidth: 420, margin: "7vh auto", padding: "0 20px" }}>
+        <Brand big />
+        <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 16, padding: 26, marginTop: 22, boxShadow: "0 1px 3px rgba(16,24,40,.05)" }}>
+          <div style={{ fontFamily: DISPLAY, fontSize: 22, fontWeight: 600, color: INK }}>{title}</div>
+          <div style={{ fontSize: 14, color: MUTE, marginTop: 4, marginBottom: 18 }}>{subtitle}</div>
+
+          {(mode === "up" || mode === "join") && <Field label="Your name" value={name} onChange={setName} placeholder="Full name" />}
+          {mode === "up" && <Field label="Agency name" value={agency} onChange={setAgency} placeholder="e.g. Bluebell Home Care" />}
+          {mode === "join" && <Field label="Join code" value={joinCode} onChange={setJoinCode} placeholder="e.g. BLUEBELL-4Q2" />}
+          {mode === "join" && (
+            <div style={{ marginBottom: 13 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: SUBINK, marginBottom: 5 }}>Your working area</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {AREAS.map((a) => (
+                  <button key={a} onClick={() => setArea(a)} style={{ border: `1px solid ${area === a ? BRAND : LINE}`, background: area === a ? BRAND : CARD, color: area === a ? "#fff" : SUBINK, borderRadius: 8, padding: "7px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: UI }}>{a}</button>
+                ))}
+              </div>
+            </div>
+          )}
+          <Field label="Work email" value={email} onChange={setEmail} placeholder="you@agency.co.uk" type="email" />
+          <Field label="Password" value={pw} onChange={setPw} placeholder="••••••••" type="password" />
+          {err && <div style={{ background: REDSOFT, color: RED, fontSize: 13, padding: "9px 12px", borderRadius: 9, marginBottom: 12 }}>{err}</div>}
+          <button onClick={go} disabled={busy} style={{ ...primary, width: "100%", opacity: busy ? .6 : 1 }}>{cta}</button>
+
+          <div style={{ display: "flex", justifyContent: "center", gap: 14, marginTop: 16, fontSize: 14, flexWrap: "wrap" }}>
+            {mode !== "in" && <button onClick={() => { setMode("in"); setErr(""); }} style={link}>Sign in</button>}
+            {mode !== "up" && <button onClick={() => { setMode("up"); setErr(""); }} style={link}>Start an agency</button>}
+            {mode !== "join" && <button onClick={() => { setMode("join"); setErr(""); }} style={link}>Join with a code</button>}
+          </div>
+        </div>
+        <div style={{ textAlign: "center", fontSize: 12.5, color: FAINT, marginTop: 14 }}>
+          Managers start an agency. Carers join with the code their coordinator shares.
+        </div>
+      </div>
+    </Shell>
+  );
+}
+
+// ============================================================
+//  STUDIO  (the app)
+// ============================================================
+function Studio({ session }) {
+  const D = useData(session);
+  const { staff, visits, clients, msgs, role, myStaffId, joinCode } = D;
+  const mgr = isManager(role);
+  const [tab, setTab] = useState("board");
+  const [coverFor, setCoverFor] = useState(null);
+  const [toast, setToast] = useState(null);
+  const ping = (t) => { setToast(t); setTimeout(() => setToast(null), 3400); };
+  const staffById = (id) => staff.find((s) => s.id === id);
+
+  // carers see only their own visits + clients; managers see all
+  const myVisits = mgr ? visits : visits.filter((v) => v.staffId === myStaffId);
+  const myClientIds = new Set(myVisits.map((v) => v.client_id).filter(Boolean));
+  const myClients = mgr ? clients : clients.filter((c) => myClientIds.has(c.id));
+
+  function findCover(visit) {
+    const busy = {};
+    visits.forEach((v) => { if (v.staffId) busy[v.staffId] = (busy[v.staffId] || 0) + 1; });
+    return staff.filter((s) => s.status === "in" && s.id !== visit.staffId)
+      .filter((s) => visit.skills.every((sk) => s.skills.includes(sk)))
+      .sort((a, b) => (busy[a.id] || 0) - (busy[b.id] || 0));
+  }
+  function assignCover(visit, newId) {
+    const s = staffById(newId);
+    D.patchVisit(visit.id, { staffId: newId, status: "assigned" }, `Cover assigned to ${s?.name}`);
+    D.postMsg(`${visit.client} at ${fmtTime(visit.start)} reassigned to ${s?.name} — cover confirmed.`, "System");
+    ping(`Cover found — ${s?.name} is on ${visit.client}`); setCoverFor(null);
+  }
+  function leaveOpen(visit) {
+    D.patchVisit(visit.id, { staffId: null, status: "open" }, "Call-off — left uncovered");
+    D.postMsg(`${visit.client} at ${fmtTime(visit.start)} is UNCOVERED and needs a coordinator.`, "System");
+    ping(`${visit.client} flagged uncovered`); setCoverFor(null);
+  }
+  function toggleStatus(id) {
+    const s = staffById(id); const next = s.status === "in" ? "break" : s.status === "break" ? "off" : "in";
+    D.setStaffStatus(id, next);
+  }
+  function pickUp(visit, byId) {
+    const s = staffById(byId);
+    D.patchVisit(visit.id, { staffId: byId, status: "assigned" }, `Picked up by ${s?.name}`);
+    D.postMsg(`${s?.name} picked up ${visit.client} at ${fmtTime(visit.start)} — covered.`, "System");
+    ping(`${s?.name} picked up ${visit.client} — covered`);
+  }
+  function markDone(visit) {
+    const s = visit.staffId ? staffById(visit.staffId) : null;
+    D.patchVisit(visit.id, { status: "done" }, "Marked completed");
+    D.postMsg(`${visit.client} at ${fmtTime(visit.start)} completed${s ? ` by ${s.name}` : ""}.`, "System");
+    ping(`${visit.client} marked done`);
+  }
+
+  // when a carer is booked absent, offer their day's visits to cover
+  function coverForAbsence(staffId, date, type) {
     const affected = visits.filter((v) => v.staffId === staffId && v.status !== "done");
     affected.forEach((v) => D.patchVisit(v.id, { staffId: null, status: "open" }, `${type} booked — needs cover`));
     const s = staffById(staffId);
