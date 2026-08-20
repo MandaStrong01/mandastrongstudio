@@ -1,10 +1,9 @@
 // @ts-nocheck
 import { useState, useEffect, useMemo, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
-import { Landing } from "./Landing";
 
 /* ============================================================
-   CARECOVER â€” coordination for care & nursing agencies
+   CARECOVER — coordination for care & nursing agencies
    Built by a coordinator, for coordinators.
    Hero: a call-off instantly finds qualified, available cover.
 
@@ -24,7 +23,7 @@ const LIVE = Boolean(SUPABASE_URL && SUPABASE_ANON);
 const sb = LIVE ? createClient(SUPABASE_URL, SUPABASE_ANON) : null;
 
 // ---------- Stripe ----------
-// WIRE: paste your Stripe Payment Link URL for each plan (Stripe â†’ Payment links).
+// WIRE: paste your Stripe Payment Link URL for each plan (Stripe → Payment links).
 // Leave "" to keep a button in "coming soon" state. Same approach as MandaStrong.
 const STRIPE_LINKS = {
   "Starter": "https://buy.stripe.com/fZucN78NQ0oT3oHemCafS06",
@@ -41,7 +40,7 @@ const CARD = "#ffffff";
 const LINE = "#e4e9f0";
 const MUTE = "#667085";
 const FAINT = "#98a2b3";
-const BRAND = "#0e7490";       // deep cyan â€” trustworthy, medical, not techy-neon
+const BRAND = "#0e7490";       // deep cyan — trustworthy, medical, not techy-neon
 const BRANDDK = "#0b5566";
 const BRANDSOFT = "#e0f2f7";
 const GREEN = "#12805c";
@@ -118,7 +117,7 @@ function seedVisits() {
     mk("v7", "c7", "Mr T. Bianchi", "19 Ash Close", 16, 30, null, ["Personal care"], [2, 4, 6]),
   ];
 }
-// Day shorthand: Monâ€“Sun -> M T W T F S S, with weekdays shown in CAPITALS the coordinator's way.
+// Day shorthand: Mon–Sun -> M T W T F S S, with weekdays shown in CAPITALS the coordinator's way.
 const DAY_LETTER = ["S", "M", "T", "W", "T", "F", "S"]; // index = 0..6 (Sun..Sat)
 const DAY_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 function daysShort(days) {
@@ -140,15 +139,15 @@ function seedClients() {
   const mk = (id, name, ref, addr, area, cName, cPhone, days, needs, keyInfo, notes, regular) =>
     ({ id, name, ref, addr, area, contact_name: cName, contact_phone: cPhone, days, needs, key_info: keyInfo, notes, regular_staff_id: regular, allocated: Boolean(regular) });
   return [
-    mk("c1", "Mr J. Patel", "CL-1042", "12 Elm Court", "North", "Priya Patel (daughter)", "07811 220145", [1, 3, 5], ["Meds"], "Key safe 4471, front door", "Prefers morning calls. Diabetic â€” meds before breakfast.", "s1"),
+    mk("c1", "Mr J. Patel", "CL-1042", "12 Elm Court", "North", "Priya Patel (daughter)", "07811 220145", [1, 3, 5], ["Meds"], "Key safe 4471, front door", "Prefers morning calls. Diabetic — meds before breakfast.", "s1"),
     mk("c2", "Mrs D. Okonkwo", "CL-1043", "4 Birch Rise", "North", "Emeka Okonkwo (son)", "07811 220146", [1, 2, 3, 4, 5], ["Personal care"], "Ring bell twice, carer has key", "Hard of hearing on left side.", "s2"),
     mk("c3", "Mr R. Campbell", "CL-1044", "88 Oak Lane", "South", "Fiona Campbell (wife)", "07811 220147", [2, 4], ["Meds", "Driving"], "Parking on driveway only", "Needs lift to day centre Tue/Thu.", "s4"),
     mk("c4", "Ms L. Fenwick", "CL-1045", "2 Cedar Mews", "North", "Social worker: A. Bright", "07811 220148", [1, 3, 5], ["Dementia"], "Key safe 9820", "Gentle reminders, keep routine identical each visit.", "s1"),
-    mk("c5", "Mr A. Simko", "CL-1046", "31 Maple Grove", "North", "Marta Simko (wife)", "07811 220149", [0, 3, 6], ["Wound care"], "Flat 3, buzzer 31", "Dressing change on schedule â€” district nurse Mondays.", "s5"),
-    mk("c6", "Mrs P. Ncube", "CL-1047", "7 Willow Walk", "North", "Thabo Ncube (son)", "07811 220150", [1, 2, 3, 4, 5, 6, 0], ["Hoist"], "Key safe 2205, side gate", "Two-carer hoist call â€” never attempt alone.", "s2"),
-    // Waiting for care â€” not yet allocated to anyone
+    mk("c5", "Mr A. Simko", "CL-1046", "31 Maple Grove", "North", "Marta Simko (wife)", "07811 220149", [0, 3, 6], ["Wound care"], "Flat 3, buzzer 31", "Dressing change on schedule — district nurse Mondays.", "s5"),
+    mk("c6", "Mrs P. Ncube", "CL-1047", "7 Willow Walk", "North", "Thabo Ncube (son)", "07811 220150", [1, 2, 3, 4, 5, 6, 0], ["Hoist"], "Key safe 2205, side gate", "Two-carer hoist call — never attempt alone.", "s2"),
+    // Waiting for care — not yet allocated to anyone
     mk("c7", "Mr T. Bianchi", "CL-1048", "19 Ash Close", "East", "Self", "07811 220151", [2, 4, 6], ["Personal care"], "Knock loudly, slow to door", "Lives alone, values a chat.", null),
-    mk("c8", "Mrs H. Kaur", "CL-1049", "5 Rowan Drive", "South", "Jaspreet Kaur (daughter)", "07811 220152", [1, 3, 5], ["Personal care", "Meals"], "Key safe 3390", "New referral â€” awaiting a regular carer.", null),
+    mk("c8", "Mrs H. Kaur", "CL-1049", "5 Rowan Drive", "South", "Jaspreet Kaur (daughter)", "07811 220152", [1, 3, 5], ["Personal care", "Meals"], "Key safe 3390", "New referral — awaiting a regular carer.", null),
   ];
 }
 
@@ -161,7 +160,7 @@ function useData(session) {
   const [staff, setStaff] = useState(() => load("cc_staff", SEED_STAFF));
   const [visits, setVisits] = useState(() => load("cc_visits", seedVisits()));
   const [clients, setClients] = useState(() => load("cc_clients", seedClients()));
-  const [msgs, setMsgs] = useState(() => load("cc_msgs", [{ id: uid(), who: "System", text: "This is your live day. Report a call-off, pick up a visit, or mark one done â€” the whole team sees it.", at: nowISO() }]));
+  const [msgs, setMsgs] = useState(() => load("cc_msgs", [{ id: uid(), who: "System", text: "This is your live day. Report a call-off, pick up a visit, or mark one done — the whole team sees it.", at: nowISO() }]));
   const [absences, setAbsences] = useState(() => load("cc_absences", seedAbsences()));
   const [role, setRole] = useState("coordinator");   // coordinator | manager | carer
   const [myStaffId, setMyStaffId] = useState(null);
@@ -245,7 +244,7 @@ function useData(session) {
     setStaff((prev) => prev.map((s) => s.id === id ? { ...s, status } : s));
     if (LIVE) await sb.from("staff").update({ status }).eq("id", id);
   }
-  // allocate a waiting client to a carer as their regular â€” does not affect anyone else
+  // allocate a waiting client to a carer as their regular — does not affect anyone else
   async function allocateClient(clientId, staffId) {
     setClients((prev) => prev.map((c) => c.id === clientId ? { ...c, regular_staff_id: staffId, allocated: true } : c));
     if (LIVE) await sb.from("clients").update({ regular_staff_id: staffId, allocated: true }).eq("id", clientId);
@@ -273,7 +272,7 @@ const isManager = (role) => role === "manager" || role === "coordinator";
 // ============================================================
 //  AUTO-ALLOCATION ENGINE
 //  Matches clients WAITING for care to a carer with spare
-//  capacity â€” local area first, then skills. NEVER removes a
+//  capacity — local area first, then skills. NEVER removes a
 //  client from their existing regular carer.
 // ============================================================
 function currentLoad(clients) {
@@ -312,7 +311,7 @@ export function CareCoverApp() {
   const [booting, setBooting] = useState(true);
   const [entered, setEntered] = useState(false);
 
-  // Actively remove the "Made in Bolt" badge â€” CSS alone can miss it,
+  // Actively remove the "Made in Bolt" badge — CSS alone can miss it,
   // so we also delete the element and keep watching in case it re-injects.
   useEffect(() => {
     const kill = () => {
@@ -340,14 +339,14 @@ export function CareCoverApp() {
   }, []);
 
   if (booting) return <Splash />;
-  if (!entered) return <Landing onEnter={() => setEntered(true)} />;
+  if (!entered) return <Entrance onEnter={() => setEntered(true)} />;
   // In demo mode we skip auth and go straight in. In live mode, require sign-in.
   if (LIVE && !session) return <AuthGate />;
   return <Studio session={session} />;
 }
 
 // ============================================================
-//  ENTRANCE â€” teal doors that open with a soft chime
+//  ENTRANCE — teal doors that open with a soft chime
 // ============================================================
 function Entrance({ onEnter }) {
   const [opening, setOpening] = useState(false);
@@ -361,7 +360,7 @@ function Entrance({ onEnter }) {
       const AC = window.AudioContext || window.webkitAudioContext;
       const ctx = new AC();
       const now = ctx.currentTime;
-      const notes = [523.25, 659.25, 783.99]; // C5 E5 G5 â€” bright, welcoming
+      const notes = [523.25, 659.25, 783.99]; // C5 E5 G5 — bright, welcoming
       notes.forEach((f, i) => {
         const o = ctx.createOscillator(); const g = ctx.createGain();
         o.type = "sine"; o.frequency.value = f;
@@ -392,11 +391,11 @@ function Entrance({ onEnter }) {
         <div>
           <div style={{ width: 76, height: 76, borderRadius: 20, background: `linear-gradient(135deg,${BRAND},${BRANDDK})`, display: "grid", placeItems: "center", color: "#fff", fontFamily: DISPLAY, fontWeight: 600, fontSize: 42, margin: "0 auto 22px", boxShadow: "0 8px 30px rgba(14,116,144,.5)" }}>C</div>
           <div style={{ fontFamily: DISPLAY, fontWeight: 600, fontSize: 46, color: "#eafcff", letterSpacing: -0.5 }}>CareCover</div>
-          <div style={{ fontSize: 16, color: "#8fd4e2", marginTop: 8, maxWidth: 440, marginLeft: "auto", marginRight: "auto" }}>Coordination for care teams â€” cover, sorted before it becomes a crisis.</div>
+          <div style={{ fontSize: 16, color: "#8fd4e2", marginTop: 8, maxWidth: 440, marginLeft: "auto", marginRight: "auto" }}>Coordination for care teams — cover, sorted before it becomes a crisis.</div>
           <p style={{ fontSize: 14.5, color: "#cdeef5", marginTop: 20, maxWidth: 520, marginLeft: "auto", marginRight: "auto", lineHeight: 1.6 }}>
-            CareCover is built for care and nursing agencies, care homes, and any team that sends staff out to clients. When a carer calls off sick, it instantly finds qualified, available cover â€” matched by skill, area, and who's free â€” and reassigns the visit in one tap. New clients are matched to a local carer with spare capacity, existing clients stay with their regular carer, and training, leave and holidays are handled automatically. One live board keeps the whole team in step, so vulnerable people stay covered and coordinators stay sane.
+            CareCover is built for care and nursing agencies, care homes, and any team that sends staff out to clients. When a carer calls off sick, it instantly finds qualified, available cover — matched by skill, area, and who's free — and reassigns the visit in one tap. New clients are matched to a local carer with spare capacity, existing clients stay with their regular carer, and training, leave and holidays are handled automatically. One live board keeps the whole team in step, so vulnerable people stay covered and coordinators stay sane.
           </p>
-          <button onClick={open} style={{ marginTop: 30, border: "none", borderRadius: 12, padding: "15px 40px", fontSize: 16, fontWeight: 800, letterSpacing: 1, cursor: "pointer", fontFamily: UI, background: `linear-gradient(135deg,${BRAND},${BRANDDK})`, color: "#fff", boxShadow: "0 6px 24px rgba(14,116,144,.5)" }}>â–¶  ENTER</button>
+          <button onClick={open} style={{ marginTop: 30, border: "none", borderRadius: 12, padding: "15px 40px", fontSize: 16, fontWeight: 800, letterSpacing: 1, cursor: "pointer", fontFamily: UI, background: `linear-gradient(135deg,${BRAND},${BRANDDK})`, color: "#fff", boxShadow: "0 6px 24px rgba(14,116,144,.5)" }}>▶  ENTER</button>
         </div>
       </div>
     </div>
@@ -440,7 +439,7 @@ function AuthGate() {
 
   const title = mode === "up" ? "Start your agency" : mode === "join" ? "Join your team" : "Welcome back";
   const subtitle = mode === "up" ? "3 days free. No card needed to start." : mode === "join" ? "Enter the code your coordinator gave you." : "Sign in to your desk.";
-  const cta = busy ? "One momentâ€¦" : mode === "up" ? "Create agency account" : mode === "join" ? "Join team" : "Sign in";
+  const cta = busy ? "One moment…" : mode === "up" ? "Create agency account" : mode === "join" ? "Join team" : "Sign in";
 
   return (
     <Shell>
@@ -464,7 +463,7 @@ function AuthGate() {
             </div>
           )}
           <Field label="Work email" value={email} onChange={setEmail} placeholder="you@agency.co.uk" type="email" />
-          <Field label="Password" value={pw} onChange={setPw} placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" type="password" />
+          <Field label="Password" value={pw} onChange={setPw} placeholder="••••••••" type="password" />
           {err && <div style={{ background: REDSOFT, color: RED, fontSize: 13, padding: "9px 12px", borderRadius: 9, marginBottom: 12 }}>{err}</div>}
           <button onClick={go} disabled={busy} style={{ ...primary, width: "100%", opacity: busy ? .6 : 1 }}>{cta}</button>
 
@@ -510,11 +509,11 @@ function Studio({ session }) {
   function assignCover(visit, newId) {
     const s = staffById(newId);
     D.patchVisit(visit.id, { staffId: newId, status: "assigned" }, `Cover assigned to ${s?.name}`);
-    D.postMsg(`${visit.client} at ${fmtTime(visit.start)} reassigned to ${s?.name} â€” cover confirmed.`, "System");
-    ping(`Cover found â€” ${s?.name} is on ${visit.client}`); setCoverFor(null);
+    D.postMsg(`${visit.client} at ${fmtTime(visit.start)} reassigned to ${s?.name} — cover confirmed.`, "System");
+    ping(`Cover found — ${s?.name} is on ${visit.client}`); setCoverFor(null);
   }
   function leaveOpen(visit) {
-    D.patchVisit(visit.id, { staffId: null, status: "open" }, "Call-off â€” left uncovered");
+    D.patchVisit(visit.id, { staffId: null, status: "open" }, "Call-off — left uncovered");
     D.postMsg(`${visit.client} at ${fmtTime(visit.start)} is UNCOVERED and needs a coordinator.`, "System");
     ping(`${visit.client} flagged uncovered`); setCoverFor(null);
   }
@@ -525,8 +524,8 @@ function Studio({ session }) {
   function pickUp(visit, byId) {
     const s = staffById(byId);
     D.patchVisit(visit.id, { staffId: byId, status: "assigned" }, `Picked up by ${s?.name}`);
-    D.postMsg(`${s?.name} picked up ${visit.client} at ${fmtTime(visit.start)} â€” covered.`, "System");
-    ping(`${s?.name} picked up ${visit.client} â€” covered`);
+    D.postMsg(`${s?.name} picked up ${visit.client} at ${fmtTime(visit.start)} — covered.`, "System");
+    ping(`${s?.name} picked up ${visit.client} — covered`);
   }
   function markDone(visit) {
     const s = visit.staffId ? staffById(visit.staffId) : null;
@@ -538,11 +537,11 @@ function Studio({ session }) {
   // when a carer is booked absent, offer their day's visits to cover
   function coverForAbsence(staffId, date, type) {
     const affected = visits.filter((v) => v.staffId === staffId && v.status !== "done");
-    affected.forEach((v) => D.patchVisit(v.id, { staffId: null, status: "open" }, `${type} booked â€” needs cover`));
+    affected.forEach((v) => D.patchVisit(v.id, { staffId: null, status: "open" }, `${type} booked — needs cover`));
     const s = staffById(staffId);
-    if (affected.length) D.postMsg(`${s?.name} is on ${type} (${date}). ${affected.length} visit${affected.length > 1 ? "s" : ""} need cover â€” see the board.`, "System");
+    if (affected.length) D.postMsg(`${s?.name} is on ${type} (${date}). ${affected.length} visit${affected.length > 1 ? "s" : ""} need cover — see the board.`, "System");
     else D.postMsg(`${s?.name} booked ${type} for ${date}.`, "System");
-    ping(`${s?.name} booked ${type}${affected.length ? ` Â· ${affected.length} to cover` : ""}`);
+    ping(`${s?.name} booked ${type}${affected.length ? ` · ${affected.length} to cover` : ""}`);
   }
 
   const openCount = myVisits.filter((v) => v.status === "open").length;
@@ -558,7 +557,7 @@ function Studio({ session }) {
       <main style={{ maxWidth: 1140, margin: "0 auto", padding: "22px 18px 90px" }}>
         {!LIVE && <DemoRibbon />}
         {tab === "board" && <Board visits={myVisits} staff={staff} staffById={staffById} clients={clients} onCallOff={setCoverFor} onPickUp={pickUp} onDone={markDone} canManage={mgr} />}
-        {tab === "allocate" && mgr && <Allocate clients={clients} staff={staff} onAllocate={(cid, sid, auto) => { D.allocateClient(cid, sid); const s = staff.find((x) => x.id === sid); const c = clients.find((x) => x.id === cid); D.postMsg(`${c?.name} allocated to ${s?.name}${auto ? " (auto, local area)" : ""}.`, "System"); ping(`${c?.name} â†’ ${s?.name}`); }} />}
+        {tab === "allocate" && mgr && <Allocate clients={clients} staff={staff} onAllocate={(cid, sid, auto) => { D.allocateClient(cid, sid); const s = staff.find((x) => x.id === sid); const c = clients.find((x) => x.id === cid); D.postMsg(`${c?.name} allocated to ${s?.name}${auto ? " (auto, local area)" : ""}.`, "System"); ping(`${c?.name} → ${s?.name}`); }} />}
         {tab === "clients" && <Clients clients={myClients} canManage={mgr} onSave={D.saveClient} onDelete={D.deleteClient} ping={ping} />}
         {tab === "team" && mgr && <Team staff={staff} toggleStatus={toggleStatus} joinCode={joinCode} ping={ping} />}
         {tab === "leave" && <LeaveTraining absences={absences} staff={staff} canManage={mgr} myStaffId={myStaffId}
@@ -628,9 +627,9 @@ function Board({ visits, staff, staffById, clients, onCallOff, onPickUp, onDone,
   return (
     <div>
       <PageHead
-        kicker="Live Â· today"
+        kicker="Live · today"
         title="Cover board"
-        sub="Uncovered and imminent visits rise to the top. Report a call-off to find cover, pick up an open visit, or mark one done â€” everyone sees it live."
+        sub="Uncovered and imminent visits rise to the top. Report a call-off to find cover, pick up an open visit, or mark one done — everyone sees it live."
       />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20, maxWidth: 720 }}>
         <Metric n={c.red} label="Uncovered" tone={RED} soft={REDSOFT} />
@@ -667,7 +666,7 @@ function Board({ visits, staff, staffById, clients, onCallOff, onPickUp, onDone,
                 <div style={{ minWidth: 150 }}>
                   {s ? <div style={{ fontSize: 14 }}><span style={{ color: FAINT }}>Carer</span><br /><b>{s.name}</b></div>
                     : <div style={{ fontSize: 14, color: RED, fontWeight: 700 }}>No carer assigned</div>}
-                  <Pill tone={tone} soft={soft} text={done ? "âœ“ Done" : r === "red" ? "Uncovered" : r === "amber" ? "Starting soon" : "Covered"} />
+                  <Pill tone={tone} soft={soft} text={done ? "✓ Done" : r === "red" ? "Uncovered" : r === "amber" ? "Starting soon" : "Covered"} />
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 128 }}>
                   {done ? (
@@ -704,8 +703,8 @@ function PickUp({ visit, carers, onPickUp }) {
       {open && (
         <Modal onClose={() => setOpen(false)}>
           <Kicker text="Pick up visit" />
-          <div style={{ fontFamily: DISPLAY, fontSize: 22, fontWeight: 600, margin: "3px 0 2px" }}>{visit.client} Â· {fmtTime(visit.start)}</div>
-          <div style={{ fontSize: 14, color: MUTE, marginBottom: 16 }}>{visit.addr} Â· needs {visit.skills.join(", ") || "no special skills"}</div>
+          <div style={{ fontFamily: DISPLAY, fontSize: 22, fontWeight: 600, margin: "3px 0 2px" }}>{visit.client} · {fmtTime(visit.start)}</div>
+          <div style={{ fontSize: 14, color: MUTE, marginBottom: 16 }}>{visit.addr} · needs {visit.skills.join(", ") || "no special skills"}</div>
           <div style={{ fontSize: 13, color: MUTE, marginBottom: 8 }}>Who's taking it? (Signed-in carers pick themselves automatically in live mode.)</div>
           {able.length === 0 ? (
             <div style={{ background: AMBERSOFT, color: "#7a4708", borderRadius: 10, padding: 12, fontSize: 14 }}>No on-shift carer has the required skills yet.</div>
@@ -718,7 +717,7 @@ function PickUp({ visit, carers, onPickUp }) {
                     <div style={{ fontWeight: 700 }}>{s.name}</div>
                     <div style={{ fontSize: 12.5, color: MUTE }}>{s.role}</div>
                   </div>
-                  <span style={{ color: GREEN, fontWeight: 700, fontSize: 14 }}>Take it â†’</span>
+                  <span style={{ color: GREEN, fontWeight: 700, fontSize: 14 }}>Take it →</span>
                 </button>
               ))}
             </div>
@@ -736,7 +735,7 @@ function CoverPanel({ visit, candidates, onAssign, onLeaveOpen, onClose }) {
     <Modal onClose={onClose}>
       <Kicker text="Call-off cover" />
       <div style={{ fontFamily: DISPLAY, fontSize: 22, fontWeight: 600, margin: "3px 0 2px" }}>{visit.client}</div>
-      <div style={{ fontSize: 14, color: MUTE, marginBottom: 18 }}>{fmtTime(visit.start)} Â· {visit.addr} Â· needs {visit.skills.join(", ") || "no special skills"}</div>
+      <div style={{ fontSize: 14, color: MUTE, marginBottom: 18 }}>{fmtTime(visit.start)} · {visit.addr} · needs {visit.skills.join(", ") || "no special skills"}</div>
 
       {candidates.length === 0 ? (
         <div style={{ background: REDSOFT, border: `1px solid ${RED}`, color: "#7a271a", borderRadius: 11, padding: 14, fontSize: 14 }}>
@@ -751,7 +750,7 @@ function CoverPanel({ visit, candidates, onAssign, onLeaveOpen, onClose }) {
                 <Avatar name={s.name} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700 }}>{s.name}</div>
-                  <div style={{ fontSize: 12.5, color: MUTE }}>{s.role} Â· {s.skills.join(", ")}</div>
+                  <div style={{ fontSize: 12.5, color: MUTE }}>{s.role} · {s.skills.join(", ")}</div>
                 </div>
                 <button onClick={() => onAssign(visit, s.id)} style={primarySm}>Assign</button>
               </div>
@@ -777,7 +776,7 @@ function Allocate({ clients, staff, onAllocate }) {
   return (
     <div>
       <PageHead kicker="Auto-coordination" title="Clients waiting for care"
-        sub="New clients are matched to a carer with spare capacity in their local area. Existing clients are never moved â€” this only fills free capacity." />
+        sub="New clients are matched to a carer with spare capacity in their local area. Existing clients are never moved — this only fills free capacity." />
       {plan.length === 0 ? (
         <div style={{ background: GREENSOFT, border: `1px solid #a6e9c8`, color: "#065f41", borderRadius: 12, padding: 16, fontSize: 14.5 }}>
           Everyone waiting has been allocated. New referrals will appear here automatically.
@@ -808,7 +807,7 @@ function Allocate({ clients, staff, onAllocate }) {
                         <Avatar name={match.staff.name} />
                         <div>
                           <div style={{ fontWeight: 700, fontSize: 14 }}>{match.staff.name}</div>
-                          <div style={{ fontSize: 12, color: MUTE }}>{match.reason} Â· {load[match.staff.id] || 0}/{match.staff.capacity} clients</div>
+                          <div style={{ fontSize: 12, color: MUTE }}>{match.reason} · {load[match.staff.id] || 0}/{match.staff.capacity} clients</div>
                         </div>
                       </div>
                     </>
@@ -842,7 +841,7 @@ function ManualPick({ client, staff, load, onAllocate }) {
         <Modal onClose={() => setOpen(false)}>
           <Kicker text="Allocate client" />
           <div style={{ fontFamily: DISPLAY, fontSize: 22, fontWeight: 600, margin: "3px 0 2px" }}>{client.name}</div>
-          <div style={{ fontSize: 14, color: MUTE, marginBottom: 16 }}>{client.area} Â· {client.addr} Â· needs {(client.needs || []).join(", ") || "no special skills"}</div>
+          <div style={{ fontSize: 14, color: MUTE, marginBottom: 16 }}>{client.area} · {client.addr} · needs {(client.needs || []).join(", ") || "no special skills"}</div>
           {eligible.length === 0 ? (
             <div style={{ background: AMBERSOFT, color: "#7a4708", borderRadius: 10, padding: 12, fontSize: 14 }}>No qualified carer available.</div>
           ) : (
@@ -853,9 +852,9 @@ function ManualPick({ client, staff, load, onAllocate }) {
                   <Avatar name={s.name} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700 }}>{s.name}</div>
-                    <div style={{ fontSize: 12.5, color: MUTE }}>{s.area} Â· {load[s.id] || 0}/{s.capacity} clients Â· {s.skills.join(", ")}</div>
+                    <div style={{ fontSize: 12.5, color: MUTE }}>{s.area} · {load[s.id] || 0}/{s.capacity} clients · {s.skills.join(", ")}</div>
                   </div>
-                  <span style={{ color: BRAND, fontWeight: 700, fontSize: 14 }}>Assign â†’</span>
+                  <span style={{ color: BRAND, fontWeight: 700, fontSize: 14 }}>Assign →</span>
                 </button>
               ))}
             </div>
@@ -897,7 +896,7 @@ function LeaveTraining({ absences, staff, canManage, myStaffId, onAdd, onRemove,
                 <div style={{ fontWeight: 700, fontSize: 14 }}>{new Date(a.date).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}</div>
               </div>
               <div style={{ flex: 1, minWidth: 150 }}>
-                <div style={{ fontWeight: 700 }}>{s?.name || "â€”"}</div>
+                <div style={{ fontWeight: 700 }}>{s?.name || "—"}</div>
                 {a.note && <div style={{ fontSize: 13, color: MUTE }}>{a.note}</div>}
               </div>
               <span style={{ background: tone + "18", color: tone, fontSize: 12.5, fontWeight: 700, padding: "3px 11px", borderRadius: 999 }}>{a.type}</span>
@@ -910,7 +909,7 @@ function LeaveTraining({ absences, staff, canManage, myStaffId, onAdd, onRemove,
       {canManage && (
         <>
           <PageHead kicker="Automatic" title={`Christmas & New Year ${year}`}
-            sub="Worked Christmas last year? You're off this year and on for New Year â€” and it flips again next year. Set once, and it self-manages." />
+            sub="Worked Christmas last year? You're off this year and on for New Year — and it flips again next year. Set once, and it self-manages." />
           <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 13, overflow: "hidden" }}>
             <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr", background: PAPER, borderBottom: `1px solid ${LINE}`, fontSize: 12.5, fontWeight: 700, color: MUTE }}>
               <div style={{ padding: "11px 14px" }}>Carer</div>
@@ -921,7 +920,7 @@ function LeaveTraining({ absences, staff, canManage, myStaffId, onAdd, onRemove,
               <div key={s.id} style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr", borderBottom: `1px solid ${LINE}`, alignItems: "center" }}>
                 <div style={{ padding: "11px 14px" }}>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>{s.name}</div>
-                  <div style={{ fontSize: 12, color: FAINT }}>{lastYear ? `Last year: worked ${lastYear === "xmas" ? "Christmas" : "New Year"}` : "No history yet â€” set it below"}</div>
+                  <div style={{ fontSize: 12, color: FAINT }}>{lastYear ? `Last year: worked ${lastYear === "xmas" ? "Christmas" : "New Year"}` : "No history yet — set it below"}</div>
                 </div>
                 <div style={{ padding: "10px 14px", textAlign: "center" }}>
                   {worksXmas === null
@@ -936,7 +935,7 @@ function LeaveTraining({ absences, staff, canManage, myStaffId, onAdd, onRemove,
               </div>
             ))}
           </div>
-          <div style={{ fontSize: 12.5, color: FAINT, marginTop: 10 }}>Once a carer has a year recorded, next year flips automatically â€” no need to decide again.</div>
+          <div style={{ fontSize: 12.5, color: FAINT, marginTop: 10 }}>Once a carer has a year recorded, next year flips automatically — no need to decide again.</div>
         </>
       )}
 
@@ -997,9 +996,9 @@ function Clients({ clients, canManage, onSave, onDelete, ping }) {
   return (
     <div>
       <PageHead kicker={canManage ? "Records" : "Your clients"} title={canManage ? "Clients" : "My clients"}
-        sub={canManage ? "The people or sites you serve. Add, edit, and keep key info in one place â€” shared live with your team." : "The clients on your visits. Tap a name to see their care details and key info."} />
+        sub={canManage ? "The people or sites you serve. Add, edit, and keep key info in one place — shared live with your team." : "The clients on your visits. Tap a name to see their care details and key info."} />
       <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, reference or addressâ€¦"
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, reference or address…"
           style={{ flex: 1, minWidth: 220, border: `1px solid ${LINE}`, borderRadius: 10, padding: "10px 13px", fontSize: 14, fontFamily: UI, outline: "none", background: CARD }} />
         {canManage && <button onClick={() => setEditing({})} style={primary}>+ New client</button>}
       </div>
@@ -1046,14 +1045,14 @@ function ClientEditor({ rec, canManage, onSave, onDelete, onClose }) {
         {ro ? (
           <>
             <div style={{ fontFamily: DISPLAY, fontSize: 22, fontWeight: 600, margin: "3px 0 2px" }}>{f.name}</div>
-            <div style={{ fontSize: 14, color: MUTE, marginBottom: 14 }}>{f.ref} Â· {f.addr}</div>
-            <FileRow label="Visit days" value={daysFull(f.days) || "â€”"} />
-            <FileRow label="Care needs" value={f.needs || "â€”"} />
-            <FileRow label="Contact" value={f.contact_name ? `${f.contact_name} Â· ${f.contact_phone}` : "â€”"} />
-            <FileRow label="Key info / access" value={f.key_info || "â€”"} />
+            <div style={{ fontSize: 14, color: MUTE, marginBottom: 14 }}>{f.ref} · {f.addr}</div>
+            <FileRow label="Visit days" value={daysFull(f.days) || "—"} />
+            <FileRow label="Care needs" value={f.needs || "—"} />
+            <FileRow label="Contact" value={f.contact_name ? `${f.contact_name} · ${f.contact_phone}` : "—"} />
+            <FileRow label="Key info / access" value={f.key_info || "—"} />
             <div style={{ padding: "10px 0" }}>
               <div style={{ fontSize: 13, color: MUTE, marginBottom: 4 }}>Notes</div>
-              <div style={{ fontSize: 14, color: INK, whiteSpace: "pre-wrap" }}>{f.notes || "â€”"}</div>
+              <div style={{ fontSize: 14, color: INK, whiteSpace: "pre-wrap" }}>{f.notes || "—"}</div>
             </div>
           </>
         ) : (
@@ -1065,7 +1064,7 @@ function ClientEditor({ rec, canManage, onSave, onDelete, onClose }) {
             <Field label="Address" value={f.addr} onChange={(v) => set("addr", v)} placeholder="12 Elm Court" />
             <div style={{ display: "flex", gap: 10 }}>
               <div style={{ flex: 1 }}><Field label="Contact name" value={f.contact_name} onChange={(v) => set("contact_name", v)} placeholder="Next of kin / site contact" /></div>
-              <div style={{ flex: 1 }}><Field label="Contact phone" value={f.contact_phone} onChange={(v) => set("contact_phone", v)} placeholder="07â€¦" /></div>
+              <div style={{ flex: 1 }}><Field label="Contact phone" value={f.contact_phone} onChange={(v) => set("contact_phone", v)} placeholder="07…" /></div>
             </div>
             <div style={{ marginBottom: 13 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: SUBINK, marginBottom: 6 }}>Visit days</div>
@@ -1085,7 +1084,7 @@ function ClientEditor({ rec, canManage, onSave, onDelete, onClose }) {
               <textarea value={f.notes} onChange={(e) => set("notes", e.target.value)} rows={3}
                 style={{ width: "100%", boxSizing: "border-box", border: `1px solid ${LINE}`, borderRadius: 10, padding: "11px 13px", fontSize: 14.5, fontFamily: UI, outline: "none", background: PAPER, resize: "vertical" }} />
             </div>
-            <Field label="External record link (optional)" value={f.link} onChange={(v) => set("link", v)} placeholder="https://â€¦" />
+            <Field label="External record link (optional)" value={f.link} onChange={(v) => set("link", v)} placeholder="https://…" />
           </>
         )}
       </div>
@@ -1111,7 +1110,7 @@ function Team({ staff, toggleStatus, joinCode, ping }) {
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
-        <PageHead kicker="Live" title="Team" sub={`${inCount} on shift now. Tap a card to change status â€” only â€˜on shiftâ€™ carers are offered for cover.`} />
+        <PageHead kicker="Live" title="Team" sub={`${inCount} on shift now. Tap a card to change status — only ‘on shift’ carers are offered for cover.`} />
         <button onClick={() => setInvite(true)} style={primary}>+ Invite carers</button>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(250px,1fr))", gap: 12 }}>
@@ -1125,7 +1124,7 @@ function Team({ staff, toggleStatus, joinCode, ping }) {
               </div>
             </div>
             <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ background: soft[s.status], color: tone[s.status], fontSize: 12.5, fontWeight: 700, padding: "3px 10px", borderRadius: 999 }}>â— {label[s.status]}</span>
+              <span style={{ background: soft[s.status], color: tone[s.status], fontSize: 12.5, fontWeight: 700, padding: "3px 10px", borderRadius: 999 }}>● {label[s.status]}</span>
             </div>
             <div style={{ marginTop: 10, display: "flex", gap: 5, flexWrap: "wrap" }}>
               {s.skills.map((sk) => <span key={sk} style={chip}>{sk}</span>)}
@@ -1137,7 +1136,7 @@ function Team({ staff, toggleStatus, joinCode, ping }) {
         <Modal onClose={() => setInvite(false)}>
           <Kicker text="Invite carers" />
           <div style={{ fontFamily: DISPLAY, fontSize: 22, fontWeight: 600, margin: "3px 0 10px" }}>Add your team</div>
-          <div style={{ fontSize: 14, color: MUTE, marginBottom: 16 }}>Share this join code with your carers. They go to your CareCover link, tap <b>Join with a code</b>, enter it, pick their area â€” and they're in. They'll only ever see their own visits and clients.</div>
+          <div style={{ fontSize: 14, color: MUTE, marginBottom: 16 }}>Share this join code with your carers. They go to your CareCover link, tap <b>Join with a code</b>, enter it, pick their area — and they're in. They'll only ever see their own visits and clients.</div>
           <div style={{ fontSize: 12.5, color: FAINT, fontWeight: 700, letterSpacing: 1, marginBottom: 6 }}>YOUR JOIN CODE</div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <div style={{ flex: 1, background: BRANDSOFT, border: `1.5px dashed ${BRAND}`, borderRadius: 11, padding: "14px 16px", fontFamily: DISPLAY, fontSize: 24, fontWeight: 600, color: BRANDDK, textAlign: "center", letterSpacing: 1 }}>{joinCode}</div>
@@ -1148,7 +1147,7 @@ function Team({ staff, toggleStatus, joinCode, ping }) {
             1. Open your CareCover link<br/>
             2. Tap <b>Join with a code</b><br/>
             3. Enter <b>{joinCode}</b>, their name, and choose their area<br/>
-            4. Done â€” they appear here in your Team.
+            4. Done — they appear here in your Team.
           </div>
           <div style={{ textAlign: "right", marginTop: 16 }}><button onClick={() => setInvite(false)} style={outline}>Close</button></div>
         </Modal>
@@ -1194,7 +1193,7 @@ function Messages({ msgs, onSend }) {
     <div style={{ maxWidth: 720 }}>
       <PageHead kicker="Team" title="Messages" sub="One thread for the whole agency. Every call-off and cover is posted here automatically." />
       <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-        <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Message the teamâ€¦"
+        <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Message the team…"
           style={{ flex: 1, border: `1px solid ${LINE}`, borderRadius: 10, padding: "11px 13px", fontSize: 14, fontFamily: UI, outline: "none", background: CARD }} />
         <button onClick={send} style={primary}>Send</button>
       </div>
@@ -1219,46 +1218,46 @@ function Guide({ canManage, agencyName }) {
   const sections = canManage ? [
     { t: "Getting started", b: [
       "You're the manager/coordinator for " + (agencyName || "your agency") + ". You see everything; carers see only their own visits and clients.",
-      "Add your carers by sharing your join code (Team â†’ invite, or from your dashboard). They register themselves and pick their working area.",
-      "Add your clients in the Clients tab â€” name, address, area, visit days, needs, key info.",
+      "Add your carers by sharing your join code (Team → invite, or from your dashboard). They register themselves and pick their working area.",
+      "Add your clients in the Clients tab — name, address, area, visit days, needs, key info.",
     ]},
-    { t: "The Cover board â€” your day at a glance", b: [
+    { t: "The Cover board — your day at a glance", b: [
       "Every visit for today, with uncovered ones in red at the top, imminent ones amber, covered ones green.",
-      "Report a call-off on any visit â†’ the app shows qualified, available carers, least busy first â†’ assign in one tap.",
+      "Report a call-off on any visit → the app shows qualified, available carers, least busy first → assign in one tap.",
       "If nobody's free, leave it uncovered and it stays red at the top until you fill it.",
       "Mark a visit Done when it's completed, so you can see what's outstanding versus finished.",
     ]},
     { t: "Allocating new clients", b: [
       "New clients waiting for care appear in the Allocate tab with a count badge.",
-      "The app suggests the best carer â€” local area first, then skills, then who has spare capacity.",
+      "The app suggests the best carer — local area first, then skills, then who has spare capacity.",
       "Tap Auto-allocate all, or choose a carer manually. Existing clients are never moved off their regular carer.",
     ]},
     { t: "Leave, training & holidays", b: [
       "Book any carer out for Training, Shadowing, a Course, Annual leave or Sickness.",
       "Their visits for that day are sent straight to the Cover board so others can pick them up.",
-      "Christmas & New Year rotate fairly and automatically â€” work one this year, you're off it next year.",
+      "Christmas & New Year rotate fairly and automatically — work one this year, you're off it next year.",
     ]},
     { t: "Messaging & records", b: [
       "The Messages tab is one thread for the whole team. Every call-off, cover and completed visit posts here automatically.",
-      "Client records hold key info, access codes and notes â€” tap a client name anywhere to open the record.",
+      "Client records hold key info, access codes and notes — tap a client name anywhere to open the record.",
     ]},
     { t: "Billing", b: [
       "Your plan is on the Plans tab. Start on the free trial; upgrade when you're ready.",
-      "Plans scale by team size â€” Starter, Agency, Multi-branch.",
+      "Plans scale by team size — Starter, Agency, Multi-branch.",
     ]},
   ] : [
     { t: "Welcome", b: [
-      "You're signed in as a carer. You see your own visits and your own clients â€” nothing else.",
-      "Set yourself On shift when you start, On break, or Off â€” only On-shift carers get offered cover.",
+      "You're signed in as a carer. You see your own visits and your own clients — nothing else.",
+      "Set yourself On shift when you start, On break, or Off — only On-shift carers get offered cover.",
     ]},
     { t: "Your visits", b: [
-      "My visits shows your day in order. Tap a client's name to open their record â€” address, key info, and notes.",
-      "If a visit needs cover and you can take it, tap Pick this up â€” it becomes yours and the team is told.",
+      "My visits shows your day in order. Tap a client's name to open their record — address, key info, and notes.",
+      "If a visit needs cover and you can take it, tap Pick this up — it becomes yours and the team is told.",
       "Tap Mark done when you finish a visit.",
     ]},
     { t: "Your clients & messages", b: [
-      "My clients holds the records for the people you visit â€” key info, access codes, care needs.",
-      "Messages is the team thread â€” you'll see cover requests and updates here.",
+      "My clients holds the records for the people you visit — key info, access codes, care needs.",
+      "Messages is the team thread — you'll see cover requests and updates here.",
     ]},
     { t: "Your leave", b: [
       "My leave shows any training, courses or time off your coordinator has booked for you.",
@@ -1274,13 +1273,13 @@ function Guide({ canManage, agencyName }) {
             <div key={i} style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 13, overflow: "hidden" }}>
               <button onClick={() => setOpen(isOpen ? -1 : i)} style={{ width: "100%", textAlign: "left", border: "none", background: isOpen ? BRANDSOFT : CARD, cursor: "pointer", fontFamily: UI, padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontWeight: 700, fontSize: 15.5, color: INK }}>{i + 1}. {s.t}</span>
-                <span style={{ color: BRAND, fontSize: 18, fontWeight: 700 }}>{isOpen ? "â€“" : "+"}</span>
+                <span style={{ color: BRAND, fontSize: 18, fontWeight: 700 }}>{isOpen ? "–" : "+"}</span>
               </button>
               {isOpen && (
                 <div style={{ padding: "6px 18px 16px" }}>
                   {s.b.map((line, j) => (
                     <div key={j} style={{ display: "flex", gap: 10, marginTop: 10 }}>
-                      <span style={{ color: BRAND, fontWeight: 800, flexShrink: 0 }}>â€º</span>
+                      <span style={{ color: BRAND, fontWeight: 800, flexShrink: 0 }}>›</span>
                       <span style={{ fontSize: 14.5, color: SUBINK, lineHeight: 1.5 }}>{line}</span>
                     </div>
                   ))}
@@ -1300,9 +1299,9 @@ function Guide({ canManage, agencyName }) {
 // ---------- PLANS ----------
 function Plans({ ping }) {
   const plans = [
-    { name: "Starter", price: "Â£19", cap: "Up to 15 staff", feats: ["Cover board & rota", "Call-off cover finder", "Team messaging", "Visit tasks"] },
-    { name: "Agency", price: "Â£39", cap: "Up to 30 staff", best: true, feats: ["Everything in Starter", "Auto-cover by skill & availability", "Uncovered-visit alerts", "Full reassignment history"] },
-    { name: "Multi-branch", price: "Â£89", cap: "Up to 60 staff, then Â£3 each", feats: ["Everything in Agency", "Multiple branches", "Coverage-gap forecasting", "Priority support"] },
+    { name: "Starter", price: "£19", cap: "Up to 15 staff", feats: ["Cover board & rota", "Call-off cover finder", "Team messaging", "Visit tasks"] },
+    { name: "Agency", price: "£39", cap: "Up to 30 staff", best: true, feats: ["Everything in Starter", "Auto-cover by skill & availability", "Uncovered-visit alerts", "Full reassignment history"] },
+    { name: "Multi-branch", price: "£89", cap: "Up to 60 staff, then £3 each", feats: ["Everything in Agency", "Multiple branches", "Coverage-gap forecasting", "Priority support"] },
   ];
   return (
     <div>
@@ -1358,7 +1357,7 @@ function Brand({ big }) {
       <div style={{ width: big ? 40 : 30, height: big ? 40 : 30, borderRadius: 9, background: `linear-gradient(135deg,${BRAND},${BRANDDK})`, display: "grid", placeItems: "center", color: "#fff", fontWeight: 800, fontSize: big ? 20 : 16, boxShadow: "0 2px 8px rgba(14,116,144,.35)" }}>C</div>
       <div>
         <div style={{ fontFamily: DISPLAY, fontWeight: 600, fontSize: big ? 26 : 19, letterSpacing: -0.3, color: INK, lineHeight: 1 }}>CareCover</div>
-        {big && <div style={{ fontSize: 12.5, color: MUTE, marginTop: 3 }}>Cover, sorted â€” before it becomes a crisis.</div>}
+        {big && <div style={{ fontSize: 12.5, color: MUTE, marginTop: 3 }}>Cover, sorted — before it becomes a crisis.</div>}
       </div>
     </div>
   );
@@ -1409,13 +1408,13 @@ function ClientLink({ v, client }) {
         <Modal onClose={() => setOpen(false)}>
           <Kicker text="Client record" />
           <div style={{ fontFamily: DISPLAY, fontSize: 22, fontWeight: 600, margin: "3px 0 2px" }}>{v.client}</div>
-          <div style={{ fontSize: 14, color: MUTE, marginBottom: 16 }}>{c.ref ? c.ref + " Â· " : ""}{v.addr}</div>
+          <div style={{ fontSize: 14, color: MUTE, marginBottom: 16 }}>{c.ref ? c.ref + " · " : ""}{v.addr}</div>
           <div style={{ maxHeight: "62vh", overflowY: "auto", paddingRight: 4 }}>
-            <FileRow label="This visit" value={`${fmtTime(v.start)} Â· ${v.dur} min`} />
-            <FileRow label="Visit days" value={daysFull(c.days || v.days) || "â€”"} />
+            <FileRow label="This visit" value={`${fmtTime(v.start)} · ${v.dur} min`} />
+            <FileRow label="Visit days" value={daysFull(c.days || v.days) || "—"} />
             <FileRow label="Care needs" value={(c.needs || v.skills || []).join(", ") || "None recorded"} />
-            <FileRow label="Contact" value={c.contact_name ? `${c.contact_name} Â· ${c.contact_phone || ""}` : "â€”"} />
-            <FileRow label="Key info / access" value={c.key_info || "â€”"} />
+            <FileRow label="Contact" value={c.contact_name ? `${c.contact_name} · ${c.contact_phone || ""}` : "—"} />
+            <FileRow label="Key info / access" value={c.key_info || "—"} />
             {c.notes && (
               <div style={{ padding: "10px 0" }}>
                 <div style={{ fontSize: 13, color: MUTE, marginBottom: 4 }}>Notes</div>
@@ -1454,7 +1453,7 @@ function Avatar({ name, big }) {
   return <div style={{ width: sz, height: sz, borderRadius: "50%", background: BRANDSOFT, color: BRANDDK, display: "grid", placeItems: "center", fontWeight: 800, fontSize: big ? 17 : 14 }}>{name[0]}</div>;
 }
 function Check() {
-  return <span style={{ display: "grid", placeItems: "center", width: 18, height: 18, borderRadius: "50%", background: GREENSOFT, color: GREEN, fontSize: 11, fontWeight: 900, flexShrink: 0 }}>âœ“</span>;
+  return <span style={{ display: "grid", placeItems: "center", width: 18, height: 18, borderRadius: "50%", background: GREENSOFT, color: GREEN, fontSize: 11, fontWeight: 900, flexShrink: 0 }}>✓</span>;
 }
 function Field({ label, value, onChange, placeholder, type = "text" }) {
   return (
