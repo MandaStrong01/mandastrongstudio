@@ -1,4 +1,6 @@
 // @ts-nocheck
+import React from "react";
+
 export function Landing({ onEnter }) {
   return (
     <div style={{ minHeight: "100vh", background: "#0e7490", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center", fontFamily: "-apple-system, Segoe UI, Roboto, sans-serif" }}>
@@ -14,3 +16,5 @@ export function Landing({ onEnter }) {
     </div>
   );
 }
+
+export default Landing;
