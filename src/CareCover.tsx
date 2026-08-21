@@ -308,6 +308,7 @@ const mapVisit = (r) => ({ id: r.id, client: r.client, client_id: r.client_id, a
 // ============================================================
 export function CareCoverApp() {
   const [session, setSession] = useState(null);
+  const [demo, setDemo] = useState(false);
   const [booting, setBooting] = useState(true);
   const [entered, setEntered] = useState(false);
 
@@ -340,8 +341,8 @@ export function CareCoverApp() {
 
   if (booting) return <Splash />;
   if (!entered) return <Entrance onEnter={() => setEntered(true)} />;
-  // In demo mode we skip auth and go straight in. In live mode, require sign-in.
-  if (LIVE && !session) return <AuthGate />;
+  // Show the sign-in page after the doors. A test login lets you walk the whole app.
+  if (!session && !demo) return <AuthGate onDemo={() => setDemo(true)} />;
   return <Studio session={session} />;
 }
 
@@ -392,16 +393,16 @@ function Entrance({ onEnter }) {
           <div style={{ width: 116, height: 116, borderRadius: "50%", border: "2px solid #e8c96d", display: "grid", placeItems: "center", margin: "0 auto 26px", background: "radial-gradient(circle at 40% 34%, #0d5566, #063039)", boxShadow: "inset 0 0 22px rgba(0,0,0,.5)" }}>
             <span style={{ fontFamily: DISPLAY, fontWeight: 600, fontSize: 72, lineHeight: 1, marginTop: 4, background: "linear-gradient(165deg,#f4e6c0,#c9a75e)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>C</span>
           </div>
-          <div style={{ fontFamily: DISPLAY, fontWeight: 700, fontSize: 56, letterSpacing: 1, lineHeight: 1, color: "#0b1416" }}>CareCover</div>
-          <svg viewBox="0 0 300 40" preserveAspectRatio="none" style={{ width: "78%", height: 28, margin: "14px auto 0", display: "block", stroke: "#0b1416", fill: "none", strokeWidth: 2.4, strokeLinecap: "round", strokeLinejoin: "round" }}><path d="M0 20 L95 20 L108 20 L116 16 L124 24 L132 4 L142 36 L150 20 L160 20 L168 14 L176 20 L300 20" /></svg>
-          <div style={{ fontSize: 11, letterSpacing: 3, fontWeight: 700, color: "#0b1416", marginTop: 20 }}>COMPLETE CARE WORKFORCE MANAGEMENT</div>
-          <svg viewBox="0 0 300 40" preserveAspectRatio="none" style={{ width: "82%", height: 22, margin: "20px auto 0", display: "block", stroke: "#0b1416", fill: "none", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round" }}><path d="M0 20 L95 20 L108 20 L116 16 L124 24 L132 4 L142 36 L150 20 L160 20 L168 14 L176 20 L300 20" /></svg>
-          <div style={{ fontFamily: DISPLAY, fontSize: 32, fontWeight: 700, letterSpacing: 0.4, color: "#0b1416", marginTop: 36, lineHeight: 1.3 }}>Coordinated. Covered.</div>
-          <div style={{ fontSize: 14, color: "#0b1416", marginTop: 16, letterSpacing: 0.3, lineHeight: 1.5, maxWidth: 290, marginLeft: "auto", marginRight: "auto", fontWeight: 500 }}>Your agency's shifts, rotas, leave and team â€” managed together in one place.</div>
+          <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 58, letterSpacing: 1, lineHeight: 1, color: "#0b1416" }}>CareCover</div>
+          <svg viewBox="0 0 300 40" preserveAspectRatio="none" style={{ width: "78%", height: 28, margin: "14px auto 0", display: "block", stroke: "#0b1416", fill: "none", strokeWidth: 3, strokeLinecap: "round", strokeLinejoin: "round" }}><path d="M0 20 L95 20 L108 20 L116 16 L124 24 L132 4 L142 36 L150 20 L160 20 L168 14 L176 20 L300 20" /></svg>
+          <div style={{ fontSize: 12, letterSpacing: 2.5, fontWeight: 800, color: "#0b1416", marginTop: 20 }}>COMPLETE CARE WORKFORCE MANAGEMENT</div>
+          <svg viewBox="0 0 300 40" preserveAspectRatio="none" style={{ width: "82%", height: 22, margin: "20px auto 0", display: "block", stroke: "#0b1416", fill: "none", strokeWidth: 2.6, strokeLinecap: "round", strokeLinejoin: "round" }}><path d="M0 20 L95 20 L108 20 L116 16 L124 24 L132 4 L142 36 L150 20 L160 20 L168 14 L176 20 L300 20" /></svg>
+          <div style={{ fontFamily: DISPLAY, fontSize: 33, fontWeight: 800, letterSpacing: 0.4, color: "#0b1416", marginTop: 36, lineHeight: 1.3 }}>Coordinated. Covered.</div>
+          <div style={{ fontSize: 14.5, color: "#0b1416", marginTop: 16, letterSpacing: 0.3, lineHeight: 1.5, maxWidth: 290, marginLeft: "auto", marginRight: "auto", fontWeight: 600 }}>Your agency's shifts, rotas, leave and team - managed together in one place.</div>
           <button onClick={open} style={{ marginTop: 36, width: 62, height: 62, borderRadius: "50%", border: "2px solid #0b1416", background: "transparent", display: "grid", placeItems: "center", cursor: "pointer", marginLeft: "auto", marginRight: "auto" }} aria-label="Sign in">
             <svg viewBox="0 0 24 24" style={{ width: 24, height: 24, stroke: "#0b1416", fill: "none", strokeWidth: 2.2 }}><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </button>
-          <div style={{ fontSize: 10, letterSpacing: 2, color: "#0b1416", fontWeight: 600, marginTop: 22 }}>SIGN IN</div>
+          <div style={{ fontSize: 11, letterSpacing: 2, color: "#0b1416", fontWeight: 800, marginTop: 22 }}>SIGN IN</div>
         </div>
       </div>
     </div>
@@ -411,7 +412,7 @@ function Entrance({ onEnter }) {
 // ============================================================
 //  AUTH  (live mode only)
 // ============================================================
-function AuthGate() {
+function AuthGate({ onDemo }) {
   const [mode, setMode] = useState("in");   // in | up | join
   const [agency, setAgency] = useState("");
   const [name, setName] = useState("");
@@ -436,6 +437,7 @@ function AuthGate() {
         const { error } = await sb.auth.signUp({ email, password: pw, options: { data: { signup_kind: "staff", join_code: joinCode.trim().toUpperCase(), full_name: name, role: "carer", area } } });
         if (error) throw error;
       } else {
+        if (!LIVE) { onDemo && onDemo(); return; }
         const { error } = await sb.auth.signInWithPassword({ email, password: pw });
         if (error) throw error;
       }
@@ -472,6 +474,7 @@ function AuthGate() {
           <Field label="Password" value={pw} onChange={setPw} placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" type="password" />
           {err && <div style={{ background: REDSOFT, color: RED, fontSize: 13, padding: "9px 12px", borderRadius: 9, marginBottom: 12 }}>{err}</div>}
           <button onClick={go} disabled={busy} style={{ ...primary, width: "100%", opacity: busy ? .6 : 1 }}>{cta}</button>
+          <button onClick={() => onDemo && onDemo()} style={{ width: "100%", marginTop: 10, border: `1.5px solid ${BRAND}`, background: "transparent", color: BRAND, borderRadius: 10, padding: "11px 18px", fontSize: 14.5, fontWeight: 700, cursor: "pointer", fontFamily: UI }}>Enter as test user â†’</button>
 
           <div style={{ display: "flex", justifyContent: "center", gap: 14, marginTop: 16, fontSize: 14, flexWrap: "wrap" }}>
             {mode !== "in" && <button onClick={() => { setMode("in"); setErr(""); }} style={link}>Sign in</button>}
