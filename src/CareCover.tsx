@@ -389,13 +389,13 @@ function Entrance({ onEnter }) {
       {/* centre content sits above the doors, fades as they open */}
       <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", textAlign: "center", opacity: opening ? 0 : 1, transition: "opacity .5s ease", pointerEvents: opening ? "none" : "auto", padding: 20 }}>
         <div>
-          <div style={{ width: 76, height: 76, borderRadius: 20, background: `linear-gradient(135deg,${BRAND},${BRANDDK})`, display: "grid", placeItems: "center", color: "#fff", fontFamily: DISPLAY, fontWeight: 600, fontSize: 42, margin: "0 auto 22px", boxShadow: "0 8px 30px rgba(14,116,144,.5)" }}>C</div>
-          <div style={{ fontFamily: DISPLAY, fontWeight: 600, fontSize: 46, color: "#eafcff", letterSpacing: -0.5 }}>CareCover</div>
-          <div style={{ fontSize: 16, color: "#8fd4e2", marginTop: 8, maxWidth: 440, marginLeft: "auto", marginRight: "auto" }}>Coordination for care teams — cover, sorted before it becomes a crisis.</div>
-          <p style={{ fontSize: 14.5, color: "#cdeef5", marginTop: 20, maxWidth: 520, marginLeft: "auto", marginRight: "auto", lineHeight: 1.6 }}>
-            CareCover is built for care and nursing agencies, care homes, and any team that sends staff out to clients. When a carer calls off sick, it instantly finds qualified, available cover — matched by skill, area, and who's free — and reassigns the visit in one tap. New clients are matched to a local carer with spare capacity, existing clients stay with their regular carer, and training, leave and holidays are handled automatically. One live board keeps the whole team in step, so vulnerable people stay covered and coordinators stay sane.
-          </p>
-          <button onClick={open} style={{ marginTop: 30, border: "none", borderRadius: 12, padding: "15px 40px", fontSize: 16, fontWeight: 800, letterSpacing: 1, cursor: "pointer", fontFamily: UI, background: `linear-gradient(135deg,${BRAND},${BRANDDK})`, color: "#fff", boxShadow: "0 6px 24px rgba(14,116,144,.5)" }}>▶  ENTER</button>
+          <div style={{ width: 84, height: 84, borderRadius: 22, background: "#fff", display: "grid", placeItems: "center", margin: "0 auto 28px", boxShadow: "0 10px 34px rgba(0,0,0,.35)" }}>
+            <span style={{ fontFamily: DISPLAY, fontWeight: 600, fontSize: 46, color: BRAND }}>C</span>
+          </div>
+          <div style={{ fontFamily: DISPLAY, fontWeight: 600, fontSize: 50, color: "#eafcff", letterSpacing: -0.5 }}>CareCover</div>
+          <div style={{ width: 44, height: 2, background: "rgba(255,255,255,.35)", margin: "18px auto" }} />
+          <div style={{ fontFamily: DISPLAY, fontSize: 17, color: "#d6f2f8", letterSpacing: 0.4, maxWidth: 300, marginLeft: "auto", marginRight: "auto", lineHeight: 1.5 }}>Complete Care Workforce Management</div>
+          <button onClick={open} style={{ marginTop: 40, border: "none", borderRadius: 14, padding: "15px 48px", fontSize: 16, fontWeight: 700, letterSpacing: 1, cursor: "pointer", fontFamily: UI, background: "#fff", color: BRAND, boxShadow: "0 8px 28px rgba(0,0,0,.3)" }}>ENTER  →</button>
         </div>
       </div>
     </div>
