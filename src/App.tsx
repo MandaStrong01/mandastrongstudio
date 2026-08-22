@@ -2392,6 +2392,55 @@ function P6Voice({ onSave, setMediaLib }) {
 
 
 
+function MSUserCounter(){
+  // Shows BOTH: live visitors on the site right now (up & down) and total users/subscribers.
+  // Reads from Supabase presence function; falls back safely to last known values so it never breaks.
+  const [live,setLive]=useState(()=>{try{return JSON.parse(localStorage.getItem("ms_live_count")||"1");}catch{return 1;}});
+  const [total,setTotal]=useState(()=>{try{return JSON.parse(localStorage.getItem("ms_user_count")||"0");}catch{return 0;}});
+  useEffect(()=>{
+    let alive=true;
+    const PRESENCE="https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/presence";
+    async function ping(){
+      try{
+        // one visitor id per browser
+        let vid=localStorage.getItem("ms_vid");
+        if(!vid){vid=Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem("ms_vid",vid);}
+        const r=await fetch(PRESENCE,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({vid})});
+        const j=await r.json();
+        if(!alive)return;
+        if(typeof j.live==="number"){setLive(j.live);localStorage.setItem("ms_live_count",JSON.stringify(j.live));}
+        if(typeof j.total==="number"){setTotal(j.total);localStorage.setItem("ms_user_count",JSON.stringify(j.total));}
+      }catch(e){/* keep last known numbers */}
+    }
+    ping();
+    const t=setInterval(ping,15000); // refresh every 15s so live number moves up and down
+    return ()=>{alive=false;clearInterval(t);};
+  },[]);
+  return (
+    <div style={{display:"flex",justifyContent:"center",marginBottom:24}}>
+      <div style={{background:"#050500",border:"2px solid "+GOLD,padding:"14px 40px",textAlign:"center",boxShadow:"0 0 24px "+GOLD+"33",position:"relative"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginBottom:6}}>
+          <div style={{width:8,height:8,borderRadius:"50%",background:"#22c55e",boxShadow:"0 0 8px #22c55e",animation:"pulse 2s infinite"}}/>
+          <div style={{color:"#22c55e",fontSize:10,letterSpacing:4,fontWeight:900}}>LIVE · USER COUNT</div>
+        </div>
+        <div style={{display:"flex",alignItems:"flex-end",justifyContent:"center",gap:34}}>
+          <div>
+            <div style={{fontFamily:"'Cinzel',serif",color:GOLD,fontSize:42,fontWeight:900,lineHeight:1,textShadow:"0 0 20px "+GOLD+"99"}}>{live}</div>
+            <div style={{color:"#22c55e",fontSize:9,letterSpacing:3,marginTop:4}}>● ON NOW</div>
+          </div>
+          <div style={{width:1,alignSelf:"stretch",background:GOLD+"55"}}/>
+          <div>
+            <div style={{fontFamily:"'Cinzel',serif",color:GOLD,fontSize:42,fontWeight:900,lineHeight:1,textShadow:"0 0 20px "+GOLD+"99"}}>{total}</div>
+            <div style={{color:GOLDDIM,fontSize:9,letterSpacing:3,marginTop:4}}>TOTAL USERS</div>
+          </div>
+        </div>
+        <div style={{color:GOLDDIM,fontSize:9,letterSpacing:3,marginTop:8}}>launched june 1st 2026 · updates automatically</div>
+        <style>{"@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}"}</style>
+      </div>
+    </div>
+  );
+}
+
 function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
   const canvasRef=useRef(null);
   const videoRef=useRef(null);
@@ -3430,18 +3479,8 @@ function P4({ go, setUser }) {
   return (
     <div style={{...Sp,padding:40}}>
       <div style={{maxWidth:1000,margin:"0 auto"}}>
-        {/* Live subscriber counter — green live light, auto-updates */}
-        <div style={{display:"flex",justifyContent:"center",marginBottom:24}}>
-          <div style={{background:"#050500",border:"2px solid "+GOLD,padding:"14px 48px",textAlign:"center",boxShadow:"0 0 24px "+GOLD+"33",position:"relative"}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginBottom:4}}>
-              <div style={{width:8,height:8,borderRadius:"50%",background:"#22c55e",boxShadow:"0 0 8px #22c55e",animation:"pulse 2s infinite"}}/>
-              <div style={{color:"#22c55e",fontSize:10,letterSpacing:4,fontWeight:900}}>LIVE · USER COUNT</div>
-            </div>
-            <div style={{fontFamily:"'Cinzel',serif",color:GOLD,fontSize:42,fontWeight:900,lineHeight:1,textShadow:"0 0 20px "+GOLD+"99"}}>{(()=>{try{return JSON.parse(localStorage.getItem("ms_user_count")||"0");}catch{return 0;}})()}</div>
-            <div style={{color:GOLDDIM,fontSize:9,letterSpacing:3,marginTop:4}}>launched june 1st 2026 · updates automatically</div>
-            <style>{"@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}"}</style>
-          </div>
-        </div>
+        {/* Live subscriber counter — green live light, auto-updates (LIVE visitors + TOTAL users) */}
+        <MSUserCounter/>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:18,marginBottom:36}}>
           <div style={{...Card()}}>
             <div style={{fontSize:11,color:GOLD,letterSpacing:3,marginBottom:8,fontWeight:700}}>EXISTING USER</div>
@@ -3858,7 +3897,7 @@ function P13({ go, mediaLib, timeline, setTimeline, user, filmDuration, setFilmD
               );
               if(wantFill){
                 const n=Math.max(1,Math.ceil(gapSec/60));
-                const prompt="Generate "+n+" additional cinematic fill scene"+(n>1?"s":"")+" (about "+fmt(gapSec)+" total) that match the tone, lighting and subject of this film, to bridge the gap to a "+fmt(targetSec)+" runtime. Keep the same color grade and style. 60 seconds each.";
+                const prompt="Generate "+n+" additional PHOTOREALISTIC, live-action cinematic fill scene"+(n>1?"s":"")+" (about "+fmt(gapSec)+" total) that match the tone, lighting and subject of this film, to bridge the gap to a "+fmt(targetSec)+" runtime. Keep the same color grade and style. Photorealistic, cinematic, natural motion, 35mm film, real human beings, live-action footage, no text, no cartoon, no anime, no illustration, no 3D render, no CGI. 60 seconds each.";
                 try{navigator.clipboard.writeText(prompt);}catch{}
                 alert("✓ Fill-scene prompt copied.\n\nGo to Page 8 (Video Tools), paste it, and generate "+n+" more clip"+(n>1?"s":"")+" — then SYNC again.");
                 go(8);
