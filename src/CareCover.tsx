@@ -192,7 +192,6 @@ function useData(session) {
         .on("postgres_changes", { event: "*", schema: "public", table: "staff" }, refreshAll)
         .on("postgres_changes", { event: "*", schema: "public", table: "clients" }, refreshAll)
         .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, refreshAll)
-        .on("postgres_changes", { event: "*", schema: "public", table: "absences" }, refreshAll)
         .subscribe();
     })();
     return () => { if (channel) sb.removeChannel(channel); };
@@ -200,18 +199,16 @@ function useData(session) {
 
   async function refreshAll() {
     if (!LIVE) return;
-    const [st, vi, cl, ms, ab] = await Promise.all([
+    const [st, vi, cl, ms] = await Promise.all([
       sb.from("staff").select("*").order("name"),
       sb.from("visits").select("*").order("start_hour"),
       sb.from("clients").select("*").order("name"),
       sb.from("messages").select("*").order("created_at", { ascending: false }).limit(100),
-      sb.from("absences").select("*").order("date"),
     ]);
     if (st.data) setStaff(st.data.map(mapStaff));
     if (vi.data) setVisits(vi.data.map(mapVisit));
     if (cl.data) setClients(cl.data);
     if (ms.data) setMsgs(ms.data.map((m) => ({ id: m.id, who: m.who, text: m.text, at: m.created_at })));
-    if (ab.data) setAbsences(ab.data.map(mapAbsence));
   }
 
   // ---- writes (live -> Supabase, demo -> local state) ----
@@ -302,9 +299,8 @@ function allocationPlan(clients, staff) {
     .map((c) => ({ client: c, match: bestCarerFor(c, staff, clients) }));
 }
 const clean = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined));
-const mapStaff = (r) => ({ id: r.id, name: r.name, role: r.role, phone: r.phone, skills: r.skills || [], status: r.status || "off", area: r.area, capacity: r.capacity ?? 6, festive: r.festive || {} });
+const mapStaff = (r) => ({ id: r.id, name: r.name, role: r.role, phone: r.phone, skills: r.skills || [], status: r.status || "off" });
 const mapVisit = (r) => ({ id: r.id, client: r.client, client_id: r.client_id, addr: r.addr, date: r.date, start: r.start_hour, dur: r.dur, staffId: r.staff_id, skills: r.skills || [], status: r.status, days: r.days || [], history: r.history || [] });
-const mapAbsence = (r) => ({ id: r.id, staffId: r.staff_id, type: r.type, date: r.date, note: r.note || "" });
 
 
 // ============================================================
@@ -398,25 +394,9 @@ function Entrance({ onEnter }) {
             <span style={{ fontFamily: DISPLAY, fontWeight: 600, fontSize: 72, lineHeight: 1, marginTop: 4, background: "linear-gradient(165deg,#f4e6c0,#c9a75e)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>C</span>
           </div>
           <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 58, letterSpacing: 1, lineHeight: 1, color: "#f4ead0" }}>CareCover</div>
-          <svg viewBox="0 0 300 40" preserveAspectRatio="none" style={{ width: "80%", height: 30, margin: "14px auto 0", display: "block", overflow: "visible" }}>
-            <defs>
-              <linearGradient id="pulseGoldA" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0" stopColor="#8a6a22" /><stop offset="0.42" stopColor="#c79a45" /><stop offset="0.5" stopColor="#f4e6c0" /><stop offset="0.58" stopColor="#c79a45" /><stop offset="1" stopColor="#8a6a22" />
-              </linearGradient>
-              <filter id="pulseGlowA" x="-10%" y="-40%" width="120%" height="180%"><feDropShadow dx="0" dy="0" stdDeviation="1.6" floodColor="#e8c96d" floodOpacity="0.45" /></filter>
-            </defs>
-            <path d="M0 20 L95 20 L108 20 L116 16 L124 24 L132 4 L142 36 L150 20 L160 20 L168 14 L176 20 L300 20" fill="none" stroke="url(#pulseGoldA)" strokeWidth={3.4} strokeLinecap="round" strokeLinejoin="round" filter="url(#pulseGlowA)" />
-          </svg>
+          <svg viewBox="0 0 300 40" preserveAspectRatio="none" style={{ width: "78%", height: 28, margin: "14px auto 0", display: "block", stroke: "#e8c96d", fill: "none", strokeWidth: 3, strokeLinecap: "round", strokeLinejoin: "round" }}><path d="M0 20 L95 20 L108 20 L116 16 L124 24 L132 4 L142 36 L150 20 L160 20 L168 14 L176 20 L300 20" /></svg>
           <div style={{ fontSize: 12, letterSpacing: 2.5, fontWeight: 800, color: "#c9d4de", marginTop: 20 }}>COMPLETE CARE WORKFORCE MANAGEMENT</div>
-          <svg viewBox="0 0 300 40" preserveAspectRatio="none" style={{ width: "82%", height: 24, margin: "20px auto 0", display: "block", overflow: "visible" }}>
-            <defs>
-              <linearGradient id="pulseGoldB" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0" stopColor="#8a6a22" /><stop offset="0.42" stopColor="#c79a45" /><stop offset="0.5" stopColor="#f4e6c0" /><stop offset="0.58" stopColor="#c79a45" /><stop offset="1" stopColor="#8a6a22" />
-              </linearGradient>
-              <filter id="pulseGlowB" x="-10%" y="-40%" width="120%" height="180%"><feDropShadow dx="0" dy="0" stdDeviation="1.3" floodColor="#e8c96d" floodOpacity="0.4" /></filter>
-            </defs>
-            <path d="M0 20 L95 20 L108 20 L116 16 L124 24 L132 4 L142 36 L150 20 L160 20 L168 14 L176 20 L300 20" fill="none" stroke="url(#pulseGoldB)" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" filter="url(#pulseGlowB)" />
-          </svg>
+          <svg viewBox="0 0 300 40" preserveAspectRatio="none" style={{ width: "82%", height: 22, margin: "20px auto 0", display: "block", stroke: "#e8c96d", fill: "none", strokeWidth: 2.6, strokeLinecap: "round", strokeLinejoin: "round" }}><path d="M0 20 L95 20 L108 20 L116 16 L124 24 L132 4 L142 36 L150 20 L160 20 L168 14 L176 20 L300 20" /></svg>
           <div style={{ fontFamily: DISPLAY, fontSize: 33, fontWeight: 800, letterSpacing: 0.4, color: "#f4ead0", marginTop: 36, lineHeight: 1.3 }}>Coordinated. Covered.</div>
           <div style={{ fontSize: 14.5, color: "#c9d4de", marginTop: 16, letterSpacing: 0.3, lineHeight: 1.5, maxWidth: 290, marginLeft: "auto", marginRight: "auto", fontWeight: 600 }}>Your agency's shifts, rotas, leave and team - managed together in one place.</div>
           <button onClick={open} style={{ marginTop: 36, width: 62, height: 62, borderRadius: "50%", border: "2px solid #e8c96d", background: "transparent", display: "grid", placeItems: "center", cursor: "pointer", marginLeft: "auto", marginRight: "auto" }} aria-label="Sign in">
@@ -432,17 +412,6 @@ function Entrance({ onEnter }) {
 // ============================================================
 //  AUTH  (live mode only)
 // ============================================================
-function AuthFld({ label, val, set, ph, type = "text", on, fieldBg }) {
-  return (
-    <div style={{ marginBottom: 13 }}>
-      <div style={{ fontSize: 12.5, fontWeight: 800, color: on, marginBottom: 6, letterSpacing: .3 }}>{label}</div>
-      <input value={val} onChange={(e) => set(e.target.value)} placeholder={ph} type={type}
-        autoCapitalize={type === "email" ? "none" : "sentences"} autoCorrect="off" spellCheck={false}
-        style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #2a4a68", background: fieldBg, borderRadius: 10, padding: "12px 14px", fontSize: 15, fontFamily: UI, color: INK, outline: "none" }} />
-    </div>
-  );
-}
-
 function AuthGate({ onDemo }) {
   const [mode, setMode] = useState("in");   // in | up | join
   const [agency, setAgency] = useState("");
@@ -484,6 +453,14 @@ function AuthGate({ onDemo }) {
   const soft = "rgba(226,236,243,.72)";
   const fieldBg = "rgba(255,255,255,.92)";
 
+  const Fld = ({ label, val, set, ph, type = "text" }) => (
+    <div style={{ marginBottom: 13 }}>
+      <div style={{ fontSize: 12.5, fontWeight: 800, color: on, marginBottom: 6, letterSpacing: .3 }}>{label}</div>
+      <input value={val} onChange={(e) => set(e.target.value)} placeholder={ph} type={type}
+        style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #2a4a68", background: fieldBg, borderRadius: 10, padding: "12px 14px", fontSize: 15, fontFamily: UI, color: INK, outline: "none" }} />
+    </div>
+  );
+
   return (
     <div style={{ minHeight: "100vh", background: "linear-gradient(165deg, #12283e 0%, #0d1f31 50%, #091624 100%)", fontFamily: UI, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 22px", boxSizing: "border-box" }}>
       <div style={{ width: "100%", maxWidth: 400, margin: "8vh auto 40px" }}>
@@ -501,9 +478,9 @@ function AuthGate({ onDemo }) {
         <div style={{ fontFamily: DISPLAY, fontSize: 27, fontWeight: 800, color: on, textAlign: "center" }}>{title}</div>
         <div style={{ fontSize: 14, fontWeight: 600, color: soft, textAlign: "center", marginTop: 5, marginBottom: 24 }}>{subtitle}</div>
 
-        {(mode === "up" || mode === "join") && <AuthFld label="Your name" val={name} set={setName} ph="Full name" on={on} fieldBg={fieldBg} />}
-        {mode === "up" && <AuthFld label="Agency name" val={agency} set={setAgency} ph="e.g. Bluebell Home Care" on={on} fieldBg={fieldBg} />}
-        {mode === "join" && <AuthFld label="Join code" val={joinCode} set={setJoinCode} ph="e.g. BLUEBELL-4Q2" on={on} fieldBg={fieldBg} />}
+        {(mode === "up" || mode === "join") && <Fld label="Your name" val={name} set={setName} ph="Full name" />}
+        {mode === "up" && <Fld label="Agency name" val={agency} set={setAgency} ph="e.g. Bluebell Home Care" />}
+        {mode === "join" && <Fld label="Join code" val={joinCode} set={setJoinCode} ph="e.g. BLUEBELL-4Q2" />}
         {mode === "join" && (
           <div style={{ marginBottom: 13 }}>
             <div style={{ fontSize: 12.5, fontWeight: 800, color: on, marginBottom: 6 }}>Your working area</div>
@@ -514,8 +491,8 @@ function AuthGate({ onDemo }) {
             </div>
           </div>
         )}
-        <AuthFld label="Work email" val={email} set={setEmail} ph="you@agency.co.uk" type="email" on={on} fieldBg={fieldBg} />
-        <AuthFld label="Password" val={pw} set={setPw} ph="Your password" type="password" on={on} fieldBg={fieldBg} />
+        <Fld label="Work email" val={email} set={setEmail} ph="you@agency.co.uk" type="email" />
+        <Fld label="Password" val={pw} set={setPw} ph="Your password" type="password" />
 
         {err && <div style={{ background: REDSOFT, color: RED, fontSize: 13, fontWeight: 600, padding: "9px 12px", borderRadius: 9, marginBottom: 12 }}>{err}</div>}
 
@@ -544,7 +521,7 @@ function AuthGate({ onDemo }) {
 // ============================================================
 function Studio({ session }) {
   const D = useData(session);
-  const { staff, visits, clients, msgs, absences, role, myStaffId, joinCode } = D;
+  const { staff, visits, clients, msgs, role, myStaffId, joinCode } = D;
   const mgr = isManager(role);
   const [tab, setTab] = useState("board");
   const [coverFor, setCoverFor] = useState(null);
@@ -929,9 +906,8 @@ function LeaveTraining({ absences, staff, canManage, myStaffId, onAdd, onRemove,
   const [adding, setAdding] = useState(false);
   const staffById = (id) => staff.find((s) => s.id === id);
   const year = new Date().getFullYear();
-  const safeAbs = Array.isArray(absences) ? absences.filter((a) => a && a.date) : [];
-  const mine = canManage ? safeAbs : safeAbs.filter((a) => a.staffId === myStaffId);
-  const upcoming = [...mine].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  const mine = canManage ? absences : absences.filter((a) => a.staffId === myStaffId);
+  const upcoming = [...mine].sort((a, b) => a.date.localeCompare(b.date));
   const plan = festivePlan(staff, year);
 
   return (
