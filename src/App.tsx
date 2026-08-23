@@ -5846,6 +5846,20 @@ export default function App() {
     const style=document.createElement("style");
     style.textContent="*{box-sizing:border-box!important;}body,html{margin:0;padding:0;width:100%;overflow-x:hidden;}[data-bolt-badge],a[href*=\'bolt.new\'],.bolt-badge,[class*=\'bolt\'],[id*=\'bolt\']{display:none!important;opacity:0!important;visibility:hidden!important;pointer-events:none!important;}@media(max-width:900px){.grid-cols-2,.grid-cols-3,.grid-cols-4{grid-template-columns:1fr 1fr!important;}}@media(max-width:600px){.grid-cols-2,.grid-cols-3,.grid-cols-4{grid-template-columns:1fr!important;}}";
     document.head.appendChild(style);
+    // Actively remove the "Made in Bolt" badge — CSS alone can miss it
+    const killBolt=()=>{
+      try{
+        document.querySelectorAll('a[href*="bolt.new"],a[href*="bolt.host"],[class*="bolt"],[id*="bolt"],[data-bolt-badge]').forEach((n)=>{
+          const t=(n.textContent||"").toLowerCase();
+          if(t.includes("bolt")||(n.getAttribute("href")||"").includes("bolt")){const box=n.closest("div")||n;try{box.remove();}catch(e){try{n.remove();}catch(e2){}}}
+        });
+        document.querySelectorAll("body *").forEach((el)=>{try{const cs=getComputedStyle(el);if(cs.position==="fixed"){const txt=(el.textContent||"").toLowerCase();if(txt.includes("made in bolt")||txt.trim()==="bolt"){el.remove();}}}catch(e){}});
+      }catch(e){}
+    };
+    killBolt();
+    const boltIv=setInterval(killBolt,1000);
+    const boltObs=new MutationObserver(killBolt);
+    try{boltObs.observe(document.body,{childList:true,subtree:true});}catch(e){}
     // PWA install prompt capture
     const handleInstall=(e)=>{e.preventDefault();window.deferredInstallPrompt=e;};
     window.addEventListener("beforeinstallprompt",handleInstall);
