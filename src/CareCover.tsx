@@ -1531,5 +1531,3 @@ const primarySm = { ...primary, padding: "9px 15px", fontSize: 14 };
 const outline = { border: `1px solid ${LINE}`, borderRadius: 10, padding: "9px 15px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: UI, background: CARD, color: SUBINK };
 const ghostSm = { border: `1px solid ${LINE}`, borderRadius: 9, padding: "7px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: UI, background: CARD, color: MUTE };
 const danger = { border: `1px solid ${RED}`, borderRadius: 10, padding: "9px 15px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: UI, background: "#fff", color: RED };
-const link = { border: "none", background: "transparent", color: BRAND, fontWeight: 700, cursor: "pointer", fontFamily: UI, fontSize: 14 };
-const chip = { fontSize: 11.5, background: CANVAS, color: SUBINK, padding: "2px 8px", borderRadius: 6, fontWeight: 600 };
