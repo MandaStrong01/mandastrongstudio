@@ -493,9 +493,9 @@ function AuthGate({ onDemo }) {
         <div style={{ fontFamily: DISPLAY, fontSize: 27, fontWeight: 800, color: on, textAlign: "center" }}>{title}</div>
         <div style={{ fontSize: 14, fontWeight: 600, color: soft, textAlign: "center", marginTop: 5, marginBottom: 24 }}>{subtitle}</div>
 
-        {(mode === "up" || mode === "join") && <AuthFld label="Your name" val={name} set={setName} ph="Full name" />}
-        {mode === "up" && <AuthFld label="Agency name" val={agency} set={setAgency} ph="e.g. Bluebell Home Care" />}
-        {mode === "join" && <AuthFld label="Join code" val={joinCode} set={setJoinCode} ph="e.g. BLUEBELL-4Q2" />}
+        {(mode === "up" || mode === "join") && <AuthFld key="fld-name" label="Your name" val={name} set={setName} ph="Full name" />}
+        {mode === "up" && <AuthFld key="fld-agency" label="Agency name" val={agency} set={setAgency} ph="e.g. Bluebell Home Care" />}
+        {mode === "join" && <AuthFld key="fld-joincode" label="Join code" val={joinCode} set={setJoinCode} ph="e.g. BLUEBELL-4Q2" />}
         {mode === "join" && (
           <div style={{ marginBottom: 13 }}>
             <div style={{ fontSize: 12.5, fontWeight: 800, color: on, marginBottom: 6 }}>Your working area</div>
@@ -506,8 +506,8 @@ function AuthGate({ onDemo }) {
             </div>
           </div>
         )}
-        <AuthFld label="Work email" val={email} set={setEmail} ph="you@agency.co.uk" type="email" />
-        <AuthFld label="Password" val={pw} set={setPw} ph="Your password" type="password" />
+        <AuthFld key="fld-email" label="Work email" val={email} set={setEmail} ph="you@agency.co.uk" type="email" />
+        <AuthFld key="fld-password" label="Password" val={pw} set={setPw} ph="Your password" type="password" />
 
         {err && <div style={{ background: REDSOFT, color: RED, fontSize: 13, fontWeight: 600, padding: "9px 12px", borderRadius: 9, marginBottom: 12 }}>{err}</div>}
 
@@ -1531,3 +1531,5 @@ const primarySm = { ...primary, padding: "9px 15px", fontSize: 14 };
 const outline = { border: `1px solid ${LINE}`, borderRadius: 10, padding: "9px 15px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: UI, background: CARD, color: SUBINK };
 const ghostSm = { border: `1px solid ${LINE}`, borderRadius: 9, padding: "7px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: UI, background: CARD, color: MUTE };
 const danger = { border: `1px solid ${RED}`, borderRadius: 10, padding: "9px 15px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: UI, background: "#fff", color: RED };
+const link = { border: "none", background: "transparent", color: BRAND, fontWeight: 700, cursor: "pointer", fontFamily: UI, fontSize: 14 };
+const chip = { fontSize: 11.5, background: CANVAS, color: SUBINK, padding: "2px 8px", borderRadius: 6, fontWeight: 600 };
