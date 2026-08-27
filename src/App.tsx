@@ -3229,7 +3229,7 @@ function P1({ go }) {
             // REAL DOWNLOAD: save a standalone launcher file to the user's computer.
             // Double-clicking it opens MandaStrong Studio full-screen in their browser.
             try{
-              const APP_URL="https://mandastrong01.bolt.host";
+              const APP_URL="https://mandastrongmovies.bolt.host";
               const launcher='<!doctype html><html><head><meta charset="utf-8"><title>MandaStrong Studio</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;background:#000}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body><iframe src="'+APP_URL+'" allow="camera;microphone;autoplay;fullscreen;clipboard-write" allowfullscreen></iframe><script>try{if(location.protocol==="file:"){location.href="'+APP_URL+'";}}catch(e){location.href="'+APP_URL+'";}<\\/script></body></html>';
               const blob=new Blob([launcher],{type:"text/html"});
               const url=URL.createObjectURL(blob);
@@ -5162,7 +5162,7 @@ function P20() {
             {sec("CHANGES TO THIS DISCLAIMER",<>{p("MandaStrong Studio reserves the right to update this disclaimer at any time. Continued use of the platform following any update constitutes your acceptance of the revised terms.")}</>)}
 
             <div style={{background:"#050500",border:"1px solid "+GOLDDIM,padding:"12px 16px",marginTop:8}}>
-              <p style={{color:GOLDDIM,fontSize:11,margin:0,letterSpacing:1}}>— AMANDA WOOLLEY · FOUNDER · MANDASTRONG STUDIO · MARCH 2026 · mandastrong01.bolt.host</p>
+              <p style={{color:GOLDDIM,fontSize:11,margin:0,letterSpacing:1}}>— AMANDA WOOLLEY · FOUNDER · MANDASTRONG STUDIO · MARCH 2026 · mandastrongmovies.bolt.host</p>
             </div>
           </div>
         )}
@@ -5288,7 +5288,7 @@ function P22() {
 function HowToGuide() {
   const [open,setOpen]=useState(null);
   const SECTIONS=[
-    {t:"WELCOME — HOW TO READ THIS BOOK",c:"This is more than a how-to. It is a complete guide to making films with AI on MandaStrong Studio (mandastrong01.bolt.host) AND a plain-English education in what AI actually is, so you are never at its mercy. Read Part One to understand the machine you are working with. Read Part Two to master the studio page by page. Read Part Three for the craft — prompting, voice, story, and ethics. You do not need any technical background. Every idea here is explained the way you would explain it to a friend across a kitchen table."},
+    {t:"WELCOME — HOW TO READ THIS BOOK",c:"This is more than a how-to. It is a complete guide to making films with AI on MandaStrong Studio (mandastrongmovies.bolt.host) AND a plain-English education in what AI actually is, so you are never at its mercy. Read Part One to understand the machine you are working with. Read Part Two to master the studio page by page. Read Part Three for the craft — prompting, voice, story, and ethics. You do not need any technical background. Every idea here is explained the way you would explain it to a friend across a kitchen table."},
 
     {t:"PART ONE · WHAT AI ACTUALLY IS",c:"AI does not think, feel, or know things the way you do. A large language model — the kind of AI behind most creative tools — is a very powerful pattern machine. It has read an enormous amount of human writing and images and learned which words and shapes tend to follow which. When you ask it for something, it is not looking up an answer; it is predicting, piece by piece, the most likely continuation of your request. That is why it can sound confident and still be wrong. Understanding this one fact changes how you use it: you are the director, it is the crew. It is fast and tireless and knows a thousand styles, but it has no judgement about YOUR story. That judgement is yours, and it always will be."},
 
@@ -5298,9 +5298,9 @@ function HowToGuide() {
 
     {t:"PART ONE · AI AND YOU — STAYING IN CHARGE",c:"AI is a tool, like a camera or a pen. It amplifies whoever holds it. It has no taste of its own, so your taste is the whole game. Never let a machine talk you out of a creative instinct, and never assume its confident answer is correct without checking. Keep your own copies of everything important. Understand that what you type may be processed on servers you don't control, so don't paste anything you'd be uncomfortable sharing. And remember the deeper point behind this whole studio: AI should widen the door to creativity, not replace the human standing in it. You are not being replaced. You are being equipped."},
 
-    {t:"PART TWO · GETTING STARTED",c:"Open mandastrong01.bolt.host. Log in with your credentials or start a free trial. Use the ☰ hamburger menu top left to jump to any of the 24 pages. AUTOSAVE ON is real — your work saves automatically every time you change page, generate a clip, or update your timeline. Hit 💾 SAVE PROJECT to create a named restore point you can return to from MY PROJECTS. Your plan and remaining usage are always visible from your account panel — tap the avatar top right."},
+    {t:"PART TWO · GETTING STARTED",c:"Open mandastrongmovies.bolt.host. Log in with your credentials or start a free trial. Use the ☰ hamburger menu top left to jump to any of the 24 pages. AUTOSAVE ON is real — your work saves automatically every time you change page, generate a clip, or update your timeline. Hit 💾 SAVE PROJECT to create a named restore point you can return to from MY PROJECTS. Your plan and remaining usage are always visible from your account panel — tap the avatar top right."},
 
-    {t:"PART TWO · PAGE 1 — HOME & INSTALL",c:"The front door of mandastrong01.bolt.host. The DOWNLOAD APP button installs the studio to your device like a real app, using your browser's built-in install prompt — on iPhone and iPad use Share then Add to Home Screen, as Apple does not allow one-tap install. The whole page is built to fit any screen, phone or laptop. From here, enter the studio and begin."},
+    {t:"PART TWO · PAGE 1 — HOME & INSTALL",c:"The front door of mandastrongmovies.bolt.host. The DOWNLOAD APP button installs the studio to your device like a real app, using your browser's built-in install prompt — on iPhone and iPad use Share then Add to Home Screen, as Apple does not allow one-tap install. The whole page is built to fit any screen, phone or laptop. From here, enter the studio and begin."},
 
     {t:"PART TWO · PAGE 4 — PLANS & USAGE CREDITS",c:"Three plans: Basic $20, Pro $30, Studio $50 — pick the one that fits how much you create. At the very bottom is PURCHASE USAGE CREDITS: a one-time top-up for extra renders and generations when you need more than your plan includes. Credits never expire. All payments run through Stripe's secure checkout — the studio never sees your card details."},
 
@@ -5324,9 +5324,9 @@ function HowToGuide() {
 
     {t:"PART THREE · ETHICS & RESPONSIBILITY",c:"With these tools you can make almost anything, which means the responsibility is yours. Don't put real people's faces or voices into films they never agreed to. Be honest when something is AI-generated if presenting it as real could mislead. Respect others' work rather than copying a living artist's style wholesale and calling it your own. And remember MandaStrong's founding mission — these tools exist to spread kindness, understanding, and hope, with proceeds supporting veterans' mental health and anti-bullying work. Make things that would make that mission proud."},
 
-    {t:"SAVING, RECOVERING & GETTING HELP",c:"AUTOSAVE ON saves as you work. 💾 SAVE PROJECT creates a named session — name it meaningfully. 📂 MY PROJECTS shows your history; CONTINUE PROJECT restores a session including all clips. An emergency save fires if the tab closes or crashes, so work is never permanently lost. Stuck? Agent Grok on Page 21 is your 24/7 production consultant with full knowledge of every page and workflow. This guide lives on your closing page at mandastrong01.bolt.host and is updated as the studio grows."},
+    {t:"SAVING, RECOVERING & GETTING HELP",c:"AUTOSAVE ON saves as you work. 💾 SAVE PROJECT creates a named session — name it meaningfully. 📂 MY PROJECTS shows your history; CONTINUE PROJECT restores a session including all clips. An emergency save fires if the tab closes or crashes, so work is never permanently lost. Stuck? Agent Grok on Page 21 is your 24/7 production consultant with full knowledge of every page and workflow. This guide lives on your closing page at mandastrongmovies.bolt.host and is updated as the studio grows."},
 
-    {t:"RECOMMENDED WORKFLOW — START TO FINISH",c:"Page 5 → fill Script to Movie's Producer, Describe, Production boxes → WIRE INTO RENDER. Page 6 → choose a voice → PREPARE TO SPEAK → SAVE TO MEDIA LIBRARY. Page 8 → upload a reference photo → generate each scene (your brief drives them) → add background music and stereo if you like. Page 13 → SYNC ALL TRACKS. Page 15 → set the mix. Page 16 → choose quality → render. Page 17 → preview. Page 18 → export and share. That is a finished film, made by you, at mandastrong01.bolt.host."},
+    {t:"RECOMMENDED WORKFLOW — START TO FINISH",c:"Page 5 → fill Script to Movie's Producer, Describe, Production boxes → WIRE INTO RENDER. Page 6 → choose a voice → PREPARE TO SPEAK → SAVE TO MEDIA LIBRARY. Page 8 → upload a reference photo → generate each scene (your brief drives them) → add background music and stereo if you like. Page 13 → SYNC ALL TRACKS. Page 15 → set the mix. Page 16 → choose quality → render. Page 17 → preview. Page 18 → export and share. That is a finished film, made by you, at mandastrongmovies.bolt.host."},
   ];
   return(
     <div style={{padding:"20px 32px 40px",maxWidth:860,margin:"0 auto"}}>
@@ -5806,7 +5806,7 @@ function IntroDoors({ onEnter }){
           boxShadow:"0 0 40px rgba(232,201,109,0.6)",borderRadius:0}}>
           ▶ ENTER
         </button>
-        <div style={{color:GOLDDIM,fontSize:11,letterSpacing:3,marginTop:16}}>mandastrong01.bolt.host</div>
+        <div style={{color:GOLDDIM,fontSize:11,letterSpacing:3,marginTop:16}}>mandastrongmovies.bolt.host</div>
       </div>
     </div>
   );
