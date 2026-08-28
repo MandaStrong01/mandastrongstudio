@@ -5700,7 +5700,7 @@ function P23({ go }) {
       <div style={{position:"relative",zIndex:1,padding:"30px 24px 80px"}}>
         <div style={{maxWidth:880,margin:"0 auto",textAlign:"center"}}>
           <div style={{width:"100%",maxHeight:"34vh",overflow:"hidden",position:"relative",display:"flex",alignItems:"center",justifyContent:"center",background:"#000",border:"1px solid "+GOLDDIM,marginBottom:26}}>
-            <video ref={bgRef} autoPlay loop playsInline muted preload="auto"
+            <video ref={bgRef} autoPlay loop playsInline muted defaultMuted controls={false} disablePictureInPicture preload="auto" webkit-playsinline="true"
               onLoadedMetadata={(e)=>{try{if(e.currentTarget.currentTime<0.1)e.currentTarget.currentTime=0.1;}catch{}}}
               style={{display:"block",width:"100%",maxHeight:"34vh",objectFit:"cover",background:"#000"}}>
               <source src="/background.mp4" type="video/mp4"/>
@@ -5914,7 +5914,7 @@ export default function App() {
           const t=(n.textContent||"").toLowerCase();
           if(t.includes("bolt")||(n.getAttribute("href")||"").includes("bolt")){const box=n.closest("div")||n;try{box.remove();}catch(e){try{n.remove();}catch(e2){}}}
         });
-        document.querySelectorAll("body *").forEach((el)=>{try{const cs=getComputedStyle(el);if(cs.position==="fixed"){const txt=(el.textContent||"").toLowerCase();if(txt.includes("made in bolt")||txt.trim()==="bolt"){el.remove();}}}catch(e){}});
+        document.querySelectorAll("body *").forEach((el)=>{try{const cs=getComputedStyle(el);if(cs.position==="fixed"){const txt=(el.textContent||"").toLowerCase();if(txt.includes("made in bolt") document.querySelectorAll("*").forEach((el)=>{try{if(el.shadowRoot){el.shadowRoot.querySelectorAll('a[href*="bolt"],[class*="bolt"],[id*="bolt"]').forEach((n)=>{try{n.remove();}catch(e){}});}}catch(e){}});||txt.trim()==="bolt"){el.remove();}}}catch(e){}});
       }catch(e){}
     };
     killBolt();
