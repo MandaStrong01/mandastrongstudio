@@ -273,12 +273,12 @@ const H1 = { fontFamily:"'Cinzel',serif", color:GOLD, letterSpacing:5, textTrans
 const Card = (x) => ({ background:"#0a0a0a", border:"1px solid "+GOLDDIM, borderRadius:0, padding:18, ...(x||{}) });
 
 const STOCK_VOICES = [
-  { id:"aurora", name:"Aurora", desc:"Warm British Female", style:"Documentary · Narrator", accent:"British RP" },
-  { id:"marcus", name:"Marcus", desc:"Deep American Male", style:"Cinematic · Authoritative", accent:"American" },
-  { id:"sophia", name:"Sophia", desc:"Bright Australian Female", style:"Upbeat · Engaging", accent:"Australian" },
-  { id:"james",  name:"James",  desc:"Dry British Male", style:"Sarcastic · Witty", accent:"British" },
-  { id:"nova",   name:"Nova",   desc:"Neutral AI Female", style:"Clean · Professional", accent:"Neutral" },
-  { id:"river",  name:"River",  desc:"Warm American Male", style:"Friendly · Intimate", accent:"American South" },
+  { id:"aurora", name:"Aurora", desc:"Warm British Female", style:"Documentary · Narrator", accent:"British RP", gender:"female", origin:"british" },
+  { id:"marcus", name:"Marcus", desc:"Deep American Male", style:"Cinematic · Authoritative", accent:"American", gender:"male", origin:"american" },
+  { id:"sophia", name:"Sophia", desc:"Bright Australian Female", style:"Upbeat · Engaging", accent:"Australian", gender:"female", origin:"australian" },
+  { id:"james",  name:"James",  desc:"Dry British Male", style:"Sarcastic · Witty", accent:"British", gender:"male", origin:"british" },
+  { id:"nova",   name:"Nova",   desc:"Neutral AI Female", style:"Clean · Professional", accent:"Neutral", gender:"female", origin:"american" },
+  { id:"river",  name:"River",  desc:"Warm American Male", style:"Friendly · Intimate", accent:"American South", gender:"male", origin:"american" },
 ];
 
 const VOICE_TOOLS = ["Text to Voice","Text to Speech","Text to Narration","Text to Audiobook","Text to Voiceover","AI Voice Actor","Neural Voice Generator","Emotion Voice Synth","Documentary Voice","Trailer Voice Generator","Commercial Voice","Character Voice Creator","Audiobook Creator","Podcast Voice"];
@@ -593,7 +593,28 @@ function ToolPanel({ tool, onClose, onSave }) {
   const photoRef = useRef(null);
   const inp = {width:"100%",background:"#000",border:"1px solid "+GOLDDIM,padding:"9px 12px",color:WHITE,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"'Rajdhani',sans-serif"};
 
-  const speak = (vid, txt) => speakText(vid, txt, ()=>setPlaying(vid), ()=>setPlaying(null));
+  // Engine FIRST so voices sound human and the gender is correct (male=male,
+  // female=female). The old path went straight to the device synth, which
+  // picks whatever system voice it likes and often defaulted to a female
+  // voice — that is the "records male, plays female" bug. Device synth is
+  // now only a fallback if the engine can't be reached.
+  const speak = async (vid, txt) => {
+    if(!txt||!txt.trim()) return;
+    const sv = STOCK_VOICES.find(x=>x.id===vid);
+    setPlaying(vid);
+    try{
+      if(sv){
+        const url = await engineSpeak(txt, { gender:sv.gender||"", origin:sv.origin||"", speed:0.95 });
+        if(url){
+          const ok = await playEngineAudio(url, 1);
+          setPlaying(null);
+          if(ok) return;
+        }
+      }
+    }catch(e){}
+    // Fallback: device synth (last resort only)
+    speakText(vid, txt, ()=>setPlaying(vid), ()=>setPlaying(null));
+  };
 
   const runAI = async () => {
     if (!describe.trim()) return;
@@ -1870,11 +1891,18 @@ function MusicVideoStudio({ onClose, onSave }) {
               <div style={{flex:1,overflowY:"auto",padding:"12px 14px"}}>
                 <div style={{color:GOLD,fontSize:11,fontWeight:900,letterSpacing:3,marginBottom:10}}>EXPORT YOUR MUSIC VIDEO</div>
 
-                {/* Download */}
-                <a href={videoUrl} download={(config.title||"MusicVideo")+"_"+config.artist+".webm"} target="_blank" rel="noopener noreferrer"
-                  style={{display:"block",background:"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",border:"none",color:"#000",padding:"12px",textAlign:"center",textDecoration:"none",fontWeight:900,fontSize:12,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",marginBottom:8}}>
+                {/* Download — use a click handler (Safari/iPad ignore the a-tag download attribute and just preview) */}
+                <button onClick={()=>{
+                  try{
+                    const fn=(config.title||"MusicVideo")+"_"+config.artist+".webm";
+                    const a=document.createElement("a");
+                    a.href=videoUrl; a.download=fn; a.target="_blank"; a.rel="noopener noreferrer";
+                    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                  }catch(e){ window.open(videoUrl,"_blank"); }
+                }}
+                  style={{display:"block",width:"100%",background:"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",border:"none",color:"#000",padding:"12px",textAlign:"center",textDecoration:"none",fontWeight:900,fontSize:12,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",marginBottom:8,cursor:"pointer"}}>
                   ⬇ DOWNLOAD VIDEO
-                </a>
+                </button>
 
                 {/* Save to media library */}
                 <button onClick={()=>{
@@ -2304,11 +2332,11 @@ function P6Voice({ onSave, setMediaLib }) {
                 <button onClick={()=>setConsent("yes")} style={{flex:1,background:narrConsent==="yes"?GOLD:"#000",border:"2px solid "+GOLD,color:narrConsent==="yes"?"#000":GOLD,padding:"7px",cursor:"pointer",fontSize:10,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif"}}>YES</button>
                 <button onClick={()=>setConsent("no")} style={{flex:1,background:narrConsent==="no"?"#7a0000":"#000",border:"2px solid #7a0000",color:narrConsent==="no"?"#fff":"#ef4444",padding:"7px",cursor:"pointer",fontSize:10,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif"}}>NO</button>
               </div>
-              {narrConsent==="yes"&&(<>
-                {!myVoices.some(v=>v.id===selVoice)&&(<div style={{color:GOLDDIM,fontSize:10,lineHeight:1.4,marginBottom:6,letterSpacing:0.5}}>Record or select your own voice above, then use the buttons below.</div>)}
-                <button onClick={saveMyVoiceAsNarration} style={{width:"100%",background:"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",border:"none",color:"#000",padding:"11px",cursor:"pointer",fontSize:11,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",marginBottom:6}}>🎙 USE MY VOICE AS NARRATION</button>
-                <button onClick={engineCompleteNarration} disabled={narrBusy} style={{width:"100%",background:narrBusy?"#1a0800":"linear-gradient(135deg,#1a0800,#2a1200)",border:"2px solid "+GOLD,color:GOLD,padding:"11px",cursor:narrBusy?"wait":"pointer",fontSize:11,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",marginBottom:6}}>{narrBusy?"⟳ CLONING & COMPLETING…":"🎧 USE ENGINE TO COMPLETE FULL NARRATION"}</button>
-              </>)}
+              {/* Buttons ALWAYS show so users see the options straight away, not after a press.
+                  They prompt to record/select a voice first if none is chosen yet. */}
+              <button onClick={saveMyVoiceAsNarration} style={{width:"100%",background:"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",border:"none",color:"#000",padding:"11px",cursor:"pointer",fontSize:11,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",marginBottom:6}}>🎙 USE MY VOICE AS NARRATION</button>
+              <button onClick={engineCompleteNarration} disabled={narrBusy} style={{width:"100%",background:narrBusy?"#1a0800":"linear-gradient(135deg,#1a0800,#2a1200)",border:"2px solid "+GOLD,color:GOLD,padding:"11px",cursor:narrBusy?"wait":"pointer",fontSize:11,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",marginBottom:6}}>{narrBusy?"⟳ CLONING & COMPLETING…":"🎧 USE ENGINE TO COMPLETE FULL NARRATION"}</button>
+              <button onClick={saveMyVoiceAsNarration} style={{width:"100%",background:"transparent",border:"2px solid "+GOLD,color:GOLD,padding:"11px",cursor:"pointer",fontSize:11,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",marginBottom:6}}>💾 SAVE TO MEDIA LIBRARY</button>
             </>)}
             {myVoices.map(v=>(
               <div key={v.id} onClick={()=>setSelVoice(v.id)} style={{padding:"10px 12px",marginBottom:4,background:selVoice===v.id?"#0a0800":"#000",border:"2px solid "+(selVoice===v.id?GOLD:GOLDDIM),cursor:"pointer"}}>
@@ -2319,7 +2347,7 @@ function P6Voice({ onSave, setMediaLib }) {
                     <div><div style={{color:selVoice===v.id?GOLD:WHITE,fontSize:13,fontWeight:900}}>{v.name}{v.clonedVoiceId&&<span style={{color:GOLD,fontSize:10,marginLeft:6}}>✦ CLONED</span>}</div><div style={{color:GOLDDIM,fontSize:10}}>{v.clonedVoiceId?"Your cloned voice — engine narrates in your voice":"Your uploaded voice"}</div></div>
                   </div>
                   <div style={{display:"flex",gap:4,flexShrink:0}}>
-                    {v.url&&<button onClick={e=>{e.stopPropagation();const a=new Audio(v.url);a.play().catch(()=>{});}} style={{background:GOLDDIM,border:"none",color:"#000",padding:"3px 8px",cursor:"pointer",fontSize:9,fontWeight:900}}>▶</button>}
+                    <button onClick={async e=>{e.stopPropagation();let purl=v.url;try{const st=await loadClipFromDB(v.dbId||v.id);if(st&&st.blob)purl=URL.createObjectURL(st.blob);}catch(err){}if(!purl){alert("Could not find that recording's audio — try recording again.");return;}const a=new Audio(purl);a.play().catch(()=>{});}} style={{background:GOLDDIM,border:"none",color:"#000",padding:"3px 8px",cursor:"pointer",fontSize:9,fontWeight:900}}>▶</button>
                     <button onClick={e=>{e.stopPropagation();delMyVoice(v.id);}} style={{background:"#000",border:"1px solid "+GOLD,color:GOLD,padding:"3px 8px",cursor:"pointer",fontSize:9,fontWeight:900}}>✕</button>
                   </div>
                 </div>
@@ -3167,8 +3195,15 @@ Write the drawFrame body now.`}]
           {videoUrl&&!generating&&(
             <div style={{padding:"10px 14px",borderBottom:"1px solid "+GOLDDIM+"",display:"flex",flexDirection:"column",gap:6}}>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                <a href={videoUrl} download={(title||"scene")+"_"+duration+"s.webm"} target="_blank" rel="noopener noreferrer"
-                  style={{background:"transparent",border:"1px solid "+GOLD,color:GOLD,padding:"8px",fontSize:10,textDecoration:"none",textAlign:"center",letterSpacing:1,fontWeight:900,fontFamily:"'Rajdhani',sans-serif",display:"block"}}>⬇ DOWNLOAD</a>
+                <button onClick={()=>{
+                  try{
+                    const fn=(title||"scene")+"_"+duration+"s.webm";
+                    const a=document.createElement("a");
+                    a.href=videoUrl; a.download=fn; a.target="_blank"; a.rel="noopener noreferrer";
+                    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                  }catch(e){ window.open(videoUrl,"_blank"); }
+                }}
+                  style={{background:"transparent",border:"1px solid "+GOLD,color:GOLD,padding:"8px",fontSize:10,textAlign:"center",letterSpacing:1,fontWeight:900,fontFamily:"'Rajdhani',sans-serif",display:"block",cursor:"pointer"}}>⬇ DOWNLOAD</button>
                 <button onClick={saveToLibrary}
                   style={{background:saved?"linear-gradient(135deg,#a07820,#e8c96d)":"transparent",border:"1px solid "+GOLD,color:saved?"#000":GOLD,padding:"8px",fontSize:10,cursor:"pointer",fontWeight:900,letterSpacing:1,fontFamily:"'Rajdhani',sans-serif"}}>
                   {saved?"✓ SAVED":"💾 LIBRARY"}
@@ -3750,8 +3785,14 @@ function MergeVideos({ onSave }) {
       {mergedUrl&&(
         <div style={{background:"#061406",border:"1px solid #22c55e",padding:"10px 14px"}}>
           <div style={{color:"#22c55e",fontWeight:900,fontSize:11,letterSpacing:2,marginBottom:6}}>✓ MERGED FILM SAVED TO MEDIA LIBRARY — READY FOR TIMELINE</div>
-          <a href={mergedUrl} download="MandaStrong_Merged.webm" target="_blank" rel="noopener noreferrer"
-            style={{color:GOLD,fontSize:10,fontWeight:900,letterSpacing:2,textDecoration:"none"}}>⬇ DOWNLOAD MERGED FILM</a>
+          <button onClick={()=>{
+            try{
+              const a=document.createElement("a");
+              a.href=mergedUrl; a.download="MandaStrong_Merged.webm"; a.target="_blank"; a.rel="noopener noreferrer";
+              document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            }catch(e){ window.open(mergedUrl,"_blank"); }
+          }}
+            style={{background:"transparent",border:"none",color:GOLD,fontSize:10,fontWeight:900,letterSpacing:2,cursor:"pointer",fontFamily:"'Rajdhani',sans-serif",padding:0}}>⬇ DOWNLOAD MERGED FILM</button>
         </div>
       )}
     </div>
