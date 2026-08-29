@@ -4504,31 +4504,85 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
       let perClipTarget = 0; // 0 = use each clip's natural duration
       if(targetTotal>0 && clips.length>0){
         if(gapFill){
+          // Measure what we actually have. Use the real decoded duration where we
+          // know it and only fall back to the filename hint, so the gap maths is
+          // not built on a guess of 30s per clip.
           let naturalTotal=0;
-          for(const c of clips){ const m=(c.name||"").match(/(\d+)s/); naturalTotal += m?parseInt(m[1]):30; }
+          for(const c of clips){
+            const m=(c.name||"").match(/(\d+)s/);
+            naturalTotal += Number(c.duration)>0 ? Number(c.duration) : (m?parseInt(m[1]):30);
+          }
           const gap = targetTotal - naturalTotal;
           if(gap > 5){
             const fillCount = Math.ceil(gap/30);
-            log("Fill-in: generating "+fillCount+" extra scene"+(fillCount!==1?"s":"")+" to reach "+(targetTotal/60).toFixed(1)+" min");
-            const seeds=clips.length?clips.map(c=>(c.name||"scene").replace(/\.[^.]+$/,"").replace(/_/g,"")):["cinematic scene"];
+            log("Fill-in: generating "+fillCount+" new bridge scene"+(fillCount!==1?"s":"")+" to reach "+(targetTotal/60).toFixed(1)+" min");
+            // AUTO-GENERATED BRIDGE SCENES.
+            // These are genuinely new scenes, not copies. Each one is described
+            // from the narration line that falls in its slot, so the picture
+            // follows what is being said instead of repeating earlier footage.
+            // They are marked __generate so the render loop below sends them to
+            // renderSceneToCanvas rather than looking for a video file.
+            // The narration script rides along on the audio asset as narrText
+            // (saved by "USE ENGINE TO COMPLETE FULL NARRATION"). That is the
+            // text the voice is actually speaking, so it is what the bridge
+            // scenes are described from.
+            const narrationText = (audioAsset && typeof audioAsset.narrText==="string" && audioAsset.narrText.trim())
+              ? audioAsset.narrText.trim()
+              : ((audioAsset && typeof audioAsset.text==="string" && audioAsset.text.trim()) ? audioAsset.text.trim() : "");
+            const narrationLines = narrationText
+              ? narrationText.split(/(?:\r?\n)+|(?<=[.!?])\s+/).map(s=>s.trim()).filter(s=>s.length>15)
+              : [];
             for(let f=0;f<fillCount;f++){
-              const seed=seeds[f%seeds.length]||"cinematic establishing scene";
-              clips.push({ name:"fill_"+(f+1)+"_"+seed+"_30s.webm", type:"video/webm", __fill:true });
+              // Walk the narration in step with the fill slots so scene N is
+              // described by the words that play under scene N.
+              const line = narrationLines.length
+                ? narrationLines[Math.floor(f*narrationLines.length/fillCount)]
+                : "";
+              const desc = line
+                ? line.replace(/["\n\r]/g," ").slice(0,180)
+                : "cinematic documentary establishing shot matching the tone of the film";
+              clips.push({
+                id:"fill_"+f+"_"+Date.now(),
+                name:"fill_"+(f+1)+"_30s.webm",
+                type:"video/webm",
+                __fill:true,
+                __generate:true,
+                __prompt:desc
+              });
             }
-            log("Fill-in ON — film built from "+clips.length+" scenes (real + generated)");
+            log("Fill-in ON — "+fillCount+" scenes will be generated from the narration");
           } else {
             log("Fill-in ON — footage already covers the target, nothing to add");
           }
-        } else {
-          perClipTarget = Math.max(targetTotal / clips.length, 3);
-          log("Stretch mode: film "+(targetTotal/60).toFixed(1)+" min ÷ "+clips.length+" clips ≈ "+perClipTarget.toFixed(1)+"s each");
         }
+        // RUNTIME LOCK — applies whether fill-in was Y or N.
+        // This was the bug: with fill-in ON, perClipTarget was never set, so every
+        // clip played only its natural length. 29 short clips ended the film after
+        // ~5 minutes and cut the narration off with it.
+        perClipTarget = Math.max(targetTotal / clips.length, 3);
+        log("Runtime lock: "+(targetTotal/60).toFixed(1)+" min ÷ "+clips.length+" clips ≈ "+perClipTarget.toFixed(1)+"s each");
       }
 
       for(let ci=0;ci<clips.length;ci++){
         const clip=clips[ci];setCurrentClipIdx(ci);
         log("Clip "+(ci+1)+"/"+clips.length+": "+clip.name.slice(0,45));
         setProgress(5+Math.round((ci/clips.length)*80));
+
+        // AUTO-GENERATED BRIDGE SCENE — no source file by design. Build it now
+        // from its narration-derived description, for its full share of the
+        // runtime, then move on. This is the fill-in feature doing its job.
+        if(clip.__generate){
+          const genDur = perClipTarget>0 ? perClipTarget : 30;
+          log("  Generating bridge scene "+(ci+1)+" ("+genDur.toFixed(0)+"s): "+String(clip.__prompt||"").slice(0,50));
+          const genOk = await renderSceneToCanvas(clip.__prompt||clip.name, genDur);
+          if(!genOk){
+            // Generation failed — hold the previous real clip for this window so
+            // the runtime and the narration still line up. Never a black gap.
+            const prev = clips.slice(0,ci).reverse().find(c=>c.file instanceof File || c.url);
+            if(prev){ log("  Bridge generation failed — holding previous scene"); clips[ci]={...prev,__fill:true,name:clip.name}; ci--; continue; }
+          }
+          continue;
+        }
 
         // Try to play the video file first
         let videoPlayed=false;
