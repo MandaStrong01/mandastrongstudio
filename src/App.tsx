@@ -4398,7 +4398,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
       const tracks=[...videoStream.getTracks(),...audioDest.stream.getTracks()];
       const combinedStream=new MediaStream(tracks);
       const vCodec=codec==="vp9"?"vp9":"vp8";
-      const mimeType=MediaRecorder.isTypeSupported("video/webm;codecs="+vCodec+",opus")?"video/webm;codecs="+vCodec+",opus":"video/webm";
+      const mimeType=["video/mp4;codecs=h264,aac","video/mp4;codecs=avc1.42E01E,mp4a.40.2","video/mp4","video/webm;codecs="+vCodec+",opus","video/webm"].find(m=>MediaRecorder.isTypeSupported(m))||"video/webm";
       // ── ADAPTIVE BITRATE — caps total memory so long films finish encoding ──
       // The end-of-render crash was memory: chunks pile up all render, then the
       // final Blob build doubles them. iPad Safari kills the tab (~1.4GB).
