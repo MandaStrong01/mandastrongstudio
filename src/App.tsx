@@ -2484,6 +2484,152 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
   const [gapPrompt,setGapPrompt]=useState(null);
   const [gapBusy,setGapBusy]=useState(false);
   const addLog=(msg)=>setLog(p=>[...p,msg]);
+  // ════════════════════════════════════════════════════════════════
+  // MAKE MY MOVIE — one-shot: drop everything in, set the length, press go.
+  // Expands what was pasted into scenes, then writes NEW scenes to reach
+  // the target length. Every scene runs through the same Cinema Engine and
+  // is stitched into one film — all on this page. Nothing navigates away.
+  // ════════════════════════════════════════════════════════════════
+  const [mmmText,setMmmText]=useState("");
+  const [mmmImages,setMmmImages]=useState([]);
+  const [mmmBusy,setMmmBusy]=useState(false);
+  const [mmmStage,setMmmStage]=useState("");
+  const [mmmPct,setMmmPct]=useState(0);
+  const [mmmScenes,setMmmScenes]=useState([]);
+  const [mmmDone,setMmmDone]=useState(false);
+  const [mmmFilmUrl,setMmmFilmUrl]=useState("");
+  const [mmmError,setMmmError]=useState("");
+  const mmmDropRef=useRef(null);
+  const mmmTargetMin=filmDuration||30;
+
+  const mmmAddFiles=(files)=>{
+    const arr=Array.from(files||[]);
+    arr.forEach(f=>{
+      if(f.type.startsWith("image")){
+        const r=new FileReader();
+        r.onload=ev=>setMmmImages(p=>[...p,{name:f.name,dataUrl:ev.target.result}]);
+        r.readAsDataURL(f);
+      }else if(f.type.startsWith("text")||f.name.match(/\.(txt|md|fdx|fountain)$/i)){
+        const r=new FileReader();
+        r.onload=ev=>setMmmText(p=>(p?p+"\n\n":"")+String(ev.target.result||""));
+        r.readAsText(f);
+      }
+    });
+  };
+
+  const makeMyMovie=async()=>{
+    const source=mmmText.trim();
+    if(!source&&mmmImages.length===0){ setMmmError("Drop in your script, or some images, first."); return; }
+    setMmmError(""); setMmmBusy(true); setMmmDone(false); setMmmFilmUrl(""); setMmmScenes([]); setMmmPct(0);
+
+    const targetMin=mmmTargetMin;
+    const targetScenes=Math.max(1,Math.round(targetMin));   // ~1 scene per minute
+    const perSceneSec=Math.max(4,Math.round((targetMin*60)/targetScenes));
+
+    // 1 ─ Write the full scene list to length
+    setMmmStage("Reading what you gave me and writing the scene list…");
+    setMmmPct(4);
+    let sceneList=[];
+    try{
+      const brief=(()=>{try{const b=JSON.parse(localStorage.getItem("ms_render_brief")||"null");return b&&b.brief?b.brief:"";}catch(e){return "";}})();
+      const ask=
+        "You are a film director. Turn the material below into an ordered shot list of EXACTLY "+targetScenes+" scenes for a "+targetMin+"-minute film"+(genre?(" in the "+genre+" genre"):"")+".\n"+
+        "RULES:\n"+
+        "1. FIRST expand what the user actually gave you into detailed shots — their material always leads.\n"+
+        "2. THEN, if you need more scenes to reach "+targetScenes+", write brand-new scenes that continue the story naturally to fill the full length.\n"+
+        "3. Each scene = one vivid visual paragraph an image engine can render (setting, subject, light, motion). No dialogue, no headings, no numbering.\n"+
+        (brief?("PRODUCER BRIEF (obey it):\n"+brief+"\n"):"")+
+        "MATERIAL:\n"+(source||"(no script — build the film from the uploaded images and the genre)")+"\n\n"+
+        "Return ONLY a JSON array of "+targetScenes+" strings. No other text.";
+      const d=await proxyFetch({model:"claude-sonnet-4-20250514",max_tokens:4000,messages:[{role:"user",content:ask}]});
+      const raw=(d&&d.content&&d.content.map?d.content.filter(x=>x.type==="text").map(x=>x.text).join("\n"):"")||"";
+      const clean=raw.replace(/```json|```/g,"").trim();
+      const start=clean.indexOf("["), end=clean.lastIndexOf("]");
+      sceneList=JSON.parse(clean.slice(start,end+1));
+      sceneList=sceneList.filter(s=>s&&String(s).trim()).map(s=>String(s).trim());
+    }catch(e){
+      // Fallback: split the pasted text into paragraphs, pad by repeating the arc
+      const paras=source.split(/\n\s*\n/).map(s=>s.trim()).filter(Boolean);
+      sceneList=paras.length?paras:["Opening establishing shot of the film's world, cinematic light."];
+      while(sceneList.length<targetScenes)sceneList.push(sceneList[sceneList.length%Math.max(1,paras.length)]||sceneList[0]);
+      sceneList=sceneList.slice(0,targetScenes);
+    }
+    if(!sceneList.length){ setMmmError("Couldn't build a scene list — try adding a bit more detail."); setMmmBusy(false); return; }
+    setMmmScenes(sceneList.map(s=>({text:s,status:"waiting"})));
+    setMmmStage("Scene list ready — "+sceneList.length+" scenes. Rendering…");
+    setMmmPct(10);
+
+    // 2 ─ Render every scene through the Cinema Engine and save each one
+    const firstImg=mmmImages.length?mmmImages[0].dataUrl:(refDataUrl||"");
+    const clipUrls=[];
+    for(let i=0;i<sceneList.length;i++){
+      setMmmScenes(p=>p.map((s,idx)=>idx===i?{...s,status:"rendering"}:s));
+      setMmmStage("Rendering scene "+(i+1)+" of "+sceneList.length+"…");
+      let url="";
+      try{
+        url=await engineRender(sceneList[i],{duration:perSceneSec,image:i===0?firstImg:"",aspect_ratio:"16:9"});
+      }catch(e){ url=""; }
+      if(url){
+        clipUrls.push(url);
+        setMmmScenes(p=>p.map((s,idx)=>idx===i?{...s,status:"done",url}:s));
+        // Save each scene into the Media Library / timeline exactly like the engine does
+        try{
+          const autoId="mmm_"+Date.now()+"_"+i;
+          const autoName="MakeMyMovie_scene"+(i+1)+".mp4";
+          const vb=await (await fetch(url)).blob();
+          await Promise.race([safeSaveClipToDB(autoId,vb,autoName,"video/mp4"),new Promise(r=>setTimeout(()=>r("t"),8000))]);
+          if(onSave)onSave({id:autoId,name:autoName,type:"video/mp4",url,file:new File([vb],autoName,{type:"video/mp4"}),dbId:autoId});
+        }catch(e){}
+      }else{
+        setMmmScenes(p=>p.map((s,idx)=>idx===i?{...s,status:"skipped"}:s));
+      }
+      setMmmPct(10+Math.round(((i+1)/sceneList.length)*80));
+    }
+
+    if(!clipUrls.length){ setMmmError("The engine returned no footage. If you're out of plan usage, top up below and run it again."); setMmmBusy(false); return; }
+
+    // 3 ─ Stitch into one film (concatenated playback) — stays on this page
+    setMmmStage("Stitching your film together…");
+    setMmmPct(94);
+    try{
+      // Save the ordered playlist so the render page / player can play it as one film
+      localStorage.setItem("ms_mmm_playlist",JSON.stringify(clipUrls));
+    }catch(e){}
+    setMmmFilmUrl(clipUrls[0]);   // player starts on scene 1 and advances through the list
+    setMmmPct(100);
+    setMmmStage("Your movie is ready.");
+    setMmmDone(true);
+    setMmmBusy(false);
+  };
+
+  // Sequential player: when one scene ends, play the next — feels like one film.
+  const mmmVideoRef=useRef(null);
+  const mmmIdxRef=useRef(0);
+  useEffect(()=>{
+    const v=mmmVideoRef.current;
+    if(!v||!mmmDone)return;
+    let list=[]; try{list=JSON.parse(localStorage.getItem("ms_mmm_playlist")||"[]");}catch(e){}
+    if(!list.length)return;
+    mmmIdxRef.current=0;
+    const onEnd=()=>{ mmmIdxRef.current++; if(mmmIdxRef.current<list.length){ v.src=list[mmmIdxRef.current]; v.play().catch(()=>{}); } };
+    v.addEventListener("ended",onEnd);
+    return ()=>v.removeEventListener("ended",onEnd);
+  },[mmmDone]);
+
+  const mmmDownloadAll=async()=>{
+    let list=[]; try{list=JSON.parse(localStorage.getItem("ms_mmm_playlist")||"[]");}catch(e){}
+    for(let i=0;i<list.length;i++){
+      try{
+        const b=await (await fetch(list[i])).blob();
+        const a=document.createElement("a");
+        a.href=URL.createObjectURL(b);
+        a.download="MakeMyMovie_scene"+(i+1)+".mp4";
+        document.body.appendChild(a); a.click(); a.remove();
+        await new Promise(r=>setTimeout(r,600));
+      }catch(e){}
+    }
+  };
+
   const madeSeconds=madeClips.reduce((a,c)=>a+(c.duration||0),0);
   const targetSeconds=targetMin*60;
   const gapSeconds=Math.max(0,targetSeconds-madeSeconds);
@@ -2927,6 +3073,89 @@ Write the drawFrame body now.`}]
         </div>
         <div style={{color:GOLD,fontSize:11,fontWeight:700,letterSpacing:2}}>✦ MANDASTRONG ENGINE · ANY PROMPT · ANY SUBJECT</div>
       </div>
+      {/* ════ MAKE MY MOVIE — one-shot, everything on this page ════ */}
+      <div style={{margin:"14px 20px",background:"linear-gradient(135deg,#0a0500,#160a00)",border:"2px solid "+GOLD,borderRadius:10,padding:16,boxShadow:"0 0 24px "+GOLD+"22"}}>
+        <div style={{textAlign:"center",marginBottom:12}}>
+          <div style={{fontFamily:"'Cinzel',serif",color:GOLD,letterSpacing:4,fontSize:22,textTransform:"uppercase"}}>✦ MAKE MY MOVIE ✦</div>
+          <div style={{color:DIM,fontSize:11,letterSpacing:2,marginTop:3}}>DROP EVERYTHING IN · SET THE LENGTH · PRESS GO — IT DOES THE REST</div>
+        </div>
+
+        <textarea value={mmmText} onChange={e=>setMmmText(e.target.value)} rows={4}
+          placeholder="Paste your whole film here — script, producer instructions, prompts, notes. Or drag files onto the box below."
+          style={{width:"100%",boxSizing:"border-box",background:"#0a0800",border:"1px solid "+GOLDDIM,borderRadius:6,color:"#fff",padding:11,fontSize:13,fontFamily:"'Rajdhani',sans-serif",resize:"vertical",marginBottom:8}}/>
+
+        <div ref={mmmDropRef}
+          onDragOver={e=>{e.preventDefault();}}
+          onDrop={e=>{e.preventDefault();mmmAddFiles(e.dataTransfer.files);}}
+          onClick={()=>{const inp=document.getElementById("mmmFileInput");if(inp)inp.click();}}
+          style={{textAlign:"center",border:"1px dashed "+GOLD+"77",borderRadius:6,padding:12,color:DIM,fontSize:12,letterSpacing:1,marginBottom:10,cursor:"pointer"}}>
+          ⬆ DROP OR TAP TO ADD SCRIPT &amp; IMAGES
+          <input id="mmmFileInput" type="file" multiple accept="image/*,text/*,.txt,.md,.fdx,.fountain" style={{display:"none"}}
+            onChange={e=>mmmAddFiles(e.target.files)}/>
+        </div>
+        {mmmImages.length>0&&(
+          <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:10}}>
+            {mmmImages.map((im,i)=>(
+              <div key={i} style={{position:"relative"}}>
+                <img src={im.dataUrl} style={{width:54,height:54,objectFit:"cover",border:"1px solid "+GOLD,borderRadius:4}}/>
+                <button onClick={()=>setMmmImages(p=>p.filter((_,x)=>x!==i))}
+                  style={{position:"absolute",top:-6,right:-6,width:18,height:18,borderRadius:9,background:"#000",color:GOLD,border:"1px solid "+GOLD,fontSize:11,cursor:"pointer",lineHeight:"16px",padding:0}}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+          <span style={{color:GOLD,fontSize:12,letterSpacing:2,fontWeight:900}}>MOVIE LENGTH</span>
+          <span style={{color:"#fff",fontSize:12,fontWeight:700}}>{mmmTargetMin} MIN · ~{Math.max(1,Math.round(mmmTargetMin))} SCENES</span>
+        </div>
+        <input type="range" min={1} max={180} value={mmmTargetMin}
+          onChange={e=>setFilmDuration&&setFilmDuration(Number(e.target.value))}
+          style={{width:"100%",accentColor:GOLD,marginBottom:2}}/>
+        <div style={{display:"flex",justifyContent:"space-between",color:DIM,fontSize:10,marginBottom:12}}><span>1 min</span><span>3 hours</span></div>
+
+        <button onClick={makeMyMovie} disabled={mmmBusy}
+          style={{width:"100%",padding:15,background:mmmBusy?"#333":"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",color:mmmBusy?"#888":"#000",border:"none",fontWeight:900,fontSize:17,letterSpacing:3,borderRadius:6,cursor:mmmBusy?"default":"pointer",fontFamily:"'Cinzel',serif"}}>
+          {mmmBusy?"MAKING YOUR MOVIE…":"✦ MAKE MY MOVIE"}
+        </button>
+
+        {mmmError&&<div style={{marginTop:10,color:"#ff8a8a",fontSize:12,textAlign:"center"}}>{mmmError}</div>}
+
+        {mmmBusy&&(
+          <div style={{marginTop:12}}>
+            <div style={{color:GOLD,fontSize:12,letterSpacing:1,marginBottom:6}}>{mmmStage}</div>
+            <div style={{background:"#111",height:10,border:"1px solid "+GOLDDIM,borderRadius:4,overflow:"hidden"}}>
+              <div style={{background:GOLD,height:"100%",width:mmmPct+"%",transition:"width .3s"}}/>
+            </div>
+          </div>
+        )}
+
+        {mmmScenes.length>0&&(
+          <div style={{marginTop:10,maxHeight:120,overflowY:"auto",fontSize:11}}>
+            {mmmScenes.map((s,i)=>(
+              <div key={i} style={{display:"flex",gap:6,padding:"2px 0",color:s.status==="done"?GOLD:s.status==="rendering"?"#fff":s.status==="skipped"?"#ff8a8a":DIM}}>
+                <span>{s.status==="done"?"✓":s.status==="rendering"?"●":s.status==="skipped"?"✕":"○"}</span>
+                <span style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>Scene {i+1}: {s.text}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {mmmDone&&(
+          <div style={{marginTop:14}}>
+            <video ref={mmmVideoRef} src={mmmFilmUrl} controls autoPlay playsInline
+              style={{width:"100%",borderRadius:8,border:"1px solid "+GOLD,background:"#000",aspectRatio:"16/9"}}/>
+            <button onClick={mmmDownloadAll}
+              style={{width:"100%",padding:14,marginTop:10,background:"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",color:"#000",border:"none",fontWeight:900,fontSize:16,letterSpacing:3,borderRadius:6,cursor:"pointer",fontFamily:"'Cinzel',serif"}}>
+              ⬇ DOWNLOAD MY MOVIE
+            </button>
+            <div style={{textAlign:"center",marginTop:8}}>
+              <a href={STRIPE.studio} target="_blank" rel="noreferrer" style={{color:DIM,fontSize:11,letterSpacing:1,textDecoration:"underline"}}>Need more length? Purchase usage credits</a>
+            </div>
+          </div>
+        )}
+      </div>
+
       <div style={{display:"grid",gridTemplateColumns:"1fr 420px",minHeight:"calc(100vh - 120px)"}}>
         <div style={{padding:20,overflowY:"auto"}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
