@@ -273,12 +273,12 @@ const H1 = { fontFamily:"'Cinzel',serif", color:GOLD, letterSpacing:5, textTrans
 const Card = (x) => ({ background:"#0a0a0a", border:"1px solid "+GOLDDIM, borderRadius:0, padding:18, ...(x||{}) });
 
 const STOCK_VOICES = [
-  { id:"aurora", name:"Aurora", desc:"Warm British Female", style:"Documentary · Narrator", accent:"British RP", gender:"female", origin:"british" },
-  { id:"marcus", name:"Marcus", desc:"Deep American Male", style:"Cinematic · Authoritative", accent:"American", gender:"male", origin:"american" },
-  { id:"sophia", name:"Sophia", desc:"Bright Australian Female", style:"Upbeat · Engaging", accent:"Australian", gender:"female", origin:"australian" },
-  { id:"james",  name:"James",  desc:"Dry British Male", style:"Sarcastic · Witty", accent:"British", gender:"male", origin:"british" },
-  { id:"nova",   name:"Nova",   desc:"Neutral AI Female", style:"Clean · Professional", accent:"Neutral", gender:"female", origin:"american" },
-  { id:"river",  name:"River",  desc:"Warm American Male", style:"Friendly · Intimate", accent:"American South", gender:"male", origin:"american" },
+  { id:"aurora", name:"Aurora", desc:"Warm British Female", style:"Documentary · Narrator", accent:"British RP" },
+  { id:"marcus", name:"Marcus", desc:"Deep American Male", style:"Cinematic · Authoritative", accent:"American" },
+  { id:"sophia", name:"Sophia", desc:"Bright Australian Female", style:"Upbeat · Engaging", accent:"Australian" },
+  { id:"james",  name:"James",  desc:"Dry British Male", style:"Sarcastic · Witty", accent:"British" },
+  { id:"nova",   name:"Nova",   desc:"Neutral AI Female", style:"Clean · Professional", accent:"Neutral" },
+  { id:"river",  name:"River",  desc:"Warm American Male", style:"Friendly · Intimate", accent:"American South" },
 ];
 
 const VOICE_TOOLS = ["Text to Voice","Text to Speech","Text to Narration","Text to Audiobook","Text to Voiceover","AI Voice Actor","Neural Voice Generator","Emotion Voice Synth","Documentary Voice","Trailer Voice Generator","Commercial Voice","Character Voice Creator","Audiobook Creator","Podcast Voice"];
@@ -593,28 +593,7 @@ function ToolPanel({ tool, onClose, onSave }) {
   const photoRef = useRef(null);
   const inp = {width:"100%",background:"#000",border:"1px solid "+GOLDDIM,padding:"9px 12px",color:WHITE,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"'Rajdhani',sans-serif"};
 
-  // Engine FIRST so voices sound human and the gender is correct (male=male,
-  // female=female). The old path went straight to the device synth, which
-  // picks whatever system voice it likes and often defaulted to a female
-  // voice — that is the "records male, plays female" bug. Device synth is
-  // now only a fallback if the engine can't be reached.
-  const speak = async (vid, txt) => {
-    if(!txt||!txt.trim()) return;
-    const sv = STOCK_VOICES.find(x=>x.id===vid);
-    setPlaying(vid);
-    try{
-      if(sv){
-        const url = await engineSpeak(txt, { gender:sv.gender||"", origin:sv.origin||"", speed:0.95 });
-        if(url){
-          const ok = await playEngineAudio(url, 1);
-          setPlaying(null);
-          if(ok) return;
-        }
-      }
-    }catch(e){}
-    // Fallback: device synth (last resort only)
-    speakText(vid, txt, ()=>setPlaying(vid), ()=>setPlaying(null));
-  };
+  const speak = (vid, txt) => speakText(vid, txt, ()=>setPlaying(vid), ()=>setPlaying(null));
 
   const runAI = async () => {
     if (!describe.trim()) return;
@@ -1891,18 +1870,11 @@ function MusicVideoStudio({ onClose, onSave }) {
               <div style={{flex:1,overflowY:"auto",padding:"12px 14px"}}>
                 <div style={{color:GOLD,fontSize:11,fontWeight:900,letterSpacing:3,marginBottom:10}}>EXPORT YOUR MUSIC VIDEO</div>
 
-                {/* Download — use a click handler (Safari/iPad ignore the a-tag download attribute and just preview) */}
-                <button onClick={()=>{
-                  try{
-                    const fn=(config.title||"MusicVideo")+"_"+config.artist+".webm";
-                    const a=document.createElement("a");
-                    a.href=videoUrl; a.download=fn; a.target="_blank"; a.rel="noopener noreferrer";
-                    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-                  }catch(e){ window.open(videoUrl,"_blank"); }
-                }}
-                  style={{display:"block",width:"100%",background:"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",border:"none",color:"#000",padding:"12px",textAlign:"center",textDecoration:"none",fontWeight:900,fontSize:12,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",marginBottom:8,cursor:"pointer"}}>
+                {/* Download */}
+                <a href={videoUrl} download={(config.title||"MusicVideo")+"_"+config.artist+".webm"} target="_blank" rel="noopener noreferrer"
+                  style={{display:"block",background:"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",border:"none",color:"#000",padding:"12px",textAlign:"center",textDecoration:"none",fontWeight:900,fontSize:12,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",marginBottom:8}}>
                   ⬇ DOWNLOAD VIDEO
-                </button>
+                </a>
 
                 {/* Save to media library */}
                 <button onClick={()=>{
@@ -2237,30 +2209,9 @@ function P6Voice({ onSave, setMediaLib }) {
   const speakNow=async(txt)=>{
     window.speechSynthesis.cancel(); stopEngineAudio();
     if(timerRef.current)clearTimeout(timerRef.current);
-    // ── OWN RECORDED VOICE: play the ACTUAL recording, never synthesize ──
-    // If the selected voice is one of the user's own recordings that has NOT
-    // been cloned, there is nothing to "speak" — just play back exactly what
-    // they recorded. (Without this, playback fell through to the device synth
-    // and came out as a female system voice instead of the real recording.)
-    const ownRaw=myVoices.find(v=>v.id===selVoice&&!v.clonedVoiceId);
-    if(ownRaw){
-      setSpeaking(true);
-      let blob=null;
-      try{const st=await loadClipFromDB(ownRaw.dbId||ownRaw.id);if(st&&st.blob)blob=st.blob;}catch(e){}
-      let purl=ownRaw.url;
-      if(blob){try{purl=URL.createObjectURL(blob);}catch(e){}}
-      if(!purl){setSpeaking(false);alert("Could not find that recording's audio — try recording again.");return;}
-      const ok=await playEngineAudio(purl,volume);
-      if(blob&&purl){try{URL.revokeObjectURL(purl);}catch(e){}}
-      setSpeaking(false);
-      return;
-    }
     const chunks=buildChunks(txt); chunksRef.current=chunks; idxRef.current=0;
     setSpeaking(true);
-    // Only send an explicit voice id when it's a REAL engine voice (a clone).
-    // For the 54 characters, the server-side human model picks the right voice
-    // from gender + origin + style, so passing a bogus id would break it.
-    const meta={voice:selected.engineVoice||"",gender:selected.gender||"",origin:selected.origin||"",style:selected.style||"",speed:speed*(selected.rate||0.9)};
+    const meta={voice:selected.engineVoice||"",gender:selected.gender||"",origin:selected.origin||"",speed:speed*(selected.rate||0.9)};
     const first=chunks.find(c=>c&&c.text);
     if(!first){setSpeaking(false);return;}
     const probe=await engineSpeak(first.text,meta);
@@ -2320,7 +2271,7 @@ function P6Voice({ onSave, setMediaLib }) {
               <button onClick={startMyRecording} style={{width:"100%",background:"linear-gradient(135deg,#7a0000,#ef4444)",border:"none",color:"#fff",padding:"10px",cursor:"pointer",fontSize:11,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",marginBottom:6}}>● RECORD MY VOICE NOW</button>
             )}
             <button onClick={()=>myVoiceInputRef.current&&myVoiceInputRef.current.click()} style={{width:"100%",background:"linear-gradient(135deg,#1a0800,#2a1200)",border:"2px solid "+GOLD,color:GOLD,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",marginBottom:6}}>＋ ADD YOUR OWN VOICE (FILE)</button>
-            {(<>
+            {myVoices.some(v=>v.id===selVoice)&&(<>
               <div style={{color:GOLDDIM,fontSize:10,lineHeight:1.5,marginBottom:6,letterSpacing:0.5}}>Record just the FIRST PARAGRAPH in your own voice — the engine clones your voice and reads the rest of the narration to the end in YOUR voice, wired into the generator and render.</div>
               <div style={{color:GOLD,fontSize:10,letterSpacing:2,fontWeight:900,marginBottom:4}}>ALLOW ENGINE TO CLONE VOICE?</div>
               <div style={{display:"flex",gap:6,marginBottom:8}}>
@@ -2332,11 +2283,10 @@ function P6Voice({ onSave, setMediaLib }) {
                 <button onClick={()=>setConsent("yes")} style={{flex:1,background:narrConsent==="yes"?GOLD:"#000",border:"2px solid "+GOLD,color:narrConsent==="yes"?"#000":GOLD,padding:"7px",cursor:"pointer",fontSize:10,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif"}}>YES</button>
                 <button onClick={()=>setConsent("no")} style={{flex:1,background:narrConsent==="no"?"#7a0000":"#000",border:"2px solid #7a0000",color:narrConsent==="no"?"#fff":"#ef4444",padding:"7px",cursor:"pointer",fontSize:10,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif"}}>NO</button>
               </div>
-              {/* Buttons ALWAYS show so users see the options straight away, not after a press.
-                  They prompt to record/select a voice first if none is chosen yet. */}
-              <button onClick={saveMyVoiceAsNarration} style={{width:"100%",background:"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",border:"none",color:"#000",padding:"11px",cursor:"pointer",fontSize:11,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",marginBottom:6}}>🎙 USE MY VOICE AS NARRATION</button>
-              <button onClick={engineCompleteNarration} disabled={narrBusy} style={{width:"100%",background:narrBusy?"#1a0800":"linear-gradient(135deg,#1a0800,#2a1200)",border:"2px solid "+GOLD,color:GOLD,padding:"11px",cursor:narrBusy?"wait":"pointer",fontSize:11,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",marginBottom:6}}>{narrBusy?"⟳ CLONING & COMPLETING…":"🎧 USE ENGINE TO COMPLETE FULL NARRATION"}</button>
-              <button onClick={saveMyVoiceAsNarration} style={{width:"100%",background:"transparent",border:"2px solid "+GOLD,color:GOLD,padding:"11px",cursor:"pointer",fontSize:11,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",marginBottom:6}}>💾 SAVE TO MEDIA LIBRARY</button>
+              {narrConsent==="yes"&&(<>
+                <button onClick={saveMyVoiceAsNarration} style={{width:"100%",background:"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",border:"none",color:"#000",padding:"11px",cursor:"pointer",fontSize:11,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",marginBottom:6}}>🎙 USE MY VOICE AS NARRATION</button>
+                <button onClick={engineCompleteNarration} disabled={narrBusy} style={{width:"100%",background:narrBusy?"#1a0800":"linear-gradient(135deg,#1a0800,#2a1200)",border:"2px solid "+GOLD,color:GOLD,padding:"11px",cursor:narrBusy?"wait":"pointer",fontSize:11,fontWeight:900,letterSpacing:2,fontFamily:"'Rajdhani',sans-serif",marginBottom:6}}>{narrBusy?"⟳ CLONING & COMPLETING…":"🎧 USE ENGINE TO COMPLETE FULL NARRATION"}</button>
+              </>)}
             </>)}
             {myVoices.map(v=>(
               <div key={v.id} onClick={()=>setSelVoice(v.id)} style={{padding:"10px 12px",marginBottom:4,background:selVoice===v.id?"#0a0800":"#000",border:"2px solid "+(selVoice===v.id?GOLD:GOLDDIM),cursor:"pointer"}}>
@@ -2347,7 +2297,7 @@ function P6Voice({ onSave, setMediaLib }) {
                     <div><div style={{color:selVoice===v.id?GOLD:WHITE,fontSize:13,fontWeight:900}}>{v.name}{v.clonedVoiceId&&<span style={{color:GOLD,fontSize:10,marginLeft:6}}>✦ CLONED</span>}</div><div style={{color:GOLDDIM,fontSize:10}}>{v.clonedVoiceId?"Your cloned voice — engine narrates in your voice":"Your uploaded voice"}</div></div>
                   </div>
                   <div style={{display:"flex",gap:4,flexShrink:0}}>
-                    <button onClick={async e=>{e.stopPropagation();let purl=v.url;try{const st=await loadClipFromDB(v.dbId||v.id);if(st&&st.blob)purl=URL.createObjectURL(st.blob);}catch(err){}if(!purl){alert("Could not find that recording's audio — try recording again.");return;}const a=new Audio(purl);a.play().catch(()=>{});}} style={{background:GOLDDIM,border:"none",color:"#000",padding:"3px 8px",cursor:"pointer",fontSize:9,fontWeight:900}}>▶</button>
+                    {v.url&&<button onClick={e=>{e.stopPropagation();const a=new Audio(v.url);a.play().catch(()=>{});}} style={{background:GOLDDIM,border:"none",color:"#000",padding:"3px 8px",cursor:"pointer",fontSize:9,fontWeight:900}}>▶</button>}
                     <button onClick={e=>{e.stopPropagation();delMyVoice(v.id);}} style={{background:"#000",border:"1px solid "+GOLD,color:GOLD,padding:"3px 8px",cursor:"pointer",fontSize:9,fontWeight:900}}>✕</button>
                   </div>
                 </div>
@@ -3195,15 +3145,8 @@ Write the drawFrame body now.`}]
           {videoUrl&&!generating&&(
             <div style={{padding:"10px 14px",borderBottom:"1px solid "+GOLDDIM+"",display:"flex",flexDirection:"column",gap:6}}>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                <button onClick={()=>{
-                  try{
-                    const fn=(title||"scene")+"_"+duration+"s.webm";
-                    const a=document.createElement("a");
-                    a.href=videoUrl; a.download=fn; a.target="_blank"; a.rel="noopener noreferrer";
-                    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-                  }catch(e){ window.open(videoUrl,"_blank"); }
-                }}
-                  style={{background:"transparent",border:"1px solid "+GOLD,color:GOLD,padding:"8px",fontSize:10,textAlign:"center",letterSpacing:1,fontWeight:900,fontFamily:"'Rajdhani',sans-serif",display:"block",cursor:"pointer"}}>⬇ DOWNLOAD</button>
+                <a href={videoUrl} download={(title||"scene")+"_"+duration+"s.webm"} target="_blank" rel="noopener noreferrer"
+                  style={{background:"transparent",border:"1px solid "+GOLD,color:GOLD,padding:"8px",fontSize:10,textDecoration:"none",textAlign:"center",letterSpacing:1,fontWeight:900,fontFamily:"'Rajdhani',sans-serif",display:"block"}}>⬇ DOWNLOAD</a>
                 <button onClick={saveToLibrary}
                   style={{background:saved?"linear-gradient(135deg,#a07820,#e8c96d)":"transparent",border:"1px solid "+GOLD,color:saved?"#000":GOLD,padding:"8px",fontSize:10,cursor:"pointer",fontWeight:900,letterSpacing:1,fontFamily:"'Rajdhani',sans-serif"}}>
                   {saved?"✓ SAVED":"💾 LIBRARY"}
@@ -3286,7 +3229,7 @@ function P1({ go }) {
             // REAL DOWNLOAD: save a standalone launcher file to the user's computer.
             // Double-clicking it opens MandaStrong Studio full-screen in their browser.
             try{
-              const APP_URL="https://mandastrongmovie.bolt.host";
+              const APP_URL="https://mandastrong01.bolt.host";
               const launcher='<!doctype html><html><head><meta charset="utf-8"><title>MandaStrong Studio</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;background:#000}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body><iframe src="'+APP_URL+'" allow="camera;microphone;autoplay;fullscreen;clipboard-write" allowfullscreen></iframe><script>try{if(location.protocol==="file:"){location.href="'+APP_URL+'";}}catch(e){location.href="'+APP_URL+'";}<\\/script></body></html>';
               const blob=new Blob([launcher],{type:"text/html"});
               const url=URL.createObjectURL(blob);
@@ -3785,14 +3728,8 @@ function MergeVideos({ onSave }) {
       {mergedUrl&&(
         <div style={{background:"#061406",border:"1px solid #22c55e",padding:"10px 14px"}}>
           <div style={{color:"#22c55e",fontWeight:900,fontSize:11,letterSpacing:2,marginBottom:6}}>✓ MERGED FILM SAVED TO MEDIA LIBRARY — READY FOR TIMELINE</div>
-          <button onClick={()=>{
-            try{
-              const a=document.createElement("a");
-              a.href=mergedUrl; a.download="MandaStrong_Merged.webm"; a.target="_blank"; a.rel="noopener noreferrer";
-              document.body.appendChild(a); a.click(); document.body.removeChild(a);
-            }catch(e){ window.open(mergedUrl,"_blank"); }
-          }}
-            style={{background:"transparent",border:"none",color:GOLD,fontSize:10,fontWeight:900,letterSpacing:2,cursor:"pointer",fontFamily:"'Rajdhani',sans-serif",padding:0}}>⬇ DOWNLOAD MERGED FILM</button>
+          <a href={mergedUrl} download="MandaStrong_Merged.webm" target="_blank" rel="noopener noreferrer"
+            style={{color:GOLD,fontSize:10,fontWeight:900,letterSpacing:2,textDecoration:"none"}}>⬇ DOWNLOAD MERGED FILM</a>
         </div>
       )}
     </div>
@@ -4398,7 +4335,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
       const tracks=[...videoStream.getTracks(),...audioDest.stream.getTracks()];
       const combinedStream=new MediaStream(tracks);
       const vCodec=codec==="vp9"?"vp9":"vp8";
-      const mimeType=["video/mp4;codecs=h264,aac","video/mp4;codecs=avc1.42E01E,mp4a.40.2","video/mp4","video/webm;codecs="+vCodec+",opus","video/webm"].find(m=>MediaRecorder.isTypeSupported(m))||"video/webm";
+      const mimeType=MediaRecorder.isTypeSupported("video/webm;codecs="+vCodec+",opus")?"video/webm;codecs="+vCodec+",opus":"video/webm";
       // ── ADAPTIVE BITRATE — caps total memory so long films finish encoding ──
       // The end-of-render crash was memory: chunks pile up all render, then the
       // final Blob build doubles them. iPad Safari kills the tab (~1.4GB).
@@ -4436,45 +4373,6 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
       log("Recording started...");
       setProgress(5);
       // Helper: render a scene directly to canvas using Claude
-      // AUTO-BRIDGE via the REAL engine. Ask generate-video for genuine footage,
-      // pull it local, and paint it onto the render canvas exactly like a normal
-      // clip. Returns true only if real footage played. Canvas is the fallback.
-      const renderBridgeViaEngine=async(prompt,clipDurSec)=>{
-        try{
-          log("  Engine bridge: "+String(prompt||"").slice(0,40)+"...");
-          const engUrl=await engineRender(prompt,{duration:Math.min(Math.round(clipDurSec)||5,10),aspect_ratio:"16:9"});
-          if(!engUrl){log("  Engine returned no footage — using canvas");return false;}
-          const vid=await engineToLocalVideo(engUrl);
-          if(!vid){log("  Bridge footage could not load — using canvas");return false;}
-          vid.loop=true;vid.currentTime=0;
-          try{await vid.play();}catch(e){}
-          await new Promise(r=>{ if(vid.readyState>=3){r();} else {vid.oncanplay=r;setTimeout(r,4000);} });
-          const startTime=Date.now();const msPerF=Math.round(1000/fps);let lastDraw=performance.now();
-          await new Promise(resolve=>{
-            const draw=()=>{
-              const elapsed=(Date.now()-startTime)/1000;
-              if(elapsed>=clipDurSec){try{vid.pause();}catch(e){}resolve(null);return;}
-              const now=performance.now();
-              if(now-lastDraw>=msPerF-2){
-                try{
-                  ctx.clearRect(0,0,dims.w,dims.h);
-                  ctx.drawImage(vid,0,0,dims.w,dims.h);
-                  const vig=ctx.createRadialGradient(dims.w/2,dims.h/2,dims.w*0.1,dims.w/2,dims.h/2,dims.w*0.8);
-                  vig.addColorStop(0,"rgba(0,0,0,0)");vig.addColorStop(1,"rgba(0,0,0,0.7)");
-                  ctx.fillStyle=vig;ctx.fillRect(0,0,dims.w,dims.h);
-                  ctx.fillStyle="#000";ctx.fillRect(0,0,dims.w,dims.h*0.05);ctx.fillRect(0,dims.h*0.95,dims.w,dims.h*0.05);
-                  lastDraw=now;
-                }catch(e){resolve(null);return;}
-              }
-              requestAnimationFrame(draw);
-            };
-            requestAnimationFrame(draw);
-          });
-          log("  ✓ Bridge rendered from real engine footage");
-          return true;
-        }catch(e){log("  Engine bridge error: "+e.message+" — using canvas");return false;}
-      };
-
       const renderSceneToCanvas=async(sceneName,clipDurSec)=>{
         const scenePrompt=sceneName.replace(/\.[^.]+$/,"").replace(/_/g," ").replace(/\d+s$/,"").trim();
         log("  Regenerating: "+scenePrompt.slice(0,40)+"...");
@@ -4543,88 +4441,31 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
       let perClipTarget = 0; // 0 = use each clip's natural duration
       if(targetTotal>0 && clips.length>0){
         if(gapFill){
-          // Measure what we actually have. Use the real decoded duration where we
-          // know it and only fall back to the filename hint, so the gap maths is
-          // not built on a guess of 30s per clip.
           let naturalTotal=0;
-          for(const c of clips){
-            const m=(c.name||"").match(/(\d+)s/);
-            naturalTotal += Number(c.duration)>0 ? Number(c.duration) : (m?parseInt(m[1]):30);
-          }
+          for(const c of clips){ const m=(c.name||"").match(/(\d+)s/); naturalTotal += m?parseInt(m[1]):30; }
           const gap = targetTotal - naturalTotal;
           if(gap > 5){
             const fillCount = Math.ceil(gap/30);
-            log("Fill-in: generating "+fillCount+" new bridge scene"+(fillCount!==1?"s":"")+" to reach "+(targetTotal/60).toFixed(1)+" min");
-            // AUTO-GENERATED BRIDGE SCENES.
-            // These are genuinely new scenes, not copies. Each one is described
-            // from the narration line that falls in its slot, so the picture
-            // follows what is being said instead of repeating earlier footage.
-            // They are marked __generate so the render loop below sends them to
-            // renderSceneToCanvas rather than looking for a video file.
-            // The narration script rides along on the audio asset as narrText
-            // (saved by "USE ENGINE TO COMPLETE FULL NARRATION"). That is the
-            // text the voice is actually speaking, so it is what the bridge
-            // scenes are described from.
-            const narrationText = (audioAsset && typeof audioAsset.narrText==="string" && audioAsset.narrText.trim())
-              ? audioAsset.narrText.trim()
-              : ((audioAsset && typeof audioAsset.text==="string" && audioAsset.text.trim()) ? audioAsset.text.trim() : "");
-            const narrationLines = narrationText
-              ? narrationText.split(/(?:\r?\n)+|(?<=[.!?])\s+/).map(s=>s.trim()).filter(s=>s.length>15)
-              : [];
+            log("Fill-in: generating "+fillCount+" extra scene"+(fillCount!==1?"s":"")+" to reach "+(targetTotal/60).toFixed(1)+" min");
+            const seeds=clips.length?clips.map(c=>(c.name||"scene").replace(/\.[^.]+$/,"").replace(/_/g,"")):["cinematic scene"];
             for(let f=0;f<fillCount;f++){
-              // Walk the narration in step with the fill slots so scene N is
-              // described by the words that play under scene N.
-              const line = narrationLines.length
-                ? narrationLines[Math.floor(f*narrationLines.length/fillCount)]
-                : "";
-              const desc = line
-                ? line.replace(/["\n\r]/g," ").slice(0,180)
-                : "cinematic documentary establishing shot matching the tone of the film";
-              clips.push({
-                id:"fill_"+f+"_"+Date.now(),
-                name:"fill_"+(f+1)+"_30s.webm",
-                type:"video/webm",
-                __fill:true,
-                __generate:true,
-                __prompt:desc
-              });
+              const seed=seeds[f%seeds.length]||"cinematic establishing scene";
+              clips.push({ name:"fill_"+(f+1)+"_"+seed+"_30s.webm", type:"video/webm", __fill:true });
             }
-            log("Fill-in ON — "+fillCount+" scenes will be generated from the narration");
+            log("Fill-in ON — film built from "+clips.length+" scenes (real + generated)");
           } else {
             log("Fill-in ON — footage already covers the target, nothing to add");
           }
+        } else {
+          perClipTarget = Math.max(targetTotal / clips.length, 3);
+          log("Stretch mode: film "+(targetTotal/60).toFixed(1)+" min ÷ "+clips.length+" clips ≈ "+perClipTarget.toFixed(1)+"s each");
         }
-        // RUNTIME LOCK — applies whether fill-in was Y or N.
-        // This was the bug: with fill-in ON, perClipTarget was never set, so every
-        // clip played only its natural length. 29 short clips ended the film after
-        // ~5 minutes and cut the narration off with it.
-        perClipTarget = Math.max(targetTotal / clips.length, 3);
-        log("Runtime lock: "+(targetTotal/60).toFixed(1)+" min ÷ "+clips.length+" clips ≈ "+perClipTarget.toFixed(1)+"s each");
       }
 
       for(let ci=0;ci<clips.length;ci++){
         const clip=clips[ci];setCurrentClipIdx(ci);
         log("Clip "+(ci+1)+"/"+clips.length+": "+clip.name.slice(0,45));
         setProgress(5+Math.round((ci/clips.length)*80));
-
-        // AUTO-GENERATED BRIDGE SCENE — no source file by design. Build it now
-        // from its narration-derived description, for its full share of the
-        // runtime, then move on. This is the fill-in feature doing its job.
-        if(clip.__generate){
-          const genDur = perClipTarget>0 ? perClipTarget : 30;
-          log("  Generating bridge scene "+(ci+1)+" ("+genDur.toFixed(0)+"s): "+String(clip.__prompt||"").slice(0,50));
-          // Try the REAL engine first — genuine photoreal footage. Only if the
-          // engine can't deliver do we fall back to the canvas painter.
-          let genOk = await renderBridgeViaEngine(clip.__prompt||clip.name, genDur);
-          if(!genOk){ genOk = await renderSceneToCanvas(clip.__prompt||clip.name, genDur); }
-          if(!genOk){
-            // Generation failed — hold the previous real clip for this window so
-            // the runtime and the narration still line up. Never a black gap.
-            const prev = clips.slice(0,ci).reverse().find(c=>c.file instanceof File || c.url);
-            if(prev){ log("  Bridge generation failed — holding previous scene"); clips[ci]={...prev,__fill:true,name:clip.name}; ci--; continue; }
-          }
-          continue;
-        }
 
         // Try to play the video file first
         let videoPlayed=false;
@@ -5321,7 +5162,7 @@ function P20() {
             {sec("CHANGES TO THIS DISCLAIMER",<>{p("MandaStrong Studio reserves the right to update this disclaimer at any time. Continued use of the platform following any update constitutes your acceptance of the revised terms.")}</>)}
 
             <div style={{background:"#050500",border:"1px solid "+GOLDDIM,padding:"12px 16px",marginTop:8}}>
-              <p style={{color:GOLDDIM,fontSize:11,margin:0,letterSpacing:1}}>— AMANDA WOOLLEY · FOUNDER · MANDASTRONG STUDIO · MARCH 2026 · mandastrongmovie.bolt.host</p>
+              <p style={{color:GOLDDIM,fontSize:11,margin:0,letterSpacing:1}}>— AMANDA WOOLLEY · FOUNDER · MANDASTRONG STUDIO · MARCH 2026 · mandastrong01.bolt.host</p>
             </div>
           </div>
         )}
@@ -5447,7 +5288,7 @@ function P22() {
 function HowToGuide() {
   const [open,setOpen]=useState(null);
   const SECTIONS=[
-    {t:"WELCOME — HOW TO READ THIS BOOK",c:"This is more than a how-to. It is a complete guide to making films with AI on MandaStrong Studio (mandastrongmovie.bolt.host) AND a plain-English education in what AI actually is, so you are never at its mercy. Read Part One to understand the machine you are working with. Read Part Two to master the studio page by page. Read Part Three for the craft — prompting, voice, story, and ethics. You do not need any technical background. Every idea here is explained the way you would explain it to a friend across a kitchen table."},
+    {t:"WELCOME — HOW TO READ THIS BOOK",c:"This is more than a how-to. It is a complete guide to making films with AI on MandaStrong Studio (mandastrong01.bolt.host) AND a plain-English education in what AI actually is, so you are never at its mercy. Read Part One to understand the machine you are working with. Read Part Two to master the studio page by page. Read Part Three for the craft — prompting, voice, story, and ethics. You do not need any technical background. Every idea here is explained the way you would explain it to a friend across a kitchen table."},
 
     {t:"PART ONE · WHAT AI ACTUALLY IS",c:"AI does not think, feel, or know things the way you do. A large language model — the kind of AI behind most creative tools — is a very powerful pattern machine. It has read an enormous amount of human writing and images and learned which words and shapes tend to follow which. When you ask it for something, it is not looking up an answer; it is predicting, piece by piece, the most likely continuation of your request. That is why it can sound confident and still be wrong. Understanding this one fact changes how you use it: you are the director, it is the crew. It is fast and tireless and knows a thousand styles, but it has no judgement about YOUR story. That judgement is yours, and it always will be."},
 
@@ -5457,9 +5298,9 @@ function HowToGuide() {
 
     {t:"PART ONE · AI AND YOU — STAYING IN CHARGE",c:"AI is a tool, like a camera or a pen. It amplifies whoever holds it. It has no taste of its own, so your taste is the whole game. Never let a machine talk you out of a creative instinct, and never assume its confident answer is correct without checking. Keep your own copies of everything important. Understand that what you type may be processed on servers you don't control, so don't paste anything you'd be uncomfortable sharing. And remember the deeper point behind this whole studio: AI should widen the door to creativity, not replace the human standing in it. You are not being replaced. You are being equipped."},
 
-    {t:"PART TWO · GETTING STARTED",c:"Open mandastrongmovie.bolt.host. Log in with your credentials or start a free trial. Use the ☰ hamburger menu top left to jump to any of the 24 pages. AUTOSAVE ON is real — your work saves automatically every time you change page, generate a clip, or update your timeline. Hit 💾 SAVE PROJECT to create a named restore point you can return to from MY PROJECTS. Your plan and remaining usage are always visible from your account panel — tap the avatar top right."},
+    {t:"PART TWO · GETTING STARTED",c:"Open mandastrong01.bolt.host. Log in with your credentials or start a free trial. Use the ☰ hamburger menu top left to jump to any of the 24 pages. AUTOSAVE ON is real — your work saves automatically every time you change page, generate a clip, or update your timeline. Hit 💾 SAVE PROJECT to create a named restore point you can return to from MY PROJECTS. Your plan and remaining usage are always visible from your account panel — tap the avatar top right."},
 
-    {t:"PART TWO · PAGE 1 — HOME & INSTALL",c:"The front door of mandastrongmovie.bolt.host. The DOWNLOAD APP button installs the studio to your device like a real app, using your browser's built-in install prompt — on iPhone and iPad use Share then Add to Home Screen, as Apple does not allow one-tap install. The whole page is built to fit any screen, phone or laptop. From here, enter the studio and begin."},
+    {t:"PART TWO · PAGE 1 — HOME & INSTALL",c:"The front door of mandastrong01.bolt.host. The DOWNLOAD APP button installs the studio to your device like a real app, using your browser's built-in install prompt — on iPhone and iPad use Share then Add to Home Screen, as Apple does not allow one-tap install. The whole page is built to fit any screen, phone or laptop. From here, enter the studio and begin."},
 
     {t:"PART TWO · PAGE 4 — PLANS & USAGE CREDITS",c:"Three plans: Basic $20, Pro $30, Studio $50 — pick the one that fits how much you create. At the very bottom is PURCHASE USAGE CREDITS: a one-time top-up for extra renders and generations when you need more than your plan includes. Credits never expire. All payments run through Stripe's secure checkout — the studio never sees your card details."},
 
@@ -5483,9 +5324,9 @@ function HowToGuide() {
 
     {t:"PART THREE · ETHICS & RESPONSIBILITY",c:"With these tools you can make almost anything, which means the responsibility is yours. Don't put real people's faces or voices into films they never agreed to. Be honest when something is AI-generated if presenting it as real could mislead. Respect others' work rather than copying a living artist's style wholesale and calling it your own. And remember MandaStrong's founding mission — these tools exist to spread kindness, understanding, and hope, with proceeds supporting veterans' mental health and anti-bullying work. Make things that would make that mission proud."},
 
-    {t:"SAVING, RECOVERING & GETTING HELP",c:"AUTOSAVE ON saves as you work. 💾 SAVE PROJECT creates a named session — name it meaningfully. 📂 MY PROJECTS shows your history; CONTINUE PROJECT restores a session including all clips. An emergency save fires if the tab closes or crashes, so work is never permanently lost. Stuck? Agent Grok on Page 21 is your 24/7 production consultant with full knowledge of every page and workflow. This guide lives on your closing page at mandastrongmovie.bolt.host and is updated as the studio grows."},
+    {t:"SAVING, RECOVERING & GETTING HELP",c:"AUTOSAVE ON saves as you work. 💾 SAVE PROJECT creates a named session — name it meaningfully. 📂 MY PROJECTS shows your history; CONTINUE PROJECT restores a session including all clips. An emergency save fires if the tab closes or crashes, so work is never permanently lost. Stuck? Agent Grok on Page 21 is your 24/7 production consultant with full knowledge of every page and workflow. This guide lives on your closing page at mandastrong01.bolt.host and is updated as the studio grows."},
 
-    {t:"RECOMMENDED WORKFLOW — START TO FINISH",c:"Page 5 → fill Script to Movie's Producer, Describe, Production boxes → WIRE INTO RENDER. Page 6 → choose a voice → PREPARE TO SPEAK → SAVE TO MEDIA LIBRARY. Page 8 → upload a reference photo → generate each scene (your brief drives them) → add background music and stereo if you like. Page 13 → SYNC ALL TRACKS. Page 15 → set the mix. Page 16 → choose quality → render. Page 17 → preview. Page 18 → export and share. That is a finished film, made by you, at mandastrongmovie.bolt.host."},
+    {t:"RECOMMENDED WORKFLOW — START TO FINISH",c:"Page 5 → fill Script to Movie's Producer, Describe, Production boxes → WIRE INTO RENDER. Page 6 → choose a voice → PREPARE TO SPEAK → SAVE TO MEDIA LIBRARY. Page 8 → upload a reference photo → generate each scene (your brief drives them) → add background music and stereo if you like. Page 13 → SYNC ALL TRACKS. Page 15 → set the mix. Page 16 → choose quality → render. Page 17 → preview. Page 18 → export and share. That is a finished film, made by you, at mandastrong01.bolt.host."},
   ];
   return(
     <div style={{padding:"20px 32px 40px",maxWidth:860,margin:"0 auto"}}>
@@ -5798,7 +5639,6 @@ function P23({ go }) {
           <div style={{width:"100%",maxHeight:"34vh",overflow:"hidden",position:"relative",display:"flex",alignItems:"center",justifyContent:"center",background:"#000",border:"1px solid "+GOLDDIM,marginBottom:26}}>
             <video ref={bgRef} autoPlay loop playsInline muted preload="auto"
               onLoadedMetadata={(e)=>{try{if(e.currentTarget.currentTime<0.1)e.currentTarget.currentTime=0.1;}catch{}}}
-              onError={(e)=>{try{e.currentTarget.style.display="none";const fb=e.currentTarget.parentElement&&e.currentTarget.parentElement.querySelector("[data-vidfallback]");if(fb)fb.style.display="flex";}catch{}}}
               style={{display:"block",width:"100%",maxHeight:"34vh",objectFit:"cover",background:"#000"}}>
               <source src="/background.mp4" type="video/mp4"/>
               <source src="background.mp4" type="video/mp4"/>
@@ -5807,12 +5647,8 @@ function P23({ go }) {
               <source src="background_5.mp4" type="video/mp4"/>
               <source src="./background_5.mp4" type="video/mp4"/>
               <source src="/thatsallfolks.mp4" type="video/mp4"/>
-              <source src="thatsallfolks.mp4" type="video/mp4"/>
             </video>
-            <div data-vidfallback style={{display:"none",position:"absolute",inset:0,alignItems:"center",justifyContent:"center",flexDirection:"column",background:"radial-gradient(circle at 50% 40%,#1a1400,#000)",textAlign:"center",padding:20}}>
-              <div style={{fontFamily:"'Cinzel',serif",color:GOLD,fontSize:"clamp(22px,4vw,38px)",fontWeight:900,letterSpacing:6,textShadow:"0 0 30px "+GOLD+"88"}}>THAT'S ALL FOLKS</div>
-              <div style={{color:GOLDDIM,fontSize:11,letterSpacing:4,marginTop:10}}>MANDASTRONG STUDIO</div>
-            </div>
+
           </div>
           <div style={{fontSize:10,color:GOLD,letterSpacing:6,marginBottom:8,fontWeight:700}}>MANDASTRONG STUDIO · CINEMA INTELLIGENCE PLATFORM</div>
           <h1 style={{fontFamily:"'Cinzel',serif",color:GOLD,fontSize:"clamp(32px,5vw,52px)",fontWeight:900,letterSpacing:8,textShadow:"0 0 40px "+GOLD+"99",marginBottom:28}}>THAT'S ALL FOLKS</h1>
@@ -5970,7 +5806,7 @@ function IntroDoors({ onEnter }){
           boxShadow:"0 0 40px rgba(232,201,109,0.6)",borderRadius:0}}>
           ▶ ENTER
         </button>
-        <div style={{color:GOLDDIM,fontSize:11,letterSpacing:3,marginTop:16}}>mandastrongmovie.bolt.host</div>
+        <div style={{color:GOLDDIM,fontSize:11,letterSpacing:3,marginTop:16}}>mandastrong01.bolt.host</div>
       </div>
     </div>
   );
