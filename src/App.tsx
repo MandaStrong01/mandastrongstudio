@@ -5595,6 +5595,48 @@ function P24CharacterStudio({ onSave, go }) {
   const [sceneNotes,setSceneNotes]=useState("");
   const [personality,setPersonality]=useState("");
   const [editId,setEditId]=useState(null);
+  // ── LIP-SYNC (real, via Replicate Wav2Lip through Supabase) ──
+  const [lsAudio,setLsAudio]=useState(null);        // data url of the voice clip
+  const [lsAudioName,setLsAudioName]=useState("");
+  const [lsBusy,setLsBusy]=useState(false);
+  const [lsStage,setLsStage]=useState("");
+  const [lsVideo,setLsVideo]=useState("");
+  const [lsError,setLsError]=useState("");
+  const lsRecRef=useRef(null);
+  const lsChunksRef=useRef([]);
+  const [lsRecording,setLsRecording]=useState(false);
+  const lsPickAudio=(e)=>{const f=e.target.files&&e.target.files[0];if(!f)return;setLsAudioName(f.name);const r=new FileReader();r.onload=ev=>setLsAudio(String(ev.target.result||""));r.readAsDataURL(f);};
+  const lsRecord=async()=>{
+    if(lsRecording){try{lsRecRef.current&&lsRecRef.current.stop();}catch(e){}return;}
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      const mr=new MediaRecorder(stream);lsChunksRef.current=[];
+      mr.ondataavailable=ev=>{if(ev.data.size>0)lsChunksRef.current.push(ev.data);};
+      mr.onstop=()=>{const blob=new Blob(lsChunksRef.current,{type:"audio/webm"});const r=new FileReader();r.onload=ev=>{setLsAudio(String(ev.target.result||""));setLsAudioName("my-recording.webm");};r.readAsDataURL(blob);stream.getTracks().forEach(t=>t.stop());setLsRecording(false);};
+      lsRecRef.current=mr;mr.start();setLsRecording(true);
+    }catch(e){setLsError("Microphone blocked — allow mic access and try again.");}
+  };
+  const makeAvatarSpeak=async()=>{
+    setLsError("");setLsVideo("");
+    if(!photo){setLsError("Add the character's photo first.");return;}
+    if(!lsAudio){setLsError("Record or upload the voice first.");return;}
+    setLsBusy(true);setLsStage("Sending your avatar and voice to the lip-sync engine…");
+    try{
+      const res=await fetch("https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/lip-sync",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({image:photo,audio:lsAudio})
+      });
+      const data=await res.json();
+      if(data.error){setLsError(data.error);setLsBusy(false);return;}
+      if(!data.video){setLsError("No video came back. Try again.");setLsBusy(false);return;}
+      setLsStage("Done.");setLsVideo(data.video);
+    }catch(e){setLsError("Couldn't reach the lip-sync engine: "+(e&&e.message?e.message:e));}
+    setLsBusy(false);
+  };
+  const lsDownload=async()=>{
+    if(!lsVideo)return;
+    try{const r=await fetch(lsVideo);const b=await r.blob();const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=(name||"avatar")+"-lipsync.mp4";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);}catch(e){window.open(lsVideo,"_blank");}
+  };
   const fileRef=useRef(null);
 
   const persist=(list)=>{
@@ -5764,6 +5806,26 @@ function P24CharacterStudio({ onSave, go }) {
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
               <button onClick={addChar} style={{...G("gold",false),padding:"14px",fontSize:13,letterSpacing:2}}>{editId?"✓ UPDATE":"+ SAVE CHARACTER"}</button>
               {editId&&<button onClick={clearForm} style={{...G("out",false),padding:"14px",fontSize:13,letterSpacing:2}}>CANCEL</button>}
+            </div>
+            {/* ════════ REAL LIP-SYNC — MAKE THIS AVATAR SPEAK ════════ */}
+            <div style={{marginTop:16,border:"2px solid "+GOLD,background:"linear-gradient(135deg,#0a0500,#1a0a00)",padding:16,boxShadow:"0 0 24px "+GOLD+"22"}}>
+              <div style={{fontFamily:"'Cinzel',serif",color:GOLD,letterSpacing:3,fontSize:16,textTransform:"uppercase",marginBottom:4}}>✦ Make This Avatar Speak</div>
+              <div style={{color:DIM,fontSize:11,marginBottom:12}}>Photoreal lip-sync. Uses the character photo above. Record or upload the voice, then generate.</div>
+              <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap"}}>
+                <button onClick={lsRecord} style={{flex:1,minWidth:140,background:lsRecording?"#c0392b":"#111",border:"1px solid "+(lsRecording?"#000":GOLDDIM),color:lsRecording?"#fff":WHITE,padding:"11px",cursor:"pointer",fontSize:12,fontWeight:900,letterSpacing:1,fontFamily:"'Rajdhani',sans-serif"}}>{lsRecording?"■ STOP RECORDING":"● RECORD VOICE"}</button>
+                <button onClick={()=>{const i=document.getElementById("lsAudioInput");if(i)i.click();}} style={{flex:1,minWidth:140,background:"#111",border:"1px solid "+GOLDDIM,color:WHITE,padding:"11px",cursor:"pointer",fontSize:12,fontWeight:900,letterSpacing:1,fontFamily:"'Rajdhani',sans-serif"}}>⤴ UPLOAD VOICE</button>
+                <input id="lsAudioInput" type="file" accept="audio/*" style={{display:"none"}} onChange={lsPickAudio}/>
+              </div>
+              {lsAudioName&&<div style={{color:GOLD,fontSize:11,marginBottom:10}}>Voice ready: {lsAudioName}</div>}
+              <button onClick={makeAvatarSpeak} disabled={lsBusy} style={{width:"100%",padding:15,background:lsBusy?"#333":"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",color:lsBusy?"#888":"#000",border:"none",fontWeight:900,fontSize:15,letterSpacing:2,cursor:lsBusy?"default":"pointer",fontFamily:"'Cinzel',serif"}}>{lsBusy?"GENERATING…":"✦ MAKE AVATAR SPEAK"}</button>
+              {lsError&&<div style={{marginTop:10,color:"#ff8a8a",fontSize:12}}>{lsError}</div>}
+              {lsBusy&&<div style={{marginTop:10,color:GOLD,fontSize:12,letterSpacing:1}}>{lsStage}</div>}
+              {lsVideo&&(
+                <div style={{marginTop:12}}>
+                  <video src={lsVideo} controls autoPlay playsInline style={{width:"100%",border:"1px solid "+GOLD,background:"#000"}}/>
+                  <button onClick={lsDownload} style={{width:"100%",marginTop:8,padding:13,background:"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",color:"#000",border:"none",fontWeight:900,fontSize:14,letterSpacing:2,cursor:"pointer",fontFamily:"'Cinzel',serif"}}>⬇ DOWNLOAD LIP-SYNC VIDEO</button>
+                </div>
+              )}
             </div>
             {savedNote&&<div style={{marginTop:10,background:"#061406",border:"1px solid #22c55e",padding:"10px",textAlign:"center",color:"#22c55e",fontWeight:900,fontSize:12,letterSpacing:2}}>✓ CHARACTER SAVED</div>}
           </div>
