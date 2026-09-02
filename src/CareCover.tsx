@@ -23,7 +23,7 @@ const LIVE = Boolean(SUPABASE_URL && SUPABASE_ANON);
 const sb = LIVE ? createClient(SUPABASE_URL, SUPABASE_ANON) : null;
 
 // ---------- Stripe ----------
-// WIRE: paste your Stripe Payment Link URL for each plan (Stripe â†’ Payment links).
+// WIRE: paste your Stripe Payment Link URL for each plan (Stripe → Payment links).
 // Leave "" to keep a button in "coming soon" state. Same approach as MandaStrong.
 const STRIPE_LINKS = {
   "Starter": "https://buy.stripe.com/fZucN78NQ0oT3oHemCafS06",
@@ -515,7 +515,7 @@ function AuthGate({ onDemo }) {
           style={{ width: "100%", border: "none", background: "#e8c96d", color: "#0d1f31", borderRadius: 11, padding: "14px 18px", fontSize: 15.5, fontWeight: 800, cursor: "pointer", fontFamily: UI, letterSpacing: .3, opacity: busy ? .6 : 1 }}>{cta}</button>
 
         <button onClick={() => onDemo && onDemo()}
-          style={{ width: "100%", marginTop: 11, border: `2px solid ${on}`, background: "transparent", color: on, borderRadius: 11, padding: "13px 18px", fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: UI }}>Enter as test user &#8594;</button>
+          style={{ width: "100%", marginTop: 11, border: `2px solid ${on}`, background: "transparent", color: on, borderRadius: 11, padding: "13px 18px", fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: UI }}>Enter as test user →</button>
 
         <div style={{ display: "flex", justifyContent: "center", gap: 16, marginTop: 20, fontSize: 13.5, flexWrap: "wrap" }}>
           {mode !== "in" && <button onClick={() => { setMode("in"); setErr(""); }} style={{ border: "none", background: "transparent", color: on, fontWeight: 800, cursor: "pointer", fontFamily: UI, textDecoration: "underline" }}>Sign in</button>}
@@ -607,7 +607,7 @@ function Studio({ session }) {
       <main style={{ maxWidth: 1140, margin: "0 auto", padding: "22px 18px 90px" }}>
         {!LIVE && <DemoRibbon />}
         {tab === "board" && <Board visits={myVisits} staff={staff} staffById={staffById} clients={clients} onCallOff={setCoverFor} onPickUp={pickUp} onDone={markDone} canManage={mgr} />}
-        {tab === "allocate" && mgr && <Allocate clients={clients} staff={staff} onAllocate={(cid, sid, auto) => { D.allocateClient(cid, sid); const s = staff.find((x) => x.id === sid); const c = clients.find((x) => x.id === cid); D.postMsg(`${c?.name} allocated to ${s?.name}${auto ? " (auto, local area)" : ""}.`, "System"); ping(`${c?.name} â†’ ${s?.name}`); }} />}
+        {tab === "allocate" && mgr && <Allocate clients={clients} staff={staff} onAllocate={(cid, sid, auto) => { D.allocateClient(cid, sid); const s = staff.find((x) => x.id === sid); const c = clients.find((x) => x.id === cid); D.postMsg(`${c?.name} allocated to ${s?.name}${auto ? " (auto, local area)" : ""}.`, "System"); ping(`${c?.name} → ${s?.name}`); }} />}
         {tab === "clients" && <Clients clients={myClients} canManage={mgr} onSave={D.saveClient} onDelete={D.deleteClient} ping={ping} />}
         {tab === "team" && mgr && <Team staff={staff} toggleStatus={toggleStatus} joinCode={joinCode} ping={ping} />}
         {tab === "leave" && <LeaveTraining absences={absences} staff={staff} canManage={mgr} myStaffId={myStaffId}
@@ -716,7 +716,7 @@ function Board({ visits, staff, staffById, clients, onCallOff, onPickUp, onDone,
                 <div style={{ minWidth: 150 }}>
                   {s ? <div style={{ fontSize: 14 }}><span style={{ color: FAINT }}>Carer</span><br /><b>{s.name}</b></div>
                     : <div style={{ fontSize: 14, color: RED, fontWeight: 700 }}>No carer assigned</div>}
-                  <Pill tone={tone} soft={soft} text={done ? "âœ“ Done" : r === "red" ? "Uncovered" : r === "amber" ? "Starting soon" : "Covered"} />
+                  <Pill tone={tone} soft={soft} text={done ? "✓ Done" : r === "red" ? "Uncovered" : r === "amber" ? "Starting soon" : "Covered"} />
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 128 }}>
                   {done ? (
@@ -767,7 +767,7 @@ function PickUp({ visit, carers, onPickUp }) {
                     <div style={{ fontWeight: 700 }}>{s.name}</div>
                     <div style={{ fontSize: 12.5, color: MUTE }}>{s.role}</div>
                   </div>
-                  <span style={{ color: GREEN, fontWeight: 700, fontSize: 14 }}>Take it â†’</span>
+                  <span style={{ color: GREEN, fontWeight: 700, fontSize: 14 }}>Take it →</span>
                 </button>
               ))}
             </div>
@@ -904,7 +904,7 @@ function ManualPick({ client, staff, load, onAllocate }) {
                     <div style={{ fontWeight: 700 }}>{s.name}</div>
                     <div style={{ fontSize: 12.5, color: MUTE }}>{s.area} · {load[s.id] || 0}/{s.capacity} clients · {s.skills.join(", ")}</div>
                   </div>
-                  <span style={{ color: BRAND, fontWeight: 700, fontSize: 14 }}>Assign â†’</span>
+                  <span style={{ color: BRAND, fontWeight: 700, fontSize: 14 }}>Assign →</span>
                 </button>
               ))}
             </div>
@@ -1174,7 +1174,7 @@ function Team({ staff, toggleStatus, joinCode, ping }) {
               </div>
             </div>
             <div style={{ marginTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ background: soft[s.status], color: tone[s.status], fontSize: 12.5, fontWeight: 700, padding: "3px 10px", borderRadius: 999 }}>â— {label[s.status]}</span>
+              <span style={{ background: soft[s.status], color: tone[s.status], fontSize: 12.5, fontWeight: 700, padding: "3px 10px", borderRadius: 999 }}>● {label[s.status]}</span>
             </div>
             <div style={{ marginTop: 10, display: "flex", gap: 5, flexWrap: "wrap" }}>
               {s.skills.map((sk) => <span key={sk} style={chip}>{sk}</span>)}
@@ -1268,12 +1268,12 @@ function Guide({ canManage, agencyName }) {
   const sections = canManage ? [
     { t: "Getting started", b: [
       "You're the manager/coordinator for " + (agencyName || "your agency") + ". You see everything; carers see only their own visits and clients.",
-      "Add your carers by sharing your join code (Team â†’ invite, or from your dashboard). They register themselves and pick their working area.",
+      "Add your carers by sharing your join code (Team → invite, or from your dashboard). They register themselves and pick their working area.",
       "Add your clients in the Clients tab - name, address, area, visit days, needs, key info.",
     ]},
     { t: "The Cover board - your day at a glance", b: [
       "Every visit for today, with uncovered ones in red at the top, imminent ones amber, covered ones green.",
-      "Report a call-off on any visit â†’ the app shows qualified, available carers, least busy first â†’ assign in one tap.",
+      "Report a call-off on any visit → the app shows qualified, available carers, least busy first → assign in one tap.",
       "If nobody's free, leave it uncovered and it stays red at the top until you fill it.",
       "Mark a visit Done when it's completed, so you can see what's outstanding versus finished.",
     ]},
@@ -1503,7 +1503,7 @@ function Avatar({ name, big }) {
   return <div style={{ width: sz, height: sz, borderRadius: "50%", background: BRANDSOFT, color: BRANDDK, display: "grid", placeItems: "center", fontWeight: 800, fontSize: big ? 17 : 14 }}>{name[0]}</div>;
 }
 function Check() {
-  return <span style={{ display: "grid", placeItems: "center", width: 18, height: 18, borderRadius: "50%", background: GREENSOFT, color: GREEN, fontSize: 11, fontWeight: 900, flexShrink: 0 }}>âœ“</span>;
+  return <span style={{ display: "grid", placeItems: "center", width: 18, height: 18, borderRadius: "50%", background: GREENSOFT, color: GREEN, fontSize: 11, fontWeight: 900, flexShrink: 0 }}>✓</span>;
 }
 function Field({ label, value, onChange, placeholder, type = "text" }) {
   return (
