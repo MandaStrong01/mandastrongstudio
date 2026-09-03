@@ -1501,7 +1501,8 @@ function MusicVideoStudio({ onClose, onSave }) {
             ctx.font="300 "+Math.round(H*0.034)+"px Arial";
             ctx.fillText((config.artist||"").toUpperCase(),W/2,H*0.56);
             ctx.globalAlpha=1;
-          }p
+          }
+
           setRenderProgress(30+Math.round((frame/totalFrames)*64));
           if(frame%(fps*10)===0) addLog("  "+Math.round(sec)+"s / "+Math.round(totalDur)+"s");
           frame++;
@@ -6030,7 +6031,7 @@ function IntroDoors({ onEnter }){
       setTimeout(()=>{try{ctx.close();}catch(e){}},6400);
     }catch(e){}
   };
-  const enter=()=>{azzŹa%dażża
+  const enter=()=>{
     if(phase!=="closed")return;
     // Music and doors start together; the powerful hit is front-loaded in playChime
     // so the impact lands the instant the doors begin to part.
