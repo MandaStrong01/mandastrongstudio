@@ -4544,9 +4544,8 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
             musicSource.connect(mGain);
             mGain.connect(audioDest);
             mGain.connect(audioCtx.destination);
-            log("♪ Background music bed mixed in under narration");
-          }
-        }
+            log("♪ Background music bed mixed in under narrati
+              
       }catch(e){log("Music bed skipped: "+e.message);}
       // Draw several plain frames BEFORE capturing so the stream is definitely live.
       // No words on screen — the film shows only the source footage.
