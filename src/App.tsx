@@ -2501,6 +2501,23 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
   const [mmmError,setMmmError]=useState("");
   const mmmDropRef=useRef(null);
   const mmmTargetMin=filmDuration||30;
+  const [mmmStudio,setMmmStudio]=useState(false);
+  const [mmmStyle,setMmmStyle]=useState("cinematic");
+  const [mmmGenre,setMmmGenre]=useState("");
+  const [mmmGrade,setMmmGrade]=useState("gold");
+  const [mmmEnhance,setMmmEnhance]=useState(true);
+  const [mmmLipSync,setMmmLipSync]=useState(false);
+  const [mmmVoiceId,setMmmVoiceId]=useState("james");
+  const [mmmVolume,setMmmVolume]=useState(1);
+  const [mmmBgSound,setMmmBgSound]=useState(true);
+  const [mmmBgVolume,setMmmBgVolume]=useState(0.3);
+  const MMM_GRADES=[
+    {id:"gold",label:"Gold & Amber"},
+    {id:"cold",label:"Cold Blue"},
+    {id:"noir",label:"Noir Mono"},
+    {id:"warm",label:"Warm Film"},
+    {id:"natural",label:"Natural"},
+  ];
 
   const mmmAddFiles=(files)=>{
     const arr=Array.from(files||[]);
@@ -2533,7 +2550,8 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
     try{
       const brief=(()=>{try{const b=JSON.parse(localStorage.getItem("ms_render_brief")||"null");return b&&b.brief?b.brief:"";}catch(e){return "";}})();
       const ask=
-        "You are a film director. Turn the material below into an ordered shot list of EXACTLY "+targetScenes+" scenes for a "+targetMin+"-minute film"+(genre?(" in the "+genre+" genre"):"")+".\n"+
+        "You are a film director. Turn the material below into an ordered shot list of EXACTLY "+targetScenes+" scenes for a "+targetMin+"-minute film"+(mmmGenre?(" in the "+mmmGenre+" genre"):"")+".\n"+
+        "LOOK - apply to EVERY scene: "+mmmStyle+" style, "+(mmmGrade==="gold"?"warm gold and amber colour grade":mmmGrade==="cold"?"cold blue colour grade":mmmGrade==="noir"?"high-contrast black and white noir":mmmGrade==="warm"?"warm film stock grade":"natural colour grade")+", cinematic, photorealistic, 35mm, film grain, no on-screen text.\n"+
         "RULES:\n"+
         "1. FIRST expand what the user actually gave you into detailed shots — their material always leads.\n"+
         "2. THEN, if you need more scenes to reach "+targetScenes+", write brand-new scenes that continue the story naturally to fill the full length.\n"+
@@ -2604,6 +2622,7 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
 
   // Sequential player: when one scene ends, play the next — feels like one film.
   const mmmVideoRef=useRef(null);
+  useEffect(()=>{ if(mmmVideoRef.current) mmmVideoRef.current.volume=Math.max(0,Math.min(1,mmmVolume)); },[mmmVolume,mmmDone]);
   const mmmIdxRef=useRef(0);
   useEffect(()=>{
     const v=mmmVideoRef.current;
@@ -2616,6 +2635,29 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
     return ()=>v.removeEventListener("ended",onEnd);
   },[mmmDone]);
 
+  const [mmmLsBusy,setMmmLsBusy]=useState(false);
+  const [mmmLsVideo,setMmmLsVideo]=useState("");
+  const mmmRunLipSync=async()=>{
+    const face=mmmImages.length?mmmImages[0].dataUrl:"";
+    if(!face){ setMmmError("Lip sync needs a face photo - add one above."); return; }
+    setMmmError(""); setMmmLsBusy(true); setMmmLsVideo("");
+    try{
+      let audioDataUrl="";
+      try{
+        const vr=await fetch(VOICE_URL,{method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({text:(mmmText||"").slice(0,1200),voice:mmmVoiceId})});
+        const vd=await vr.json(); audioDataUrl=vd&&(vd.audio||vd.url)?(vd.audio||vd.url):"";
+      }catch(e){}
+      if(!audioDataUrl){ setMmmError("Couldn't make the narration audio for lip sync."); setMmmLsBusy(false); return; }
+      const res=await fetch("https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/lip-sync",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({image:face,audio:audioDataUrl})});
+      const data=await res.json();
+      if(data.error){ setMmmError(data.error); setMmmLsBusy(false); return; }
+      if(data.video){ setMmmLsVideo(data.video); } else setMmmError("Lip sync returned no video.");
+    }catch(e){ setMmmError("Lip-sync engine unreachable: "+(e&&e.message?e.message:e)); }
+    setMmmLsBusy(false);
+  };
   const mmmDownloadAll=async()=>{
     let list=[]; try{list=JSON.parse(localStorage.getItem("ms_mmm_playlist")||"[]");}catch(e){}
     for(let i=0;i<list.length;i++){
@@ -3073,6 +3115,155 @@ Write the drawFrame body now.`}]
         </div>
         <div style={{color:GOLD,fontSize:11,fontWeight:700,letterSpacing:2}}>✦ MANDASTRONG ENGINE · ANY PROMPT · ANY SUBJECT</div>
       </div>
+      {mmmStudio&&(
+        <div style={{position:"fixed",inset:0,zIndex:900,background:"linear-gradient(160deg,#050300,#120800)",overflowY:"auto",padding:"18px 16px 60px"}}>
+          <div style={{maxWidth:760,margin:"0 auto"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <div style={{fontFamily:"'Cinzel',serif",color:GOLD,letterSpacing:3,fontSize:20,textTransform:"uppercase"}}>Make My Movie Studio</div>
+              <button onClick={()=>setMmmStudio(false)} style={{background:"none",border:"1px solid "+GOLD,color:GOLD,padding:"6px 14px",borderRadius:5,cursor:"pointer",fontSize:12,letterSpacing:1}}>CLOSE</button>
+            </div>
+
+            <textarea value={mmmText} onChange={e=>setMmmText(e.target.value)} rows={5}
+              placeholder="Paste your whole film here. Nothing is lost when you leave this box."
+              style={{width:"100%",boxSizing:"border-box",background:"#0a0800",border:"1px solid "+GOLDDIM,borderRadius:6,color:"#fff",padding:11,fontSize:13,fontFamily:"'Rajdhani',sans-serif",resize:"vertical",marginBottom:10}}/>
+
+            <div onDragOver={e=>{e.preventDefault();}}
+              onDrop={e=>{e.preventDefault();mmmAddFiles(e.dataTransfer.files);}}
+              onClick={()=>{const inp=document.getElementById("mmmStudioFileInput");if(inp)inp.click();}}
+              style={{textAlign:"center",border:"1px dashed "+GOLD+"77",borderRadius:6,padding:12,color:DIM,fontSize:12,letterSpacing:1,marginBottom:10,cursor:"pointer"}}>
+              DROP OR TAP TO ADD SCRIPT AND IMAGES
+              <input id="mmmStudioFileInput" type="file" multiple accept="image/*,text/*,.txt,.md,.fdx,.fountain" style={{display:"none"}}
+                onChange={e=>mmmAddFiles(e.target.files)}/>
+            </div>
+            {mmmImages.length>0&&(
+              <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:12}}>
+                {mmmImages.map((im,i)=>(
+                  <div key={i} style={{position:"relative"}}>
+                    <img src={im.dataUrl} style={{width:54,height:54,objectFit:"cover",border:"1px solid "+GOLD,borderRadius:4}}/>
+                    <button onClick={()=>setMmmImages(p=>p.filter((_,x)=>x!==i))}
+                      style={{position:"absolute",top:-6,right:-6,width:18,height:18,borderRadius:9,background:"#000",color:GOLD,border:"1px solid "+GOLD,fontSize:11,cursor:"pointer",lineHeight:"16px",padding:0}}>x</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+              <span style={{color:GOLD,fontSize:12,letterSpacing:2,fontWeight:900}}>MOVIE LENGTH</span>
+              <span style={{color:"#fff",fontSize:12,fontWeight:700}}>{mmmTargetMin} MIN</span>
+            </div>
+            <input type="range" min={1} max={180} value={mmmTargetMin}
+              onChange={e=>setFilmDuration&&setFilmDuration(Number(e.target.value))}
+              style={{width:"100%",accentColor:GOLD,marginBottom:2}}/>
+            <div style={{display:"flex",justifyContent:"space-between",color:DIM,fontSize:10,marginBottom:14}}><span>1 min</span><span>3 hours</span></div>
+
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+              <div>
+                <div style={{color:GOLD,fontSize:11,letterSpacing:2,fontWeight:900,marginBottom:5}}>STYLE</div>
+                <select value={mmmStyle} onChange={e=>setMmmStyle(e.target.value)}
+                  style={{width:"100%",background:"#0a0800",border:"1px solid "+GOLD,color:GOLD,padding:"9px 12px",fontSize:12,fontFamily:"'Rajdhani',sans-serif",cursor:"pointer"}}>
+                  {RENDER_STYLES.map(s=><option key={s.id} value={s.id} style={{background:"#000"}}>{s.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{color:GOLD,fontSize:11,letterSpacing:2,fontWeight:900,marginBottom:5}}>GENRE</div>
+                <select value={mmmGenre} onChange={e=>setMmmGenre(e.target.value)}
+                  style={{width:"100%",background:"#0a0800",border:"1px solid "+GOLDDIM,color:mmmGenre?GOLD:GOLDDIM,padding:"9px 12px",fontSize:12,fontFamily:"'Rajdhani',sans-serif",cursor:"pointer"}}>
+                  {FILM_GENRES.map(g=><option key={g.id} value={g.id} style={{background:"#000"}}>{g.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{color:GOLD,fontSize:11,letterSpacing:2,fontWeight:900,marginBottom:5}}>COLOUR GRADE</div>
+                <select value={mmmGrade} onChange={e=>setMmmGrade(e.target.value)}
+                  style={{width:"100%",background:"#0a0800",border:"1px solid "+GOLD,color:GOLD,padding:"9px 12px",fontSize:12,fontFamily:"'Rajdhani',sans-serif",cursor:"pointer"}}>
+                  {MMM_GRADES.map(g=><option key={g.id} value={g.id} style={{background:"#000"}}>{g.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{color:GOLD,fontSize:11,letterSpacing:2,fontWeight:900,marginBottom:5}}>NARRATION VOICE</div>
+                <select value={mmmVoiceId} onChange={e=>setMmmVoiceId(e.target.value)}
+                  style={{width:"100%",background:"#0a0800",border:"1px solid "+GOLD,color:GOLD,padding:"9px 12px",fontSize:12,fontFamily:"'Rajdhani',sans-serif",cursor:"pointer"}}>
+                  {VOICE_CHARACTERS.map(v=><option key={v.id} value={v.id} style={{background:"#000"}}>{v.name}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:12}}>
+              <button onClick={()=>setMmmEnhance(v=>!v)} style={{flex:"1 1 45%",padding:"10px",background:mmmEnhance?"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")":"#0a0800",color:mmmEnhance?"#000":GOLD,border:"1px solid "+GOLD,borderRadius:5,fontWeight:900,fontSize:12,letterSpacing:1,cursor:"pointer"}}>ENHANCE {mmmEnhance?"ON":"OFF"}</button>
+              <button onClick={()=>setMmmLipSync(v=>!v)} style={{flex:"1 1 45%",padding:"10px",background:mmmLipSync?"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")":"#0a0800",color:mmmLipSync?"#000":GOLD,border:"1px solid "+GOLD,borderRadius:5,fontWeight:900,fontSize:12,letterSpacing:1,cursor:"pointer"}}>LIP SYNC {mmmLipSync?"ON":"OFF"}</button>
+              <button onClick={()=>setMmmBgSound(v=>!v)} style={{flex:"1 1 45%",padding:"10px",background:mmmBgSound?"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")":"#0a0800",color:mmmBgSound?"#000":GOLD,border:"1px solid "+GOLD,borderRadius:5,fontWeight:900,fontSize:12,letterSpacing:1,cursor:"pointer"}}>MUSIC BED {mmmBgSound?"ON":"OFF"}</button>
+            </div>
+
+            <div style={{marginBottom:6}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{color:GOLD,fontSize:11,letterSpacing:2,fontWeight:900}}>NARRATION VOLUME</span><span style={{color:"#fff",fontSize:11}}>{Math.round(mmmVolume*100)}%</span></div>
+              <input type="range" min={0} max={1} step={0.05} value={mmmVolume} onChange={e=>setMmmVolume(Number(e.target.value))} style={{width:"100%",accentColor:GOLD}}/>
+            </div>
+            <div style={{marginBottom:14,opacity:mmmBgSound?1:0.4}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{color:GOLD,fontSize:11,letterSpacing:2,fontWeight:900}}>MUSIC VOLUME</span><span style={{color:"#fff",fontSize:11}}>{Math.round(mmmBgVolume*100)}%</span></div>
+              <input type="range" min={0} max={1} step={0.05} value={mmmBgVolume} onChange={e=>setMmmBgVolume(Number(e.target.value))} disabled={!mmmBgSound} style={{width:"100%",accentColor:GOLD}}/>
+            </div>
+
+            <button onClick={makeMyMovie} disabled={mmmBusy}
+              style={{width:"100%",padding:16,background:mmmBusy?"#333":"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",color:mmmBusy?"#888":"#000",border:"none",fontWeight:900,fontSize:18,letterSpacing:3,borderRadius:6,cursor:mmmBusy?"default":"pointer",fontFamily:"'Cinzel',serif"}}>
+              {mmmBusy?"MAKING YOUR MOVIE...":"MAKE MY MOVIE"}
+            </button>
+
+            {mmmLipSync&&(
+              <div style={{marginTop:12,padding:12,border:"1px solid "+GOLD+"66",borderRadius:6,background:"#0a0800"}}>
+                <div style={{color:GOLD,fontSize:11,letterSpacing:2,fontWeight:900,marginBottom:6}}>LIP SYNC - TALKING SCENE</div>
+                <div style={{color:DIM,fontSize:11,marginBottom:8}}>Uses your first uploaded face photo and speaks the pasted text in the chosen voice.</div>
+                <button onClick={mmmRunLipSync} disabled={mmmLsBusy}
+                  style={{width:"100%",padding:12,background:mmmLsBusy?"#333":"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",color:mmmLsBusy?"#888":"#000",border:"none",fontWeight:900,fontSize:14,letterSpacing:2,borderRadius:5,cursor:mmmLsBusy?"default":"pointer",fontFamily:"'Cinzel',serif"}}>
+                  {mmmLsBusy?"SYNCING...":"GENERATE TALKING SCENE"}
+                </button>
+                {mmmLsVideo&&(
+                  <video src={mmmLsVideo} controls playsInline style={{width:"100%",marginTop:10,borderRadius:6,border:"1px solid "+GOLD,background:"#000",aspectRatio:"16/9"}}/>
+                )}
+              </div>
+            )}
+
+            {mmmError&&<div style={{marginTop:10,color:"#ff8a8a",fontSize:12,textAlign:"center"}}>{mmmError}</div>}
+
+            {mmmBusy&&(
+              <div style={{marginTop:12}}>
+                <div style={{color:GOLD,fontSize:12,letterSpacing:1,marginBottom:6}}>{mmmStage}</div>
+                <div style={{background:"#111",height:10,border:"1px solid "+GOLDDIM,borderRadius:4,overflow:"hidden"}}>
+                  <div style={{background:GOLD,height:"100%",width:mmmPct+"%",transition:"width .3s"}}/>
+                </div>
+              </div>
+            )}
+
+            {mmmScenes.length>0&&(
+              <div style={{marginTop:12,maxHeight:140,overflowY:"auto",fontSize:11}}>
+                {mmmScenes.map((s,i)=>(
+                  <div key={i} style={{display:"flex",gap:6,padding:"2px 0",color:s.status==="done"?GOLD:s.status==="rendering"?"#fff":s.status==="skipped"?"#ff8a8a":DIM}}>
+                    <span>{s.status==="done"?"OK":s.status==="rendering"?">":s.status==="skipped"?"x":"o"}</span>
+                    <span style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>Scene {i+1}: {s.text}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {mmmDone&&(
+              <div style={{marginTop:16}}>
+                <div style={{color:GOLD,fontSize:13,letterSpacing:2,fontWeight:900,marginBottom:8,textAlign:"center"}}>PREVIEW</div>
+                <video ref={mmmVideoRef} src={mmmFilmUrl} controls autoPlay playsInline
+                  style={{width:"100%",borderRadius:8,border:"1px solid "+GOLD,background:"#000",aspectRatio:"16/9"}}/>
+                <div style={{display:"flex",gap:10,marginTop:12}}>
+                  <button onClick={mmmDownloadAll}
+                    style={{flex:1,padding:14,background:"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",color:"#000",border:"none",fontWeight:900,fontSize:15,letterSpacing:2,borderRadius:6,cursor:"pointer",fontFamily:"'Cinzel',serif"}}>
+                    DOWNLOAD
+                  </button>
+                  <button onClick={()=>{try{navigator.share?navigator.share({title:"My Movie",url:mmmFilmUrl}):window.open(mmmFilmUrl,"_blank");}catch(e){window.open(mmmFilmUrl,"_blank");}}}
+                    style={{flex:1,padding:14,background:"#0a0800",color:GOLD,border:"1px solid "+GOLD,fontWeight:900,fontSize:15,letterSpacing:2,borderRadius:6,cursor:"pointer",fontFamily:"'Cinzel',serif"}}>
+                    EXPORT
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ════ MAKE MY MOVIE — one-shot, everything on this page ════ */}
       <div style={{margin:"14px 20px",background:"linear-gradient(135deg,#0a0500,#160a00)",border:"2px solid "+GOLD,borderRadius:10,padding:16,boxShadow:"0 0 24px "+GOLD+"22"}}>
         <div style={{textAlign:"center",marginBottom:12}}>
@@ -3114,6 +3305,10 @@ Write the drawFrame body now.`}]
           style={{width:"100%",accentColor:GOLD,marginBottom:2}}/>
         <div style={{display:"flex",justifyContent:"space-between",color:DIM,fontSize:10,marginBottom:12}}><span>1 min</span><span>3 hours</span></div>
 
+        <button onClick={()=>setMmmStudio(true)}
+          style={{width:"100%",padding:15,marginBottom:10,background:"linear-gradient(135deg,"+GOLD+","+GOLDDIM+")",color:"#000",border:"none",fontWeight:900,fontSize:17,letterSpacing:3,borderRadius:6,cursor:"pointer",fontFamily:"'Cinzel',serif"}}>
+          OPEN MAKE MY MOVIE STUDIO
+        </button>
         <button onClick={makeMyMovie} disabled={mmmBusy}
           style={{width:"100%",padding:15,background:mmmBusy?"#333":"linear-gradient(135deg,"+GOLDDIM+","+GOLD+")",color:mmmBusy?"#888":"#000",border:"none",fontWeight:900,fontSize:17,letterSpacing:3,borderRadius:6,cursor:mmmBusy?"default":"pointer",fontFamily:"'Cinzel',serif"}}>
           {mmmBusy?"MAKING YOUR MOVIE…":"✦ MAKE MY MOVIE"}
@@ -3458,7 +3653,7 @@ function P1({ go }) {
             // REAL DOWNLOAD: save a standalone launcher file to the user's computer.
             // Double-clicking it opens MandaStrong Studio full-screen in their browser.
             try{
-              const APP_URL="https://mandastrong01.bolt.host";
+              const APP_URL="https://mandastrongmovie.bolt.host";
               const launcher='<!doctype html><html><head><meta charset="utf-8"><title>MandaStrong Studio</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;background:#000}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body><iframe src="'+APP_URL+'" allow="camera;microphone;autoplay;fullscreen;clipboard-write" allowfullscreen></iframe><script>try{if(location.protocol==="file:"){location.href="'+APP_URL+'";}}catch(e){location.href="'+APP_URL+'";}<\\/script></body></html>';
               const blob=new Blob([launcher],{type:"text/html"});
               const url=URL.createObjectURL(blob);
@@ -5391,7 +5586,7 @@ function P20() {
             {sec("CHANGES TO THIS DISCLAIMER",<>{p("MandaStrong Studio reserves the right to update this disclaimer at any time. Continued use of the platform following any update constitutes your acceptance of the revised terms.")}</>)}
 
             <div style={{background:"#050500",border:"1px solid "+GOLDDIM,padding:"12px 16px",marginTop:8}}>
-              <p style={{color:GOLDDIM,fontSize:11,margin:0,letterSpacing:1}}>— AMANDA WOOLLEY · FOUNDER · MANDASTRONG STUDIO · MARCH 2026 · mandastrong01.bolt.host</p>
+              <p style={{color:GOLDDIM,fontSize:11,margin:0,letterSpacing:1}}>— AMANDA WOOLLEY · FOUNDER · MANDASTRONG STUDIO · MARCH 2026 · mandastrongmovie.bolt.host</p>
             </div>
           </div>
         )}
@@ -5517,7 +5712,7 @@ function P22() {
 function HowToGuide() {
   const [open,setOpen]=useState(null);
   const SECTIONS=[
-    {t:"WELCOME — HOW TO READ THIS BOOK",c:"This is more than a how-to. It is a complete guide to making films with AI on MandaStrong Studio (mandastrong01.bolt.host) AND a plain-English education in what AI actually is, so you are never at its mercy. Read Part One to understand the machine you are working with. Read Part Two to master the studio page by page. Read Part Three for the craft — prompting, voice, story, and ethics. You do not need any technical background. Every idea here is explained the way you would explain it to a friend across a kitchen table."},
+    {t:"WELCOME — HOW TO READ THIS BOOK",c:"This is more than a how-to. It is a complete guide to making films with AI on MandaStrong Studio (mandastrongmovie.bolt.host) AND a plain-English education in what AI actually is, so you are never at its mercy. Read Part One to understand the machine you are working with. Read Part Two to master the studio page by page. Read Part Three for the craft — prompting, voice, story, and ethics. You do not need any technical background. Every idea here is explained the way you would explain it to a friend across a kitchen table."},
 
     {t:"PART ONE · WHAT AI ACTUALLY IS",c:"AI does not think, feel, or know things the way you do. A large language model — the kind of AI behind most creative tools — is a very powerful pattern machine. It has read an enormous amount of human writing and images and learned which words and shapes tend to follow which. When you ask it for something, it is not looking up an answer; it is predicting, piece by piece, the most likely continuation of your request. That is why it can sound confident and still be wrong. Understanding this one fact changes how you use it: you are the director, it is the crew. It is fast and tireless and knows a thousand styles, but it has no judgement about YOUR story. That judgement is yours, and it always will be."},
 
@@ -5527,9 +5722,9 @@ function HowToGuide() {
 
     {t:"PART ONE · AI AND YOU — STAYING IN CHARGE",c:"AI is a tool, like a camera or a pen. It amplifies whoever holds it. It has no taste of its own, so your taste is the whole game. Never let a machine talk you out of a creative instinct, and never assume its confident answer is correct without checking. Keep your own copies of everything important. Understand that what you type may be processed on servers you don't control, so don't paste anything you'd be uncomfortable sharing. And remember the deeper point behind this whole studio: AI should widen the door to creativity, not replace the human standing in it. You are not being replaced. You are being equipped."},
 
-    {t:"PART TWO · GETTING STARTED",c:"Open mandastrong01.bolt.host. Log in with your credentials or start a free trial. Use the ☰ hamburger menu top left to jump to any of the 24 pages. AUTOSAVE ON is real — your work saves automatically every time you change page, generate a clip, or update your timeline. Hit 💾 SAVE PROJECT to create a named restore point you can return to from MY PROJECTS. Your plan and remaining usage are always visible from your account panel — tap the avatar top right."},
+    {t:"PART TWO · GETTING STARTED",c:"Open mandastrongmovie.bolt.host. Log in with your credentials or start a free trial. Use the ☰ hamburger menu top left to jump to any of the 24 pages. AUTOSAVE ON is real — your work saves automatically every time you change page, generate a clip, or update your timeline. Hit 💾 SAVE PROJECT to create a named restore point you can return to from MY PROJECTS. Your plan and remaining usage are always visible from your account panel — tap the avatar top right."},
 
-    {t:"PART TWO · PAGE 1 — HOME & INSTALL",c:"The front door of mandastrong01.bolt.host. The DOWNLOAD APP button installs the studio to your device like a real app, using your browser's built-in install prompt — on iPhone and iPad use Share then Add to Home Screen, as Apple does not allow one-tap install. The whole page is built to fit any screen, phone or laptop. From here, enter the studio and begin."},
+    {t:"PART TWO · PAGE 1 — HOME & INSTALL",c:"The front door of mandastrongmovie.bolt.host. The DOWNLOAD APP button installs the studio to your device like a real app, using your browser's built-in install prompt — on iPhone and iPad use Share then Add to Home Screen, as Apple does not allow one-tap install. The whole page is built to fit any screen, phone or laptop. From here, enter the studio and begin."},
 
     {t:"PART TWO · PAGE 4 — PLANS & USAGE CREDITS",c:"Three plans: Basic $20, Pro $30, Studio $50 — pick the one that fits how much you create. At the very bottom is PURCHASE USAGE CREDITS: a one-time top-up for extra renders and generations when you need more than your plan includes. Credits never expire. All payments run through Stripe's secure checkout — the studio never sees your card details."},
 
@@ -5553,9 +5748,9 @@ function HowToGuide() {
 
     {t:"PART THREE · ETHICS & RESPONSIBILITY",c:"With these tools you can make almost anything, which means the responsibility is yours. Don't put real people's faces or voices into films they never agreed to. Be honest when something is AI-generated if presenting it as real could mislead. Respect others' work rather than copying a living artist's style wholesale and calling it your own. And remember MandaStrong's founding mission — these tools exist to spread kindness, understanding, and hope, with proceeds supporting veterans' mental health and anti-bullying work. Make things that would make that mission proud."},
 
-    {t:"SAVING, RECOVERING & GETTING HELP",c:"AUTOSAVE ON saves as you work. 💾 SAVE PROJECT creates a named session — name it meaningfully. 📂 MY PROJECTS shows your history; CONTINUE PROJECT restores a session including all clips. An emergency save fires if the tab closes or crashes, so work is never permanently lost. Stuck? Agent Grok on Page 21 is your 24/7 production consultant with full knowledge of every page and workflow. This guide lives on your closing page at mandastrong01.bolt.host and is updated as the studio grows."},
+    {t:"SAVING, RECOVERING & GETTING HELP",c:"AUTOSAVE ON saves as you work. 💾 SAVE PROJECT creates a named session — name it meaningfully. 📂 MY PROJECTS shows your history; CONTINUE PROJECT restores a session including all clips. An emergency save fires if the tab closes or crashes, so work is never permanently lost. Stuck? Agent Grok on Page 21 is your 24/7 production consultant with full knowledge of every page and workflow. This guide lives on your closing page at mandastrongmovie.bolt.host and is updated as the studio grows."},
 
-    {t:"RECOMMENDED WORKFLOW — START TO FINISH",c:"Page 5 → fill Script to Movie's Producer, Describe, Production boxes → WIRE INTO RENDER. Page 6 → choose a voice → PREPARE TO SPEAK → SAVE TO MEDIA LIBRARY. Page 8 → upload a reference photo → generate each scene (your brief drives them) → add background music and stereo if you like. Page 13 → SYNC ALL TRACKS. Page 15 → set the mix. Page 16 → choose quality → render. Page 17 → preview. Page 18 → export and share. That is a finished film, made by you, at mandastrong01.bolt.host."},
+    {t:"RECOMMENDED WORKFLOW — START TO FINISH",c:"Page 5 → fill Script to Movie's Producer, Describe, Production boxes → WIRE INTO RENDER. Page 6 → choose a voice → PREPARE TO SPEAK → SAVE TO MEDIA LIBRARY. Page 8 → upload a reference photo → generate each scene (your brief drives them) → add background music and stereo if you like. Page 13 → SYNC ALL TRACKS. Page 15 → set the mix. Page 16 → choose quality → render. Page 17 → preview. Page 18 → export and share. That is a finished film, made by you, at mandastrongmovie.bolt.host."},
   ];
   return(
     <div style={{padding:"20px 32px 40px",maxWidth:860,margin:"0 auto"}}>
@@ -6097,7 +6292,7 @@ function IntroDoors({ onEnter }){
           boxShadow:"0 0 40px rgba(232,201,109,0.6)",borderRadius:0}}>
           ▶ ENTER
         </button>
-        <div style={{color:GOLDDIM,fontSize:11,letterSpacing:3,marginTop:16}}>mandastrong01.bolt.host</div>
+        <div style={{color:GOLDDIM,fontSize:11,letterSpacing:3,marginTop:16}}>mandastrongmovie.bolt.host</div>
       </div>
     </div>
   );
