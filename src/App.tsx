@@ -1501,8 +1501,7 @@ function MusicVideoStudio({ onClose, onSave }) {
             ctx.font="300 "+Math.round(H*0.034)+"px Arial";
             ctx.fillText((config.artist||"").toUpperCase(),W/2,H*0.56);
             ctx.globalAlpha=1;
-          }
-
+          }p
           setRenderProgress(30+Math.round((frame/totalFrames)*64));
           if(frame%(fps*10)===0) addLog("  "+Math.round(sec)+"s / "+Math.round(totalDur)+"s");
           frame++;
@@ -4544,8 +4543,9 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
             musicSource.connect(mGain);
             mGain.connect(audioDest);
             mGain.connect(audioCtx.destination);
-            log("♪ Background music bed mixed in under narrati
-              
+            log("♪ Background music bed mixed in under narration");
+          }
+        }
       }catch(e){log("Music bed skipped: "+e.message);}
       // Draw several plain frames BEFORE capturing so the stream is definitely live.
       // No words on screen — the film shows only the source footage.
@@ -6030,7 +6030,7 @@ function IntroDoors({ onEnter }){
       setTimeout(()=>{try{ctx.close();}catch(e){}},6400);
     }catch(e){}
   };
-  const enter=()=>{
+  const enter=()=>{azzŹa%dażża
     if(phase!=="closed")return;
     // Music and doors start together; the powerful hit is front-loaded in playChime
     // so the impact lands the instant the doors begin to part.
