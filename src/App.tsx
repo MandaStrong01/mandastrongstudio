@@ -6274,6 +6274,11 @@ function P24CharacterStudio({ onSave, go }) {
 
 function P23({ go }) {
   const bgRef = useRef(null);
+  // Ocean background: her own uploaded file first, then real fallback clips,
+  // so this panel is NEVER a black box if background.mp4 is missing.
+  const BGCHAIN = ["/background.mp4","background.mp4","./background.mp4","/background_5.mp4","frames/background.mp4",CLIP("TearsOfSteel.mp4"),CLIP("ForBiggerEscapes.mp4")];
+  const [bgI,setBgI] = useState(0);
+  const bgSrc = BGCHAIN[bgI] || null;
   const [howOpen, setHowOpen] = useState(false);
   const [savedMsg, setSavedMsg] = useState(false);
   const [vidNeedsTap, setVidNeedsTap] = useState(false);
@@ -6318,17 +6323,10 @@ function P23({ go }) {
       <div style={{position:"relative",zIndex:1,padding:"30px 24px 80px"}}>
         <div style={{maxWidth:880,margin:"0 auto",textAlign:"center"}}>
           <div style={{width:"100%",maxHeight:"34vh",overflow:"hidden",position:"relative",display:"flex",alignItems:"center",justifyContent:"center",background:"#1C1F25",border:"1px solid "+GOLDDIM,marginBottom:26}}>
-            <video ref={bgRef} autoPlay loop playsInline muted preload="auto"
+            <video ref={bgRef} key={bgSrc} src={bgSrc||undefined} autoPlay loop playsInline muted preload="auto"
               onLoadedMetadata={(e)=>{try{if(e.currentTarget.currentTime<0.1)e.currentTarget.currentTime=0.1;}catch{}}}
-              style={{display:"block",width:"100%",maxHeight:"34vh",objectFit:"cover",background:"#1C1F25"}}>
-              <source src="/background.mp4" type="video/mp4"/>
-              <source src="background.mp4" type="video/mp4"/>
-              <source src="./background.mp4" type="video/mp4"/>
-              <source src="/background_5.mp4" type="video/mp4"/>
-              <source src="background_5.mp4" type="video/mp4"/>
-              <source src="./background_5.mp4" type="video/mp4"/>
-              <source src="/thatsallfolks.mp4" type="video/mp4"/>
-            </video>
+              onError={()=>setBgI(v=>v+1)}
+              style={{display:"block",width:"100%",maxHeight:"34vh",objectFit:"cover",background:"#1C1F25"}}/>
 
           </div>
           <div style={{fontSize:10,color:GOLD,letterSpacing:0.4,marginBottom:8,fontWeight:500}}>Mandastrong studio · cinema intelligence platform</div>
