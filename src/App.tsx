@@ -1,4 +1,4 @@
-  // @ts-nocheck
+// @ts-nocheck
 import { useState, useRef, useEffect } from "react";
 
 // IndexedDB helpers for persistent clip storage
@@ -2534,6 +2534,81 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
     });
   };
 
+  // ── FREE CANVAS FALLBACK ────────────────────────────────────────────────
+  // If the Cinema Engine can't return footage (no credit, network, rate limit),
+  // we draw the scene here instead, on this device, for nothing. Claude writes
+  // the drawFrame code, the browser paints it, MediaRecorder records it, and we
+  // hand back a real playable video file exactly like the engine would.
+  const mmmCanvasFallback=async(scenePrompt,secs)=>{
+    try{
+      const res=await fetch("https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/claude-proxy",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:3000,
+          messages:[{role:"user",content:"Write a JavaScript canvas function for this cinematic scene: \""+String(scenePrompt).slice(0,600)+"\". Function signature: function drawFrame(ctx,W,H,t,sec). Warm gold and amber cinematic grade, deep shadows, atmospheric haze, gradients, depth, slow camera drift. t=0-1 progress through the shot. No text on screen. Return only the function, no explanation."}]})
+      });
+      const d=await res.json();
+      let code=d&&d.content&&d.content[0]?String(d.content[0].text).trim():"";
+      code=code.replace(new RegExp(String.fromCharCode(96,96,96)+"javascript|"+String.fromCharCode(96,96,96)+"js|"+String.fromCharCode(96,96,96),"g"),"").trim();
+      const fi=code.indexOf("function drawFrame"); if(fi>0)code=code.slice(fi);
+      const bOpen=code.indexOf("{"), bClose=code.lastIndexOf("}");
+      const body=(bOpen>0&&bClose>bOpen)?code.slice(bOpen+1,bClose):"";
+      let drawFn;
+      try{ drawFn=new Function("ctx","W","H","t","sec",body); }catch(e){ drawFn=null; }
+
+      const W=1280,H=720,fps=24;
+      const cv=document.createElement("canvas"); cv.width=W; cv.height=H;
+      const ctx=cv.getContext("2d");
+      ctx.fillStyle="#050200"; ctx.fillRect(0,0,W,H);
+
+      const stream=cv.captureStream(fps);
+      let mime="video/webm";
+      try{
+        const opts=["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm","video/mp4"];
+        for(const m of opts){ if(window.MediaRecorder&&MediaRecorder.isTypeSupported(m)){ mime=m; break; } }
+      }catch(e){}
+      const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:4000000});
+      const chunks=[];
+      rec.ondataavailable=ev=>{ if(ev.data&&ev.data.size)chunks.push(ev.data); };
+      const finished=new Promise(r=>{ rec.onstop=()=>r(null); });
+      rec.start(200);
+
+      const totalFrames=Math.max(1,Math.round(secs*fps));
+      const msPerFrame=Math.round(1000/fps);
+      const wallStart=performance.now();
+      await new Promise(resolve=>{
+        let frame=0;
+        const tick=()=>{
+          if(frame>=totalFrames){ resolve(null); return; }
+          const t=frame/totalFrames, sec=frame/fps;
+          try{
+            ctx.clearRect(0,0,W,H);
+            if(drawFn) drawFn(ctx,W,H,t,sec);
+            else { const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#1a1207"); g.addColorStop(1,"#050200"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H); }
+          }catch(e){ ctx.fillStyle="#050200"; ctx.fillRect(0,0,W,H); }
+          // house grade: vignette, letterbox, grain
+          const vig=ctx.createRadialGradient(W/2,H/2,W*0.1,W/2,H/2,W*0.8);
+          vig.addColorStop(0,"rgba(0,0,0,0)"); vig.addColorStop(1,"rgba(0,0,0,0.85)");
+          ctx.fillStyle=vig; ctx.fillRect(0,0,W,H);
+          ctx.fillStyle="rgba(232,201,109,0.035)"; ctx.fillRect(0,0,W,H);
+          ctx.fillStyle="#000"; ctx.fillRect(0,0,W,H*0.06); ctx.fillRect(0,H*0.94,W,H*0.06);
+          frame++;
+          const due=wallStart+(frame*msPerFrame);
+          setTimeout(tick,Math.max(4,due-performance.now()));
+        };
+        tick();
+      });
+
+      try{ rec.stop(); }catch(e){}
+      await Promise.race([finished,new Promise(r=>setTimeout(()=>r(null),6000))]);
+      try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){}
+      if(!chunks.length) return "";
+      const blob=new Blob(chunks,{type:mime.split(";")[0]});
+      if(blob.size<1000) return "";
+      return URL.createObjectURL(blob);
+    }catch(e){ return ""; }
+  };
+
   const makeMyMovie=async()=>{
     const source=mmmText.trim();
     if(!source&&mmmImages.length===0){ setMmmError("Drop in your script, or some images, first."); return; }
@@ -2584,19 +2659,28 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
       setMmmScenes(p=>p.map((s,idx)=>idx===i?{...s,status:"rendering"}:s));
       setMmmStage("Rendering scene "+(i+1)+" of "+sceneList.length+"…");
       let url="";
+      let usedFallback=false;
       try{
         url=await engineRender(sceneList[i],{duration:perSceneSec,image:i===0?firstImg:"",aspect_ratio:"16:9"});
       }catch(e){ url=""; }
+      // Engine gave us nothing — draw it here instead, free, on this device.
+      if(!url){
+        setMmmStage("Scene "+(i+1)+" — drawing on this device (no engine credit needed)…");
+        url=await mmmCanvasFallback(sceneList[i],perSceneSec);
+        usedFallback=!!url;
+      }
       if(url){
         clipUrls.push(url);
-        setMmmScenes(p=>p.map((s,idx)=>idx===i?{...s,status:"done",url}:s));
+        setMmmScenes(p=>p.map((s,idx)=>idx===i?{...s,status:usedFallback?"done (canvas)":"done",url}:s));
         // Save each scene into the Media Library / timeline exactly like the engine does
         try{
           const autoId="mmm_"+Date.now()+"_"+i;
-          const autoName="MakeMyMovie_scene"+(i+1)+".mp4";
+          const ext=usedFallback?".webm":".mp4";
+          const mt=usedFallback?"video/webm":"video/mp4";
+          const autoName="MakeMyMovie_scene"+(i+1)+ext;
           const vb=await (await fetch(url)).blob();
-          await Promise.race([safeSaveClipToDB(autoId,vb,autoName,"video/mp4"),new Promise(r=>setTimeout(()=>r("t"),8000))]);
-          if(onSave)onSave({id:autoId,name:autoName,type:"video/mp4",url,file:new File([vb],autoName,{type:"video/mp4"}),dbId:autoId});
+          await Promise.race([safeSaveClipToDB(autoId,vb,autoName,mt),new Promise(r=>setTimeout(()=>r("t"),8000))]);
+          if(onSave)onSave({id:autoId,name:autoName,type:mt,url,file:new File([vb],autoName,{type:mt}),dbId:autoId});
         }catch(e){}
       }else{
         setMmmScenes(p=>p.map((s,idx)=>idx===i?{...s,status:"skipped"}:s));
@@ -2604,7 +2688,7 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
       setMmmPct(10+Math.round(((i+1)/sceneList.length)*80));
     }
 
-    if(!clipUrls.length){ setMmmError("The engine returned no footage. If you're out of plan usage, top up below and run it again."); setMmmBusy(false); return; }
+    if(!clipUrls.length){ setMmmError("No footage came back — the engine had no credit and the on-device renderer couldn't draw either. Check you're in Chrome with this tab in front, then run it again."); setMmmBusy(false); return; }
 
     // 3 ─ Stitch into one film (concatenated playback) — stays on this page
     setMmmStage("Stitching your film together…");
