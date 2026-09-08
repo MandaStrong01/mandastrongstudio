@@ -40,16 +40,12 @@ let __msAudio=null;
 
 async function engineSpeak(text,meta){
   meta=meta||{};
-  // When no explicit voice id is supplied, anchor gender/origin so the engine
-  // never free-picks a random character (which was landing on "Pippa").
-  const _g = meta.gender || (meta.voice ? "" : "Female");
-  const _o = meta.origin || (meta.voice ? "" : "British");
   try{
     const res=await fetch(VOICE_URL,{method:"POST",headers:engineHeaders,body:JSON.stringify({
       text:String(text||"").slice(0,3500),
       voice:meta.voice||"",
-      gender:_g,
-      origin:_o,
+      gender:meta.gender||"",
+      origin:meta.origin||"",
       speed:meta.speed||1
     })});
     let d=await res.json();
@@ -247,16 +243,16 @@ const autoFreeStorage=async()=>{
   }catch(e){return {freed:0,pct:0};}
 };
 
-const GOLD = "#C8A54B";
-const GOLDDIM = "#4A3C1A";
-const BG = "#0D0B06";
-const BLACK = "#0D0B06";
-const BG4 = "#171208";
-const WHITE = "#EBD9A8";
-const DIM = "#9A855A";
-const SIGNAL = "#D4AF37";
-const PANEL = "#171208";
-const PANEL2 = "#211A0E";
+const GOLD = "#E9ECEF";
+const GOLDDIM = "#2E343D";
+const BG = "#14161A";
+const BLACK = "#14161A";
+const BG4 = "#1C1F25";
+const WHITE = "#E9ECEF";
+const DIM = "#8B939C";
+const SIGNAL = "#6FA8FF";
+const PANEL = "#1C1F25";
+const PANEL2 = "#22262D";
 const LIVE = "#FF5A4E";
 const TOTAL = 24;
 
@@ -278,7 +274,7 @@ const G = (v, sm) => ({
 });
 const Sp = { minHeight:"100vh", background:BG, color:WHITE, fontFamily:"'Archivo',system-ui,sans-serif", paddingBottom:160, width:"100%", overflowX:"hidden" };
 const H1 = { fontFamily:"'Archivo',system-ui,sans-serif", color:GOLD, letterSpacing:0.4, textTransform:"none", margin:0, fontSize:"clamp(16px,3vw,32px)" };
-const Card = (x) => ({ background:"#171208", border:"1px solid "+GOLDDIM, borderRadius:10, padding:18, ...(x||{}) });
+const Card = (x) => ({ background:"#1C1F25", border:"1px solid "+GOLDDIM, borderRadius:10, padding:18, ...(x||{}) });
 
 const STOCK_VOICES = [
   { id:"aurora", name:"Aurora", desc:"Warm British Female", style:"Documentary · Narrator", accent:"British RP" },
@@ -423,8 +419,8 @@ function ProjectHistoryModal({ onClose, onResume, initialTab }) {
   const completedCount=history.filter(h=>h.status==="completed").length;
   return (
     <div style={{position:"fixed",inset:0,zIndex:1200,background:"rgba(0,0,0,0.96)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <div style={{width:"min(620px,95vw)",background:"#0D0B06",border:"2px solid "+SIGNAL,maxHeight:"85vh",display:"flex",flexDirection:"column"}}>
-        <div style={{background:"#171208",borderBottom:"1px solid "+GOLDDIM+"",padding:"16px 22px",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
+      <div style={{width:"min(620px,95vw)",background:"#14161A",border:"2px solid "+SIGNAL,maxHeight:"85vh",display:"flex",flexDirection:"column"}}>
+        <div style={{background:"#1C1F25",borderBottom:"1px solid "+GOLDDIM+"",padding:"16px 22px",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
           <div>
             <div style={{fontFamily:"'Archivo',system-ui,sans-serif",color:GOLD,fontSize:17,fontWeight:600,letterSpacing:0.4}}>Your projects</div>
             <div style={{color:WHITE,fontSize:10,letterSpacing:0.2,marginTop:3}}>Open a work in progress or revisit a finished film</div>
@@ -432,8 +428,8 @@ function ProjectHistoryModal({ onClose, onResume, initialTab }) {
           <button onClick={onClose} style={{background:"none",border:"1px solid "+GOLDDIM,color:GOLD,width:30,height:30,cursor:"pointer",fontSize:15}}>✕</button>
         </div>
         <div style={{display:"flex",borderBottom:"1px solid "+GOLDDIM,flexShrink:0}}>
-          <button onClick={()=>setTab("in_progress")} style={{flex:1,background:tab==="in_progress"?"#211A0E":"transparent",border:"none",borderBottom:tab==="in_progress"?"2px solid "+SIGNAL:"none",color:tab==="in_progress"?GOLD:DIM,padding:"12px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>⟳ open project ({inProgressCount})</button>
-          <button onClick={()=>setTab("completed")} style={{flex:1,background:tab==="completed"?"#211A0E":"transparent",border:"none",borderBottom:tab==="completed"?"2px solid "+SIGNAL:"none",color:tab==="completed"?GOLD:DIM,padding:"12px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>✓ my projects ({completedCount})</button>
+          <button onClick={()=>setTab("in_progress")} style={{flex:1,background:tab==="in_progress"?"#22262D":"transparent",border:"none",borderBottom:tab==="in_progress"?"2px solid "+SIGNAL:"none",color:tab==="in_progress"?GOLD:DIM,padding:"12px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>⟳ open project ({inProgressCount})</button>
+          <button onClick={()=>setTab("completed")} style={{flex:1,background:tab==="completed"?"#22262D":"transparent",border:"none",borderBottom:tab==="completed"?"2px solid "+SIGNAL:"none",color:tab==="completed"?GOLD:DIM,padding:"12px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>✓ my projects ({completedCount})</button>
         </div>
         <div style={{flex:1,overflowY:"auto",padding:18}}>
           {filtered.length===0?(
@@ -445,7 +441,7 @@ function ProjectHistoryModal({ onClose, onResume, initialTab }) {
           ):[...filtered].reverse().map((h,i)=>{
             const originalIdx=history.indexOf(h);
             return (
-              <div key={i} style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"12px 16px",marginBottom:10,display:"flex",alignItems:"center",gap:12}}>
+              <div key={i} style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"12px 16px",marginBottom:10,display:"flex",alignItems:"center",gap:12}}>
                 <div style={{flex:1}}>
                   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
                     <div style={{color:GOLD,fontWeight:600,fontSize:13,letterSpacing:0.2}}>{h.name||"Untitled Session"}</div>
@@ -455,7 +451,7 @@ function ProjectHistoryModal({ onClose, onResume, initialTab }) {
                   {h.note&&<div style={{color:WHITE,fontSize:11,marginTop:4,fontStyle:"italic"}}>{h.note}</div>}
                 </div>
                 <div style={{display:"flex",gap:6,flexShrink:0}}>
-                  <button onClick={()=>onResume(h)} style={{background:"#171208",border:"none",color:"#000",padding:"8px 18px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>{tab==="completed"?"Revisit":"Continue"}</button>
+                  <button onClick={()=>onResume(h)} style={{background:"#1C1F25",border:"none",color:"#000",padding:"8px 18px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>{tab==="completed"?"Revisit":"Continue"}</button>
                   <button onClick={()=>del(originalIdx)} style={{background:"none",border:"1px solid #ef4444",color:"#ef4444",padding:"5px 10px",cursor:"pointer",fontSize:10,fontWeight:600,fontFamily:"'Archivo',system-ui,sans-serif"}}>✕</button>
                 </div>
               </div>
@@ -476,10 +472,10 @@ function SaveSessionModal({ onClose, onSave, currentPage, assetCount }) {
   const [name,setName]=useState("Session — "+new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}));
   const [note,setNote]=useState("");
   const [status,setStatus]=useState("in_progress");
-  const inp2={width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,padding:"9px 12px",color:WHITE,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"'Archivo',system-ui,sans-serif"};
+  const inp2={width:"100%",background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"9px 12px",color:WHITE,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"'Archivo',system-ui,sans-serif"};
   return (
     <div style={{position:"fixed",inset:0,zIndex:1200,background:"rgba(0,0,0,0.92)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <div style={{width:"min(440px,92vw)",background:"#0D0B06",border:"2px solid "+SIGNAL,padding:22}}>
+      <div style={{width:"min(440px,92vw)",background:"#14161A",border:"2px solid "+SIGNAL,padding:22}}>
         <div style={{fontFamily:"'Archivo',system-ui,sans-serif",color:GOLD,fontSize:15,fontWeight:600,letterSpacing:0.2,marginBottom:4}}>Save session</div>
         <div style={{color:DIM,fontSize:10,marginBottom:14}}>Page {currentPage} · {assetCount} assets in library</div>
         <div style={{color:GOLD,fontSize:10,letterSpacing:0.2,marginBottom:5}}>Project name</div>
@@ -488,8 +484,8 @@ function SaveSessionModal({ onClose, onSave, currentPage, assetCount }) {
         <input value={note} onChange={e=>setNote(e.target.value)} placeholder="e.g. Done chapters 1-5, continuing from 6..." style={{...inp2,marginBottom:12}}/>
         <div style={{color:GOLD,fontSize:10,letterSpacing:0.2,marginBottom:5}}>Status</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:16}}>
-          <button onClick={()=>setStatus("in_progress")} style={{background:status==="in_progress"?GOLD:"#171208",border:"1px solid "+(status==="in_progress"?"#000":GOLDDIM),color:status==="in_progress"?"#000":WHITE,padding:"9px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>⟳ in progress</button>
-          <button onClick={()=>setStatus("completed")} style={{background:status==="completed"?GOLD:"#171208",border:"1px solid "+(status==="completed"?"#000":GOLDDIM),color:status==="completed"?"#000":WHITE,padding:"9px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>Completed</button>
+          <button onClick={()=>setStatus("in_progress")} style={{background:status==="in_progress"?GOLD:"#1C1F25",border:"1px solid "+(status==="in_progress"?"#000":GOLDDIM),color:status==="in_progress"?"#000":WHITE,padding:"9px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>⟳ in progress</button>
+          <button onClick={()=>setStatus("completed")} style={{background:status==="completed"?GOLD:"#1C1F25",border:"1px solid "+(status==="completed"?"#000":GOLDDIM),color:status==="completed"?"#000":WHITE,padding:"9px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>Completed</button>
         </div>
         <div style={{color:DIM,fontSize:10,marginBottom:12,lineHeight:1.5}}>{status==="in_progress"?"Will appear in OPEN PROJECT (still working on it)":"Will appear in MY PROJECTS (finished films)"}</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
@@ -504,7 +500,7 @@ function SaveSessionModal({ onClose, onSave, currentPage, assetCount }) {
 function QAMenu({ go, onClose, user }) {
   return (
     <div style={{position:"fixed",inset:0,zIndex:1000,display:"flex"}}>
-      <div style={{width:256,background:"#0D0B06",borderRight:"1px solid "+GOLDDIM+"",height:"100vh",overflowY:"auto",padding:18}}>
+      <div style={{width:256,background:"#14161A",borderRight:"1px solid "+GOLDDIM+"",height:"100vh",overflowY:"auto",padding:18}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
           <span style={{fontFamily:"'Archivo',system-ui,sans-serif",color:GOLD,fontSize:13,fontWeight:600,letterSpacing:0.2}}>Quick access</span>
           <button onClick={onClose} style={{background:"none",border:"none",color:GOLD,fontSize:20,cursor:"pointer"}}>✕</button>
@@ -512,7 +508,7 @@ function QAMenu({ go, onClose, user }) {
         <div style={{background:GOLD,padding:"9px 12px",marginBottom:10,textAlign:"center"}}>
           <div style={{color:"#000",fontWeight:600,fontSize:10,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>MANDA STRONG STUDIO</div>
         </div>
-        <div style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"7px 10px",marginBottom:14,textAlign:"center"}}>
+        <div style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"7px 10px",marginBottom:14,textAlign:"center"}}>
           <div style={{color:DIM,fontSize:9,letterSpacing:0.2}}>Plan</div>
           <div style={{color:GOLD,fontWeight:600,fontSize:14,fontFamily:"'Archivo',system-ui,sans-serif"}}>Studio</div>
         </div>
@@ -532,7 +528,7 @@ function QAMenu({ go, onClose, user }) {
 
 function Header({ go, setMenu }) {
   return (
-    <header style={{position:"sticky",top:0,zIndex:500,background:"#171208",borderBottom:"1px solid "+GOLDDIM+"",padding:"0 16px",height:52,display:"flex",alignItems:"center",gap:12}}>
+    <header style={{position:"sticky",top:0,zIndex:500,background:"#1C1F25",borderBottom:"1px solid "+GOLDDIM+"",padding:"0 16px",height:52,display:"flex",alignItems:"center",gap:12}}>
       <button onClick={()=>setMenu(true)} style={{background:"none",border:"1px solid "+GOLDDIM,color:GOLD,width:34,height:34,cursor:"pointer",fontSize:16,flexShrink:0}}>☰</button>
       <div onClick={()=>go(1)} style={{cursor:"pointer",flexShrink:0}}>
         <div style={{fontFamily:"'Archivo',system-ui,sans-serif",color:GOLD,fontSize:13,fontWeight:600,letterSpacing:0.2,lineHeight:1,textShadow:"none"}}>MANDA STRONG</div>
@@ -553,7 +549,7 @@ function Header({ go, setMenu }) {
 
 function Footer({ page, go, onSave, onHistory }) {
   return (
-    <footer style={{position:"fixed",bottom:0,left:0,right:0,zIndex:400,background:"#171208",borderTop:"1px solid "+GOLDDIM+"",padding:"6px 20px 8px",display:"flex",flexDirection:"column",gap:4}}>
+    <footer style={{position:"fixed",bottom:0,left:0,right:0,zIndex:400,background:"#1C1F25",borderTop:"1px solid "+GOLDDIM+"",padding:"6px 20px 8px",display:"flex",flexDirection:"column",gap:4}}>
       <div style={{textAlign:"center"}}>
         <span style={{color:GOLD,fontSize:11,letterSpacing:0,fontWeight:500}}>MANDASTRONG STUDIO · PROFESSIONAL CINEMA SYNTHESIS · MandaStrong1.Etsy.com</span>
         {page===1&&<span style={{color:GOLD,fontSize:11,letterSpacing:0,fontWeight:500,opacity:0.75}}> · created 2025</span>}
@@ -563,7 +559,7 @@ function Footer({ page, go, onSave, onHistory }) {
         <span style={{color:GOLD,fontSize:11,fontWeight:600,fontFamily:"'Archivo',system-ui,sans-serif",letterSpacing:0.2}}>Page {page} / {TOTAL}</span>
         <button onClick={()=>go(Math.min(TOTAL,page+1))} disabled={page===TOTAL} style={{...G("gold",true),opacity:page===TOTAL?0.3:1}}>Next</button>
         <button onClick={onSave} style={{...G("out",true),fontSize:11,letterSpacing:0.2}}>Save project</button>
-        <button onClick={onHistory} style={{background:"#171208",border:"1px solid "+GOLDDIM,color:GOLD,padding:"5px 14px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>My projects</button>
+        <button onClick={onHistory} style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,color:GOLD,padding:"5px 14px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>My projects</button>
         <span style={{color:"#22c55e",fontSize:11,fontWeight:500}}>Autosave on</span>
       </div>
     </footer>
@@ -573,7 +569,7 @@ function Footer({ page, go, onSave, onHistory }) {
 function ToolCard({ name, onOpen }) {
   return (
     <div onClick={()=>onOpen(name)}
-      style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"14px 12px",cursor:"pointer",transition:"all .15s",minHeight:56,display:"flex",alignItems:"center"}}
+      style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"14px 12px",cursor:"pointer",transition:"all .15s",minHeight:56,display:"flex",alignItems:"center"}}
       onMouseEnter={e=>{e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.background=BG4;e.currentTarget.style.boxShadow="0 0 10px "+GOLD+"44";}}
       onMouseLeave={e=>{e.currentTarget.style.borderColor=GOLDDIM;e.currentTarget.style.background="#000";e.currentTarget.style.boxShadow="none";}}>
       <div style={{color:WHITE,fontSize:13,fontWeight:600,lineHeight:1.3,letterSpacing:.5}}>{name}</div>
@@ -599,7 +595,7 @@ function ToolPanel({ tool, onClose, onSave }) {
   const [selVoice, setSelVoice] = useState("james");
   const fileRef = useRef(null);
   const photoRef = useRef(null);
-  const inp = {width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,padding:"9px 12px",color:WHITE,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"'Archivo',system-ui,sans-serif"};
+  const inp = {width:"100%",background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"9px 12px",color:WHITE,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"'Archivo',system-ui,sans-serif"};
 
   const speak = (vid, txt) => speakText(vid, txt, ()=>setPlaying(vid), ()=>setPlaying(null));
 
@@ -642,7 +638,7 @@ function ToolPanel({ tool, onClose, onSave }) {
 
   return (
     <div style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,0.92)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <div style={{width:"min(600px,95vw)",background:"#0D0B06",border:"1px solid "+GOLDDIM,padding:26,maxHeight:"92vh",overflowY:"auto"}}>
+      <div style={{width:"min(600px,95vw)",background:"#14161A",border:"1px solid "+GOLDDIM,padding:26,maxHeight:"92vh",overflowY:"auto"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
           <h2 style={{...H1,fontSize:16,margin:0,letterSpacing:0.4}}>{tool}</h2>
           <button onClick={onClose} style={{background:"none",border:"none",color:GOLD,fontSize:20,cursor:"pointer"}}>✕</button>
@@ -659,7 +655,7 @@ function ToolPanel({ tool, onClose, onSave }) {
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
               {STOCK_VOICES.map(v=>(
                 <div key={v.id} onClick={()=>setSelVoice(v.id)}
-                  style={{background:"#171208",border:"2px solid "+selVoice===v.id?GOLD:GOLDDIM,padding:"10px 12px",cursor:"pointer",boxShadow:selVoice===v.id?"0 0 12px "+GOLD+"44":"none"}}>
+                  style={{background:"#1C1F25",border:"2px solid "+selVoice===v.id?GOLD:GOLDDIM,padding:"10px 12px",cursor:"pointer",boxShadow:selVoice===v.id?"0 0 12px "+GOLD+"44":"none"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
                     <span style={{color:selVoice===v.id?GOLD:WHITE,fontSize:14,fontWeight:600}}>{v.name}</span>
                     <button onClick={e=>{e.stopPropagation();speak(v.id,"Hi I am "+v.name+". "+v.desc+". Ready to narrate.");}}
@@ -698,16 +694,16 @@ function ToolPanel({ tool, onClose, onSave }) {
           <div style={{marginBottom:14}}>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:4}}>
               <button onClick={()=>photoRef.current&&photoRef.current.click()}
-                style={{background:"#171208",border:"2px solid "+SIGNAL,color:GOLD,padding:"20px 8px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>
+                style={{background:"#1C1F25",border:"2px solid "+SIGNAL,color:GOLD,padding:"20px 8px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>
                 Upload photo
               </button>
               <button onClick={()=>fileRef.current&&fileRef.current.click()}
-                style={{background:"#171208",border:"1px solid "+GOLDDIM,color:WHITE,padding:"20px 8px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>
+                style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,color:WHITE,padding:"20px 8px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>
                 Upload file
               </button>
             </div>
             <a href="https://photos.google.com" target="_blank" rel="noopener noreferrer"
-              style={{display:"block",background:"#171208",border:"1px solid "+GOLDDIM,color:GOLDDIM,padding:"8px",textAlign:"center",fontSize:10,fontWeight:600,letterSpacing:0.2,textDecoration:"none",fontFamily:"'Archivo',system-ui,sans-serif",marginBottom:4}}>
+              style={{display:"block",background:"#1C1F25",border:"1px solid "+GOLDDIM,color:GOLDDIM,padding:"8px",textAlign:"center",fontSize:10,fontWeight:600,letterSpacing:0.2,textDecoration:"none",fontFamily:"'Archivo',system-ui,sans-serif",marginBottom:4}}>
               OPEN GOOGLE PHOTOS download photo then Upload Photo above
             </a>
             <input ref={photoRef} type="file" accept="image/*, .jpg, .jpeg, .png, .gif, .webp, .heic, .heif" style={{display:"none"}} onChange={e=>{
@@ -832,14 +828,14 @@ function WritingBoxes({ onSave }) {
     if(onSave)onSave(asset);
     setTimeout(()=>{setWiring(false);setWired(true);setTimeout(()=>setWired(false),4000);},500);
   };
-  const ta={width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,padding:"12px 14px",color:WHITE,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"'Archivo',system-ui,sans-serif",lineHeight:1.8,height:150,resize:"vertical"};
+  const ta={width:"100%",background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"12px 14px",color:WHITE,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"'Archivo',system-ui,sans-serif",lineHeight:1.8,height:150,resize:"vertical"};
   return (
     <div style={{padding:"0 12px 16px"}}>
       <div style={{color:GOLD,fontSize:13,letterSpacing:0.2,fontWeight:600,margin:"6px 2px 4px"}}>Script to movie</div>
       <div style={{color:GOLDDIM,fontSize:11,letterSpacing:0,margin:"0 2px 12px"}}>Fill the three boxes, then WIRE INTO RENDER — the video generator on Page 8 uses them to drive every scene. Each box also saves to your Media Library &amp; timeline.</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:12}}>
         {BOXES.map(b=>(
-          <div key={b.key} style={{background:"#0D0B06",border:"2px solid "+SIGNAL,padding:"14px 16px",display:"flex",flexDirection:"column"}}>
+          <div key={b.key} style={{background:"#14161A",border:"2px solid "+SIGNAL,padding:"14px 16px",display:"flex",flexDirection:"column"}}>
             <div style={{color:GOLD,fontWeight:600,fontSize:13,letterSpacing:0.2,marginBottom:3}}>{b.icon} {b.title}</div>
             <div style={{color:GOLDDIM,fontSize:11,lineHeight:1.6,marginBottom:8}}>{b.hint}</div>
             <textarea value={docs[b.key]||""} onChange={e=>set(b.key,e.target.value)} placeholder={b.ph} style={ta}/>
@@ -868,7 +864,7 @@ function ToolPage({ title, subtitle, tools, onSave }) {
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <div style={{position:"relative"}}>
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={"Search "+tools.length+" tools..."}
-              style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"7px 12px 7px 28px",color:WHITE,fontSize:13,outline:"none",width:200}}/>
+              style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"7px 12px 7px 28px",color:WHITE,fontSize:13,outline:"none",width:200}}/>
             <span style={{position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",color:GOLD}}></span>
             {search&&<button onClick={()=>setSearch("")} style={{position:"absolute",right:7,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:GOLD,cursor:"pointer",padding:0}}>✕</button>}
           </div>
@@ -881,7 +877,7 @@ function ToolPage({ title, subtitle, tools, onSave }) {
       {open&&<ToolPanel tool={open} onClose={()=>setOpen(null)} onSave={onSave}/>}
       {title==="WRITING TOOLS"&&(
         <div style={{padding:"0 12px 12px"}}>
-          <div style={{background:"#0D0B06",border:"2px solid "+SIGNAL,padding:"16px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
+          <div style={{background:"#14161A",border:"2px solid "+SIGNAL,padding:"16px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
             <div>
               <div style={{color:GOLD,fontWeight:600,fontSize:13,letterSpacing:0.2}}>Your projects</div>
               <div style={{color:WHITE,fontSize:12,marginTop:3}}>Save and reload your work at any time</div>
@@ -898,7 +894,7 @@ function ToolPage({ title, subtitle, tools, onSave }) {
                   }
                 }catch(e){alert("Could not open projects.");}
               }}
-                style={{background:"#171208",border:"none",color:"#000",padding:"12px 24px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0.2}}>
+                style={{background:"#1C1F25",border:"none",color:"#000",padding:"12px 24px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0.2}}>
                 Open project
               </button>
             </div>
@@ -944,7 +940,7 @@ function RecordYourOwnSong({ onRecorded }) {
       <button onClick={stop} style={{background:"#ef4444",border:"none",color:"#fff",padding:"6px 16px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>Stop & save</button>
     </div>
   ):(
-    <button onClick={start} style={{width:"100%",background:"#171208",border:"none",color:"#fff",padding:"10px 14px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0.2,marginTop:8,fontFamily:"'Archivo',system-ui,sans-serif"}}>
+    <button onClick={start} style={{width:"100%",background:"#1C1F25",border:"none",color:"#fff",padding:"10px 14px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0.2,marginTop:8,fontFamily:"'Archivo',system-ui,sans-serif"}}>
       Record your own song
     </button>
   );
@@ -1555,14 +1551,14 @@ function MusicVideoStudio({ onClose, onSave }) {
     ["Vimeo","#1AB7EA","https://vimeo.com/upload"],
   ];
 
-  const inp = {width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,padding:"9px 12px",color:WHITE,fontSize:13,outline:"none",fontFamily:"'Archivo',system-ui,sans-serif",boxSizing:"border-box"};
+  const inp = {width:"100%",background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"9px 12px",color:WHITE,fontSize:13,outline:"none",fontFamily:"'Archivo',system-ui,sans-serif",boxSizing:"border-box"};
   const label = (txt) => <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:6,marginTop:12}}>{txt}</div>;
 
   const sel = (k,arr) => (
     <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:4}}>
       {arr.map(item=>(
         <button key={item} onClick={()=>set(k,item)}
-          style={{background:config[k]===item?GOLD:"#171208",border:"1px solid "+(config[k]===item?"#000":GOLDDIM),color:config[k]===item?"#000":WHITE,padding:"4px 10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0}}>
+          style={{background:config[k]===item?GOLD:"#1C1F25",border:"1px solid "+(config[k]===item?"#000":GOLDDIM),color:config[k]===item?"#000":WHITE,padding:"4px 10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0}}>
           {item}
         </button>
       ))}
@@ -1572,7 +1568,7 @@ function MusicVideoStudio({ onClose, onSave }) {
     <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:4}}>
       {arr.map(item=>(
         <button key={item} onClick={()=>tog(k,item)}
-          style={{background:config[k].includes(item)?GOLD:"#171208",border:"1px solid "+(config[k].includes(item)?"#000":GOLDDIM),color:config[k].includes(item)?"#000":WHITE,padding:"4px 10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0}}>
+          style={{background:config[k].includes(item)?GOLD:"#1C1F25",border:"1px solid "+(config[k].includes(item)?"#000":GOLDDIM),color:config[k].includes(item)?"#000":WHITE,padding:"4px 10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0}}>
           {item}
         </button>
       ))}
@@ -1584,10 +1580,10 @@ function MusicVideoStudio({ onClose, onSave }) {
 
   return (
     <div style={{position:"fixed",inset:0,zIndex:1100,background:"rgba(0,0,0,0.98)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <div style={{width:"min(960px,98vw)",height:"min(92vh,860px)",background:"#0D0B06",border:"2px solid "+SIGNAL,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      <div style={{width:"min(960px,98vw)",height:"min(92vh,860px)",background:"#14161A",border:"2px solid "+SIGNAL,display:"flex",flexDirection:"column",overflow:"hidden"}}>
 
         {/* Header */}
-        <div style={{background:"#171208",borderBottom:"1px solid "+GOLDDIM+"",padding:"14px 22px",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
+        <div style={{background:"#1C1F25",borderBottom:"1px solid "+GOLDDIM+"",padding:"14px 22px",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
           <div>
             <div style={{fontFamily:"'Archivo',system-ui,sans-serif",color:GOLD,fontSize:18,fontWeight:600,letterSpacing:0.4}}>Music video studio</div>
             <div style={{color:WHITE,fontSize:10,letterSpacing:0.2,marginTop:2}}>Professional music video production · AI powered · self-contained</div>
@@ -1599,7 +1595,7 @@ function MusicVideoStudio({ onClose, onSave }) {
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",borderBottom:"1px solid "+GOLDDIM+"",flexShrink:0}}>
           {steps.map((s,i)=>(
             <button key={i} onClick={()=>setStep(i+1)}
-              style={{background:step===i+1?"#171208":"none",border:"none",borderBottom:step===i+1?"2px solid "+SIGNAL:"2px solid transparent",color:step===i+1?GOLD:WHITE,padding:"11px 6px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2}}>
+              style={{background:step===i+1?"#1C1F25":"none",border:"none",borderBottom:step===i+1?"2px solid "+SIGNAL:"2px solid transparent",color:step===i+1?GOLD:WHITE,padding:"11px 6px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2}}>
               {s}
             </button>
           ))}
@@ -1621,9 +1617,9 @@ function MusicVideoStudio({ onClose, onSave }) {
                 {label("MOOD")}{sel("mood",MOODS)}
                 {label("TEMPO")}{sel("tempo",TEMPOS)}
                 {label("Upload your song — or record it below")}
-                <div style={{background:"#171208",border:"2px dashed "+(audioFile?GOLD:GOLDDIM),padding:"18px 12px",cursor:"pointer",transition:"all .2s"}}
+                <div style={{background:"#1C1F25",border:"2px dashed "+(audioFile?GOLD:GOLDDIM),padding:"18px 12px",cursor:"pointer",transition:"all .2s"}}
                   onClick={()=>audioInputRef.current&&audioInputRef.current.click()}
-                  onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.background="#171208";}}
+                  onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.background="#1C1F25";}}
                   onDragLeave={e=>{e.currentTarget.style.borderColor=audioFile?GOLD:GOLDDIM;e.currentTarget.style.background="#000";}}
                   onDrop={e=>{
                     e.preventDefault();e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.background="#000";
@@ -1639,7 +1635,7 @@ function MusicVideoStudio({ onClose, onSave }) {
                 <input ref={audioInputRef} type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg" style={{display:"none"}} onChange={handleAudioUpload}/>
                 <RecordYourOwnSong onRecorded={(blob,name)=>{setAudioFile(blob);const u=URL.createObjectURL(blob);setAudioUrl(u);setAudioName(name);}}/>
                 {audioFile&&<button onClick={()=>{setAudioFile(null);setAudioUrl("");setAudioName("");}} style={{background:"none",border:"1px solid #ef4444",color:"#ef4444",padding:"3px 10px",cursor:"pointer",fontSize:10,fontWeight:600,marginTop:6}}>Remove audio</button>}
-                <div onClick={()=>set("stereo",!config.stereo)} style={{display:"flex",alignItems:"center",gap:10,marginTop:14,padding:"10px 12px",background:"#171208",border:"1px solid "+(config.stereo?GOLD:GOLDDIM),cursor:"pointer"}}>
+                <div onClick={()=>set("stereo",!config.stereo)} style={{display:"flex",alignItems:"center",gap:10,marginTop:14,padding:"10px 12px",background:"#1C1F25",border:"1px solid "+(config.stereo?GOLD:GOLDDIM),cursor:"pointer"}}>
                   <div style={{width:20,height:20,borderRadius:4,border:"2px solid "+(config.stereo?GOLD:GOLDDIM),background:config.stereo?GOLD:"transparent",color:"#000",fontWeight:600,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{config.stereo?"✓":""}</div>
                   <div><div style={{color:config.stereo?GOLD:WHITE,fontWeight:600,fontSize:12,letterSpacing:0}}>Use stereo sound</div><div style={{color:GOLDDIM,fontSize:10,marginTop:1}}>Full stereo width baked into the exported video</div></div>
                 </div>
@@ -1656,7 +1652,7 @@ function MusicVideoStudio({ onClose, onSave }) {
                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                   {["16:9","9:16 (Vertical)","1:1 (Square)","2.39:1 (Cinematic)"].map(r=>(
                     <button key={r} onClick={()=>set("aspectRatio",r)}
-                      style={{background:config.aspectRatio===r?GOLD:"#171208",border:"1px solid "+(config.aspectRatio===r?"#000":GOLDDIM),color:config.aspectRatio===r?"#000":WHITE,padding:"4px 10px",cursor:"pointer",fontSize:11,fontWeight:600}}>
+                      style={{background:config.aspectRatio===r?GOLD:"#1C1F25",border:"1px solid "+(config.aspectRatio===r?"#000":GOLDDIM),color:config.aspectRatio===r?"#000":WHITE,padding:"4px 10px",cursor:"pointer",fontSize:11,fontWeight:600}}>
                       {r}
                     </button>
                   ))}
@@ -1677,7 +1673,7 @@ function MusicVideoStudio({ onClose, onSave }) {
                   style={{...inp,height:160,resize:"vertical",lineHeight:1.8,border:"1px solid "+GOLDDIM}}
                 />
                 {label("DURATION")}
-                <div style={{padding:"12px 14px",border:"1px solid "+GOLDDIM,background:"#171208",marginBottom:8}}>
+                <div style={{padding:"12px 14px",border:"1px solid "+GOLDDIM,background:"#1C1F25",marginBottom:8}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                     <span style={{color:GOLDDIM,fontSize:11,fontWeight:600,letterSpacing:0.2}}>Film length</span>
                     <span style={{color:GOLD,fontSize:13,fontWeight:600}}>{config.durationMin>0?(config.durationMin+" min"):"AUTO — match song"}</span>
@@ -1703,9 +1699,9 @@ function MusicVideoStudio({ onClose, onSave }) {
 
                 {/* Drag-drop audio upload — moved here from Step 1 */}
                 {label("Upload your audio track")}
-                <div style={{background:"#171208",border:"2px dashed "+(audioFile?GOLD:GOLDDIM),padding:"16px 12px",cursor:"pointer",marginBottom:8,transition:"border-color .2s"}}
+                <div style={{background:"#1C1F25",border:"2px dashed "+(audioFile?GOLD:GOLDDIM),padding:"16px 12px",cursor:"pointer",marginBottom:8,transition:"border-color .2s"}}
                   onClick={()=>audioInputRef.current&&audioInputRef.current.click()}
-                  onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.background="#171208";}}
+                  onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.background="#1C1F25";}}
                   onDragLeave={e=>{e.currentTarget.style.borderColor=audioFile?GOLD:GOLDDIM;e.currentTarget.style.background="#000";}}
                   onDrop={e=>{
                     e.preventDefault();e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.background="#000";
@@ -1726,7 +1722,7 @@ function MusicVideoStudio({ onClose, onSave }) {
                   value={config.visualDesc}
                   onChange={e=>set("visualDesc",e.target.value)}
                   placeholder="Describe what you want to see. e.g. A man sits alone on a windowsill fingerpicking acoustic guitar. Only his back is visible. Facing the open ocean at night. Full moon. Single candle. The room is empty. A man who has lost someone."
-                  style={{width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,padding:"12px",color:WHITE,fontSize:13,outline:"none",fontFamily:"'Archivo',system-ui,sans-serif",boxSizing:"border-box",height:130,resize:"vertical",lineHeight:1.8,marginBottom:10}}
+                  style={{width:"100%",background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"12px",color:WHITE,fontSize:13,outline:"none",fontFamily:"'Archivo',system-ui,sans-serif",boxSizing:"border-box",height:130,resize:"vertical",lineHeight:1.8,marginBottom:10}}
                 />
 
                 {/* Reference image upload with drag & drop */}
@@ -1734,34 +1730,34 @@ function MusicVideoStudio({ onClose, onSave }) {
                 {config.refMedia?(
                   <div style={{position:"relative",marginBottom:10}}>
                     <img src={config.refMedia} alt="ref" style={{width:"100%",height:70,objectFit:"cover",border:"1px solid "+GOLDDIM}}/>
-                    <button onClick={()=>set("refMedia",null)} style={{position:"absolute",top:4,right:4,background:"#171208",border:"1px solid "+GOLDDIM,color:GOLD,padding:"1px 7px",cursor:"pointer",fontSize:10,fontWeight:600}}>✕</button>
+                    <button onClick={()=>set("refMedia",null)} style={{position:"absolute",top:4,right:4,background:"#1C1F25",border:"1px solid "+GOLDDIM,color:GOLD,padding:"1px 7px",cursor:"pointer",fontSize:10,fontWeight:600}}>✕</button>
                     <div style={{color:"#22c55e",fontSize:9,fontWeight:600,letterSpacing:0.2,marginTop:3}}>Reference loaded</div>
                   </div>
                 ):(
                   <div>
                     <div
-                      onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.background="#211A0E";}}
-                      onDragLeave={e=>{e.currentTarget.style.borderColor=GOLDDIM;e.currentTarget.style.background="#171208";}}
+                      onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.background="#22262D";}}
+                      onDragLeave={e=>{e.currentTarget.style.borderColor=GOLDDIM;e.currentTarget.style.background="#1C1F25";}}
                       onDrop={e=>{
                         e.preventDefault();
-                        e.currentTarget.style.borderColor=GOLDDIM;e.currentTarget.style.background="#171208";
+                        e.currentTarget.style.borderColor=GOLDDIM;e.currentTarget.style.background="#1C1F25";
                         const f=e.dataTransfer.files&&e.dataTransfer.files[0];
                         if(f&&(f.type.startsWith("image/")||f.type.startsWith("video/"))){
                           set("refMedia",URL.createObjectURL(f));
                         }
                       }}
                       onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*,video/*";inp.onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)set("refMedia",URL.createObjectURL(f));};inp.click();}}
-                      style={{background:"#171208",border:"2px dashed "+GOLDDIM,padding:"18px 10px",textAlign:"center",cursor:"pointer",marginBottom:6,transition:"all .2s"}}>
+                      style={{background:"#1C1F25",border:"2px dashed "+GOLDDIM,padding:"18px 10px",textAlign:"center",cursor:"pointer",marginBottom:6,transition:"all .2s"}}>
                       <div style={{color:GOLD,fontSize:14,fontWeight:600,letterSpacing:0.2,marginBottom:4}}>Drag & drop here</div>
                       <div style={{color:GOLDDIM,fontSize:10,letterSpacing:0.2}}>or click to browse — JPG · PNG · MP4</div>
                     </div>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:10}}>
                       <button onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.heic,.heif";inp.onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)set("refMedia",URL.createObjectURL(f));};inp.click();}}
-                        style={{background:"#171208",border:"2px solid "+SIGNAL,color:GOLD,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>
+                        style={{background:"#1C1F25",border:"2px solid "+SIGNAL,color:GOLD,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>
                         Upload photo
                       </button>
                       <button onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*,video/*";inp.onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)set("refMedia",URL.createObjectURL(f));};inp.click();}}
-                        style={{background:"#171208",border:"1px solid "+GOLDDIM,color:WHITE,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>
+                        style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,color:WHITE,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>
                         Upload file
                       </button>
                     </div>
@@ -1769,7 +1765,7 @@ function MusicVideoStudio({ onClose, onSave }) {
                 )}
 
                 {/* Summary */}
-                <div style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:14,marginBottom:14}}>
+                <div style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:14,marginBottom:14}}>
                   <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,marginBottom:8,fontWeight:600}}>Your music video</div>
                   {[["TITLE",config.title||"—"],["ARTIST",config.artist||"—"],["GENRE",config.genre||"—"],["MOOD",config.mood||"—"],["STYLE",config.videoStyle||"—"],["GRADE",config.colorGrade||"—"],["DURATION",config.durationMin>0?(config.durationMin+" min"):"Auto — match song"],["AUDIO",audioName||"No audio uploaded"]].map(([k,v])=>(
                     <div key={k} style={{display:"flex",justifyContent:"space-between",fontSize:12,padding:"3px 0",borderBottom:"1px solid #0a0800"}}>
@@ -1782,7 +1778,7 @@ function MusicVideoStudio({ onClose, onSave }) {
                 {/* Auto lip sync toggle */}
                 <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
                   <button onClick={()=>set("lipSync",!config.lipSync)}
-                    style={{background:config.lipSync?GOLD:"#171208",border:"1px solid "+(config.lipSync?"#000":GOLDDIM),color:config.lipSync?"#000":WHITE,padding:"6px 14px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>
+                    style={{background:config.lipSync?GOLD:"#1C1F25",border:"1px solid "+(config.lipSync?"#000":GOLDDIM),color:config.lipSync?"#000":WHITE,padding:"6px 14px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>
                     {config.lipSync?"Auto lip sync on":"AUTO LIP SYNC"}
                   </button>
                   <span style={{color:GOLDDIM,fontSize:10}}>Mouth syncs to beats automatically</span>
@@ -1800,10 +1796,10 @@ function MusicVideoStudio({ onClose, onSave }) {
                 </button>
                 {generating&&(
                   <div>
-                    <div style={{height:5,background:"#171208",marginBottom:6}}>
-                      <div style={{width:renderProgress+"%",height:"100%",background:"#171208",transition:"width .3s"}}/>
+                    <div style={{height:5,background:"#1C1F25",marginBottom:6}}>
+                      <div style={{width:renderProgress+"%",height:"100%",background:"#1C1F25",transition:"width .3s"}}/>
                     </div>
-                    <div style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:10,maxHeight:140,overflowY:"auto"}}>
+                    <div style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:10,maxHeight:140,overflowY:"auto"}}>
                       {renderLog.map((l,i)=>(
                         <div key={i} style={{color:i===renderLog.length-1?"#22c55e":DIM,fontSize:10,lineHeight:1.8}}>
                           {i===renderLog.length-1?"▶ ":"  "}{l}
@@ -1813,7 +1809,7 @@ function MusicVideoStudio({ onClose, onSave }) {
                   </div>
                 )}
                 {!generating&&renderLog.length>0&&(
-                  <div style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:10,maxHeight:120,overflowY:"auto"}}>
+                  <div style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:10,maxHeight:120,overflowY:"auto"}}>
                     {renderLog.map((l,i)=>(
                       <div key={i} style={{color:i===renderLog.length-1?"#22c55e":DIM,fontSize:10,lineHeight:1.8}}>
                         {i===renderLog.length-1?"▶ ":"  "}{l}
@@ -1827,12 +1823,12 @@ function MusicVideoStudio({ onClose, onSave }) {
 
           {/* Right — video player + export (only when video exists) */}
           {videoUrl&&(
-            <div style={{display:"flex",flexDirection:"column",background:"#171208",overflow:"hidden"}}>
+            <div style={{display:"flex",flexDirection:"column",background:"#1C1F25",overflow:"hidden"}}>
               {/* Video player */}
-              <div style={{position:"relative",background:"#171208"}}>
-                <canvas ref={canvasRef} style={{position:"fixed",right:8,bottom:8,width:160,height:90,opacity:1,pointerEvents:"none",zIndex:9999,border:"1px solid #e8c96d",background:"#171208"}}/>
+              <div style={{position:"relative",background:"#1C1F25"}}>
+                <canvas ref={canvasRef} style={{position:"fixed",right:8,bottom:8,width:160,height:90,opacity:1,pointerEvents:"none",zIndex:9999,border:"1px solid #e8c96d",background:"#1C1F25"}}/>
                 <video ref={videoRef} src={videoUrl} playsInline
-                  style={{width:"100%",aspectRatio:"16/9",display:"block",background:"#171208"}}
+                  style={{width:"100%",aspectRatio:"16/9",display:"block",background:"#1C1F25"}}
                   onTimeUpdate={()=>setCurrentTime(videoRef.current?.currentTime||0)}
                   onLoadedMetadata={()=>{
                     const v=videoRef.current;if(!v)return;
@@ -1900,7 +1896,7 @@ function MusicVideoStudio({ onClose, onSave }) {
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:5,marginBottom:12}}>
                   {SOCIAL.map(([name,color,url])=>(
                     <button key={name} onClick={()=>window.open(url,"_blank")}
-                      style={{background:"#171208",border:"1px solid "+color+"33",color:color,padding:"7px 4px",cursor:"pointer",fontSize:10,fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}
+                      style={{background:"#1C1F25",border:"1px solid "+color+"33",color:color,padding:"7px 4px",cursor:"pointer",fontSize:10,fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}
                       onMouseEnter={e=>{e.currentTarget.style.background=color+"22";}}
                       onMouseLeave={e=>{e.currentTarget.style.background="#000";}}>
                       {name}
@@ -1918,7 +1914,7 @@ function MusicVideoStudio({ onClose, onSave }) {
           )}
 
           {/* Canvas for rendering (always hidden) */}
-          {!videoUrl&&<canvas ref={canvasRef} style={{position:"fixed",right:8,bottom:8,width:160,height:90,opacity:1,pointerEvents:"none",zIndex:9999,border:"1px solid #e8c96d",background:"#171208"}}/>}
+          {!videoUrl&&<canvas ref={canvasRef} style={{position:"fixed",right:8,bottom:8,width:160,height:90,opacity:1,pointerEvents:"none",zIndex:9999,border:"1px solid #e8c96d",background:"#1C1F25"}}/>}
         </div>
 
         {/* Bottom nav */}
@@ -2249,7 +2245,7 @@ function P6Voice({ onSave, setMediaLib }) {
     setLoading(false);
   };
 
-  const inp={width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,padding:"12px 14px",color:WHITE,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"'Archivo',system-ui,sans-serif",lineHeight:1.9};
+  const inp={width:"100%",background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"12px 14px",color:WHITE,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"'Archivo',system-ui,sans-serif",lineHeight:1.9};
 
   return(
     <div style={{...Sp}}>
@@ -2262,9 +2258,9 @@ function P6Voice({ onSave, setMediaLib }) {
         <div style={{borderRight:"1px solid "+GOLDDIM+"",background:"#030303",display:"flex",flexDirection:"column"}}>
           <div style={{padding:"10px 10px 6px"}}>
             <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:8}}>Voice library — {filtered.length} / {VOICE_CHARACTERS.length}</div>
-            <div style={{marginBottom:5}}><div style={{color:GOLDDIM,fontSize:9,letterSpacing:0.2,marginBottom:3}}>Gender</div><div style={{display:"flex",gap:4}}>{GENDERS.map(g=><button key={g} onClick={()=>setFilterGender(g)} style={{flex:1,background:filterGender===g?GOLD:"#171208",border:"1px solid "+(filterGender===g?"#000":GOLDDIM),color:filterGender===g?"#000":WHITE,padding:"3px 0",cursor:"pointer",fontSize:10,fontWeight:600}}>{g}</button>)}</div></div>
-            <div style={{marginBottom:5}}><div style={{color:GOLDDIM,fontSize:9,letterSpacing:0.2,marginBottom:3}}>Age</div><div style={{display:"flex",flexWrap:"wrap",gap:3}}>{AGES.map(a=><button key={a} onClick={()=>setFilterAge(a)} style={{background:filterAge===a?GOLD:"#171208",border:"1px solid "+(filterAge===a?"#000":GOLDDIM),color:filterAge===a?"#000":WHITE,padding:"2px 8px",cursor:"pointer",fontSize:9,fontWeight:600}}>{a}</button>)}</div></div>
-            <div style={{marginBottom:6}}><div style={{color:GOLDDIM,fontSize:9,letterSpacing:0.2,marginBottom:3}}>Origin</div><select value={filterOrigin} onChange={e=>setFilterOrigin(e.target.value)} style={{width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,color:WHITE,padding:"4px 8px",fontSize:11,outline:"none"}}>{ORIGINS.map(o=><option key={o} value={o}>{o}</option>)}</select></div>
+            <div style={{marginBottom:5}}><div style={{color:GOLDDIM,fontSize:9,letterSpacing:0.2,marginBottom:3}}>Gender</div><div style={{display:"flex",gap:4}}>{GENDERS.map(g=><button key={g} onClick={()=>setFilterGender(g)} style={{flex:1,background:filterGender===g?GOLD:"#1C1F25",border:"1px solid "+(filterGender===g?"#000":GOLDDIM),color:filterGender===g?"#000":WHITE,padding:"3px 0",cursor:"pointer",fontSize:10,fontWeight:600}}>{g}</button>)}</div></div>
+            <div style={{marginBottom:5}}><div style={{color:GOLDDIM,fontSize:9,letterSpacing:0.2,marginBottom:3}}>Age</div><div style={{display:"flex",flexWrap:"wrap",gap:3}}>{AGES.map(a=><button key={a} onClick={()=>setFilterAge(a)} style={{background:filterAge===a?GOLD:"#1C1F25",border:"1px solid "+(filterAge===a?"#000":GOLDDIM),color:filterAge===a?"#000":WHITE,padding:"2px 8px",cursor:"pointer",fontSize:9,fontWeight:600}}>{a}</button>)}</div></div>
+            <div style={{marginBottom:6}}><div style={{color:GOLDDIM,fontSize:9,letterSpacing:0.2,marginBottom:3}}>Origin</div><select value={filterOrigin} onChange={e=>setFilterOrigin(e.target.value)} style={{width:"100%",background:"#1C1F25",border:"1px solid "+GOLDDIM,color:WHITE,padding:"4px 8px",fontSize:11,outline:"none"}}>{ORIGINS.map(o=><option key={o} value={o}>{o}</option>)}</select></div>
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search voices..." style={{...inp,padding:"6px 10px",fontSize:11,height:30}}/>
           </div>
           <div style={{flex:1,overflowY:"auto",padding:"6px 6px 80px"}}>
@@ -2276,9 +2272,9 @@ function P6Voice({ onSave, setMediaLib }) {
                 <button onClick={stopMyRecording} style={{background:"#ef4444",border:"none",color:"#fff",padding:"5px 14px",cursor:"pointer",fontSize:10,fontWeight:600,letterSpacing:0.2}}>Stop & save</button>
               </div>
             ):(
-              <button onClick={startMyRecording} style={{width:"100%",background:"#171208",border:"none",color:"#fff",padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif",marginBottom:6}}>Record my voice now</button>
+              <button onClick={startMyRecording} style={{width:"100%",background:"#1C1F25",border:"none",color:"#fff",padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif",marginBottom:6}}>Record my voice now</button>
             )}
-            <button onClick={()=>myVoiceInputRef.current&&myVoiceInputRef.current.click()} style={{width:"100%",background:"#171208",border:"2px solid "+SIGNAL,color:GOLD,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif",marginBottom:6}}>＋ add your own voice (file)</button>
+            <button onClick={()=>myVoiceInputRef.current&&myVoiceInputRef.current.click()} style={{width:"100%",background:"#1C1F25",border:"2px solid "+SIGNAL,color:GOLD,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif",marginBottom:6}}>＋ add your own voice (file)</button>
             {(<>
               <div style={{color:GOLDDIM,fontSize:10,lineHeight:1.5,marginBottom:6,letterSpacing:0}}>Record just the FIRST PARAGRAPH in your own voice — the engine clones your voice and reads the rest of the narration to the end in YOUR voice, wired into the generator and render.</div>
               <div style={{color:GOLD,fontSize:10,letterSpacing:0.2,fontWeight:600,marginBottom:4}}>Allow engine to clone voice?</div>
@@ -2293,11 +2289,11 @@ function P6Voice({ onSave, setMediaLib }) {
               </div>
               {(<>
                 <button onClick={saveMyVoiceAsNarration} style={{width:"100%",background:GOLD,border:"none",color:"#000",padding:"11px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif",marginBottom:6}}>Use my voice as narration</button>
-                <button onClick={engineCompleteNarration} disabled={narrBusy} style={{width:"100%",background:narrBusy?"#211A0E":"#171208",border:"2px solid "+SIGNAL,color:GOLD,padding:"11px",cursor:narrBusy?"wait":"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif",marginBottom:6}}>{narrBusy?"⟳ CLONING & COMPLETING…":"Use engine to complete full narration"}</button>
+                <button onClick={engineCompleteNarration} disabled={narrBusy} style={{width:"100%",background:narrBusy?"#22262D":"#1C1F25",border:"2px solid "+SIGNAL,color:GOLD,padding:"11px",cursor:narrBusy?"wait":"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif",marginBottom:6}}>{narrBusy?"⟳ CLONING & COMPLETING…":"Use engine to complete full narration"}</button>
               </>)}
             </>)}
             {myVoices.map(v=>(
-              <div key={v.id} onClick={()=>setSelVoice(v.id)} style={{padding:"10px 12px",marginBottom:4,background:selVoice===v.id?"#171208":"#000",border:"2px solid "+(selVoice===v.id?GOLD:GOLDDIM),cursor:"pointer"}}>
+              <div key={v.id} onClick={()=>setSelVoice(v.id)} style={{padding:"10px 12px",marginBottom:4,background:selVoice===v.id?"#1C1F25":"#000",border:"2px solid "+(selVoice===v.id?GOLD:GOLDDIM),cursor:"pointer"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <div style={{display:"flex",alignItems:"center",gap:6}}>
                     {/* Hidden clone trigger: double-click the emoji of a selected own-voice to clone it. */}
@@ -2306,14 +2302,14 @@ function P6Voice({ onSave, setMediaLib }) {
                   </div>
                   <div style={{display:"flex",gap:4,flexShrink:0}}>
                     {v.url&&<button onClick={e=>{e.stopPropagation();const a=new Audio(v.url);a.play().catch(()=>{});}} style={{background:GOLDDIM,border:"none",color:"#000",padding:"3px 8px",cursor:"pointer",fontSize:9,fontWeight:600}}>▶</button>}
-                    <button onClick={e=>{e.stopPropagation();delMyVoice(v.id);}} style={{background:"#171208",border:"1px solid "+GOLDDIM,color:GOLD,padding:"3px 8px",cursor:"pointer",fontSize:9,fontWeight:600}}>✕</button>
+                    <button onClick={e=>{e.stopPropagation();delMyVoice(v.id);}} style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,color:GOLD,padding:"3px 8px",cursor:"pointer",fontSize:9,fontWeight:600}}>✕</button>
                   </div>
                 </div>
                 {selVoice===v.id&&<div style={{color:GOLD,fontSize:9,letterSpacing:0.2,marginTop:4,fontWeight:600}}>{cloning?"Cloning your voice…":"Selected"}</div>}
               </div>
             ))}
             {filtered.map(v=>(
-              <div key={v.id} onClick={()=>setSelVoice(v.id)} style={{padding:"10px 12px",marginBottom:4,background:selVoice===v.id?"#171208":"#000",border:"2px solid "+(selVoice===v.id?GOLD:GOLDDIM),cursor:"pointer"}}>
+              <div key={v.id} onClick={()=>setSelVoice(v.id)} style={{padding:"10px 12px",marginBottom:4,background:selVoice===v.id?"#1C1F25":"#000",border:"2px solid "+(selVoice===v.id?GOLD:GOLDDIM),cursor:"pointer"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
                   <div style={{display:"flex",alignItems:"center",gap:6}}>
                     <span style={{fontSize:18}}>{v.emoji}</span>
@@ -2329,16 +2325,16 @@ function P6Voice({ onSave, setMediaLib }) {
           </div>
         </div>
         <div style={{display:"flex",flexDirection:"column",background:"#030303",overflowY:"auto",padding:20}}>
-          <div style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"10px 14px",marginBottom:14}}>
+          <div style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"10px 14px",marginBottom:14}}>
             <div style={{color:WHITE,fontSize:13,fontWeight:600}}>{selected.name} {selected.emoji} · {selected.origin} · {selected.gender}</div>
             <div style={{color:GOLDDIM,fontSize:11,marginTop:3}}>{selected.style}</div>
             <div style={{color:DIM,fontSize:11,marginTop:2,fontStyle:"italic"}}>{selected.desc}</div>
           </div>
-          <div style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"12px 14px",marginBottom:14}}>
+          <div style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"12px 14px",marginBottom:14}}>
             <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:10}}>Voice settings</div>
             <div style={{marginBottom:10}}><div style={{color:GOLDDIM,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:4}}>Mood</div>
-              <select value={mood} onChange={e=>setMood(e.target.value)} style={{width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,color:WHITE,padding:"8px 12px",fontSize:13,fontFamily:"'Archivo',system-ui,sans-serif",outline:"none"}}>
-                {["Neutral","Happy","Sad","Angry","Excited","Calm","Dramatic","Mysterious","Romantic","Sarcastic","Melancholic","Authoritative","Warm"].map(m=><option key={m} value={m} style={{background:"#171208"}}>{m}</option>)}
+              <select value={mood} onChange={e=>setMood(e.target.value)} style={{width:"100%",background:"#1C1F25",border:"1px solid "+GOLDDIM,color:WHITE,padding:"8px 12px",fontSize:13,fontFamily:"'Archivo',system-ui,sans-serif",outline:"none"}}>
+                {["Neutral","Happy","Sad","Angry","Excited","Calm","Dramatic","Mysterious","Romantic","Sarcastic","Melancholic","Authoritative","Warm"].map(m=><option key={m} value={m} style={{background:"#1C1F25"}}>{m}</option>)}
               </select>
             </div>
             {[["SPEED",speed,0.3,1.5,0.01,v=>setSpeed(v),speed.toFixed(2)+"x"],["PITCH",pitchV,0.3,2.0,0.01,v=>setPitchV(v),pitchV.toFixed(2)],["PAUSE (ms)",pauseLen,200,2000,50,v=>setPauseLen(v),pauseLen+"ms"],["VOLUME",volume,0.1,1.0,0.05,v=>setVolume(v),Math.round(volume*100)+"%"]].map(([label,val,mn,mx,st,setter,display])=>(
@@ -2352,12 +2348,12 @@ function P6Voice({ onSave, setMediaLib }) {
           <textarea value={text} onChange={e=>setText(e.target.value)} placeholder="Paste your narration script here..."
             style={{...inp,height:160,resize:"vertical",marginBottom:14}}/>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
-            <div style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"12px 14px"}}>
+            <div style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"12px 14px"}}>
               <div style={{color:GOLD,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Test script</div>
               <div style={{color:WHITE,fontSize:11,lineHeight:1.7,marginBottom:10}}>Hear your script with current voice and settings.</div>
               <button onClick={()=>speaking?stop():speakNow(text)} disabled={!text.trim()} style={{background:"transparent",border:"1px solid "+GOLDDIM,color:GOLD,width:"100%",padding:"9px",fontSize:11,fontWeight:600,letterSpacing:0.2,cursor:!text.trim()?"not-allowed":"pointer",fontFamily:"'Archivo',system-ui,sans-serif",opacity:!text.trim()?0.5:1}}>{speaking?"Stop":"Test script"}</button>
             </div>
-            <div style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"12px 14px"}}>
+            <div style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"12px 14px"}}>
               <div style={{color:GOLD,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Reset</div>
               <div style={{color:WHITE,fontSize:11,lineHeight:1.7,marginBottom:10}}>Clear script and reset all settings.</div>
               <button onClick={()=>{stop();setText("");setSavedToLib(false);setSpeed(0.62);setPitchV(0.86);setPauseLen(1600);setVolume(1.0);setMood("Neutral");}} style={{background:"transparent",border:"1px solid "+GOLDDIM,color:GOLD,width:"100%",padding:"9px",fontSize:11,fontWeight:600,letterSpacing:0.2,cursor:"pointer",fontFamily:"'Archivo',system-ui,sans-serif"}}>Reset all</button>
@@ -2426,7 +2422,7 @@ function MSUserCounter(){
   },[]);
   return (
     <div style={{display:"flex",justifyContent:"center",marginBottom:24}}>
-      <div style={{background:"#0D0B06",border:"2px solid "+SIGNAL,padding:"14px 40px",textAlign:"center",boxShadow:"none",position:"relative"}}>
+      <div style={{background:"#14161A",border:"2px solid "+SIGNAL,padding:"14px 40px",textAlign:"center",boxShadow:"none",position:"relative"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginBottom:6}}>
           <div style={{width:8,height:8,borderRadius:"50%",background:"#22c55e",boxShadow:"0 0 8px #22c55e",animation:"pulse 2s infinite"}}/>
           <div style={{color:"#22c55e",fontSize:10,letterSpacing:0.4,fontWeight:600}}>Live · user count</div>
@@ -2567,7 +2563,7 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
       const W=1280,H=720,fps=24;
       const cv=document.createElement("canvas"); cv.width=W; cv.height=H;
       const ctx=cv.getContext("2d");
-      ctx.fillStyle="#0D0B06"; ctx.fillRect(0,0,W,H);
+      ctx.fillStyle="#14161A"; ctx.fillRect(0,0,W,H);
 
       const stream=cv.captureStream(fps);
       let mime="video/webm";
@@ -2592,8 +2588,8 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
           try{
             ctx.clearRect(0,0,W,H);
             if(drawFn) drawFn(ctx,W,H,t,sec);
-            else { const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#1a1207"); g.addColorStop(1,"#0D0B06"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H); }
-          }catch(e){ ctx.fillStyle="#0D0B06"; ctx.fillRect(0,0,W,H); }
+            else { const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#1a1207"); g.addColorStop(1,"#14161A"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H); }
+          }catch(e){ ctx.fillStyle="#14161A"; ctx.fillRect(0,0,W,H); }
           // house grade: vignette, letterbox, grain
           const vig=ctx.createRadialGradient(W/2,H/2,W*0.1,W/2,H/2,W*0.8);
           vig.addColorStop(0,"rgba(0,0,0,0)"); vig.addColorStop(1,"rgba(0,0,0,0.85)");
@@ -2736,9 +2732,8 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
     try{
       let audioDataUrl="";
       try{
-        const _mv=(typeof VOICE_CHARACTERS!=="undefined")?VOICE_CHARACTERS.find(v=>v.id===mmmVoiceId):null;
         const vr=await fetch(VOICE_URL,{method:"POST",headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({text:(mmmText||"").slice(0,1200),voice:_mv?.engineVoice||mmmVoiceId,gender:_mv?.gender||"",origin:_mv?.origin||"",speed:_mv?.rate||1})});
+          body:JSON.stringify({text:(mmmText||"").slice(0,1200),voice:mmmVoiceId})});
         const vd=await vr.json(); audioDataUrl=vd&&(vd.audio||vd.url)?(vd.audio||vd.url):"";
       }catch(e){}
       if(!audioDataUrl){ setMmmError("Couldn't make the narration audio for lip sync."); setMmmLsBusy(false); return; }
@@ -3088,7 +3083,7 @@ Write the drawFrame body now.`}]
         if(frame>=totalFrames){resolve(null);return;}
         const t=frame/totalFrames;const sec=frame/fps;
         ctx.clearRect(0,0,1280,720);
-        try{drawFrame(ctx,1280,720,t,sec,loadedRefImages);}catch(e){ctx.fillStyle="#0D0B06";ctx.fillRect(0,0,1280,720);}
+        try{drawFrame(ctx,1280,720,t,sec,loadedRefImages);}catch(e){ctx.fillStyle="#14161A";ctx.fillRect(0,0,1280,720);}
         // Consistent post-processing on every frame
         const vig=ctx.createRadialGradient(640,360,80,640,360,650);
         vig.addColorStop(0,"rgba(0,0,0,0)");vig.addColorStop(1,"rgba(0,0,0,0.8)");
@@ -3172,10 +3167,10 @@ Write the drawFrame body now.`}]
   };
 
   return (
-    <div style={{minHeight:"100vh",background:"#171208",color:WHITE,fontFamily:"'Archivo',system-ui,sans-serif",paddingBottom:160}}>
+    <div style={{minHeight:"100vh",background:"#1C1F25",color:WHITE,fontFamily:"'Archivo',system-ui,sans-serif",paddingBottom:160}}>
       {gapPrompt&&(
         <div style={{position:"fixed",inset:0,zIndex:2000,background:"rgba(0,0,0,0.94)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-          <div style={{width:"min(460px,95vw)",background:"#0D0B06",border:"2px solid "+SIGNAL,padding:"24px 22px"}}>
+          <div style={{width:"min(460px,95vw)",background:"#14161A",border:"2px solid "+SIGNAL,padding:"24px 22px"}}>
             <div style={{fontFamily:"'Archivo',system-ui,sans-serif",color:GOLD,fontSize:16,fontWeight:600,letterSpacing:0.2,marginBottom:14,textAlign:"center"}}>Fill the gap?</div>
             <p style={{color:WHITE,fontSize:14,lineHeight:1.7,margin:"0 0 18px",textAlign:"center"}}>
               You have <b style={{color:GOLD}}>{fmtMin(gapPrompt.have)}</b> of your <b style={{color:GOLD}}>{fmtMin(gapPrompt.target)}</b> selection.
@@ -3189,7 +3184,7 @@ Write the drawFrame body now.`}]
                   setDuration(fillSecs);
                   setTimeout(()=>{generateVideo();},60);
                 }}
-                style={{background:"#171208",border:"none",color:"#000",padding:"14px",fontSize:13,fontWeight:600,letterSpacing:0.2,cursor:"pointer",fontFamily:"'Archivo',system-ui,sans-serif"}}>
+                style={{background:"#1C1F25",border:"none",color:"#000",padding:"14px",fontSize:13,fontWeight:600,letterSpacing:0.2,cursor:"pointer",fontFamily:"'Archivo',system-ui,sans-serif"}}>
                 Yes, fill it
               </button>
               <button onClick={()=>setGapPrompt(null)}
@@ -3200,7 +3195,7 @@ Write the drawFrame body now.`}]
           </div>
         </div>
       )}
-      <canvas ref={canvasRef} style={{position:"fixed",right:8,bottom:8,width:160,height:90,opacity:1,pointerEvents:"none",zIndex:9999,border:"1px solid #e8c96d",background:"#171208"}}/>
+      <canvas ref={canvasRef} style={{position:"fixed",right:8,bottom:8,width:160,height:90,opacity:1,pointerEvents:"none",zIndex:9999,border:"1px solid #e8c96d",background:"#1C1F25"}}/>
       <div style={{padding:"12px 20px",borderBottom:"1px solid "+GOLDDIM+"",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
         <div>
           <div style={{fontSize:11,color:GOLD,letterSpacing:0.4,fontWeight:500}}>MANDASTRONG ENGINE v2 · CINEMA-GRADE RENDERER</div>
@@ -3209,7 +3204,7 @@ Write the drawFrame body now.`}]
         <div style={{color:GOLD,fontSize:11,fontWeight:500,letterSpacing:0.2}}>Mandastrong engine · any prompt · any subject</div>
       </div>
       {mmmStudio&&(
-        <div style={{position:"fixed",inset:0,zIndex:900,background:"#171208",overflowY:"auto",padding:"18px 16px 60px"}}>
+        <div style={{position:"fixed",inset:0,zIndex:900,background:"#1C1F25",overflowY:"auto",padding:"18px 16px 60px"}}>
           <div style={{maxWidth:760,margin:"0 auto"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
               <div style={{fontFamily:"'Archivo',system-ui,sans-serif",color:GOLD,letterSpacing:0.2,fontSize:20,textTransform:"none"}}>Make My Movie Studio</div>
@@ -3218,7 +3213,7 @@ Write the drawFrame body now.`}]
 
             <textarea value={mmmText} onChange={e=>setMmmText(e.target.value)} rows={5}
               placeholder="Paste your whole film here. Nothing is lost when you leave this box."
-              style={{width:"100%",boxSizing:"border-box",background:"#171208",border:"1px solid "+GOLDDIM,borderRadius:6,color:"#fff",padding:11,fontSize:13,fontFamily:"'Archivo',system-ui,sans-serif",resize:"vertical",marginBottom:10}}/>
+              style={{width:"100%",boxSizing:"border-box",background:"#1C1F25",border:"1px solid "+GOLDDIM,borderRadius:6,color:"#fff",padding:11,fontSize:13,fontFamily:"'Archivo',system-ui,sans-serif",resize:"vertical",marginBottom:10}}/>
 
             <div onDragOver={e=>{e.preventDefault();}}
               onDrop={e=>{e.preventDefault();mmmAddFiles(e.dataTransfer.files);}}
@@ -3234,7 +3229,7 @@ Write the drawFrame body now.`}]
                   <div key={i} style={{position:"relative"}}>
                     <img src={im.dataUrl} style={{width:54,height:54,objectFit:"cover",border:"1px solid "+GOLDDIM,borderRadius:4}}/>
                     <button onClick={()=>setMmmImages(p=>p.filter((_,x)=>x!==i))}
-                      style={{position:"absolute",top:-6,right:-6,width:18,height:18,borderRadius:9,background:"#171208",color:GOLD,border:"1px solid "+GOLDDIM,fontSize:11,cursor:"pointer",lineHeight:"16px",padding:0}}>x</button>
+                      style={{position:"absolute",top:-6,right:-6,width:18,height:18,borderRadius:9,background:"#1C1F25",color:GOLD,border:"1px solid "+GOLDDIM,fontSize:11,cursor:"pointer",lineHeight:"16px",padding:0}}>x</button>
                   </div>
                 ))}
               </div>
@@ -3253,37 +3248,37 @@ Write the drawFrame body now.`}]
               <div>
                 <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Style</div>
                 <select value={mmmStyle} onChange={e=>setMmmStyle(e.target.value)}
-                  style={{width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,color:GOLD,padding:"9px 12px",fontSize:12,fontFamily:"'Archivo',system-ui,sans-serif",cursor:"pointer"}}>
-                  {RENDER_STYLES.map(s=><option key={s.id} value={s.id} style={{background:"#171208"}}>{s.label}</option>)}
+                  style={{width:"100%",background:"#1C1F25",border:"1px solid "+GOLDDIM,color:GOLD,padding:"9px 12px",fontSize:12,fontFamily:"'Archivo',system-ui,sans-serif",cursor:"pointer"}}>
+                  {RENDER_STYLES.map(s=><option key={s.id} value={s.id} style={{background:"#1C1F25"}}>{s.label}</option>)}
                 </select>
               </div>
               <div>
                 <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Genre</div>
                 <select value={mmmGenre} onChange={e=>setMmmGenre(e.target.value)}
-                  style={{width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,color:mmmGenre?GOLD:GOLDDIM,padding:"9px 12px",fontSize:12,fontFamily:"'Archivo',system-ui,sans-serif",cursor:"pointer"}}>
-                  {FILM_GENRES.map(g=><option key={g.id} value={g.id} style={{background:"#171208"}}>{g.label}</option>)}
+                  style={{width:"100%",background:"#1C1F25",border:"1px solid "+GOLDDIM,color:mmmGenre?GOLD:GOLDDIM,padding:"9px 12px",fontSize:12,fontFamily:"'Archivo',system-ui,sans-serif",cursor:"pointer"}}>
+                  {FILM_GENRES.map(g=><option key={g.id} value={g.id} style={{background:"#1C1F25"}}>{g.label}</option>)}
                 </select>
               </div>
               <div>
                 <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Colour grade</div>
                 <select value={mmmGrade} onChange={e=>setMmmGrade(e.target.value)}
-                  style={{width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,color:GOLD,padding:"9px 12px",fontSize:12,fontFamily:"'Archivo',system-ui,sans-serif",cursor:"pointer"}}>
-                  {MMM_GRADES.map(g=><option key={g.id} value={g.id} style={{background:"#171208"}}>{g.label}</option>)}
+                  style={{width:"100%",background:"#1C1F25",border:"1px solid "+GOLDDIM,color:GOLD,padding:"9px 12px",fontSize:12,fontFamily:"'Archivo',system-ui,sans-serif",cursor:"pointer"}}>
+                  {MMM_GRADES.map(g=><option key={g.id} value={g.id} style={{background:"#1C1F25"}}>{g.label}</option>)}
                 </select>
               </div>
               <div>
                 <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Narration voice</div>
                 <select value={mmmVoiceId} onChange={e=>setMmmVoiceId(e.target.value)}
-                  style={{width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,color:GOLD,padding:"9px 12px",fontSize:12,fontFamily:"'Archivo',system-ui,sans-serif",cursor:"pointer"}}>
-                  {VOICE_CHARACTERS.map(v=><option key={v.id} value={v.id} style={{background:"#171208"}}>{v.name}</option>)}
+                  style={{width:"100%",background:"#1C1F25",border:"1px solid "+GOLDDIM,color:GOLD,padding:"9px 12px",fontSize:12,fontFamily:"'Archivo',system-ui,sans-serif",cursor:"pointer"}}>
+                  {VOICE_CHARACTERS.map(v=><option key={v.id} value={v.id} style={{background:"#1C1F25"}}>{v.name}</option>)}
                 </select>
               </div>
             </div>
 
             <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:12}}>
-              <button onClick={()=>setMmmEnhance(v=>!v)} style={{flex:"1 1 45%",padding:"10px",background:mmmEnhance?GOLD:"#171208",color:mmmEnhance?"#000":GOLD,border:"1px solid "+GOLDDIM,borderRadius:5,fontWeight:600,fontSize:12,letterSpacing:0,cursor:"pointer"}}>Enhance {mmmEnhance?"ON":"OFF"}</button>
-              <button onClick={()=>setMmmLipSync(v=>!v)} style={{flex:"1 1 45%",padding:"10px",background:mmmLipSync?GOLD:"#171208",color:mmmLipSync?"#000":GOLD,border:"1px solid "+GOLDDIM,borderRadius:5,fontWeight:600,fontSize:12,letterSpacing:0,cursor:"pointer"}}>Lip sync {mmmLipSync?"ON":"OFF"}</button>
-              <button onClick={()=>setMmmBgSound(v=>!v)} style={{flex:"1 1 45%",padding:"10px",background:mmmBgSound?GOLD:"#171208",color:mmmBgSound?"#000":GOLD,border:"1px solid "+GOLDDIM,borderRadius:5,fontWeight:600,fontSize:12,letterSpacing:0,cursor:"pointer"}}>Music bed {mmmBgSound?"ON":"OFF"}</button>
+              <button onClick={()=>setMmmEnhance(v=>!v)} style={{flex:"1 1 45%",padding:"10px",background:mmmEnhance?GOLD:"#1C1F25",color:mmmEnhance?"#000":GOLD,border:"1px solid "+GOLDDIM,borderRadius:5,fontWeight:600,fontSize:12,letterSpacing:0,cursor:"pointer"}}>Enhance {mmmEnhance?"ON":"OFF"}</button>
+              <button onClick={()=>setMmmLipSync(v=>!v)} style={{flex:"1 1 45%",padding:"10px",background:mmmLipSync?GOLD:"#1C1F25",color:mmmLipSync?"#000":GOLD,border:"1px solid "+GOLDDIM,borderRadius:5,fontWeight:600,fontSize:12,letterSpacing:0,cursor:"pointer"}}>Lip sync {mmmLipSync?"ON":"OFF"}</button>
+              <button onClick={()=>setMmmBgSound(v=>!v)} style={{flex:"1 1 45%",padding:"10px",background:mmmBgSound?GOLD:"#1C1F25",color:mmmBgSound?"#000":GOLD,border:"1px solid "+GOLDDIM,borderRadius:5,fontWeight:600,fontSize:12,letterSpacing:0,cursor:"pointer"}}>Music bed {mmmBgSound?"ON":"OFF"}</button>
             </div>
 
             <div style={{marginBottom:6}}>
@@ -3301,7 +3296,7 @@ Write the drawFrame body now.`}]
             </button>
 
             {mmmLipSync&&(
-              <div style={{marginTop:12,padding:12,border:"1px solid "+GOLDDIM+"66",borderRadius:6,background:"#171208"}}>
+              <div style={{marginTop:12,padding:12,border:"1px solid "+GOLDDIM+"66",borderRadius:6,background:"#1C1F25"}}>
                 <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Lip sync - talking scene</div>
                 <div style={{color:DIM,fontSize:11,marginBottom:8}}>Uses your first uploaded face photo and speaks the pasted text in the chosen voice.</div>
                 <button onClick={mmmRunLipSync} disabled={mmmLsBusy}
@@ -3309,7 +3304,7 @@ Write the drawFrame body now.`}]
                   {mmmLsBusy?"SYNCING...":"GENERATE TALKING SCENE"}
                 </button>
                 {mmmLsVideo&&(
-                  <video src={mmmLsVideo} controls playsInline style={{width:"100%",marginTop:10,borderRadius:6,border:"1px solid "+GOLDDIM,background:"#171208",aspectRatio:"16/9"}}/>
+                  <video src={mmmLsVideo} controls playsInline style={{width:"100%",marginTop:10,borderRadius:6,border:"1px solid "+GOLDDIM,background:"#1C1F25",aspectRatio:"16/9"}}/>
                 )}
               </div>
             )}
@@ -3319,7 +3314,7 @@ Write the drawFrame body now.`}]
             {mmmBusy&&(
               <div style={{marginTop:12}}>
                 <div style={{color:GOLD,fontSize:12,letterSpacing:0,marginBottom:6}}>{mmmStage}</div>
-                <div style={{background:"#171208",height:10,border:"1px solid "+GOLDDIM,borderRadius:4,overflow:"hidden"}}>
+                <div style={{background:"#1C1F25",height:10,border:"1px solid "+GOLDDIM,borderRadius:4,overflow:"hidden"}}>
                   <div style={{background:GOLD,height:"100%",width:mmmPct+"%",transition:"width .3s"}}/>
                 </div>
               </div>
@@ -3340,14 +3335,14 @@ Write the drawFrame body now.`}]
               <div style={{marginTop:16}}>
                 <div style={{color:GOLD,fontSize:13,letterSpacing:0.2,fontWeight:600,marginBottom:8,textAlign:"center"}}>Preview</div>
                 <video ref={mmmVideoRef} src={mmmFilmUrl} controls autoPlay playsInline
-                  style={{width:"100%",borderRadius:8,border:"1px solid "+GOLDDIM,background:"#171208",aspectRatio:"16/9"}}/>
+                  style={{width:"100%",borderRadius:8,border:"1px solid "+GOLDDIM,background:"#1C1F25",aspectRatio:"16/9"}}/>
                 <div style={{display:"flex",gap:10,marginTop:12}}>
                   <button onClick={mmmDownloadAll}
                     style={{flex:1,padding:14,background:GOLD,color:"#000",border:"none",fontWeight:600,fontSize:15,letterSpacing:0.2,borderRadius:6,cursor:"pointer",fontFamily:"'Archivo',system-ui,sans-serif"}}>
                     DOWNLOAD
                   </button>
                   <button onClick={()=>{try{navigator.share?navigator.share({title:"My Movie",url:mmmFilmUrl}):window.open(mmmFilmUrl,"_blank");}catch(e){window.open(mmmFilmUrl,"_blank");}}}
-                    style={{flex:1,padding:14,background:"#171208",color:GOLD,border:"1px solid "+GOLDDIM,fontWeight:600,fontSize:15,letterSpacing:0.2,borderRadius:6,cursor:"pointer",fontFamily:"'Archivo',system-ui,sans-serif"}}>
+                    style={{flex:1,padding:14,background:"#1C1F25",color:GOLD,border:"1px solid "+GOLDDIM,fontWeight:600,fontSize:15,letterSpacing:0.2,borderRadius:6,cursor:"pointer",fontFamily:"'Archivo',system-ui,sans-serif"}}>
                     EXPORT
                   </button>
                 </div>
@@ -3358,7 +3353,7 @@ Write the drawFrame body now.`}]
       )}
 
       {/* ════ MAKE MY MOVIE — one-shot, everything on this page ════ */}
-      <div style={{margin:"14px 20px",background:"#171208",border:"2px solid "+SIGNAL,borderRadius:10,padding:16,boxShadow:"none"}}>
+      <div style={{margin:"14px 20px",background:"#1C1F25",border:"2px solid "+SIGNAL,borderRadius:10,padding:16,boxShadow:"none"}}>
         <div style={{textAlign:"center",marginBottom:12}}>
           <div style={{fontFamily:"'Archivo',system-ui,sans-serif",color:GOLD,letterSpacing:0.4,fontSize:22,textTransform:"none"}}>Make my movie</div>
           <div style={{color:DIM,fontSize:11,letterSpacing:0.2,marginTop:3}}>Drop everything in · set the length · press go — it does the rest</div>
@@ -3366,7 +3361,7 @@ Write the drawFrame body now.`}]
 
         <textarea value={mmmText} onChange={e=>setMmmText(e.target.value)} rows={4}
           placeholder="Paste your whole film here — script, producer instructions, prompts, notes. Or drag files onto the box below."
-          style={{width:"100%",boxSizing:"border-box",background:"#171208",border:"1px solid "+GOLDDIM,borderRadius:6,color:"#fff",padding:11,fontSize:13,fontFamily:"'Archivo',system-ui,sans-serif",resize:"vertical",marginBottom:8}}/>
+          style={{width:"100%",boxSizing:"border-box",background:"#1C1F25",border:"1px solid "+GOLDDIM,borderRadius:6,color:"#fff",padding:11,fontSize:13,fontFamily:"'Archivo',system-ui,sans-serif",resize:"vertical",marginBottom:8}}/>
 
         <div ref={mmmDropRef}
           onDragOver={e=>{e.preventDefault();}}
@@ -3383,7 +3378,7 @@ Write the drawFrame body now.`}]
               <div key={i} style={{position:"relative"}}>
                 <img src={im.dataUrl} style={{width:54,height:54,objectFit:"cover",border:"1px solid "+GOLDDIM,borderRadius:4}}/>
                 <button onClick={()=>setMmmImages(p=>p.filter((_,x)=>x!==i))}
-                  style={{position:"absolute",top:-6,right:-6,width:18,height:18,borderRadius:9,background:"#171208",color:GOLD,border:"1px solid "+GOLDDIM,fontSize:11,cursor:"pointer",lineHeight:"16px",padding:0}}>×</button>
+                  style={{position:"absolute",top:-6,right:-6,width:18,height:18,borderRadius:9,background:"#1C1F25",color:GOLD,border:"1px solid "+GOLDDIM,fontSize:11,cursor:"pointer",lineHeight:"16px",padding:0}}>×</button>
               </div>
             ))}
           </div>
@@ -3412,7 +3407,7 @@ Write the drawFrame body now.`}]
         {mmmBusy&&(
           <div style={{marginTop:12}}>
             <div style={{color:GOLD,fontSize:12,letterSpacing:0,marginBottom:6}}>{mmmStage}</div>
-            <div style={{background:"#171208",height:10,border:"1px solid "+GOLDDIM,borderRadius:4,overflow:"hidden"}}>
+            <div style={{background:"#1C1F25",height:10,border:"1px solid "+GOLDDIM,borderRadius:4,overflow:"hidden"}}>
               <div style={{background:GOLD,height:"100%",width:mmmPct+"%",transition:"width .3s"}}/>
             </div>
           </div>
@@ -3432,7 +3427,7 @@ Write the drawFrame body now.`}]
         {mmmDone&&(
           <div style={{marginTop:14}}>
             <video ref={mmmVideoRef} src={mmmFilmUrl} controls autoPlay playsInline
-              style={{width:"100%",borderRadius:8,border:"1px solid "+GOLDDIM,background:"#171208",aspectRatio:"16/9"}}/>
+              style={{width:"100%",borderRadius:8,border:"1px solid "+GOLDDIM,background:"#1C1F25",aspectRatio:"16/9"}}/>
             <button onClick={mmmDownloadAll}
               style={{width:"100%",padding:14,marginTop:10,background:GOLD,color:"#000",border:"none",fontWeight:600,fontSize:16,letterSpacing:0.2,borderRadius:6,cursor:"pointer",fontFamily:"'Archivo',system-ui,sans-serif"}}>
               Download my movie
@@ -3450,19 +3445,19 @@ Write the drawFrame body now.`}]
             <div>
               <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Render style</div>
               <select value={renderStyle} onChange={e=>setRenderStyle(e.target.value)}
-                style={{width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,color:GOLD,padding:"9px 12px",fontSize:12,outline:"none",fontFamily:"'Archivo',system-ui,sans-serif",cursor:"pointer"}}>
-                {RENDER_STYLES.map(s=><option key={s.id} value={s.id} style={{background:"#171208"}}>{s.label}</option>)}
+                style={{width:"100%",background:"#1C1F25",border:"1px solid "+GOLDDIM,color:GOLD,padding:"9px 12px",fontSize:12,outline:"none",fontFamily:"'Archivo',system-ui,sans-serif",cursor:"pointer"}}>
+                {RENDER_STYLES.map(s=><option key={s.id} value={s.id} style={{background:"#1C1F25"}}>{s.label}</option>)}
               </select>
             </div>
             <div>
               <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Genre</div>
               <select value={genre} onChange={e=>setGenre(e.target.value)}
-                style={{width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,color:genre?GOLD:GOLDDIM,padding:"9px 12px",fontSize:12,outline:"none",fontFamily:"'Archivo',system-ui,sans-serif",cursor:"pointer"}}>
-                {FILM_GENRES.map(g=><option key={g.id} value={g.id} style={{background:"#171208"}}>{g.label}</option>)}
+                style={{width:"100%",background:"#1C1F25",border:"1px solid "+GOLDDIM,color:genre?GOLD:GOLDDIM,padding:"9px 12px",fontSize:12,outline:"none",fontFamily:"'Archivo',system-ui,sans-serif",cursor:"pointer"}}>
+                {FILM_GENRES.map(g=><option key={g.id} value={g.id} style={{background:"#1C1F25"}}>{g.label}</option>)}
               </select>
             </div>
           </div>
-          <div style={{background:"#171208",border:"2px solid "+SIGNAL,padding:14,marginBottom:12,boxShadow:"none"}}>
+          <div style={{background:"#1C1F25",border:"2px solid "+SIGNAL,padding:14,marginBottom:12,boxShadow:"none"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
               <div>
                 <div style={{color:GOLD,fontSize:12,letterSpacing:0.2,fontWeight:600}}>Reality engine — upload your photos</div>
@@ -3477,7 +3472,7 @@ Write the drawFrame body now.`}]
                       ?<video src={ri.url} style={{width:"100%",height:50,objectFit:"cover",border:"1px solid "+GOLDDIM}} muted/>
                       :<img src={ri.url} alt={ri.name||"ref"} style={{width:"100%",height:50,objectFit:"cover",border:"1px solid "+GOLDDIM}}/>
                     }
-                    <button onClick={()=>setRefImages(p=>p.filter((_,j)=>j!==i))} style={{position:"absolute",top:1,right:1,background:"#171208",border:"1px solid "+GOLDDIM,color:GOLD,padding:"0 4px",cursor:"pointer",fontSize:9,fontWeight:600,lineHeight:1.2}}>✕</button>
+                    <button onClick={()=>setRefImages(p=>p.filter((_,j)=>j!==i))} style={{position:"absolute",top:1,right:1,background:"#1C1F25",border:"1px solid "+GOLDDIM,color:GOLD,padding:"0 4px",cursor:"pointer",fontSize:9,fontWeight:600,lineHeight:1.2}}>✕</button>
                     <div style={{color:GOLD,fontSize:8,letterSpacing:0,marginTop:1,textAlign:"center",fontWeight:600}}>{i===0?"BG":"L"+i}</div>
                   </div>
                 ))}
@@ -3510,22 +3505,22 @@ Write the drawFrame body now.`}]
               📷 {refImages.length===0?"ADD PHOTOS / VIDEOS (UP TO 6)":"ADD MORE — "+refImages.length+"/6 LOADED"}
             </button>
             <a href="https://photos.google.com" target="_blank" rel="noopener noreferrer"
-              style={{display:"block",background:"#171208",border:"1px solid "+GOLDDIM,color:GOLDDIM,padding:"8px",textAlign:"center",fontSize:10,fontWeight:600,letterSpacing:0.2,textDecoration:"none",fontFamily:"'Archivo',system-ui,sans-serif",marginTop:4}}>
+              style={{display:"block",background:"#1C1F25",border:"1px solid "+GOLDDIM,color:GOLDDIM,padding:"8px",textAlign:"center",fontSize:10,fontWeight:600,letterSpacing:0.2,textDecoration:"none",fontFamily:"'Archivo',system-ui,sans-serif",marginTop:4}}>
               CHROMEBOOK USERS OPEN GOOGLE PHOTOS download photo then Add Photos above
             </a>
             <div style={{color:GOLDDIM,fontSize:9,marginTop:5,letterSpacing:0,textAlign:"center"}}>1st photo = BACKGROUND · others = foreground layers · guarantees photorealistic output</div>
           </div>
-          <div style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:12,marginBottom:12}}>
+          <div style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:12,marginBottom:12}}>
             <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Upload reference image (optional)</div>
             {refMedia?(
               <div style={{position:"relative"}}>
                 <img src={refMedia} alt="ref" style={{width:"100%",height:72,objectFit:"cover",border:"1px solid "+GOLDDIM}}/>
-                <button onClick={()=>{setRefMedia(null);setRefDataUrl(null);}} style={{position:"absolute",top:3,right:3,background:"#171208",border:"1px solid "+GOLDDIM,color:GOLD,padding:"1px 6px",cursor:"pointer",fontSize:10,fontWeight:600}}>✕</button>
+                <button onClick={()=>{setRefMedia(null);setRefDataUrl(null);}} style={{position:"absolute",top:3,right:3,background:"#1C1F25",border:"1px solid "+GOLDDIM,color:GOLD,padding:"1px 6px",cursor:"pointer",fontSize:10,fontWeight:600}}>✕</button>
                 <div style={{color:"#22c55e",fontSize:9,fontWeight:600,letterSpacing:0.2,marginTop:3}}>Reference loaded</div>
               </div>
             ):(
               <div
-                onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.background="#211A0E";}}
+                onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.background="#22262D";}}
                 onDragLeave={e=>{e.currentTarget.style.borderColor=GOLDDIM;e.currentTarget.style.background="transparent";}}
                 onDrop={e=>{
                   e.preventDefault();
@@ -3545,11 +3540,11 @@ Write the drawFrame body now.`}]
             )}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:6}}>
               <button onClick={()=>{const i=document.createElement("input");i.type="file";i.accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.heic,.heif";i.onchange=e=>{const f=e.target.files&&e.target.files[0];if(!f)return;setRefMedia(URL.createObjectURL(f));setRefMediaType(f.type.startsWith("video")?"video":"image");const reader=new FileReader();reader.onload=ev=>setRefDataUrl(ev.target.result);reader.readAsDataURL(f);};i.click();}}
-                style={{background:"#171208",border:"2px solid "+SIGNAL,color:GOLD,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>
+                style={{background:"#1C1F25",border:"2px solid "+SIGNAL,color:GOLD,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>
                 Upload photo
               </button>
               <button onClick={()=>{const i=document.createElement("input");i.type="file";i.accept="image/*,video/*";i.onchange=e=>{const f=e.target.files&&e.target.files[0];if(!f)return;setRefMedia(URL.createObjectURL(f));setRefMediaType(f.type.startsWith("video")?"video":"image");const reader=new FileReader();reader.onload=ev=>setRefDataUrl(ev.target.result);reader.readAsDataURL(f);};i.click();}}
-                style={{background:"#171208",border:"1px solid "+GOLDDIM,color:WHITE,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>
+                style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,color:WHITE,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>
                 Upload file
               </button>
             </div>
@@ -3557,26 +3552,26 @@ Write the drawFrame body now.`}]
           </div>
           <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Scene title</div>
           <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. AI For Humanity — Chapter 1"
-            style={{width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,padding:"10px 14px",color:WHITE,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"'Archivo',system-ui,sans-serif",marginBottom:14}}/>
+            style={{width:"100%",background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"10px 14px",color:WHITE,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"'Archivo',system-ui,sans-serif",marginBottom:14}}/>
           <div style={{marginBottom:14}}>
             <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Describe your scene</div>
             <div style={{color:DIM,fontSize:11,marginBottom:8,lineHeight:1.7}}>Describe anything in plain English. MandaStrong Engine reads your prompt and renders a real cinematic scene.</div>
             <textarea value={prompt} onChange={e=>setPrompt(e.target.value)}
               placeholder="e.g. A woman in a heavy coat places a folded paper into a wooden ballot box. Morning light from a window on the left."
-              style={{width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,padding:"12px 14px",color:WHITE,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"'Archivo',system-ui,sans-serif",lineHeight:1.9,height:140,resize:"none"}}/>
+              style={{width:"100%",background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"12px 14px",color:WHITE,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"'Archivo',system-ui,sans-serif",lineHeight:1.9,height:140,resize:"none"}}/>
           </div>
           <div style={{marginBottom:14}}>
             <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:8}}>Quick examples — click to try</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
               {EXAMPLES.map((ex,i)=>(
                 <div key={i} onClick={()=>setPrompt(ex)}
-                  style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"10px 12px",cursor:"pointer",fontSize:11,color:DIM,lineHeight:1.6}}>
+                  style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"10px 12px",cursor:"pointer",fontSize:11,color:DIM,lineHeight:1.6}}>
                   {ex.slice(0,65)}{ex.length>65?"...":""}
                 </div>
               ))}
             </div>
           </div>
-          <div style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:14,marginBottom:14}}>
+          <div style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:14,marginBottom:14}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
               <span style={{color:GOLD,fontSize:11,fontWeight:600,letterSpacing:0.2}}>Target film length</span>
               <span style={{color:WHITE,fontSize:11,fontWeight:600}}>{targetMin>0?targetMin+" MIN":"OFF"}</span>
@@ -3588,7 +3583,7 @@ Write the drawFrame body now.`}]
               </div>
             )}
           </div>
-          <div style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:14,marginBottom:14}}>
+          <div style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:14,marginBottom:14}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
               <span style={{color:GOLD,fontSize:11,fontWeight:600,letterSpacing:0.2}}>Duration</span>
               <span style={{color:WHITE,fontSize:11,fontWeight:600}}>{duration>60?(duration/60).toFixed(duration%60?1:0)+" MIN":duration+" SECONDS"}</span>
@@ -3596,14 +3591,14 @@ Write the drawFrame body now.`}]
             <input type="range" min={5} max={300} value={duration} onChange={e=>setDuration(+e.target.value)} style={{width:"100%",accentColor:GOLD}}/>
           </div>
           {/* ── ADD BACKGROUND MUSIC? ─────────────────────────────── */}
-          <div style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:14,marginBottom:14}}>
+          <div style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:14,marginBottom:14}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <span style={{color:GOLD,fontSize:11,fontWeight:600,letterSpacing:0.2}}>Add background music?</span>
               <div style={{display:"flex",gap:6}}>
                 <button onClick={()=>setAddMusic(true)}
-                  style={{background:addMusic?GOLD:"#171208",border:"1px solid "+(addMusic?"#000":GOLDDIM),color:addMusic?"#000":WHITE,padding:"5px 16px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0}}>Y</button>
+                  style={{background:addMusic?GOLD:"#1C1F25",border:"1px solid "+(addMusic?"#000":GOLDDIM),color:addMusic?"#000":WHITE,padding:"5px 16px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0}}>Y</button>
                 <button onClick={()=>{setAddMusic(false);setMusicTrack("");}}
-                  style={{background:!addMusic?GOLD:"#171208",border:"1px solid "+(!addMusic?"#000":GOLDDIM),color:!addMusic?"#000":WHITE,padding:"5px 16px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0}}>N</button>
+                  style={{background:!addMusic?GOLD:"#1C1F25",border:"1px solid "+(!addMusic?"#000":GOLDDIM),color:!addMusic?"#000":WHITE,padding:"5px 16px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0}}>N</button>
               </div>
             </div>
             {addMusic&&(
@@ -3611,37 +3606,37 @@ Write the drawFrame body now.`}]
                 <div style={{color:GOLDDIM,fontSize:10,letterSpacing:0.2,marginBottom:8}}>Choose a track</div>
                 <div style={{display:"flex",gap:8,alignItems:"center"}}>
                   <select value={musicTrack} onChange={e=>setMusicTrack(e.target.value)}
-                    style={{flex:1,background:"#171208",border:"1px solid "+GOLDDIM,color:WHITE,padding:"9px 12px",fontSize:12,fontWeight:600,fontFamily:"'Archivo',system-ui,sans-serif",outline:"none",cursor:"pointer"}}>
+                    style={{flex:1,background:"#1C1F25",border:"1px solid "+GOLDDIM,color:WHITE,padding:"9px 12px",fontSize:12,fontWeight:600,fontFamily:"'Archivo',system-ui,sans-serif",outline:"none",cursor:"pointer"}}>
                     <option value="">— Select background music —</option>
-                    {MUSIC_LIBRARY.map(m=>(<option key={m.id} value={m.id} style={{background:"#171208",color:WHITE}}>{m.label}</option>))}
+                    {MUSIC_LIBRARY.map(m=>(<option key={m.id} value={m.id} style={{background:"#1C1F25",color:WHITE}}>{m.label}</option>))}
                   </select>
                   <button onClick={()=>{const m=MUSIC_LIBRARY.find(x=>x.id===musicTrack);if(!m)return;try{const a=new Audio(m.url);a.volume=0.5;a.play().catch(()=>{});setTimeout(()=>{try{a.pause();}catch(e){}},6000);}catch(e){}}}
                     disabled={!musicTrack} title="Preview 6 seconds"
-                    style={{background:musicTrack?"none":"#171208",border:"1px solid "+GOLDDIM,color:musicTrack?GOLD:"#555",padding:"9px 14px",cursor:musicTrack?"pointer":"not-allowed",fontSize:12,fontWeight:600}}>Preview</button>
+                    style={{background:musicTrack?"none":"#1C1F25",border:"1px solid "+GOLDDIM,color:musicTrack?GOLD:"#555",padding:"9px 14px",cursor:musicTrack?"pointer":"not-allowed",fontSize:12,fontWeight:600}}>Preview</button>
                 </div>
                 {!musicTrack&&<div style={{color:"#e0a020",fontSize:10,marginTop:8,letterSpacing:0}}>Pick a track from the menu, or press N to render without music.</div>}
               </div>
             )}
           </div>
           {/* ── USE STEREO SOUND ─────────────────────────────────── */}
-          <div onClick={()=>setGenStereo(s=>!s)} style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,padding:"12px 14px",background:"#171208",border:"1px solid "+(genStereo?GOLD:GOLDDIM),cursor:"pointer"}}>
+          <div onClick={()=>setGenStereo(s=>!s)} style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,padding:"12px 14px",background:"#1C1F25",border:"1px solid "+(genStereo?GOLD:GOLDDIM),cursor:"pointer"}}>
             <div style={{width:20,height:20,borderRadius:4,border:"2px solid "+(genStereo?GOLD:GOLDDIM),background:genStereo?GOLD:"transparent",color:"#000",fontWeight:600,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{genStereo?"✓":""}</div>
             <div><div style={{color:genStereo?GOLD:WHITE,fontWeight:600,fontSize:12,letterSpacing:0}}>Use stereo sound</div><div style={{color:GOLDDIM,fontSize:10,marginTop:1}}>Full stereo width baked into the generated video's audio</div></div>
           </div>
           {/* ── SCRIPT-TO-MOVIE BRIEF (from Page 5) ──────────────── */}
           {hasBrief&&(
-            <div onClick={()=>setUseBrief(b=>!b)} style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,padding:"12px 14px",background:"#171208",border:"1px solid "+(useBrief?GOLD:GOLDDIM),cursor:"pointer"}}>
+            <div onClick={()=>setUseBrief(b=>!b)} style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,padding:"12px 14px",background:"#1C1F25",border:"1px solid "+(useBrief?GOLD:GOLDDIM),cursor:"pointer"}}>
               <div style={{width:20,height:20,borderRadius:4,border:"2px solid "+(useBrief?GOLD:GOLDDIM),background:useBrief?GOLD:"transparent",color:"#000",fontWeight:600,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{useBrief?"✓":""}</div>
               <div><div style={{color:useBrief?GOLD:WHITE,fontWeight:600,fontSize:12,letterSpacing:0}}>Use script-to-movie brief</div><div style={{color:GOLDDIM,fontSize:10,marginTop:1}}>Your Producer, Describe &amp; Production notes from Page 5 drive this render</div></div>
             </div>
           )}
           <button onClick={generateVideo} disabled={generating||!prompt.trim()}
-            style={{background:"#171208",border:"none",color:"#000",width:"100%",padding:"20px",fontSize:15,letterSpacing:0.2,cursor:generating||!prompt.trim()?"not-allowed":"pointer",fontWeight:600,fontFamily:"'Archivo',system-ui,sans-serif",opacity:generating||!prompt.trim()?0.5:1}}>
+            style={{background:"#1C1F25",border:"none",color:"#000",width:"100%",padding:"20px",fontSize:15,letterSpacing:0.2,cursor:generating||!prompt.trim()?"not-allowed":"pointer",fontWeight:600,fontFamily:"'Archivo',system-ui,sans-serif",opacity:generating||!prompt.trim()?0.5:1}}>
             {generating?"⟳ MANDASTRONG ENGINE RENDERING... "+progress+"%":"Generate scene"}
           </button>
         </div>
         <div style={{borderLeft:"1px solid "+GOLDDIM+"",display:"flex",flexDirection:"column"}}>
-          <div style={{background:"#171208",aspectRatio:"16/9",display:"flex",alignItems:"center",justifyContent:"center",borderBottom:"1px solid "+GOLDDIM+"",overflow:"hidden"}}>
+          <div style={{background:"#1C1F25",aspectRatio:"16/9",display:"flex",alignItems:"center",justifyContent:"center",borderBottom:"1px solid "+GOLDDIM+"",overflow:"hidden"}}>
             {videoUrl?(
               <video ref={videoRef} src={videoUrl} controls autoPlay loop playsInline style={{width:"100%",height:"100%",objectFit:"contain"}}/>
             ):(
@@ -3653,8 +3648,8 @@ Write the drawFrame body now.`}]
           </div>
           {generating&&(
             <div style={{padding:"10px 14px",borderBottom:"1px solid "+GOLDDIM+""}}>
-              <div style={{height:5,background:"#171208",marginBottom:4}}>
-                <div style={{width:progress+"%",height:"100%",background:"#171208",transition:"width .4s"}}/>
+              <div style={{height:5,background:"#1C1F25",marginBottom:4}}>
+                <div style={{width:progress+"%",height:"100%",background:"#1C1F25",transition:"width .4s"}}/>
               </div>
               <div style={{color:GOLD,fontSize:10,textAlign:"center",letterSpacing:0.2}}>{progress}%</div>
             </div>
@@ -3665,12 +3660,12 @@ Write the drawFrame body now.`}]
                 <a href={videoUrl} download={(title||"scene")+"_"+duration+"s.webm"} target="_blank" rel="noopener noreferrer"
                   style={{background:"transparent",border:"1px solid "+GOLDDIM,color:GOLD,padding:"8px",fontSize:10,textDecoration:"none",textAlign:"center",letterSpacing:0,fontWeight:600,fontFamily:"'Archivo',system-ui,sans-serif",display:"block"}}>Download</a>
                 <button onClick={saveToLibrary}
-                  style={{background:saved?"#171208":"transparent",border:"1px solid "+GOLDDIM,color:saved?"#000":GOLD,padding:"8px",fontSize:10,cursor:"pointer",fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>
+                  style={{background:saved?"#1C1F25":"transparent",border:"1px solid "+GOLDDIM,color:saved?"#000":GOLD,padding:"8px",fontSize:10,cursor:"pointer",fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>
                   {saved?"Saved":"Library"}
                 </button>
               </div>
               <button onClick={()=>{setVideoUrl("");setLog([]);setSaved(false);setTitle("");setPrompt("");}}
-                style={{background:"#171208",border:"none",color:"#000",padding:"8px",fontSize:11,width:"100%",letterSpacing:0.2,cursor:"pointer",fontWeight:600,fontFamily:"'Archivo',system-ui,sans-serif"}}>
+                style={{background:"#1C1F25",border:"none",color:"#000",padding:"8px",fontSize:11,width:"100%",letterSpacing:0.2,cursor:"pointer",fontWeight:600,fontFamily:"'Archivo',system-ui,sans-serif"}}>
                 Next scene
               </button>
             </div>
@@ -3721,51 +3716,22 @@ const STOCK = (seed,w,h) => "https://picsum.photos/seed/"+seed+"/"+w+"/"+h;
 const CDN = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/";
 const CLIP = n => CDN + n;
 
-// ── Live Pexels stock clips ─────────────────────────────────────────
-// Fetches a real, current HD .mp4 for each reel category at runtime.
-// Falls back to the Google sample (CLIP) then a still frame if it fails.
-const PEXELS_KEY = "Sn5sRYowDdWVq3Ys9rI8VRYB6kzyaecYJtmNW8H8XYpbhtqz1aTxO1r5";
-const pexelsCache = {};
-async function pexelsClip(query){
-  if(pexelsCache[query]) return pexelsCache[query];
-  try{
-    const r = await fetch("https://api.pexels.com/videos/search?per_page=8&size=medium&orientation=landscape&query="+encodeURIComponent(query),
-      { headers:{ Authorization: PEXELS_KEY } });
-    if(!r.ok) return null;
-    const j = await r.json();
-    const vids = (j.videos||[]);
-    if(!vids.length) return null;
-    // pick a mid-size mp4 file (HD, not huge) from a random result for variety
-    const pick = vids[Math.floor(Math.random()*vids.length)];
-    const files = (pick.video_files||[]).filter(f=>f.file_type==="video/mp4");
-    files.sort((a,b)=>(a.width||0)-(b.width||0));
-    const hd = files.find(f=>f.width>=1200) || files[files.length-1];
-    const url = hd ? hd.link : null;
-    if(url) pexelsCache[query] = url;
-    return url;
-  }catch(e){ return null; }
-}
-
-
-function Frame({ seed, local, vid, localVid, query, label, sub, dur, h=160, onClick }) {
+function Frame({ seed, local, vid, localVid, label, sub, dur, h=160, onClick }) {
   const chain = [local?("frames/"+local):null, STOCK(seed,900,506), STOCK(seed+"2",900,506)].filter(Boolean);
   const [i,setI] = useState(0);
   const src = chain[i];
-  const [pex,setPex] = useState(null);
-  useEffect(()=>{ let ok=true; if(query){ pexelsClip(query).then(u=>{ if(ok&&u) setPex(u); }); } return ()=>{ok=false;}; },[query]);
-  const vchain = [localVid?("frames/"+localVid):null, pex, vid?CLIP(vid):null].filter(Boolean);
+  const vchain = [localVid?("frames/"+localVid):null, vid?CLIP(vid):null].filter(Boolean);
   const [vi,setVi] = useState(0);
   const [vdead,setVdead] = useState(false);
   const vsrc = vdead ? null : vchain[vi];
   return (
-    <div style={{position:"relative",height:h,borderRadius:10,overflow:"hidden",background:PANEL,border:"1px solid "+GOLDDIM}}>
+    <div onClick={onClick} style={{position:"relative",height:h,borderRadius:10,overflow:"hidden",background:PANEL,border:"1px solid "+GOLDDIM,cursor:onClick?"pointer":"default"}}>
       <style>{"@keyframes msfpan{0%{transform:scale(1.05)}100%{transform:scale(1.15) translate3d(-2%,-2%,0)}}"}</style>
-      {src&&!vsrc&&<img src={src} alt={label||"Example frame"} loading="lazy" onError={()=>setI(v=>v+1)}
-        style={{width:"100%",height:"100%",objectFit:"cover",display:"block",animation:"msfpan 20s ease-in-out infinite alternate",filter:"brightness(1.18) contrast(1.06) saturate(1.08)"}}/>}
-      {vsrc&&<video key={vsrc} src={vsrc} autoPlay muted loop playsInline controls preload="metadata"
+      {src&&<img src={src} alt={label||"Example frame"} loading="lazy" onError={()=>setI(v=>v+1)}
+        style={{width:"100%",height:"100%",objectFit:"cover",display:"block",animation:"msfpan 20s ease-in-out infinite alternate"}}/>}
+      {vsrc&&<video key={vsrc} src={vsrc} autoPlay muted loop playsInline preload="metadata"
         onError={()=>{ if(vi+1<vchain.length) setVi(vi+1); else setVdead(true); }}
-        onClick={e=>e.stopPropagation()}
-        style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",display:"block",filter:"brightness(1.18) contrast(1.06) saturate(1.08)"}}/>}
+        style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>}
       <div style={{position:"absolute",inset:0,pointerEvents:"none",boxShadow:"inset 0 0 80px rgba(0,0,0,.7)",background:"linear-gradient(to top,rgba(12,13,16,.9) 0%,rgba(12,13,16,0) 58%)"}}/>
       <div style={{position:"absolute",left:0,right:0,top:0,height:7,display:"flex",gap:5,padding:"3px 6px",opacity:.35,pointerEvents:"none"}}>
         {[...Array(14)].map((_,k)=><div key={k} style={{flex:1,background:"#0B0C0E",borderRadius:1}}/>)}
@@ -3781,12 +3747,12 @@ function Frame({ seed, local, vid, localVid, query, label, sub, dur, h=160, onCl
 }
 
 const REEL = [
-  {seed:"msf-doc",query:"cinematic documentary",vid:"TearsOfSteel.mp4",localVid:"doc.mp4",local:"doc.jpg",label:"Documentary",sub:"Narration · archive grade",dur:"60 min"},
-  {seed:"msf-feature",query:"cinematic film drama",vid:"ForBiggerEscapes.mp4",localVid:"feature.mp4",local:"feature.jpg",label:"Feature drama",sub:"Multi-scene · 4K",dur:"90 min"},
-  {seed:"msf-music",query:"music concert stage lights",vid:"ForBiggerBlazes.mp4",localVid:"music.mp4",local:"music.jpg",label:"Music video",sub:"Beat-synced cuts",dur:"3 min"},
-  {seed:"msf-short",query:"cinematic short film portrait",vid:"ForBiggerJoyrides.mp4",localVid:"short.mp4",local:"short.jpg",label:"Short film",sub:"Single narrative arc",dur:"10 min"},
-  {seed:"msf-family",query:"happy family outdoors golden hour",vid:"ForBiggerFun.mp4",localVid:"family.mp4",local:"family.jpg",label:"Family film",sub:"Warm grade · gentle pacing",dur:"30 min"},
-  {seed:"msf-trailer",query:"cinematic aerial landscape epic",vid:"ForBiggerMeltdowns.mp4",localVid:"trailer.mp4",local:"trailer.jpg",label:"Trailer",sub:"Fast cut · title cards",dur:"90 sec"},
+  {seed:"msf-doc",vid:"TearsOfSteel.mp4",localVid:"doc.mp4",local:"doc.jpg",label:"Documentary",sub:"Narration · archive grade",dur:"60 min"},
+  {seed:"msf-feature",vid:"ForBiggerEscapes.mp4",localVid:"feature.mp4",local:"feature.jpg",label:"Feature drama",sub:"Multi-scene · 4K",dur:"90 min"},
+  {seed:"msf-music",vid:"ForBiggerBlazes.mp4",localVid:"music.mp4",local:"music.jpg",label:"Music video",sub:"Beat-synced cuts",dur:"3 min"},
+  {seed:"msf-short",vid:"ForBiggerJoyrides.mp4",localVid:"short.mp4",local:"short.jpg",label:"Short film",sub:"Single narrative arc",dur:"10 min"},
+  {seed:"msf-family",vid:"ForBiggerFun.mp4",localVid:"family.mp4",local:"family.jpg",label:"Family film",sub:"Warm grade · gentle pacing",dur:"30 min"},
+  {seed:"msf-trailer",vid:"ForBiggerMeltdowns.mp4",localVid:"trailer.mp4",local:"trailer.jpg",label:"Trailer",sub:"Fast cut · title cards",dur:"90 sec"},
 ];
 
 function ExampleReel({ go, title }) {
@@ -3801,7 +3767,7 @@ function ExampleReel({ go, title }) {
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(210px,1fr))",gap:12}}>
         {REEL.map(f=>(
-          <Frame key={f.seed} seed={f.seed} local={f.local} vid={f.vid} localVid={f.localVid} query={f.query} label={f.label} sub={f.sub} dur={f.dur} h={132}/>
+          <Frame key={f.seed} seed={f.seed} local={f.local} label={f.label} sub={f.sub} dur={f.dur} h={132} onClick={go?()=>go(5):null}/>
         ))}
       </div>
       <div style={{color:DIM,fontSize:10,marginTop:10,lineHeight:1.6}}>Reference frames showing look, grade and framing. Your own renders appear in the library.</div>
@@ -3812,7 +3778,7 @@ function ExampleReel({ go, title }) {
 function P1({ go }) {
   return (
     <div style={{...Sp}}>
-      <div style={{background:"#171208",padding:"56px 40px 36px",textAlign:"center",position:"relative",overflow:"hidden"}}>
+      <div style={{background:"#1C1F25",padding:"56px 40px 36px",textAlign:"center",position:"relative",overflow:"hidden"}}>
         <div style={{position:"absolute",inset:0,pointerEvents:"none"}}>
           {[...Array(55)].map((_,i)=>(
             <div key={i} style={{position:"absolute",width:i%4===0?2:1,height:i%4===0?2:1,background:GOLD,borderRadius:"50%",opacity:.1+i%4*.15,left:(i*17+3)%100+"%",top:(i*11+7)%100+"%",animation:"tw "+1.8+i%3*.8+"s ease-in-out "+i%5*.35+"s infinite"}}/>
@@ -3849,7 +3815,7 @@ function P1({ go }) {
             // REAL DOWNLOAD: save a standalone launcher file to the user's computer.
             // Double-clicking it opens MandaStrong Studio full-screen in their browser.
             try{
-              const APP_URL="https://mandastrongmovies1.bolt.host";
+              const APP_URL="https://mandsstrongmovie1.bolt.host";
               const launcher='<!doctype html><html><head><meta charset="utf-8"><title>MandaStrong Studio</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;background:#000}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body><iframe src="'+APP_URL+'" allow="camera;microphone;autoplay;fullscreen;clipboard-write" allowfullscreen></iframe><script>try{if(location.protocol==="file:"){location.href="'+APP_URL+'";}}catch(e){location.href="'+APP_URL+'";}<\\/script></body></html>';
               const blob=new Blob([launcher],{type:"text/html"});
               const url=URL.createObjectURL(blob);
@@ -3886,7 +3852,7 @@ function P1({ go }) {
 
 function P2({ go }) {
   const pipeline=[{n:"01",ic:"✍",t:"Write",d:"Script, logline, scenes",p:5},{n:"02",ic:"",t:"Voice",d:"54 AI voice characters",p:6},{n:"03",ic:"",t:"Image",d:"AI-generated stills",p:7},{n:"04",ic:"",t:"Video",d:"Cinema scene engine",p:8},{n:"05",ic:"⏱",t:"Timeline",d:"Multi-track editor",p:13},{n:"06",ic:"",t:"MIX",d:"4-channel audio mixer",p:15},{n:"07",ic:"",t:"Render",d:"Up to 4K export",p:16}];
-  const templates=[{seed:"msf-feature",vid:"ForBiggerEscapes.mp4",localVid:"feature.mp4",local:"feature.jpg",dur:"90 min",t:"Feature film",d:"90-minute drama.",pages:[5,6,8,13,15,16],bg:"#211A0E"},{seed:"msf-doc",vid:"TearsOfSteel.mp4",localVid:"doc.mp4",local:"doc.jpg",dur:"60 min",t:"Documentary",d:"60-minute documentary.",pages:[5,6,8,13,15,16],bg:"#171208"},{seed:"msf-music",vid:"ForBiggerBlazes.mp4",localVid:"music.mp4",local:"music.jpg",dur:"3 min",t:"Music video",d:"Beat-synced cinematic video.",pages:[6,8,13,16],bg:"#171208"},{seed:"msf-short",vid:"ForBiggerJoyrides.mp4",localVid:"short.mp4",local:"short.jpg",dur:"10 min",t:"Short film",d:"10-minute narrative.",pages:[5,6,8,13,16],bg:"#171208"},{seed:"msf-family",vid:"ForBiggerFun.mp4",localVid:"family.mp4",local:"family.jpg",dur:"30 min",t:"Family movie",d:"30-minute family film.",pages:[5,6,8,13,16],bg:"#211A0E"},{seed:"msf-audio",vid:"VolkswagenGTIReview.mp4",localVid:"audio.mp4",local:"audio.jpg",dur:"Audio",t:"Audiobook",d:"Narrated audiobook.",pages:[5,6,15,16],bg:"#171208"}];
+  const templates=[{seed:"msf-feature",vid:"ForBiggerEscapes.mp4",localVid:"feature.mp4",local:"feature.jpg",dur:"90 min",t:"Feature film",d:"90-minute drama.",pages:[5,6,8,13,15,16],bg:"#22262D"},{seed:"msf-doc",vid:"TearsOfSteel.mp4",localVid:"doc.mp4",local:"doc.jpg",dur:"60 min",t:"Documentary",d:"60-minute documentary.",pages:[5,6,8,13,15,16],bg:"#1C1F25"},{seed:"msf-music",vid:"ForBiggerBlazes.mp4",localVid:"music.mp4",local:"music.jpg",dur:"3 min",t:"Music video",d:"Beat-synced cinematic video.",pages:[6,8,13,16],bg:"#1C1F25"},{seed:"msf-short",vid:"ForBiggerJoyrides.mp4",localVid:"short.mp4",local:"short.jpg",dur:"10 min",t:"Short film",d:"10-minute narrative.",pages:[5,6,8,13,16],bg:"#1C1F25"},{seed:"msf-family",vid:"ForBiggerFun.mp4",localVid:"family.mp4",local:"family.jpg",dur:"30 min",t:"Family movie",d:"30-minute family film.",pages:[5,6,8,13,16],bg:"#22262D"},{seed:"msf-audio",vid:"VolkswagenGTIReview.mp4",localVid:"audio.mp4",local:"audio.jpg",dur:"Audio",t:"Audiobook",d:"Narrated audiobook.",pages:[5,6,15,16],bg:"#1C1F25"}];
   return(
     <div style={{...Sp,padding:"0 0 40px"}}>
       <div style={{padding:"20px 24px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
@@ -3898,7 +3864,7 @@ function P2({ go }) {
         <div style={{display:"flex",gap:0,overflowX:"auto"}}>
           {pipeline.map((step,i)=>(
             <div key={step.n} style={{display:"flex",alignItems:"center",flexShrink:0}}>
-              <div onClick={()=>go(step.p)} style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"14px 16px",cursor:"pointer",textAlign:"center",minWidth:120}}
+              <div onClick={()=>go(step.p)} style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"14px 16px",cursor:"pointer",textAlign:"center",minWidth:120}}
                 onMouseEnter={e=>{e.currentTarget.style.borderColor=GOLD;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=GOLDDIM;}}>
                 <div style={{color:GOLDDIM,fontSize:9,letterSpacing:0.2,marginBottom:4}}>Step {step.n}</div>
                 <div style={{fontSize:20,marginBottom:4}}>{step.ic}</div>
@@ -3982,7 +3948,7 @@ function P3() {
     try{await deleteClipFromDB("poc_"+i);}catch{}
   };
 
-  const inp={width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,padding:"8px 10px",color:WHITE,fontSize:12,outline:"none",fontFamily:"'Archivo',system-ui,sans-serif",boxSizing:"border-box"};
+  const inp={width:"100%",background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"8px 10px",color:WHITE,fontSize:12,outline:"none",fontFamily:"'Archivo',system-ui,sans-serif",boxSizing:"border-box"};
 
   return (
     <div style={{...Sp,padding:40}}>
@@ -3998,7 +3964,7 @@ function P3() {
               <div style={{color:GOLD,fontSize:10,letterSpacing:0.2,fontWeight:600,marginBottom:10}}>Film {i+1}</div>
 
               {/* Video/Image preview area */}
-              <div style={{background:"#171208",aspectRatio:"16/9",marginBottom:10,border:"1px solid "+(uploads[i]?GOLD:GOLDDIM),overflow:"hidden",position:"relative",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}
+              <div style={{background:"#1C1F25",aspectRatio:"16/9",marginBottom:10,border:"1px solid "+(uploads[i]?GOLD:GOLDDIM),overflow:"hidden",position:"relative",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}
                 onClick={()=>!uploads[i]&&refs[i].current&&refs[i].current.click()}>
                 {uploads[i]?(
                   uploads[i].type.startsWith("video")?(
@@ -4037,11 +4003,11 @@ function P3() {
               {!uploads[i]?(
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
                   <button onClick={()=>{const inp2=document.createElement("input");inp2.type="file";inp2.accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.heic,.heif";inp2.onchange=e=>handleFile(i,e);inp2.click();}}
-                    style={{background:"#171208",border:"2px solid "+SIGNAL,color:GOLD,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>
+                    style={{background:"#1C1F25",border:"2px solid "+SIGNAL,color:GOLD,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>
                     Photo
                   </button>
                   <button onClick={()=>refs[i].current&&refs[i].current.click()}
-                    style={{background:"#171208",border:"1px solid "+GOLDDIM,color:WHITE,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>
+                    style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,color:WHITE,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>
                     File
                   </button>
                 </div>
@@ -4083,7 +4049,7 @@ function P4({ go, setUser }) {
   const [email,setEmail]=useState(""); const [pass,setPass]=useState("");
   const [name,setName]=useState(""); const [re,setRe]=useState("");
   const [loginOk,setLoginOk]=useState(false);
-  const inp={width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,padding:"10px 12px",color:WHITE,fontSize:14,marginBottom:10,outline:"none",boxSizing:"border-box",fontFamily:"'Archivo',system-ui,sans-serif"};
+  const inp={width:"100%",background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"10px 12px",color:WHITE,fontSize:14,marginBottom:10,outline:"none",boxSizing:"border-box",fontFamily:"'Archivo',system-ui,sans-serif"};
   const login=()=>{
     const amandaEmails=["woolleya129@gmail.com"];
     const amandaPasswords=["Admin","MandaAdmin2026!","amandasox1970!!","admin","ADMIN"];
@@ -4152,7 +4118,7 @@ function P4({ go, setUser }) {
         </div>
 
         {/* ── PURCHASE USAGE CREDITS ── one-time top-up at the bottom of the page ── */}
-        <div style={{marginTop:40,padding:"28px 24px",background:"#0D0B06",border:"2px solid "+SIGNAL,textAlign:"center",boxShadow:"none"}}>
+        <div style={{marginTop:40,padding:"28px 24px",background:"#14161A",border:"2px solid "+SIGNAL,textAlign:"center",boxShadow:"none"}}>
           <div style={{fontSize:11,color:GOLD,letterSpacing:0.4,fontWeight:600,marginBottom:6}}>Need more usage?</div>
           <h3 style={{...H1,fontSize:20,marginBottom:8}}>Purchase usage credits</h3>
           <p style={{color:WHITE,fontSize:13,lineHeight:1.7,maxWidth:520,margin:"0 auto 18px"}}>You've already had your usage replaced once. To top up again, purchase extra usage credits here — pay once, use them for renders and generations whenever you're ready, and they never expire. Proceeds from MandaStrong1.Etsy.com are donated to humanitarian causes.</p>
@@ -4301,7 +4267,7 @@ function MergeVideos({ onSave }) {
     <div>
       <input ref={fileRef} type="file" multiple accept="video/*" style={{display:"none"}} onChange={e=>addClips(e.target.files)}/>
       <button onClick={()=>fileRef.current&&fileRef.current.click()}
-        style={{width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,color:WHITE,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif",marginBottom:10}}>
+        style={{width:"100%",background:"#1C1F25",border:"1px solid "+GOLDDIM,color:WHITE,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif",marginBottom:10}}>
         ⬆ ADD VIDEOS TO MERGE ({clips.length} loaded)
       </button>
       {clips.length>0&&(
@@ -4313,7 +4279,7 @@ function MergeVideos({ onSave }) {
               onDragStart={e=>e.dataTransfer.setData("mergeIdx",String(i))}
               onDragOver={e=>e.preventDefault()}
               onDrop={e=>{e.preventDefault();const from=Number(e.dataTransfer.getData("mergeIdx"));if(from!==i)move(from,i);}}
-              style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"8px 12px",marginBottom:4,display:"flex",alignItems:"center",gap:10,cursor:"grab"}}>
+              style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"8px 12px",marginBottom:4,display:"flex",alignItems:"center",gap:10,cursor:"grab"}}>
               <span style={{color:GOLD,fontWeight:600,fontSize:13}}>⣿</span>
               <span style={{color:GOLD,fontWeight:600,fontSize:11,minWidth:20}}>{i+1}.</span>
               <span style={{color:WHITE,fontSize:11,flex:1}}>{c.name.slice(0,50)}</span>
@@ -4333,12 +4299,12 @@ function MergeVideos({ onSave }) {
         </button>
       )}
       {merging&&(
-        <div style={{height:4,background:"#171208",marginBottom:8}}>
+        <div style={{height:4,background:"#1C1F25",marginBottom:8}}>
           <div style={{width:progress+"%",height:"100%",background:SIGNAL,transition:"width .3s"}}/>
         </div>
       )}
       {mergeLog.length>0&&(
-        <div style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:10,maxHeight:100,overflowY:"auto",marginBottom:8}}>
+        <div style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:10,maxHeight:100,overflowY:"auto",marginBottom:8}}>
           {mergeLog.map((l,i)=>(
             <div key={i} style={{color:i===mergeLog.length-1?"#22c55e":DIM,fontSize:10,lineHeight:1.7}}>
               {i===mergeLog.length-1?"▶ ":"  "}{l}
@@ -4390,11 +4356,11 @@ function P11({ mediaLib, setMediaLib }) {
           <div style={{color:WHITE,fontWeight:600,fontSize:16,letterSpacing:0.2,marginBottom:16}}>Drag & drop your media here</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,maxWidth:360,margin:"0 auto"}}>
             <button onClick={()=>fileRef.current&&fileRef.current.click()}
-              style={{background:"#171208",border:"2px solid "+SIGNAL,color:GOLD,padding:"14px",cursor:"pointer",fontSize:13,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>
+              style={{background:"#1C1F25",border:"2px solid "+SIGNAL,color:GOLD,padding:"14px",cursor:"pointer",fontSize:13,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>
               Upload photos
             </button>
             <button onClick={()=>fileRef.current&&fileRef.current.click()}
-              style={{background:"#171208",border:"2px solid "+SIGNAL,color:WHITE,padding:"14px",cursor:"pointer",fontSize:13,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>
+              style={{background:"#1C1F25",border:"2px solid "+SIGNAL,color:WHITE,padding:"14px",cursor:"pointer",fontSize:13,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>
               Upload files
             </button>
           </div>
@@ -4407,7 +4373,7 @@ function P11({ mediaLib, setMediaLib }) {
                 <div key={a.id} style={{...Card(),padding:8,position:"relative"}}>
                   {a.type.startsWith("video")&&a.url?<video src={a.url} style={{width:"100%",marginBottom:5}}/>:
                    a.type.startsWith("image")?<img src={a.url} style={{width:"100%",marginBottom:5}} alt={a.name}/>:
-                   <div style={{height:60,background:"#171208",marginBottom:5,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}></div>}
+                   <div style={{height:60,background:"#1C1F25",marginBottom:5,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}></div>}
                   <div style={{color:WHITE,fontSize:11,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.name}</div>
                   <button onClick={()=>setMediaLib(p=>p.filter(x=>x.id!==a.id))}
                     style={{position:"absolute",top:5,right:5,background:"#7f1d1d",border:"none",color:"#ef4444",width:16,height:16,cursor:"pointer",fontSize:9,padding:0}}>✕</button>
@@ -4419,7 +4385,7 @@ function P11({ mediaLib, setMediaLib }) {
         <input ref={fileRef} type="file" multiple accept="video/*,audio/*,image/*" onChange={e=>onFiles(e.target.files)} style={{display:"none"}}/>
       </div>
       <div style={{marginTop:20}}>
-        <div style={{background:"#171208",border:"2px solid "+SIGNAL,padding:16,marginBottom:12}}>
+        <div style={{background:"#1C1F25",border:"2px solid "+SIGNAL,padding:16,marginBottom:12}}>
           <div style={{color:GOLD,fontSize:12,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Merge videos — combine & order before timeline</div>
           <div style={{color:DIM,fontSize:11,marginBottom:12,lineHeight:1.7}}>Upload 2 or more videos. Drag to reorder. Hit MERGE IN SEQUENCE to combine them into one film ready for the timeline.</div>
           <MergeVideos onSave={a=>{setMediaLib(p=>[...p,a]);}}/>
@@ -4447,7 +4413,7 @@ function P12({ go, mediaLib }) {
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:20}}>
           {boxes.map(b=>(
             <button key={b.t} onClick={()=>go(b.p)}
-              style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"28px 24px",cursor:"pointer",textAlign:"left",fontFamily:"'Archivo',system-ui,sans-serif",minHeight:150,display:"flex",flexDirection:"column"}}
+              style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"28px 24px",cursor:"pointer",textAlign:"left",fontFamily:"'Archivo',system-ui,sans-serif",minHeight:150,display:"flex",flexDirection:"column"}}
               onMouseEnter={e=>{e.currentTarget.style.borderColor=GOLD;}}
               onMouseLeave={e=>{e.currentTarget.style.borderColor=GOLDDIM;}}>
               <div style={{fontSize:34,marginBottom:24}}>{b.ic}</div>
@@ -4474,7 +4440,7 @@ function P13({ go, mediaLib, timeline, setTimeline, user, filmDuration, setFilmD
             <span style={{color:GOLD,fontSize:10,fontWeight:600,letterSpacing:0.2}}>Film: {filmDuration||60} Min</span>
             <input type="range" min={1} max={180} step={1} value={filmDuration||60} onChange={e=>setFilmDuration(+e.target.value)} style={{width:160,accentColor:GOLD}}/>
             <div style={{display:"flex",gap:4}}>
-              {[60,90,180].map(m=><button key={m} onClick={()=>setFilmDuration(m)} style={{background:filmDuration===m?GOLD:"#171208",border:"1px solid "+(filmDuration===m?"#000":GOLDDIM),color:filmDuration===m?"#000":WHITE,padding:"2px 8px",cursor:"pointer",fontSize:10,fontWeight:600,fontFamily:"'Archivo',system-ui,sans-serif"}}>{m}m</button>)}
+              {[60,90,180].map(m=><button key={m} onClick={()=>setFilmDuration(m)} style={{background:filmDuration===m?GOLD:"#1C1F25",border:"1px solid "+(filmDuration===m?"#000":GOLDDIM),color:filmDuration===m?"#000":WHITE,padding:"2px 8px",cursor:"pointer",fontSize:10,fontWeight:600,fontFamily:"'Archivo',system-ui,sans-serif"}}>{m}m</button>)}
             </div>
           </div>
         </div>
@@ -4532,7 +4498,7 @@ function P13({ go, mediaLib, timeline, setTimeline, user, filmDuration, setFilmD
           <button onClick={()=>setTimeline({})} style={{...G("out",true)}}>Clear all</button>
         </div>
       </div>
-      <div style={{background:"#171208",height:100,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:12,border:"1px solid "+GOLDDIM}}>
+      <div style={{background:"#1C1F25",height:100,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:12,border:"1px solid "+GOLDDIM}}>
         {mediaLib[0]&&mediaLib[0].type.startsWith("video")&&mediaLib[0].url?
           <video src={mediaLib[0].url} style={{height:"100%",width:"100%",objectFit:"cover",opacity:.5}}/>:
           <div style={{textAlign:"center"}}>
@@ -4562,7 +4528,7 @@ function P13({ go, mediaLib, timeline, setTimeline, user, filmDuration, setFilmD
                 const id=e.dataTransfer.getData("assetId");const a=mediaLib.find(x=>String(x.id)===id);if(a)addToTrack(idx,a);
               }
             }}
-            style={{background:"#171208",border:"1px dashed "+GOLDDIM,minHeight:42,padding:6,display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+            style={{background:"#1C1F25",border:"1px dashed "+GOLDDIM,minHeight:42,padding:6,display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
             {(timeline[idx]||[]).map((a,i)=>(
               <div key={i} draggable
                 onDragStart={e=>{e.dataTransfer.setData("trackIdx",String(idx));e.dataTransfer.setData("clipIdx",String(i));e.dataTransfer.setData("assetId","");}}
@@ -4599,7 +4565,7 @@ function P13({ go, mediaLib, timeline, setTimeline, user, filmDuration, setFilmD
           <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
             {mediaLib.map(a=>(
               <div key={a.id} draggable onDragStart={e=>e.dataTransfer.setData("assetId",String(a.id))}
-                style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"4px 10px",cursor:"grab",color:GOLD,fontSize:12,fontWeight:500}}>
+                style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"4px 10px",cursor:"grab",color:GOLD,fontSize:12,fontWeight:500}}>
                 📎 {a.name.slice(0,14)}
               </div>
             ))}
@@ -4608,7 +4574,7 @@ function P13({ go, mediaLib, timeline, setTimeline, user, filmDuration, setFilmD
       )}
       <div style={{...Card(),marginTop:12,display:"flex",alignItems:"center",gap:8}}>
         {["⏮","⏪","▶","⏩","⏭"].map(c=><button key={c} style={{...G("out",true)}}>{c}</button>)}
-        <div style={{flex:1,height:3,background:"#171208"}}/>
+        <div style={{flex:1,height:3,background:"#1C1F25"}}/>
         <span style={{color:WHITE,fontSize:12,fontWeight:500}}>00:00 / 90:00</span>
       </div>
     </div>
@@ -4621,7 +4587,7 @@ function P14() {
   const [vals,setVals]=useState({Intensity:75,Clarity:80,Color:70,Brightness:65});
   return (
     <div style={{...Sp,display:"flex"}}>
-      <div style={{width:176,background:"#0D0B06",borderRight:"1px solid "+GOLDDIM+"",overflowY:"auto",padding:8}}>
+      <div style={{width:176,background:"#14161A",borderRight:"1px solid "+GOLDDIM+"",overflowY:"auto",padding:8}}>
         {tools14.map(t=>(
           <button key={t} onClick={()=>setActive(t)}
             style={{width:"100%",textAlign:"left",background:t===active?BG4:"none",border:"none",color:t===active?GOLD:WHITE,padding:"8px 10px",cursor:"pointer",fontSize:12,fontWeight:t===active?900:600,marginBottom:1,borderLeft:t===active?"2px solid "+SIGNAL:"2px solid transparent"}}>
@@ -4663,7 +4629,7 @@ function P15() {
               <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,marginBottom:8,fontWeight:600}}>{ch}</div>
               <div style={{color:GOLD,fontFamily:"'Archivo',system-ui,sans-serif",fontSize:30,fontWeight:600,marginBottom:12}}>{val}</div>
               <input type="range" min={0} max={100} value={val} onChange={e=>setLvl(p=>({...p,[ch]:+e.target.value}))} style={{width:"100%",height:100,accentColor:GOLD}}/>
-              <div style={{height:3,background:"#171208",marginTop:10}}>
+              <div style={{height:3,background:"#1C1F25",marginTop:10}}>
                 <div style={{width:val+"%",height:"100%",background:SIGNAL}}/>
               </div>
             </div>
@@ -4833,7 +4799,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
             const decoded=[];
             for(const c of cChunks){
               if(!c||!c.text) continue;
-              const u=await engineSpeak(c.text,{voice:audioAsset.clonedVoiceId,gender:audioAsset.gender||"Female",origin:audioAsset.origin||"British"});
+              const u=await engineSpeak(c.text,{voice:audioAsset.clonedVoiceId});
               if(!u) continue;
               try{ const r=await fetch(u); const ab=await r.arrayBuffer(); decoded.push(await audioCtx.decodeAudioData(ab)); }catch(e){}
             }
@@ -5019,7 +4985,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
             const tick=()=>{
               if(frame>=totalFrames){resolve(null);return;}
               const t=frame/totalFrames,sec=frame/fps;
-              try{ctx.clearRect(0,0,W,H);drawFn(ctx,W,H,t,sec);}catch(e){ctx.fillStyle="#0D0B06";ctx.fillRect(0,0,W,H);}
+              try{ctx.clearRect(0,0,W,H);drawFn(ctx,W,H,t,sec);}catch(e){ctx.fillStyle="#14161A";ctx.fillRect(0,0,W,H);}
               const vig=ctx.createRadialGradient(W/2,H/2,W*0.1,W/2,H/2,W*0.8);
               vig.addColorStop(0,"rgba(0,0,0,0)");vig.addColorStop(1,"rgba(0,0,0,0.85)");
               ctx.fillStyle=vig;ctx.fillRect(0,0,W,H);
@@ -5230,7 +5196,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
 
   return (
     <div style={{...Sp,padding:0}}>
-      <canvas ref={canvasRef} style={{position:"fixed",right:8,bottom:8,width:160,height:90,opacity:1,pointerEvents:"none",zIndex:9999,border:"1px solid #e8c96d",background:"#171208"}}/>
+      <canvas ref={canvasRef} style={{position:"fixed",right:8,bottom:8,width:160,height:90,opacity:1,pointerEvents:"none",zIndex:9999,border:"1px solid #e8c96d",background:"#1C1F25"}}/>
       <div style={{padding:"12px 24px",borderBottom:"1px solid "+GOLDDIM+"",background:"#020200",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
         <div>
           <div style={{fontSize:10,color:GOLD,letterSpacing:0.4,fontWeight:500}}>Production engine — stage 6</div>
@@ -5239,7 +5205,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
             <span style={{color:GOLD,fontSize:10,fontWeight:600,letterSpacing:0.2}}>Film: {filmDuration||60} Min</span>
             <input type="range" min={1} max={180} step={1} value={filmDuration||60} onChange={e=>setFilmDuration(+e.target.value)} style={{width:160,accentColor:GOLD}}/>
             <div style={{display:"flex",gap:4}}>
-              {[60,90,180].map(m=><button key={m} onClick={()=>setFilmDuration(m)} style={{background:filmDuration===m?GOLD:"#171208",border:"1px solid "+(filmDuration===m?"#000":GOLDDIM),color:filmDuration===m?"#000":WHITE,padding:"2px 8px",cursor:"pointer",fontSize:10,fontWeight:600,fontFamily:"'Archivo',system-ui,sans-serif"}}>{m}m</button>)}
+              {[60,90,180].map(m=><button key={m} onClick={()=>setFilmDuration(m)} style={{background:filmDuration===m?GOLD:"#1C1F25",border:"1px solid "+(filmDuration===m?"#000":GOLDDIM),color:filmDuration===m?"#000":WHITE,padding:"2px 8px",cursor:"pointer",fontSize:10,fontWeight:600,fontFamily:"'Archivo',system-ui,sans-serif"}}>{m}m</button>)}
             </div>
           </div>
         </div>
@@ -5248,28 +5214,28 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
       <div style={{display:"grid",gridTemplateColumns:"1fr 320px",minHeight:"calc(100vh - 120px)"}}>
         <div style={{padding:20,overflowY:"auto"}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
-            <div style={{background:clips.length>0?"#061406":"#171208",border:"1px solid "+(clips.length>0?"#22c55e":GOLDDIM),padding:"14px 16px"}}>
+            <div style={{background:clips.length>0?"#061406":"#1C1F25",border:"1px solid "+(clips.length>0?"#22c55e":GOLDDIM),padding:"14px 16px"}}>
               <div style={{color:GOLD,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Video clips</div>
               <div style={{color:clips.length>0?"#22c55e":WHITE,fontSize:14,fontWeight:600}}>{clips.length>0?"✓ "+clips.length+" clip"+(clips.length>1?"s":"")+" ready":"No clips — generate on page 8"}</div>
             </div>
-            <div style={{background:audio?"#061406":"#171208",border:"1px solid "+(audio?"#22c55e":GOLDDIM),padding:"14px 16px"}}>
+            <div style={{background:audio?"#061406":"#1C1F25",border:"1px solid "+(audio?"#22c55e":GOLDDIM),padding:"14px 16px"}}>
               <div style={{color:GOLD,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Audio track</div>
               <div style={{color:audio?"#22c55e":"#f59e0b",fontSize:14,fontWeight:600}}>{audio?"Audio ready":"No audio — record on page 6"}</div>
             </div>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
-            <div style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"14px 16px"}}>
+            <div style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"14px 16px"}}>
               <div style={{color:GOLD,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:10}}>Output quality</div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
                 {QUALITIES.map(q=>(
-                  <button key={q.id} onClick={()=>setQuality(q.id)} style={{background:quality===q.id?"#171208":"#000",border:"1px solid "+(quality===q.id?GOLD:GOLDDIM),padding:"8px 6px",cursor:"pointer",textAlign:"center"}}>
+                  <button key={q.id} onClick={()=>setQuality(q.id)} style={{background:quality===q.id?"#1C1F25":"#000",border:"1px solid "+(quality===q.id?GOLD:GOLDDIM),padding:"8px 6px",cursor:"pointer",textAlign:"center"}}>
                     <div style={{color:quality===q.id?GOLD:WHITE,fontSize:12,fontWeight:600,fontFamily:"'Archivo',system-ui,sans-serif"}}>{q.label}</div>
                     <div style={{color:DIM,fontSize:9}}>{q.sub}</div>
                   </button>
                 ))}
               </div>
             </div>
-            <div style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"14px 16px"}}>
+            <div style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"14px 16px"}}>
               <div style={{color:GOLD,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:10}}>Settings</div>
               <div style={{marginBottom:10}}>
                 <div style={{color:DIM,fontSize:10,marginBottom:5}}>Frame rate</div>
@@ -5286,18 +5252,18 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
             </div>
           </div>
           {rendering&&(
-            <div style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"14px 16px",marginBottom:16}}>
+            <div style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"14px 16px",marginBottom:16}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
                 <div style={{color:GOLD,fontSize:11,fontWeight:600}}>Rendering</div>
                 <div style={{color:GOLD,fontSize:13,fontWeight:600}}>{progress}%</div>
               </div>
-              <div style={{height:8,background:"#171208",overflow:"hidden"}}>
+              <div style={{height:8,background:"#1C1F25",overflow:"hidden"}}>
                 <div style={{width:progress+"%",height:"100%",background:SIGNAL,transition:"width .3s"}}/>
               </div>
             </div>
           )}
           {renderLog.length>0&&(
-            <div style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"14px 16px",marginBottom:16,maxHeight:180,overflowY:"auto"}}>
+            <div style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"14px 16px",marginBottom:16,maxHeight:180,overflowY:"auto"}}>
               <div style={{color:GOLD,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:8}}>Render log</div>
               {renderLog.map((l,i)=>(
                 <div key={i} style={{color:i===renderLog.length-1?"#22c55e":"#666",fontSize:10,lineHeight:1.7,fontFamily:"monospace"}}>{i===renderLog.length-1?"► ":"  "}{l}</div>
@@ -5323,7 +5289,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
             </div>
           )}
           {/* ── FILL IN THE GAPS? ─────────────────────────────────── */}
-          <div style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"14px 16px",marginBottom:16}}>
+          <div style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"14px 16px",marginBottom:16}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <div>
                 <div style={{color:GOLD,fontSize:11,fontWeight:600,letterSpacing:0.2}}>Fill in the gaps with extra scenes?</div>
@@ -5331,13 +5297,13 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
               </div>
               <div style={{display:"flex",gap:6,flexShrink:0,marginLeft:12}}>
                 <button onClick={()=>setGapFill(true)}
-                  style={{background:gapFill?GOLD:"#171208",border:"1px solid "+(gapFill?"#000":GOLDDIM),color:gapFill?"#000":WHITE,padding:"6px 18px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0}}>Y</button>
+                  style={{background:gapFill?GOLD:"#1C1F25",border:"1px solid "+(gapFill?"#000":GOLDDIM),color:gapFill?"#000":WHITE,padding:"6px 18px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0}}>Y</button>
                 <button onClick={()=>setGapFill(false)}
-                  style={{background:!gapFill?GOLD:"#171208",border:"1px solid "+(!gapFill?"#000":GOLDDIM),color:!gapFill?"#000":WHITE,padding:"6px 18px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0}}>N</button>
+                  style={{background:!gapFill?GOLD:"#1C1F25",border:"1px solid "+(!gapFill?"#000":GOLDDIM),color:!gapFill?"#000":WHITE,padding:"6px 18px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0}}>N</button>
               </div>
             </div>
           </div>
-          <div style={{background:"#0D0B06",border:"2px solid "+SIGNAL,padding:"18px 20px",marginBottom:16}}>
+          <div style={{background:"#14161A",border:"2px solid "+SIGNAL,padding:"18px 20px",marginBottom:16}}>
             <button onClick={startRender} disabled={rendering||clips.length===0}
               style={{...G("gold",false),width:"100%",padding:"18px",fontSize:14,letterSpacing:0.2,opacity:rendering||clips.length===0?0.5:1,marginBottom:10}}>
               {rendering?"RENDERING... "+progress+"%":"START RENDER — "+quality+" · "+fps+"fps · "+clips.length+" CLIP"+(clips.length!==1?"S":"")}
@@ -5351,7 +5317,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
           </div>
         </div>
         <div style={{borderLeft:"1px solid "+GOLDDIM+"",display:"flex",flexDirection:"column",background:"#020200"}}>
-          <div style={{background:"#171208",aspectRatio:"16/9",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
+          <div style={{background:"#1C1F25",aspectRatio:"16/9",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
             {renderUrl?(
               <video src={renderUrl} controls autoPlay loop playsInline style={{width:"100%",height:"100%",objectFit:"contain"}}/>
             ):(
@@ -5366,7 +5332,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
             {clips.length===0?(
               <div style={{color:GOLDDIM,fontSize:10,textAlign:"center",padding:"20px 0",lineHeight:1.8}}>No clips.<br/>Generate on page 8.</div>
             ):clips.map((clip,i)=>(
-              <div key={clip.id||i} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",marginBottom:4,background:currentClipIdx===i?"#171208":"#171208",border:"1px solid "+(currentClipIdx===i?GOLD:GOLDDIM)}}>
+              <div key={clip.id||i} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",marginBottom:4,background:currentClipIdx===i?"#1C1F25":"#1C1F25",border:"1px solid "+(currentClipIdx===i?GOLD:GOLDDIM)}}>
                 <div style={{width:22,height:22,background:currentClipIdx===i?GOLD:"#222",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                   <span style={{color:currentClipIdx===i?"#000":DIM,fontSize:9,fontWeight:600}}>{i+1}</span>
                 </div>
@@ -5407,7 +5373,7 @@ function P17({ go, rendered, mediaLib }) {
     <div style={{...Sp,padding:40}}>
       <div style={{maxWidth:880,margin:"0 auto"}}>
         <h1 style={{...H1,fontSize:28,marginBottom:14}}>Film preview</h1>
-        <div style={{background:"#171208",overflow:"hidden",marginBottom:14,aspectRatio:"16/9",display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid "+GOLDDIM}}>
+        <div style={{background:"#1C1F25",overflow:"hidden",marginBottom:14,aspectRatio:"16/9",display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid "+GOLDDIM}}>
           {vs?<video ref={videoRef} src={vs} style={{width:"100%",height:"100%"}} controls
             onTimeUpdate={()=>setCurrentTime(videoRef.current?.currentTime||0)}
             onLoadedMetadata={()=>setDuration(videoRef.current?.duration||0)}
@@ -5420,7 +5386,7 @@ function P17({ go, rendered, mediaLib }) {
           <button onClick={()=>{if(videoRef.current)videoRef.current.currentTime-=10;}} style={{...G("out",true)}}>⏪</button>
           <button onClick={togglePlay} style={{...G("gold",true),minWidth:44}}>{isPlaying?"⏸":"▶"}</button>
           <button onClick={()=>{if(videoRef.current)videoRef.current.currentTime+=10;}} style={{...G("out",true)}}>⏩</button>
-          <div style={{flex:1,height:4,background:"#171208",cursor:"pointer"}}
+          <div style={{flex:1,height:4,background:"#1C1F25",cursor:"pointer"}}
             onClick={e=>{if(!videoRef.current||!duration)return;const r=e.currentTarget.getBoundingClientRect();videoRef.current.currentTime=((e.clientX-r.left)/r.width)*duration;}}>
             <div style={{width:duration?(currentTime/duration*100):0+"%",height:"100%",background:GOLD}}/>
           </div>
@@ -5451,7 +5417,7 @@ function P18({ rendered, mediaLib }) {
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           {[["YouTube","#FF0000","https://www.youtube.com/upload"],["Instagram","#E1306C","https://www.instagram.com"],["TikTok","#69C9D0","https://www.tiktok.com/upload"],["X / Twitter","#1DA1F2","https://twitter.com/intent/tweet?text=Check+out+my+film+made+with+MandaStrong+Studio"],["Facebook","#1877F2","https://www.facebook.com/sharer/sharer.php?u=https://mandastrong1.etsy.com"],["LinkedIn","#0A66C2","https://www.linkedin.com/sharing/share-offsite/?url=https://mandastrong1.etsy.com"],["Vimeo","#1AB7EA","https://vimeo.com/upload"],["WhatsApp","#25D366","https://api.whatsapp.com/send?text=Check+out+my+film+from+MandaStrong+Studio"]].map(([s,c,link])=>(
             <button key={s} onClick={()=>window.open(link,"_blank")}
-              style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"10px 16px",cursor:"pointer"}}
+              style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"10px 16px",cursor:"pointer"}}
               onMouseEnter={e=>{e.currentTarget.style.borderColor=c;e.currentTarget.style.background=c+"22";}}
               onMouseLeave={e=>{e.currentTarget.style.borderColor=GOLDDIM;e.currentTarget.style.background="#000";}}>
               <div style={{color:c,fontSize:12,fontWeight:600,letterSpacing:0}}>{s}</div>
@@ -5482,7 +5448,7 @@ function TutCanvas({drawFn}){
 
       // Base — Claude animation
       try{drawFn(ctx,W,H,t,sec);}
-      catch(e){ctx.fillStyle="#0D0B06";ctx.fillRect(0,0,W,H);}
+      catch(e){ctx.fillStyle="#14161A";ctx.fillRect(0,0,W,H);}
 
       // ── CINEMATIC POLISH LAYER — makes every tutorial feel premium ────
 
@@ -5564,7 +5530,7 @@ function TutCanvas({drawFn}){
     rafRef.current=requestAnimationFrame(draw);
     return()=>{window.removeEventListener("resize",resize);if(rafRef.current)cancelAnimationFrame(rafRef.current);};
   },[drawFn]);
-  return <canvas ref={cvRef} style={{width:"100%",display:"block",background:"#171208",boxShadow:"0 0 60px rgba(232,201,109,0.25), inset 0 0 40px rgba(0,0,0,0.5)"}}/>;
+  return <canvas ref={cvRef} style={{width:"100%",display:"block",background:"#1C1F25",boxShadow:"0 0 60px rgba(232,201,109,0.25), inset 0 0 40px rgba(0,0,0,0.5)"}}/>;
 }
 
 function P19({ go }) {
@@ -5616,8 +5582,8 @@ function P19({ go }) {
   };
 
   return(
-    <div style={{...Sp,padding:0,background:"#171208"}}>
-      <div style={{background:"#171208",borderBottom:"1px solid "+GOLDDIM+"44",padding:"24px 32px 18px"}}>
+    <div style={{...Sp,padding:0,background:"#1C1F25"}}>
+      <div style={{background:"#1C1F25",borderBottom:"1px solid "+GOLDDIM+"44",padding:"24px 32px 18px"}}>
         <div style={{maxWidth:900,margin:"0 auto"}}>
           <div style={{fontSize:9,color:GOLDDIM,letterSpacing:0.4,fontWeight:600,marginBottom:6}}>Learning center</div>
           <h1 style={{...H1,fontSize:28,margin:"0 0 8px"}}>Tutorials</h1>
@@ -5631,9 +5597,9 @@ function P19({ go }) {
           const hasFn=!!drawFns[idx];
           return(
             <div key={t.n} style={{marginBottom:10}}>
-              <div style={{background:isActive?"#0D0B06":"#0D0B06",border:"1px solid "+(isActive?GOLD:GOLDDIM+"66"),borderBottom:isActive?"none":undefined,display:"flex",alignItems:"stretch",cursor:"pointer"}}
+              <div style={{background:isActive?"#14161A":"#14161A",border:"1px solid "+(isActive?GOLD:GOLDDIM+"66"),borderBottom:isActive?"none":undefined,display:"flex",alignItems:"stretch",cursor:"pointer"}}
                 onClick={()=>setActive(isActive?null:idx)}>
-                <div style={{width:56,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",background:isActive?PANEL2:"#171208",borderRight:"1px solid "+isActive?GOLD+"66":GOLDDIM+"33"+""}}>
+                <div style={{width:56,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",background:isActive?PANEL2:"#1C1F25",borderRight:"1px solid "+isActive?GOLD+"66":GOLDDIM+"33"+""}}>
                   <span style={{fontFamily:"'Archivo',system-ui,sans-serif",color:isActive?GOLD:GOLDDIM,fontSize:13,fontWeight:600}}>{t.n}</span>
                 </div>
                 <div style={{flex:1,padding:"13px 16px",minWidth:0}}>
@@ -5670,7 +5636,7 @@ function P19({ go }) {
               {isActive&&(
                 <div style={{background:"#040300",border:"1px solid "+GOLDDIM,borderTop:"none"}}>
                   {isGen?(
-                    <div style={{aspectRatio:"16/9",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,background:"#171208"}}>
+                    <div style={{aspectRatio:"16/9",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,background:"#1C1F25"}}>
                       <div style={{width:60,height:60,border:"2px solid "+SIGNAL,borderTop:"2px solid transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
                       <div style={{color:GOLD,fontSize:13,fontWeight:600,letterSpacing:0.2}}>Claude is writing your tutorial</div>
                       <style>{"@keyframes spin{to{transform:rotate(360deg)}}"}</style>
@@ -5678,7 +5644,7 @@ function P19({ go }) {
                   ):hasFn?(
                     <TutCanvas drawFn={drawFns[idx]}/>
                   ):(
-                    <div style={{aspectRatio:"16/9",background:"#171208",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:18,cursor:"pointer"}}
+                    <div style={{aspectRatio:"16/9",background:"#1C1F25",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:18,cursor:"pointer"}}
                       onClick={()=>generate(idx)}>
                       <div style={{width:80,height:80,background:GOLD,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"none",cursor:"pointer"}}>
                         <span style={{color:"#000",fontSize:30,fontWeight:600,marginLeft:4}}>▶</span>
@@ -5736,7 +5702,7 @@ function P20() {
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",marginBottom:28,border:"1px solid "+GOLDDIM}}>
           {[["tos","TERMS OF SERVICE"],["disc","DISCLAIMER"]].map(([id,label])=>(
             <button key={id} onClick={()=>setTab(id)}
-              style={{background:tab===id?"#171208":"#000",border:"none",borderBottom:tab===id?"2px solid "+SIGNAL:"2px solid transparent",color:tab===id?GOLD:WHITE,padding:"14px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>
+              style={{background:tab===id?"#1C1F25":"#000",border:"none",borderBottom:tab===id?"2px solid "+SIGNAL:"2px solid transparent",color:tab===id?GOLD:WHITE,padding:"14px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>
               {label}
             </button>
           ))}
@@ -5744,7 +5710,7 @@ function P20() {
 
         {tab==="tos"&&(
           <div>
-            <div style={{background:"#0D0B06",border:"2px solid "+SIGNAL,padding:"14px 20px",marginBottom:20,textAlign:"center"}}>
+            <div style={{background:"#14161A",border:"2px solid "+SIGNAL,padding:"14px 20px",marginBottom:20,textAlign:"center"}}>
               <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600}}>Mandastrong studio · professional cinema intelligence platform</div>
               <div style={{color:WHITE,fontSize:12,marginTop:4}}>By using this platform you agree to be legally bound by these Terms.</div>
             </div>
@@ -5760,7 +5726,7 @@ function P20() {
             {sec("9. GOVERNING LAW",<>{p("These Terms are governed by the laws of the jurisdiction in which MandaStrong Studio is registered. Any disputes shall be resolved by binding arbitration or the courts of that jurisdiction.")}</>)}
             {sec("10. CONTACT",<>{p("For support, billing enquiries, or legal notices contact us at MandaStrong1.Etsy.com or through Agent Grok on Page 21 of the platform.")}</>)}
 
-            <div style={{background:"#0D0B06",border:"1px solid "+GOLDDIM,padding:"12px 16px",marginTop:8}}>
+            <div style={{background:"#14161A",border:"1px solid "+GOLDDIM,padding:"12px 16px",marginTop:8}}>
               <p style={{color:GOLDDIM,fontSize:11,margin:0,letterSpacing:0}}>Mandastrong studio · amanda woolley, founder · march 2026</p>
             </div>
           </div>
@@ -5768,7 +5734,7 @@ function P20() {
 
         {tab==="disc"&&(
           <div>
-            <div style={{background:"#0D0B06",border:"2px solid "+SIGNAL,padding:"14px 20px",marginBottom:20,textAlign:"center"}}>
+            <div style={{background:"#14161A",border:"2px solid "+SIGNAL,padding:"14px 20px",marginBottom:20,textAlign:"center"}}>
               <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600}}>Important — please read before using this platform</div>
               <div style={{color:WHITE,fontSize:12,marginTop:4}}>This disclaimer governs your use of all AI-generated content and platform services.</div>
             </div>
@@ -5782,8 +5748,8 @@ function P20() {
             {sec("USER RESPONSIBILITY",<>{p("All responsibility for how content created on MandaStrong Studio is deployed, distributed, monetised, or shared rests entirely with the user. MandaStrong Studio shall not be held liable for any consequences arising from the publication or use of platform-generated content.")}</>)}
             {sec("CHANGES TO THIS DISCLAIMER",<>{p("MandaStrong Studio reserves the right to update this disclaimer at any time. Continued use of the platform following any update constitutes your acceptance of the revised terms.")}</>)}
 
-            <div style={{background:"#0D0B06",border:"1px solid "+GOLDDIM,padding:"12px 16px",marginTop:8}}>
-              <p style={{color:GOLDDIM,fontSize:11,margin:0,letterSpacing:0}}>— Amanda Woolley · Founder · MandaStrong Studio · March 2026 · mandastrongmovies1.bolt.host</p>
+            <div style={{background:"#14161A",border:"1px solid "+GOLDDIM,padding:"12px 16px",marginTop:8}}>
+              <p style={{color:GOLDDIM,fontSize:11,margin:0,letterSpacing:0}}>— Amanda Woolley · Founder · MandaStrong Studio · March 2026 · mandsstrongmovie1.bolt.host</p>
             </div>
           </div>
         )}
@@ -5809,9 +5775,9 @@ function P21() {
     setLoading(false);
   };
   return(
-    <div style={{height:"calc(100vh - 116px)",display:"flex",flexDirection:"column",background:"#171208",overflow:"hidden"}}>
-      <div style={{flex:1,margin:"12px 16px",border:"2px solid "+SIGNAL,display:"flex",flexDirection:"column",background:"#0D0B06",overflow:"hidden",minHeight:0}}>
-        <div style={{background:"#171208",borderBottom:"2px solid "+SIGNAL,padding:"12px 18px",display:"flex",alignItems:"center",gap:12,flexShrink:0}}>
+    <div style={{height:"calc(100vh - 116px)",display:"flex",flexDirection:"column",background:"#1C1F25",overflow:"hidden"}}>
+      <div style={{flex:1,margin:"12px 16px",border:"2px solid "+SIGNAL,display:"flex",flexDirection:"column",background:"#14161A",overflow:"hidden",minHeight:0}}>
+        <div style={{background:"#1C1F25",borderBottom:"2px solid "+SIGNAL,padding:"12px 18px",display:"flex",alignItems:"center",gap:12,flexShrink:0}}>
           <div style={{position:"relative",flexShrink:0}}>
             <div style={{width:46,height:46,background:GOLD,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"none"}}>
               <span style={{fontFamily:"'Archivo',system-ui,sans-serif",fontSize:22,fontWeight:600,color:"#000"}}>G</span>
@@ -5827,7 +5793,7 @@ function P21() {
           </div>
           <div style={{display:"flex",gap:5,flexShrink:0}}>
             {[["23","PAGES"],["600+","TOOLS"],["54","VOICES"],["4K","RENDER"]].map(([v,l])=>(
-              <div key={l} style={{background:"#171208",border:"1px solid "+GOLDDIM+"44",padding:"5px 8px",textAlign:"center",minWidth:40}}>
+              <div key={l} style={{background:"#1C1F25",border:"1px solid "+GOLDDIM+"44",padding:"5px 8px",textAlign:"center",minWidth:40}}>
                 <div style={{fontFamily:"'Archivo',system-ui,sans-serif",color:GOLD,fontSize:12,fontWeight:600}}>{v}</div>
                 <div style={{color:"#22c55e",fontSize:8,letterSpacing:0,marginTop:1,fontWeight:500}}>{l}</div>
               </div>
@@ -5837,7 +5803,7 @@ function P21() {
         <div style={{flex:1,overflowY:"auto",padding:"12px 16px",display:"flex",flexDirection:"column",gap:10,minHeight:0}}>
           {msgs.map((m,i)=>(
             <div key={i} style={{display:"flex",gap:10,flexDirection:m.role==="user"?"row-reverse":"row"}}>
-              <div style={{width:32,height:32,flexShrink:0,background:m.role==="user"?"#211A0E":GOLD,border:"1px solid "+GOLDDIM,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:600,color:m.role==="user"?GOLD:"#000",fontFamily:"'Archivo',system-ui,sans-serif"}}>{m.role==="user"?"Y":"G"}</div>
+              <div style={{width:32,height:32,flexShrink:0,background:m.role==="user"?"#22262D":GOLD,border:"1px solid "+GOLDDIM,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:600,color:m.role==="user"?GOLD:"#000",fontFamily:"'Archivo',system-ui,sans-serif"}}>{m.role==="user"?"Y":"G"}</div>
               <div style={{flex:1,maxWidth:"82%"}}>
                 <div style={{color:GOLD,fontSize:9,fontWeight:600,letterSpacing:0.2,marginBottom:3,textAlign:m.role==="user"?"right":"left"}}>{m.role==="user"?"YOU":"AGENT GROK"}</div>
                 <div style={{background:m.role==="user"?"#100800":"#0a0900",border:"1px solid "+GOLDDIM+"33",padding:"9px 13px"}}>
@@ -5852,21 +5818,21 @@ function P21() {
         <div style={{borderTop:"1px solid "+GOLDDIM+"22",padding:"8px 16px",display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",gap:4,flexShrink:0,background:"#040200"}}>
           {QUICK.map(q=>(
             <button key={q} onClick={()=>send(q)}
-              style={{background:"#171208",border:"1px solid "+GOLDDIM+"33",color:GOLDDIM,padding:"6px 10px",cursor:"pointer",fontSize:11,fontWeight:500,fontFamily:"'Archivo',system-ui,sans-serif",textAlign:"left",lineHeight:1.4}}
+              style={{background:"#1C1F25",border:"1px solid "+GOLDDIM+"33",color:GOLDDIM,padding:"6px 10px",cursor:"pointer",fontSize:11,fontWeight:500,fontFamily:"'Archivo',system-ui,sans-serif",textAlign:"left",lineHeight:1.4}}
               onMouseEnter={e=>{e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.color=GOLD;}}
               onMouseLeave={e=>{e.currentTarget.style.borderColor=GOLD+"33";e.currentTarget.style.color=GOLDDIM;}}>
               {q}
             </button>
           ))}
         </div>
-        <div style={{borderTop:"1px solid "+GOLDDIM,padding:"10px 16px",display:"flex",gap:8,flexShrink:0,background:"#0D0B06"}}>
+        <div style={{borderTop:"1px solid "+GOLDDIM,padding:"10px 16px",display:"flex",gap:8,flexShrink:0,background:"#14161A"}}>
           <textarea value={inp2} onChange={e=>setInp2(e.target.value)}
             onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}}
             placeholder="Ask anything about tools, workflow, pricing or production..."
             rows={2}
-            style={{flex:1,resize:"none",padding:"9px 12px",fontSize:13,background:"#171208",border:"1px solid "+GOLDDIM+"44",color:WHITE,outline:"none",lineHeight:1.6,fontFamily:"'Archivo',system-ui,sans-serif",boxSizing:"border-box"}}/>
+            style={{flex:1,resize:"none",padding:"9px 12px",fontSize:13,background:"#1C1F25",border:"1px solid "+GOLDDIM+"44",color:WHITE,outline:"none",lineHeight:1.6,fontFamily:"'Archivo',system-ui,sans-serif",boxSizing:"border-box"}}/>
           <button onClick={()=>send()} disabled={loading||!inp2.trim()}
-            style={{background:loading||!inp2.trim()?"#211A0E":GOLD,border:"1px solid "+(loading||!inp2.trim()?GOLD+"22":GOLD),color:loading||!inp2.trim()?GOLDDIM:"#000",padding:"10px 20px",cursor:loading||!inp2.trim()?"not-allowed":"pointer",fontSize:12,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif",alignSelf:"stretch"}}>
+            style={{background:loading||!inp2.trim()?"#22262D":GOLD,border:"1px solid "+(loading||!inp2.trim()?GOLD+"22":GOLD),color:loading||!inp2.trim()?GOLDDIM:"#000",padding:"10px 20px",cursor:loading||!inp2.trim()?"not-allowed":"pointer",fontSize:12,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif",alignSelf:"stretch"}}>
             {loading?"⟳":"Send"}
           </button>
         </div>
@@ -5909,7 +5875,7 @@ function P22() {
 function HowToGuide() {
   const [open,setOpen]=useState(null);
   const SECTIONS=[
-    {t:"Welcome — how to read this book",c:"This is more than a how-to. It is a complete guide to making films with AI on MandaStrong Studio (mandastrongmovies1.bolt.host) AND a plain-English education in what AI actually is, so you are never at its mercy. Read Part One to understand the machine you are working with. Read Part Two to master the studio page by page. Read Part Three for the craft — prompting, voice, story, and ethics. You do not need any technical background. Every idea here is explained the way you would explain it to a friend across a kitchen table."},
+    {t:"Welcome — how to read this book",c:"This is more than a how-to. It is a complete guide to making films with AI on MandaStrong Studio (mandsstrongmovie1.bolt.host) AND a plain-English education in what AI actually is, so you are never at its mercy. Read Part One to understand the machine you are working with. Read Part Two to master the studio page by page. Read Part Three for the craft — prompting, voice, story, and ethics. You do not need any technical background. Every idea here is explained the way you would explain it to a friend across a kitchen table."},
 
     {t:"Part one · What AI actually is",c:"AI does not think, feel, or know things the way you do. A large language model — the kind of AI behind most creative tools — is a very powerful pattern machine. It has read an enormous amount of human writing and images and learned which words and shapes tend to follow which. When you ask it for something, it is not looking up an answer; it is predicting, piece by piece, the most likely continuation of your request. That is why it can sound confident and still be wrong. Understanding this one fact changes how you use it: you are the director, it is the crew. It is fast and tireless and knows a thousand styles, but it has no judgement about YOUR story. That judgement is yours, and it always will be."},
 
@@ -5919,9 +5885,9 @@ function HowToGuide() {
 
     {t:"Part one · AI and you — staying in charge",c:"AI is a tool, like a camera or a pen. It amplifies whoever holds it. It has no taste of its own, so your taste is the whole game. Never let a machine talk you out of a creative instinct, and never assume its confident answer is correct without checking. Keep your own copies of everything important. Understand that what you type may be processed on servers you don't control, so don't paste anything you'd be uncomfortable sharing. And remember the deeper point behind this whole studio: AI should widen the door to creativity, not replace the human standing in it. You are not being replaced. You are being equipped."},
 
-    {t:"Part two · Getting started",c:"Open mandastrongmovies1.bolt.host. Log in with your credentials or start a free trial. Use the hamburger menu top left to jump to any of the 24 pages. AUTOSAVE ON is real — your work saves automatically every time you change page, generate a clip, or update your timeline. Hit SAVE PROJECT to create a named restore point you can return to from MY PROJECTS. Your plan and remaining usage are always visible from your account panel — tap the avatar top right."},
+    {t:"Part two · Getting started",c:"Open mandsstrongmovie1.bolt.host. Log in with your credentials or start a free trial. Use the hamburger menu top left to jump to any of the 24 pages. AUTOSAVE ON is real — your work saves automatically every time you change page, generate a clip, or update your timeline. Hit SAVE PROJECT to create a named restore point you can return to from MY PROJECTS. Your plan and remaining usage are always visible from your account panel — tap the avatar top right."},
 
-    {t:"Part two · Page 1 — home & install",c:"The front door of mandastrongmovies1.bolt.host. The DOWNLOAD APP button installs the studio to your device like a real app, using your browser's built-in install prompt — on iPhone and iPad use Share then Add to Home Screen, as Apple does not allow one-tap install. The whole page is built to fit any screen, phone or laptop. From here, enter the studio and begin."},
+    {t:"Part two · Page 1 — home & install",c:"The front door of mandsstrongmovie1.bolt.host. The DOWNLOAD APP button installs the studio to your device like a real app, using your browser's built-in install prompt — on iPhone and iPad use Share then Add to Home Screen, as Apple does not allow one-tap install. The whole page is built to fit any screen, phone or laptop. From here, enter the studio and begin."},
 
     {t:"Part two · Page 4 — plans & usage credits",c:"Three plans: Basic $20, Pro $30, Studio $50 — pick the one that fits how much you create. At the very bottom is PURCHASE USAGE CREDITS: a one-time top-up for extra renders and generations when you need more than your plan includes. Credits never expire. All payments run through Stripe's secure checkout — the studio never sees your card details."},
 
@@ -5945,9 +5911,9 @@ function HowToGuide() {
 
     {t:"Part three · Ethics & responsibility",c:"With these tools you can make almost anything, which means the responsibility is yours. Don't put real people's faces or voices into films they never agreed to. Be honest when something is AI-generated if presenting it as real could mislead. Respect others' work rather than copying a living artist's style wholesale and calling it your own. And remember MandaStrong's founding mission — these tools exist to spread kindness, understanding, and hope, with proceeds supporting veterans' mental health and anti-bullying work. Make things that would make that mission proud."},
 
-    {t:"SAVING, RECOVERING & GETTING HELP",c:"AUTOSAVE ON saves as you work. SAVE PROJECT creates a named session — name it meaningfully. MY PROJECTS shows your history; CONTINUE PROJECT restores a session including all clips. An emergency save fires if the tab closes or crashes, so work is never permanently lost. Stuck? Agent Grok on Page 21 is your 24/7 production consultant with full knowledge of every page and workflow. This guide lives on your closing page at mandastrongmovies1.bolt.host and is updated as the studio grows."},
+    {t:"SAVING, RECOVERING & GETTING HELP",c:"AUTOSAVE ON saves as you work. SAVE PROJECT creates a named session — name it meaningfully. MY PROJECTS shows your history; CONTINUE PROJECT restores a session including all clips. An emergency save fires if the tab closes or crashes, so work is never permanently lost. Stuck? Agent Grok on Page 21 is your 24/7 production consultant with full knowledge of every page and workflow. This guide lives on your closing page at mandsstrongmovie1.bolt.host and is updated as the studio grows."},
 
-    {t:"Recommended workflow — start to finish",c:"Page 5 fill Script to Movie's Producer, Describe, Production boxes WIRE INTO RENDER. Page 6 choose a voice PREPARE TO SPEAK SAVE TO MEDIA LIBRARY. Page 8 upload a reference photo generate each scene (your brief drives them) add background music and stereo if you like. Page 13 SYNC ALL TRACKS. Page 15 set the mix. Page 16 choose quality render. Page 17 preview. Page 18 export and share. That is a finished film, made by you, at mandastrongmovies1.bolt.host."},
+    {t:"Recommended workflow — start to finish",c:"Page 5 fill Script to Movie's Producer, Describe, Production boxes WIRE INTO RENDER. Page 6 choose a voice PREPARE TO SPEAK SAVE TO MEDIA LIBRARY. Page 8 upload a reference photo generate each scene (your brief drives them) add background music and stereo if you like. Page 13 SYNC ALL TRACKS. Page 15 set the mix. Page 16 choose quality render. Page 17 preview. Page 18 export and share. That is a finished film, made by you, at mandsstrongmovie1.bolt.host."},
   ];
   return(
     <div style={{padding:"20px 32px 40px",maxWidth:860,margin:"0 auto"}}>
@@ -5956,7 +5922,7 @@ function HowToGuide() {
         const isOpen=open===i;
         return(
           <div key={i} style={{marginBottom:4}}>
-            <button onClick={()=>setOpen(isOpen?null:i)} style={{width:"100%",background:isOpen?GOLD+"14":"#0D0B06",border:"1px solid "+(isOpen?GOLD:GOLDDIM+"55"),padding:"13px 18px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",fontFamily:"'Archivo',system-ui,sans-serif"}}>
+            <button onClick={()=>setOpen(isOpen?null:i)} style={{width:"100%",background:isOpen?GOLD+"14":"#14161A",border:"1px solid "+(isOpen?GOLD:GOLDDIM+"55"),padding:"13px 18px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",fontFamily:"'Archivo',system-ui,sans-serif"}}>
               <span style={{color:isOpen?GOLD:WHITE,fontWeight:600,fontSize:13,letterSpacing:0.2}}>{g.t}</span>
               <span style={{color:GOLD,fontSize:16,fontWeight:600}}>{isOpen?"▲":"▼"}</span>
             </button>
@@ -6110,11 +6076,11 @@ function P24CharacterStudio({ onSave, go }) {
     navigator.clipboard.writeText(prompt).then(()=>alert("Scene prompt copied — paste into Page 8 scene description.")).catch(()=>alert(prompt));
   };
 
-  const inp={width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,padding:"10px 12px",color:WHITE,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"'Archivo',system-ui,sans-serif"};
+  const inp={width:"100%",background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"10px 12px",color:WHITE,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"'Archivo',system-ui,sans-serif"};
   const lbl=(t)=><div style={{color:GOLD,fontSize:10,letterSpacing:0.2,fontWeight:600,marginBottom:5,marginTop:10}}>{t}</div>;
   const optBtn=(val,cur,setter,opts)=>(
     <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:4}}>
-      {opts.map(o=><button key={o} onClick={()=>setter(o)} style={{background:cur===o?GOLD:"#171208",border:"1px solid "+(cur===o?"#000":GOLDDIM),color:cur===o?"#000":WHITE,padding:"3px 10px",cursor:"pointer",fontSize:11,fontWeight:600}}>{o}</button>)}
+      {opts.map(o=><button key={o} onClick={()=>setter(o)} style={{background:cur===o?GOLD:"#1C1F25",border:"1px solid "+(cur===o?"#000":GOLDDIM),color:cur===o?"#000":WHITE,padding:"3px 10px",cursor:"pointer",fontSize:11,fontWeight:600}}>{o}</button>)}
     </div>
   );
 
@@ -6170,20 +6136,20 @@ function P24CharacterStudio({ onSave, go }) {
             {photo?(
               <div style={{position:"relative",marginBottom:12}}>
                 <img src={photo} alt="ref" style={{width:"100%",height:160,objectFit:"cover",border:"1px solid "+GOLDDIM}}/>
-                <button onClick={()=>{setPhoto(null);setPhotoName("");}} style={{position:"absolute",top:5,right:5,background:"#171208",border:"1px solid "+GOLDDIM,color:GOLD,padding:"2px 8px",cursor:"pointer",fontSize:11,fontWeight:600}}>✕</button>
+                <button onClick={()=>{setPhoto(null);setPhotoName("");}} style={{position:"absolute",top:5,right:5,background:"#1C1F25",border:"1px solid "+GOLDDIM,color:GOLD,padding:"2px 8px",cursor:"pointer",fontSize:11,fontWeight:600}}>✕</button>
               </div>
             ):(
               <div
                 onClick={()=>fileRef.current&&fileRef.current.click()}
-                onDragOver={e=>{e.preventDefault();e.currentTarget.style.background="#4A3C1A";}}
-                onDragLeave={e=>{e.currentTarget.style.background="#171208";}}
+                onDragOver={e=>{e.preventDefault();e.currentTarget.style.background="#2E343D";}}
+                onDragLeave={e=>{e.currentTarget.style.background="#1C1F25";}}
                 onDrop={e=>{
-                  e.preventDefault();e.currentTarget.style.background="#171208";
+                  e.preventDefault();e.currentTarget.style.background="#1C1F25";
                   const f=e.dataTransfer.files&&e.dataTransfer.files[0];
                   if(f&&f.type.startsWith("image/")){const r=new FileReader();r.onload=ev=>{setPhoto(ev.target.result);setPhotoName(f.name);};r.readAsDataURL(f);}
                   else if(f){alert("Please drop an image file.");}
                 }}
-                style={{width:"100%",background:"#171208",border:"2px dashed "+GOLD,color:GOLD,padding:"18px 14px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif",marginBottom:12,textAlign:"center"}}>
+                style={{width:"100%",background:"#1C1F25",border:"2px dashed "+GOLD,color:GOLD,padding:"18px 14px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif",marginBottom:12,textAlign:"center"}}>
                 <div>Drag & drop a photo here</div>
                 <div style={{color:GOLDDIM,fontSize:9,marginTop:4,fontWeight:500}}>or tap to choose from your photos</div>
               </div>
@@ -6192,7 +6158,7 @@ function P24CharacterStudio({ onSave, go }) {
 
             {lbl("ASSIGNED VOICE")}
             <select value={voice} onChange={e=>setVoice(e.target.value)} style={{...inp,marginBottom:14,cursor:"pointer"}}>
-              {VOICE_CHARACTERS.map(v=><option key={v.id} value={v.id} style={{background:"#171208"}}>{v.name} — {v.origin} {v.gender} · {v.style}</option>)}
+              {VOICE_CHARACTERS.map(v=><option key={v.id} value={v.id} style={{background:"#1C1F25"}}>{v.name} — {v.origin} {v.gender} · {v.style}</option>)}
             </select>
 
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
@@ -6200,12 +6166,12 @@ function P24CharacterStudio({ onSave, go }) {
               {editId&&<button onClick={clearForm} style={{...G("out",false),padding:"14px",fontSize:13,letterSpacing:0.2}}>Cancel</button>}
             </div>
             {/* ════════ REAL LIP-SYNC — MAKE THIS AVATAR SPEAK ════════ */}
-            <div style={{marginTop:16,border:"2px solid "+SIGNAL,background:"#171208",padding:16,boxShadow:"none"}}>
+            <div style={{marginTop:16,border:"2px solid "+SIGNAL,background:"#1C1F25",padding:16,boxShadow:"none"}}>
               <div style={{fontFamily:"'Archivo',system-ui,sans-serif",color:GOLD,letterSpacing:0.2,fontSize:16,textTransform:"none",marginBottom:4}}>Make This Avatar Speak</div>
               <div style={{color:DIM,fontSize:11,marginBottom:12}}>Photoreal lip-sync. Uses the character photo above. Record or upload the voice, then generate.</div>
               <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap"}}>
-                <button onClick={lsRecord} style={{flex:1,minWidth:140,background:lsRecording?"#c0392b":"#171208",border:"1px solid "+(lsRecording?"#000":GOLDDIM),color:lsRecording?"#fff":WHITE,padding:"11px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>{lsRecording?"Stop recording":"Record voice"}</button>
-                <button onClick={()=>{const i=document.getElementById("lsAudioInput");if(i)i.click();}} style={{flex:1,minWidth:140,background:"#171208",border:"1px solid "+GOLDDIM,color:WHITE,padding:"11px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>⤴ upload voice</button>
+                <button onClick={lsRecord} style={{flex:1,minWidth:140,background:lsRecording?"#c0392b":"#1C1F25",border:"1px solid "+(lsRecording?"#000":GOLDDIM),color:lsRecording?"#fff":WHITE,padding:"11px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>{lsRecording?"Stop recording":"Record voice"}</button>
+                <button onClick={()=>{const i=document.getElementById("lsAudioInput");if(i)i.click();}} style={{flex:1,minWidth:140,background:"#1C1F25",border:"1px solid "+GOLDDIM,color:WHITE,padding:"11px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>⤴ upload voice</button>
                 <input id="lsAudioInput" type="file" accept="audio/*" style={{display:"none"}} onChange={lsPickAudio}/>
               </div>
               {lsAudioName&&<div style={{color:GOLD,fontSize:11,marginBottom:10}}>Voice ready: {lsAudioName}</div>}
@@ -6214,7 +6180,7 @@ function P24CharacterStudio({ onSave, go }) {
               {lsBusy&&<div style={{marginTop:10,color:GOLD,fontSize:12,letterSpacing:0}}>{lsStage}</div>}
               {lsVideo&&(
                 <div style={{marginTop:12}}>
-                  <video src={lsVideo} controls autoPlay playsInline style={{width:"100%",border:"1px solid "+GOLDDIM,background:"#171208"}}/>
+                  <video src={lsVideo} controls autoPlay playsInline style={{width:"100%",border:"1px solid "+GOLDDIM,background:"#1C1F25"}}/>
                   <button onClick={lsDownload} style={{width:"100%",marginTop:8,padding:13,background:GOLD,color:"#000",border:"none",fontWeight:600,fontSize:14,letterSpacing:0.2,cursor:"pointer",fontFamily:"'Archivo',system-ui,sans-serif"}}>Download lip-sync video</button>
                 </div>
               )}
@@ -6236,16 +6202,16 @@ function P24CharacterStudio({ onSave, go }) {
                 {chars.map(c=>(
                   <div key={c.id} style={{...Card(),padding:14}}>
                     <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
-                      {c.photo?<img src={c.photo} alt={c.name} style={{width:80,height:80,objectFit:"cover",border:"2px solid "+SIGNAL,flexShrink:0}}/>:<div style={{width:80,height:80,background:"#171208",border:"1px solid "+GOLDDIM,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,flexShrink:0}}></div>}
+                      {c.photo?<img src={c.photo} alt={c.name} style={{width:80,height:80,objectFit:"cover",border:"2px solid "+SIGNAL,flexShrink:0}}/>:<div style={{width:80,height:80,background:"#1C1F25",border:"1px solid "+GOLDDIM,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,flexShrink:0}}></div>}
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{color:GOLD,fontWeight:600,fontSize:15,letterSpacing:0}}>{c.name}</div>
                         {c.role&&<div style={{color:GOLDDIM,fontSize:10,letterSpacing:0.2,marginTop:2}}>{c.role}</div>}
                         <div style={{color:WHITE,fontSize:11,marginTop:4,display:"flex",flexWrap:"wrap",gap:6}}>
-                          {c.gender&&<span style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"1px 6px",fontSize:10}}>{c.gender}</span>}
-                          {c.age&&<span style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"1px 6px",fontSize:10}}>{c.age}</span>}
-                          {c.ethnicity&&<span style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"1px 6px",fontSize:10}}>{c.ethnicity}</span>}
-                          {c.hairColor&&<span style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"1px 6px",fontSize:10}}>{c.hairStyle?c.hairStyle+" ":""}{c.hairColor} hair</span>}
-                          {c.eyeColor&&<span style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"1px 6px",fontSize:10}}>{c.eyeColor} eyes</span>}
+                          {c.gender&&<span style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"1px 6px",fontSize:10}}>{c.gender}</span>}
+                          {c.age&&<span style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"1px 6px",fontSize:10}}>{c.age}</span>}
+                          {c.ethnicity&&<span style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"1px 6px",fontSize:10}}>{c.ethnicity}</span>}
+                          {c.hairColor&&<span style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"1px 6px",fontSize:10}}>{c.hairStyle?c.hairStyle+" ":""}{c.hairColor} hair</span>}
+                          {c.eyeColor&&<span style={{background:"#1C1F25",border:"1px solid "+GOLDDIM,padding:"1px 6px",fontSize:10}}>{c.eyeColor} eyes</span>}
                         </div>
                         {c.costume&&<div style={{color:WHITE,fontSize:11,marginTop:4,fontStyle:"italic"}}> {c.costume}</div>}
                         {c.personality&&<div style={{color:WHITE,fontSize:11,marginTop:2}}> {c.personality}</div>}
@@ -6316,13 +6282,13 @@ function P23({ go }) {
     window.location.reload();
   };
   return(
-    <div style={{...Sp,padding:0,background:"#171208",position:"relative",minHeight:"100vh",overflow:"hidden"}}>
+    <div style={{...Sp,padding:0,background:"#1C1F25",position:"relative",minHeight:"100vh",overflow:"hidden"}}>
       <div style={{position:"relative",zIndex:1,padding:"30px 24px 80px"}}>
         <div style={{maxWidth:880,margin:"0 auto",textAlign:"center"}}>
-          <div style={{width:"100%",maxHeight:"34vh",overflow:"hidden",position:"relative",display:"flex",alignItems:"center",justifyContent:"center",background:"#171208",border:"1px solid "+GOLDDIM,marginBottom:26}}>
+          <div style={{width:"100%",maxHeight:"34vh",overflow:"hidden",position:"relative",display:"flex",alignItems:"center",justifyContent:"center",background:"#1C1F25",border:"1px solid "+GOLDDIM,marginBottom:26}}>
             <video ref={bgRef} autoPlay loop playsInline muted preload="auto"
               onLoadedMetadata={(e)=>{try{if(e.currentTarget.currentTime<0.1)e.currentTarget.currentTime=0.1;}catch{}}}
-              style={{display:"block",width:"100%",maxHeight:"34vh",objectFit:"cover",background:"#171208"}}>
+              style={{display:"block",width:"100%",maxHeight:"34vh",objectFit:"cover",background:"#1C1F25"}}>
               <source src="/background.mp4" type="video/mp4"/>
               <source src="background.mp4" type="video/mp4"/>
               <source src="./background.mp4" type="video/mp4"/>
@@ -6393,10 +6359,10 @@ function Landing({ onEnter }){
       )}
       <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at center, rgba(10,11,13,0.35) 0%, rgba(10,11,13,0.92) 78%)"}}/>
       <div style={{position:"relative",textAlign:"center",padding:"0 24px",maxWidth:760}}>
-        <div style={{fontSize:11,letterSpacing:3.4,color:"#C8A54B",marginBottom:18,fontWeight:600}}>CINEMA INTELLIGENCE PLATFORM</div>
-        <div style={{fontSize:"clamp(34px,8vw,74px)",lineHeight:1.02,fontWeight:600,color:"#EBD9A8",letterSpacing:-0.5}}>MandaStrong Studio</div>
-        <div style={{marginTop:16,fontSize:"clamp(13px,3.2vw,17px)",color:"#9A855A",lineHeight:1.5}}>Your story, made into a film.</div>
-        <button onClick={onEnter} style={{marginTop:34,background:"#C8A54B",color:"#0A0B0D",border:"none",borderRadius:10,padding:"16px 40px",fontSize:15,fontWeight:600,letterSpacing:0.4,cursor:"pointer",fontFamily:"'Archivo',system-ui,sans-serif"}}>Press to Create</button>
+        <div style={{fontSize:11,letterSpacing:3.4,color:"#6FA8FF",marginBottom:18,fontWeight:600}}>CINEMA INTELLIGENCE PLATFORM</div>
+        <div style={{fontSize:"clamp(34px,8vw,74px)",lineHeight:1.02,fontWeight:600,color:"#E9ECEF",letterSpacing:-0.5}}>MandaStrong Studio</div>
+        <div style={{marginTop:16,fontSize:"clamp(13px,3.2vw,17px)",color:"#8B939C",lineHeight:1.5}}>Your story, made into a film.</div>
+        <button onClick={onEnter} style={{marginTop:34,background:"#6FA8FF",color:"#0A0B0D",border:"none",borderRadius:10,padding:"16px 40px",fontSize:15,fontWeight:600,letterSpacing:0.4,cursor:"pointer",fontFamily:"'Archivo',system-ui,sans-serif"}}>Press to Create</button>
       </div>
     </div>
   );
@@ -6484,10 +6450,10 @@ function IntroDoors({ onEnter }){
     </svg>
   );
   // Brushed-metallic door face: layered gold gradients + vertical sheen streaks + highlight edge
-  const metalLeft="#171208";
-  const metalRight="#171208";
+  const metalLeft="#1C1F25";
+  const metalRight="#1C1F25";
   return (
-    <div style={{position:"fixed",inset:0,zIndex:100000,background:"#171208",overflow:"hidden",
+    <div style={{position:"fixed",inset:0,zIndex:100000,background:"#1C1F25",overflow:"hidden",
       opacity:phase==="gone"?0:1,transition:"opacity 1.1s ease",pointerEvents:phase==="gone"?"none":"auto"}}>
       <div style={{position:"absolute",top:0,left:0,width:"50%",height:"100%",
         background:metalLeft,backgroundBlendMode:"screen",
@@ -6507,7 +6473,7 @@ function IntroDoors({ onEnter }){
       </div>
       <div style={{position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",
         width:opening?"6px":"2px",height:opening?"100%":"0%",
-        background:"#171208",
+        background:"#1C1F25",
         boxShadow:"0 0 40px 10px rgba(232,201,109,0.9)",opacity:opening?0:1,
         transition:"height 0.9s ease-out, width 0.9s ease-out, opacity 2s ease 0.6s",zIndex:5}}/>
       <div style={{position:"absolute",left:0,right:0,bottom:"6%",display:"flex",flexDirection:"column",alignItems:"center",
@@ -6521,7 +6487,7 @@ function IntroDoors({ onEnter }){
           boxShadow:"0 0 40px rgba(232,201,109,0.6)",borderRadius:10}}>
           Enter
         </button>
-        <div style={{color:GOLDDIM,fontSize:11,letterSpacing:0.2,marginTop:16}}>mandastrongmovies1.bolt.host</div>
+        <div style={{color:GOLDDIM,fontSize:11,letterSpacing:0.2,marginTop:16}}>mandsstrongmovie1.bolt.host</div>
       </div>
     </div>
   );
@@ -6745,7 +6711,7 @@ export default function App() {
   };
 
   return (
-    <div style={{background:"#171208",minHeight:"100vh",fontFamily:"'Archivo',system-ui,sans-serif"}}>
+    <div style={{background:"#1C1F25",minHeight:"100vh",fontFamily:"'Archivo',system-ui,sans-serif"}}>
       {showLanding&&<Landing onEnter={()=>setShowLanding(false)}/>}
       {showIntro&&<IntroDoors onEnter={()=>setShowIntro(false)}/>}
       <Header go={go} setMenu={setMenu}/>
