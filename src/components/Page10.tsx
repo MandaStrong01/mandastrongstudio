@@ -7,7 +7,7 @@ interface Page10Props {
 }
 
 export default function Page10({ onNext, onBack }: Page10Props) {
-  const [videoUrl] = useState<string>('https://mandsstrongmovies.bolt.host/');
+  const [videoUrl] = useState<string>('https://mandastrongmovies101.bolt.host/');
 
   const handleOpenFullscreen = () => {
     window.open(videoUrl, '_blank');
