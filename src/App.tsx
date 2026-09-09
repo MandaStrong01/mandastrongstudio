@@ -1011,8 +1011,9 @@ function MusicVideoStudio({ onClose, onSave }) {
       visualDesc:"", lipSync:true, refMedia:null,
     };
   });
-  const set = (k,v) => setConfig(p=>{const n={...p,[k]:v};try{localStorage.setItem("ms_mvs_config",JSON.stringify(n));}catch{}return n;});
-  const tog = (k,v) => setConfig(p=>{const n={...p,[k]:p[k].includes(v)?p[k].filter(x=>x!==v):[...p[k],v]};try{localStorage.setItem("ms_mvs_config",JSON.stringify(n));}catch{}return n;});
+  const saveCfg = (n) => {try{const {refMedia,...rest}=n;localStorage.setItem("ms_mvs_config",JSON.stringify(rest));}catch{}};
+  const set = (k,v) => setConfig(p=>{const n={...p,[k]:v};saveCfg(n);return n;});
+  const tog = (k,v) => setConfig(p=>{const n={...p,[k]:p[k].includes(v)?p[k].filter(x=>x!==v):[...p[k],v]};saveCfg(n);return n;});
 
   // Read reference photo/video as a DATA URL so it (a) survives page reloads via localStorage
   // and (b) passes the seed-image check in generateVideo so it reaches the Cinema Engine.
@@ -1915,10 +1916,19 @@ function MusicVideoStudio({ onClose, onSave }) {
                 <div style={{color:GOLD,fontSize:11,fontWeight:600,letterSpacing:0.2,marginBottom:10}}>Export your music video</div>
 
                 {/* Download */}
-                <a href={videoUrl} download={(config.title||"MusicVideo")+"_"+config.artist+".webm"} target="_blank" rel="noopener noreferrer"
-                  style={{display:"block",background:GOLD,border:"none",color:"#000",padding:"12px",textAlign:"center",textDecoration:"none",fontWeight:600,fontSize:12,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif",marginBottom:8}}>
+                <button onClick={()=>{
+                  try{
+                    const fn=(config.title||"MusicVideo")+"_"+config.artist+".webm";
+                    const src=videoBlob?URL.createObjectURL(videoBlob):videoUrl;
+                    const a=document.createElement("a");
+                    a.href=src; a.download=fn; a.rel="noopener";
+                    document.body.appendChild(a); a.click();
+                    setTimeout(()=>{try{document.body.removeChild(a);if(videoBlob)URL.revokeObjectURL(src);}catch(e){}},1500);
+                  }catch(e){ try{window.open(videoUrl,"_blank");}catch(e2){} }
+                }}
+                  style={{display:"block",width:"100%",background:GOLD,border:"none",color:"#000",padding:"12px",textAlign:"center",cursor:"pointer",fontWeight:600,fontSize:12,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif",marginBottom:8}}>
                   Download video
-                </a>
+                </button>
 
                 {/* Save to media library */}
                 <button onClick={()=>{
