@@ -1,5 +1,31 @@
 // @ts-nocheck
 import { useState, useRef, useEffect } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+// ── SUPABASE AUTH ────────────────────────────────────────────────
+// Real accounts. The publishable key below is SAFE to ship — it is the
+// public anon key and can do nothing on its own; every table is protected
+// by row-level security, and the render engine only spends credit for a
+// signed-in user it can identify from their login token.
+const SUPABASE_URL="https://njqfexhltjwpgvctmyaw.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY="sb_publishable_wqRnYf5pnp68Qo6-McfwyA_JNYrh2VC";
+const supabase=createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{
+  auth:{persistSession:true,autoRefreshToken:true,storageKey:"ms_auth"}
+});
+
+// The signed-in user's access token — sent to the engine so the credit gate
+// knows who is rendering. Returns "" when nobody is signed in.
+async function authToken(){
+  try{ const {data}=await supabase.auth.getSession(); return data?.session?.access_token||""; }
+  catch(e){ return ""; }
+}
+// Standard headers for an engine call, carrying the login token when present.
+async function engineAuthHeaders(){
+  const t=await authToken();
+  const h={"Content-Type":"application/json"};
+  if(t) h["Authorization"]="Bearer "+t;
+  return h;
+}
 
 // IndexedDB helpers for persistent clip storage
 const DB_NAME="mandastrong_db",DB_VER=1,STORE="clips";
@@ -22,14 +48,15 @@ async function proxyFetch(body){
 // Single shared client. Every studio page renders through this.
 // ══════════════════════════════════════════════════════════════════
 const ENGINE_URL="https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/generate-video";
-const ENGINE_KEY="msk_live_j-HsVOiMDEbwfqLInIsNTrnMreDvr-VKKbPNf21oink";
-const engineHeaders={"Content-Type":"application/json","x-engine-key":ENGINE_KEY};
+// Engine key is NOT held in the app. The Supabase engine authorises callers by
+// origin (only MandaStrong domains) plus sign-in + credit gate on every render.
+// engineHeaders replaced by engineAuthHeaders() — see top of file.
 
 // The engine answers with .url; older builds looked for .output. Accept either.
 const pickEngineUrl=(d)=>{ if(!d||typeof d!=="object")return""; const v=d.url||d.output||d.video||""; return (typeof v==="string"&&v.indexOf("http")===0)?v:""; };
 
 async function engineCall(body){
-  const res=await fetch(ENGINE_URL,{method:"POST",headers:engineHeaders,body:JSON.stringify(body)});
+  const res=await fetch(ENGINE_URL,{method:"POST",headers:await engineAuthHeaders(),body:JSON.stringify(body)});
   return res.json();
 }
 
@@ -45,7 +72,7 @@ async function engineSpeak(text,meta){
   const _g = meta.gender || (meta.voice ? "" : "Female");
   const _o = meta.origin || (meta.voice ? "" : "British");
   try{
-    const res=await fetch(VOICE_URL,{method:"POST",headers:engineHeaders,body:JSON.stringify({
+    const res=await fetch(VOICE_URL,{method:"POST",headers:await engineAuthHeaders(),body:JSON.stringify({
       text:String(text||"").slice(0,3500),
       voice:meta.voice||"",
       gender:_g,
@@ -58,7 +85,7 @@ async function engineSpeak(text,meta){
     if(d&&d.id){
       for(let i=0;i<40;i++){
         await new Promise(r=>setTimeout(r,1500));
-        const p=await fetch(VOICE_URL,{method:"POST",headers:engineHeaders,body:JSON.stringify({id:d.id})});
+        const p=await fetch(VOICE_URL,{method:"POST",headers:await engineAuthHeaders(),body:JSON.stringify({id:d.id})});
         const pd=await p.json();
         url=pickEngineUrl(pd);
         if(url) return url;
@@ -75,13 +102,13 @@ async function engineSpeak(text,meta){
 // in the cloned voice. Provider is never surfaced.
 async function engineCloneVoice(sample){
   try{
-    const res=await fetch(VOICE_URL,{method:"POST",headers:engineHeaders,body:JSON.stringify({clone:true,sample:String(sample||"")})});
+    const res=await fetch(VOICE_URL,{method:"POST",headers:await engineAuthHeaders(),body:JSON.stringify({clone:true,sample:String(sample||"")})});
     let d=await res.json();
     if(d&&d.voice_id) return d.voice_id;
     if(d&&d.id){
       for(let i=0;i<40;i++){
         await new Promise(r=>setTimeout(r,1500));
-        const p=await fetch(VOICE_URL,{method:"POST",headers:engineHeaders,body:JSON.stringify({id:d.id})});
+        const p=await fetch(VOICE_URL,{method:"POST",headers:await engineAuthHeaders(),body:JSON.stringify({id:d.id})});
         const pd=await p.json();
         if(pd&&pd.voice_id) return pd.voice_id;
         if(pd&&(pd.status==="failed"||pd.status==="canceled")) return "";
@@ -987,6 +1014,15 @@ function MusicVideoStudio({ onClose, onSave }) {
   const set = (k,v) => setConfig(p=>{const n={...p,[k]:v};try{localStorage.setItem("ms_mvs_config",JSON.stringify(n));}catch{}return n;});
   const tog = (k,v) => setConfig(p=>{const n={...p,[k]:p[k].includes(v)?p[k].filter(x=>x!==v):[...p[k],v]};try{localStorage.setItem("ms_mvs_config",JSON.stringify(n));}catch{}return n;});
 
+  // Read reference photo/video as a DATA URL so it (a) survives page reloads via localStorage
+  // and (b) passes the seed-image check in generateVideo so it reaches the Cinema Engine.
+  const setRefFromFile = (f) => {
+    if(!f) return;
+    const reader = new FileReader();
+    reader.onload = ev => set("refMedia", ev.target.result);
+    reader.readAsDataURL(f);
+  };
+
   const GENRES=["Pop","Rock","Hip Hop","R&B / Soul","Electronic / EDM","Country","Jazz","Classical","Metal","Folk / Acoustic","Latin","K-Pop","Blues","Cinematic / Score"];
   const MOODS=["Euphoric","Melancholic","Energetic","Romantic","Angry","Peaceful","Mysterious","Empowering","Nostalgic","Dark","Haunting","Uplifting","Tense"];
   const TEMPOS=["Very Slow (40-60 BPM)","Slow (60-80 BPM)","Mid-Tempo (80-100 BPM)","Upbeat (100-120 BPM)","Fast (120-140 BPM)"];
@@ -1747,20 +1783,20 @@ function MusicVideoStudio({ onClose, onSave }) {
                         e.currentTarget.style.borderColor=GOLDDIM;e.currentTarget.style.background="#171208";
                         const f=e.dataTransfer.files&&e.dataTransfer.files[0];
                         if(f&&(f.type.startsWith("image/")||f.type.startsWith("video/"))){
-                          set("refMedia",URL.createObjectURL(f));
+                          setRefFromFile(f);
                         }
                       }}
-                      onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*,video/*";inp.onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)set("refMedia",URL.createObjectURL(f));};inp.click();}}
+                      onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*,video/*";inp.onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)setRefFromFile(f);};inp.click();}}
                       style={{background:"#171208",border:"2px dashed "+GOLDDIM,padding:"18px 10px",textAlign:"center",cursor:"pointer",marginBottom:6,transition:"all .2s"}}>
                       <div style={{color:GOLD,fontSize:14,fontWeight:600,letterSpacing:0.2,marginBottom:4}}>Drag & drop here</div>
                       <div style={{color:GOLDDIM,fontSize:10,letterSpacing:0.2}}>or click to browse — JPG · PNG · MP4</div>
                     </div>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:10}}>
-                      <button onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.heic,.heif";inp.onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)set("refMedia",URL.createObjectURL(f));};inp.click();}}
+                      <button onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.heic,.heif";inp.onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)setRefFromFile(f);};inp.click();}}
                         style={{background:"#171208",border:"2px solid "+SIGNAL,color:GOLD,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>
                         Upload photo
                       </button>
-                      <button onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*,video/*";inp.onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)set("refMedia",URL.createObjectURL(f));};inp.click();}}
+                      <button onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*,video/*";inp.onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)setRefFromFile(f);};inp.click();}}
                         style={{background:"#171208",border:"1px solid "+GOLDDIM,color:WHITE,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>
                         Upload file
                       </button>
@@ -3724,23 +3760,17 @@ const CLIP = n => CDN + n;
 // ── Live Pexels stock clips ─────────────────────────────────────────
 // Fetches a real, current HD .mp4 for each reel category at runtime.
 // Falls back to the Google sample (CLIP) then a still frame if it fails.
-const PEXELS_KEY = "Sn5sRYowDdWVq3Ys9rI8VRYB6kzyaecYJtmNW8H8XYpbhtqz1aTxO1r5";
+// Pexels key now lives server-side in the Supabase "pexels" function.
+// The app just asks that function for a clip; the key is never in this bundle.
 const pexelsCache = {};
 async function pexelsClip(query){
   if(pexelsCache[query]) return pexelsCache[query];
   try{
-    const r = await fetch("https://api.pexels.com/videos/search?per_page=8&size=medium&orientation=landscape&query="+encodeURIComponent(query),
-      { headers:{ Authorization: PEXELS_KEY } });
+    const r = await fetch("https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/pexels",
+      { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ query }) });
     if(!r.ok) return null;
     const j = await r.json();
-    const vids = (j.videos||[]);
-    if(!vids.length) return null;
-    // pick a mid-size mp4 file (HD, not huge) from a random result for variety
-    const pick = vids[Math.floor(Math.random()*vids.length)];
-    const files = (pick.video_files||[]).filter(f=>f.file_type==="video/mp4");
-    files.sort((a,b)=>(a.width||0)-(b.width||0));
-    const hd = files.find(f=>f.width>=1200) || files[files.length-1];
-    const url = hd ? hd.link : null;
+    const url = j && j.url ? j.url : null;
     if(url) pexelsCache[query] = url;
     return url;
   }catch(e){ return null; }
@@ -3849,7 +3879,7 @@ function P1({ go }) {
             // REAL DOWNLOAD: save a standalone launcher file to the user's computer.
             // Double-clicking it opens MandaStrong Studio full-screen in their browser.
             try{
-              const APP_URL="https://mandastrongmovies1.bolt.host";
+              const APP_URL="https://mandastrongmovies101.bolt.host";
               const launcher='<!doctype html><html><head><meta charset="utf-8"><title>MandaStrong Studio</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;background:#000}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body><iframe src="'+APP_URL+'" allow="camera;microphone;autoplay;fullscreen;clipboard-write" allowfullscreen></iframe><script>try{if(location.protocol==="file:"){location.href="'+APP_URL+'";}}catch(e){location.href="'+APP_URL+'";}<\\/script></body></html>';
               const blob=new Blob([launcher],{type:"text/html"});
               const url=URL.createObjectURL(blob);
@@ -4084,18 +4114,41 @@ function P4({ go, setUser }) {
   const [name,setName]=useState(""); const [re,setRe]=useState("");
   const [loginOk,setLoginOk]=useState(false);
   const inp={width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,padding:"10px 12px",color:WHITE,fontSize:14,marginBottom:10,outline:"none",boxSizing:"border-box",fontFamily:"'Archivo',system-ui,sans-serif"};
-  const login=()=>{
-    const amandaEmails=["woolleya129@gmail.com"];
-    const amandaPasswords=["Admin","MandaAdmin2026!","amandasox1970!!","admin","ADMIN"];
-    const isAmanda=amandaEmails.includes(email)&&amandaPasswords.includes(pass);
-    if(isAmanda){
-      setLoginOk(true);setTimeout(()=>{setUser({name:"Amanda",plan:"Studio",isAdmin:true});go(5);},800);
-    } else if(email==="test@mandastrong.com"&&pass==="Test2026"){
-      setLoginOk(true);setTimeout(()=>{setUser({name:"Studio User",plan:"Studio",isAdmin:false});go(5);},800);
-    } else if(email.includes("@")&&pass.length>0){
+  const [busy,setBusy]=useState(false);
+  const login=async()=>{
+    if(!email.includes("@")||pass.length<1){alert("Please enter a valid email and password.");return;}
+    setBusy(true);
+    try{
+      const {data,error}=await supabase.auth.signInWithPassword({email:email.trim(),password:pass});
+      if(error||!data?.user){
+        setBusy(false);
+        alert(error?.message||"Sign in failed. Check your email and password.");
+        return;
+      }
+      // Read the account's real plan from the subscriptions table (falls back to Guest).
+      let plan="Guest", isAdmin=false;
+      try{
+        const {data:sub}=await supabase.from("subscriptions").select("plan_tier,status").eq("user_id",data.user.id).maybeSingle();
+        if(sub&&sub.status==="active"&&sub.plan_tier&&sub.plan_tier!=="none") plan=sub.plan_tier;
+        const {data:role}=await supabase.from("user_roles").select("role").eq("user_id",data.user.id).maybeSingle();
+        if(role&&role.role==="admin") isAdmin=true;
+      }catch(e){}
+      setLoginOk(true);
+      setTimeout(()=>{setUser({name:data.user.email,email:data.user.email,plan,isAdmin,uid:data.user.id});go(5);},600);
+    }catch(e){ setBusy(false); alert("Sign in failed. Please try again."); }
+  };
+  const createAccount=async()=>{
+    if(!re.includes("@")||pass.length<6){alert("Enter a valid email and a password of at least 6 characters.");return;}
+    setBusy(true);
+    try{
+      const {data,error}=await supabase.auth.signUp({email:re.trim(),password:pass});
+      if(error){ setBusy(false); alert(error.message||"Could not create account."); return; }
+      // New accounts start on the trial checkout. Their render credit is set by the
+      // subscription their payment creates — the engine will not spend beyond it.
+      setUser({name:name||re,email:re,plan:"Studio Trial",isAdmin:false,uid:data?.user?.id||""});
       window.open(STRIPE.studio,"_blank");
-      alert("To access MandaStrong Studio, please complete your subscription. You will be redirected to our secure payment page.");
-    } else {alert("Please enter a valid email and password.");}
+      go(5);
+    }catch(e){ setBusy(false); alert("Could not create account. Please try again."); }
   };
   return (
     <div style={{...Sp,padding:40}}>
@@ -4111,16 +4164,17 @@ function P4({ go, setUser }) {
             {loginOk&&<div style={{background:"#061406",border:"1px solid #22c55e",padding:"10px",textAlign:"center",marginBottom:8}}>
               <span style={{color:"#22c55e",fontWeight:600,fontSize:14,letterSpacing:0.2}}>Login successful</span>
             </div>}
-            <button onClick={login} style={{...G("gold",false),width:"100%",padding:"12px"}}>{loginOk?"Entering studio...":"SIGN IN TO STUDIO"}</button>
+            <button onClick={login} disabled={busy} style={{...G("gold",false),width:"100%",padding:"12px",opacity:busy?0.6:1}}>{loginOk?"Entering studio...":(busy?"Signing in...":"SIGN IN TO STUDIO")}</button>
           </div>
           <div style={{...Card(),border:"2px solid #22c55e",position:"relative"}}>
             <div style={{position:"absolute",top:-11,left:"50%",transform:"translateX(-50%)",background:"#22c55e",color:"#000",padding:"3px 14px",fontSize:11,fontWeight:600,whiteSpace:"nowrap"}}>7-day free trial</div>
             <div style={{fontSize:11,color:GOLD,letterSpacing:0.2,marginBottom:8,marginTop:10,fontWeight:500}}>New creator</div>
             <h2 style={{...H1,fontSize:18,marginBottom:18}}>Create account</h2>
             <input value={name} onChange={e=>setName(e.target.value)} placeholder="Your Name" style={inp}/>
-            <input value={re} onChange={e=>setRe(e.target.value)} placeholder="Email address" style={{...inp,marginBottom:16}}/>
-            <button onClick={()=>{setUser({name:name||"Creator",plan:"Studio Trial",isAdmin:false});window.open(STRIPE.studio,"_blank");go(5);}}
-              style={{width:"100%",padding:"12px",background:"#22c55e",border:"none",color:"#000",fontWeight:600,fontSize:13,cursor:"pointer",letterSpacing:0.2}}>Start free trial — $0</button>
+            <input value={re} onChange={e=>setRe(e.target.value)} placeholder="Email address" style={inp}/>
+            <input value={pass} onChange={e=>setPass(e.target.value)} type="password" placeholder="Choose a password (min 6)" style={{...inp,marginBottom:16}}/>
+            <button onClick={createAccount} disabled={busy}
+              style={{width:"100%",padding:"12px",background:"#22c55e",border:"none",color:"#000",fontWeight:600,fontSize:13,cursor:"pointer",letterSpacing:0.2,opacity:busy?0.6:1}}>{busy?"Creating...":"Start free trial — $0"}</button>
           </div>
           <div style={{...Card(),textAlign:"center"}}>
             <div style={{fontSize:36,marginBottom:10}}></div>
@@ -5783,7 +5837,7 @@ function P20() {
             {sec("CHANGES TO THIS DISCLAIMER",<>{p("MandaStrong Studio reserves the right to update this disclaimer at any time. Continued use of the platform following any update constitutes your acceptance of the revised terms.")}</>)}
 
             <div style={{background:"#0D0B06",border:"1px solid "+GOLDDIM,padding:"12px 16px",marginTop:8}}>
-              <p style={{color:GOLDDIM,fontSize:11,margin:0,letterSpacing:0}}>— Amanda Woolley · Founder · MandaStrong Studio · March 2026 · mandastrongmovies1.bolt.host</p>
+              <p style={{color:GOLDDIM,fontSize:11,margin:0,letterSpacing:0}}>— Amanda Woolley · Founder · MandaStrong Studio · March 2026 · mandastrongmovies101.bolt.host</p>
             </div>
           </div>
         )}
@@ -5909,7 +5963,7 @@ function P22() {
 function HowToGuide() {
   const [open,setOpen]=useState(null);
   const SECTIONS=[
-    {t:"Welcome — how to read this book",c:"This is more than a how-to. It is a complete guide to making films with AI on MandaStrong Studio (mandastrongmovies1.bolt.host) AND a plain-English education in what AI actually is, so you are never at its mercy. Read Part One to understand the machine you are working with. Read Part Two to master the studio page by page. Read Part Three for the craft — prompting, voice, story, and ethics. You do not need any technical background. Every idea here is explained the way you would explain it to a friend across a kitchen table."},
+    {t:"Welcome — how to read this book",c:"This is more than a how-to. It is a complete guide to making films with AI on MandaStrong Studio (mandastrongmovies101.bolt.host) AND a plain-English education in what AI actually is, so you are never at its mercy. Read Part One to understand the machine you are working with. Read Part Two to master the studio page by page. Read Part Three for the craft — prompting, voice, story, and ethics. You do not need any technical background. Every idea here is explained the way you would explain it to a friend across a kitchen table."},
 
     {t:"Part one · What AI actually is",c:"AI does not think, feel, or know things the way you do. A large language model — the kind of AI behind most creative tools — is a very powerful pattern machine. It has read an enormous amount of human writing and images and learned which words and shapes tend to follow which. When you ask it for something, it is not looking up an answer; it is predicting, piece by piece, the most likely continuation of your request. That is why it can sound confident and still be wrong. Understanding this one fact changes how you use it: you are the director, it is the crew. It is fast and tireless and knows a thousand styles, but it has no judgement about YOUR story. That judgement is yours, and it always will be."},
 
@@ -5919,9 +5973,9 @@ function HowToGuide() {
 
     {t:"Part one · AI and you — staying in charge",c:"AI is a tool, like a camera or a pen. It amplifies whoever holds it. It has no taste of its own, so your taste is the whole game. Never let a machine talk you out of a creative instinct, and never assume its confident answer is correct without checking. Keep your own copies of everything important. Understand that what you type may be processed on servers you don't control, so don't paste anything you'd be uncomfortable sharing. And remember the deeper point behind this whole studio: AI should widen the door to creativity, not replace the human standing in it. You are not being replaced. You are being equipped."},
 
-    {t:"Part two · Getting started",c:"Open mandastrongmovies1.bolt.host. Log in with your credentials or start a free trial. Use the hamburger menu top left to jump to any of the 24 pages. AUTOSAVE ON is real — your work saves automatically every time you change page, generate a clip, or update your timeline. Hit SAVE PROJECT to create a named restore point you can return to from MY PROJECTS. Your plan and remaining usage are always visible from your account panel — tap the avatar top right."},
+    {t:"Part two · Getting started",c:"Open mandastrongmovies101.bolt.host. Log in with your credentials or start a free trial. Use the hamburger menu top left to jump to any of the 24 pages. AUTOSAVE ON is real — your work saves automatically every time you change page, generate a clip, or update your timeline. Hit SAVE PROJECT to create a named restore point you can return to from MY PROJECTS. Your plan and remaining usage are always visible from your account panel — tap the avatar top right."},
 
-    {t:"Part two · Page 1 — home & install",c:"The front door of mandastrongmovies1.bolt.host. The DOWNLOAD APP button installs the studio to your device like a real app, using your browser's built-in install prompt — on iPhone and iPad use Share then Add to Home Screen, as Apple does not allow one-tap install. The whole page is built to fit any screen, phone or laptop. From here, enter the studio and begin."},
+    {t:"Part two · Page 1 — home & install",c:"The front door of mandastrongmovies101.bolt.host. The DOWNLOAD APP button installs the studio to your device like a real app, using your browser's built-in install prompt — on iPhone and iPad use Share then Add to Home Screen, as Apple does not allow one-tap install. The whole page is built to fit any screen, phone or laptop. From here, enter the studio and begin."},
 
     {t:"Part two · Page 4 — plans & usage credits",c:"Three plans: Basic $20, Pro $30, Studio $50 — pick the one that fits how much you create. At the very bottom is PURCHASE USAGE CREDITS: a one-time top-up for extra renders and generations when you need more than your plan includes. Credits never expire. All payments run through Stripe's secure checkout — the studio never sees your card details."},
 
@@ -5945,9 +5999,9 @@ function HowToGuide() {
 
     {t:"Part three · Ethics & responsibility",c:"With these tools you can make almost anything, which means the responsibility is yours. Don't put real people's faces or voices into films they never agreed to. Be honest when something is AI-generated if presenting it as real could mislead. Respect others' work rather than copying a living artist's style wholesale and calling it your own. And remember MandaStrong's founding mission — these tools exist to spread kindness, understanding, and hope, with proceeds supporting veterans' mental health and anti-bullying work. Make things that would make that mission proud."},
 
-    {t:"SAVING, RECOVERING & GETTING HELP",c:"AUTOSAVE ON saves as you work. SAVE PROJECT creates a named session — name it meaningfully. MY PROJECTS shows your history; CONTINUE PROJECT restores a session including all clips. An emergency save fires if the tab closes or crashes, so work is never permanently lost. Stuck? Agent Grok on Page 21 is your 24/7 production consultant with full knowledge of every page and workflow. This guide lives on your closing page at mandastrongmovies1.bolt.host and is updated as the studio grows."},
+    {t:"SAVING, RECOVERING & GETTING HELP",c:"AUTOSAVE ON saves as you work. SAVE PROJECT creates a named session — name it meaningfully. MY PROJECTS shows your history; CONTINUE PROJECT restores a session including all clips. An emergency save fires if the tab closes or crashes, so work is never permanently lost. Stuck? Agent Grok on Page 21 is your 24/7 production consultant with full knowledge of every page and workflow. This guide lives on your closing page at mandastrongmovies101.bolt.host and is updated as the studio grows."},
 
-    {t:"Recommended workflow — start to finish",c:"Page 5 fill Script to Movie's Producer, Describe, Production boxes WIRE INTO RENDER. Page 6 choose a voice PREPARE TO SPEAK SAVE TO MEDIA LIBRARY. Page 8 upload a reference photo generate each scene (your brief drives them) add background music and stereo if you like. Page 13 SYNC ALL TRACKS. Page 15 set the mix. Page 16 choose quality render. Page 17 preview. Page 18 export and share. That is a finished film, made by you, at mandastrongmovies1.bolt.host."},
+    {t:"Recommended workflow — start to finish",c:"Page 5 fill Script to Movie's Producer, Describe, Production boxes WIRE INTO RENDER. Page 6 choose a voice PREPARE TO SPEAK SAVE TO MEDIA LIBRARY. Page 8 upload a reference photo generate each scene (your brief drives them) add background music and stereo if you like. Page 13 SYNC ALL TRACKS. Page 15 set the mix. Page 16 choose quality render. Page 17 preview. Page 18 export and share. That is a finished film, made by you, at mandastrongmovies101.bolt.host."},
   ];
   return(
     <div style={{padding:"20px 32px 40px",maxWidth:860,margin:"0 auto"}}>
@@ -6313,6 +6367,7 @@ function P23({ go }) {
   const tapPlayVideo=()=>{const v=bgRef.current;if(!v)return;v.muted=true;v.play().then(()=>setVidNeedsTap(false)).catch(()=>{});};
   const exitApp = () => {
     try{localStorage.removeItem("ms_user");}catch{}
+    try{supabase.auth.signOut();}catch(e){}
     window.location.reload();
   };
   return(
@@ -6521,7 +6576,7 @@ function IntroDoors({ onEnter }){
           boxShadow:"0 0 40px rgba(232,201,109,0.6)",borderRadius:10}}>
           Enter
         </button>
-        <div style={{color:GOLDDIM,fontSize:11,letterSpacing:0.2,marginTop:16}}>mandastrongmovies1.bolt.host</div>
+        <div style={{color:GOLDDIM,fontSize:11,letterSpacing:0.2,marginTop:16}}>mandastrongmovies101.bolt.host</div>
       </div>
     </div>
   );
@@ -6609,6 +6664,32 @@ export default function App() {
     return()=>{try{document.head.removeChild(link);}catch{} window.removeEventListener("beforeinstallprompt",handleInstall);};
   },[]);
   const [user,setUser]=useState(()=>{try{return JSON.parse(localStorage.getItem("ms_user")||'{"name":"Guest","plan":"Guest","isAdmin":false}');}catch{return {name:"Guest",plan:"Guest",isAdmin:false};}});
+  // Security reconcile: on load, trust the real Supabase session, not a saved
+  // localStorage user. No valid session => drop any saved privilege back to Guest,
+  // so a copied ms_user record can never grant admin or a paid plan on its own.
+  useEffect(()=>{
+    let cancelled=false;
+    (async()=>{
+      try{
+        const {data}=await supabase.auth.getSession();
+        const sess=data?.session;
+        if(cancelled)return;
+        if(!sess||!sess.user){
+          setUser(u=>(u&&u.isAdmin)?{name:"Guest",plan:"Guest",isAdmin:false}:u);
+          return;
+        }
+        let plan="Guest", isAdmin=false;
+        try{
+          const {data:sub}=await supabase.from("subscriptions").select("plan_tier,status").eq("user_id",sess.user.id).maybeSingle();
+          if(sub&&sub.status==="active"&&sub.plan_tier&&sub.plan_tier!=="none") plan=sub.plan_tier;
+          const {data:role}=await supabase.from("user_roles").select("role").eq("user_id",sess.user.id).maybeSingle();
+          if(role&&role.role==="admin") isAdmin=true;
+        }catch(e){}
+        if(!cancelled) setUser({name:sess.user.email,email:sess.user.email,plan,isAdmin,uid:sess.user.id});
+      }catch(e){}
+    })();
+    return()=>{cancelled=true;};
+  },[]);
   const [mediaLib,setMediaLib]=useState([]);
   const [timeline,setTimeline]=useState(()=>{try{return JSON.parse(localStorage.getItem("ms_timeline")||"{}");}catch{return {};}});
   const [rendered,setRendered]=useState(null);
