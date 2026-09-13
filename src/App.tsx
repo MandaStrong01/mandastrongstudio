@@ -276,6 +276,18 @@ const autoFreeStorage=async()=>{
 
 const GOLD = "#C8A54B";
 const GOLDDIM = "#4A3C1A";
+// Safari/iPad-safe download. A bare <a download> or an a.click() that is never
+// appended to the DOM just PREVIEWS the file on iOS Safari instead of saving it.
+// This appends, clicks, cleans up, and falls back to opening in a new tab.
+function msDownload(url, filename){
+  try{
+    if(!url){return;}
+    const a=document.createElement("a");
+    a.href=url; a.download=filename||"MandaStrong.webm"; a.rel="noopener noreferrer";
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{try{document.body.removeChild(a);}catch(e){}},1500);
+  }catch(e){ try{window.open(url,"_blank");}catch(e2){} }
+}
 const BG = "#0D0B06";
 const BLACK = "#0D0B06";
 const BG4 = "#171208";
@@ -3708,8 +3720,8 @@ Write the drawFrame body now.`}]
           {videoUrl&&!generating&&(
             <div style={{padding:"10px 14px",borderBottom:"1px solid "+GOLDDIM+"",display:"flex",flexDirection:"column",gap:6}}>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                <a href={videoUrl} download={(title||"scene")+"_"+duration+"s.webm"} target="_blank" rel="noopener noreferrer"
-                  style={{background:"transparent",border:"1px solid "+GOLDDIM,color:GOLD,padding:"8px",fontSize:10,textDecoration:"none",textAlign:"center",letterSpacing:0,fontWeight:600,fontFamily:"'Archivo',system-ui,sans-serif",display:"block"}}>Download</a>
+                <button onClick={()=>msDownload(videoUrl,(title||"scene")+"_"+duration+"s.webm")}
+                  style={{background:"transparent",border:"1px solid "+GOLDDIM,color:GOLD,padding:"8px",fontSize:10,cursor:"pointer",textAlign:"center",letterSpacing:0,fontWeight:600,fontFamily:"'Archivo',system-ui,sans-serif",display:"block"}}>Download</button>
                 <button onClick={saveToLibrary}
                   style={{background:saved?"#171208":"transparent",border:"1px solid "+GOLDDIM,color:saved?"#000":GOLD,padding:"8px",fontSize:10,cursor:"pointer",fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>
                   {saved?"Saved":"Library"}
@@ -4089,10 +4101,10 @@ function P3() {
                 <div>
                   <div style={{color:"#22c55e",fontSize:9,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>✓ {uploads[i].name.slice(0,28)} · {uploads[i].size}MB</div>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                    <a href={uploads[i].url} download={uploads[i].name}
-                      style={{...G("gold",false),width:"100%",padding:"8px",fontSize:10,letterSpacing:0.2,textDecoration:"none",textAlign:"center",display:"block",boxSizing:"border-box"}}>
+                    <button onClick={()=>msDownload(uploads[i].url,uploads[i].name)}
+                      style={{...G("gold",false),width:"100%",padding:"8px",fontSize:10,letterSpacing:0.2,cursor:"pointer",textAlign:"center",display:"block",boxSizing:"border-box"}}>
                       Save
-                    </a>
+                    </button>
                     <button onClick={()=>refs[i].current&&refs[i].current.click()}
                       style={{...G("out",false),width:"100%",padding:"8px",fontSize:10,letterSpacing:0.2}}>
                       Replace
@@ -4413,8 +4425,8 @@ function MergeVideos({ onSave }) {
       {mergedUrl&&(
         <div style={{background:"#061406",border:"1px solid #22c55e",padding:"10px 14px"}}>
           <div style={{color:"#22c55e",fontWeight:600,fontSize:11,letterSpacing:0.2,marginBottom:6}}>Merged film saved to media library — ready for timeline</div>
-          <a href={mergedUrl} download="MandaStrong_Merged.webm" target="_blank" rel="noopener noreferrer"
-            style={{color:GOLD,fontSize:10,fontWeight:600,letterSpacing:0.2,textDecoration:"none"}}>Download merged film</a>
+          <button onClick={()=>msDownload(mergedUrl,"MandaStrong_Merged.webm")}
+            style={{background:"transparent",border:"none",color:GOLD,fontSize:10,fontWeight:600,letterSpacing:0.2,cursor:"pointer",padding:0,textDecoration:"underline",fontFamily:"'Archivo',system-ui,sans-serif"}}>Download merged film</button>
         </div>
       )}
     </div>
@@ -5497,7 +5509,7 @@ function P17({ go, rendered, mediaLib }) {
 
 function P18({ rendered, mediaLib }) {
   const vs=rendered?.url||(mediaLib.find(a=>a.type&&a.type.startsWith("video"))?mediaLib.find(a=>a.type&&a.type.startsWith("video")).url:"");
-  const dl=()=>{if(!vs){alert("No film yet — render first!");return;}const a=document.createElement("a");a.href=vs;a.download="MandaStrong_Film.webm";a.target="_blank";a.rel="noopener noreferrer";a.click();};
+  const dl=()=>{if(!vs){alert("No film yet — render first!");return;}msDownload(vs,"MandaStrong_Film.webm");};
   return (
     <div style={{...Sp,padding:40}}>
       <div style={{maxWidth:780,margin:"0 auto"}}>
@@ -6343,6 +6355,7 @@ function P23({ go }) {
   const [howOpen, setHowOpen] = useState(false);
   const [savedMsg, setSavedMsg] = useState(false);
   const [vidNeedsTap, setVidNeedsTap] = useState(false);
+  const [vidDead, setVidDead] = useState(false);
   useEffect(()=>{
     const v=bgRef.current;
     if(!v)return;
@@ -6385,7 +6398,14 @@ function P23({ go }) {
       <div style={{position:"relative",zIndex:1,padding:"30px 24px 80px"}}>
         <div style={{maxWidth:880,margin:"0 auto",textAlign:"center"}}>
           <div style={{width:"100%",maxHeight:"34vh",overflow:"hidden",position:"relative",display:"flex",alignItems:"center",justifyContent:"center",background:"#171208",border:"1px solid "+GOLDDIM,marginBottom:26}}>
+            {vidDead?(
+              <div style={{width:"100%",height:"34vh",minHeight:180,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"radial-gradient(ellipse at center, #211A0E 0%, #0A0800 100%)"}}>
+                <div style={{fontSize:"clamp(28px,6vw,54px)",fontWeight:600,color:GOLD,letterSpacing:1,fontFamily:"'Archivo',system-ui,sans-serif"}}>THAT'S ALL FOLKS</div>
+                <div style={{marginTop:10,fontSize:11,letterSpacing:2,color:GOLDDIM,fontWeight:600}}>MANDASTRONG STUDIO</div>
+              </div>
+            ):(
             <video ref={bgRef} autoPlay loop playsInline muted preload="auto"
+              onError={()=>setVidDead(true)}
               onLoadedMetadata={(e)=>{try{if(e.currentTarget.currentTime<0.1)e.currentTarget.currentTime=0.1;}catch{}}}
               style={{display:"block",width:"100%",maxHeight:"34vh",objectFit:"cover",background:"#171208"}}>
               <source src="/background.mp4" type="video/mp4"/>
@@ -6396,7 +6416,7 @@ function P23({ go }) {
               <source src="./background_5.mp4" type="video/mp4"/>
               <source src="/thatsallfolks.mp4" type="video/mp4"/>
             </video>
-
+            )}
           </div>
           <div style={{fontSize:10,color:GOLD,letterSpacing:0.4,marginBottom:8,fontWeight:500}}>Mandastrong studio · cinema intelligence platform</div>
           <h1 style={{fontFamily:"'Archivo',system-ui,sans-serif",color:GOLD,fontSize:"clamp(32px,5vw,52px)",fontWeight:600,letterSpacing:0.4,textShadow:"none",marginBottom:28}}>That's all folks</h1>
