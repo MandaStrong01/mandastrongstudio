@@ -1020,7 +1020,7 @@ function MusicVideoStudio({ onClose, onSave }) {
       effects:["Slow Motion","Film Grain","Vignette"],
       cuts:"Long Takes", aspectRatio:"16:9", duration:"3 Minutes",
       durationMin:0, stereo:true,
-      visualDesc:"", lipSync:true, refMedia:null,
+      visualDesc:"", lipSync:false, refMedia:null,
     };
   });
   const saveCfg = (n) => {try{const {refMedia,...rest}=n;localStorage.setItem("ms_mvs_config",JSON.stringify(rest));}catch{}};
@@ -2919,6 +2919,10 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
           if(bd&&bd.brief){ effectivePrompt=bd.brief+"\nSHOT FOR THIS SCENE:\n"+effectivePrompt; addLog(" Using Script-to-Movie brief (Producer + Describe + Production) from Page 5"); }
         }catch(e){}
       }
+      // ── NO SPEAKING ── The film carries ONE overlay narration track. On-screen
+      // people must NOT appear to talk. Force closed mouths / no dialogue into
+      // every scene so lips never move as if speaking.
+      effectivePrompt=effectivePrompt+"\n\nIMPORTANT: No one in this shot is speaking. All mouths are closed and still. No talking, no dialogue, no lip movement, no singing. People may be present and expressive through eyes and body, but they never move their lips as if speaking.";
       const engineUrl=await engineRender(effectivePrompt,{
         duration,
         image:refDataUrl||"",
@@ -4776,12 +4780,22 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
     return (mediaLib||[]).filter(a=>a.type&&a.type.startsWith("video"));
   };
 
-  const getAudioTrack=()=>{
-    // Every audio-ish asset on the timeline, then in the media library.
-    const pool=[
+  // Holds the id of a voice/narration the render-time confirm forced. null = auto-pick.
+  const forcedAudioRef=useRef(null);
+  // Every audio-ish asset on the timeline, then in the media library.
+  // Shared by getAudioTrack (the picker) and the render-time voice confirm.
+  const getAudioPool=()=>[
       ...Object.values(timeline||{}).flat(),
       ...(mediaLib||[])
     ].filter(a=>a&&a.type&&(a.type.startsWith("audio")||a.type==="audio/narration"||a.type==="narration"||a.type==="audio/webm"));
+  const getAudioTrack=()=>{
+    // If the render-time confirm forced a specific track, that wins over everything.
+    if(forcedAudioRef.current){
+      const pool0=getAudioPool();
+      const forced=pool0.find(a=>(a.id&&a.id===forcedAudioRef.current)||(a.dbId&&a.dbId===forcedAudioRef.current));
+      if(forced)return forced;
+    }
+    const pool=getAudioPool();
     if(!pool.length)return undefined;
     // PRIORITY 1: the cloned-voice FULL narration (carries clonedVoiceId + narrText).
     // This is what "USE ENGINE TO COMPLETE FULL NARRATION" saves. It MUST win, or
@@ -4809,6 +4823,37 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
   };
 
   const startRender=async()=>{
+    // ── VOICE CONFIRM — before any render work ─────────────────────────────────
+    // Asks which narration/voice to use, so the render never silently defaults to
+    // a preset voice. OK keeps the auto-pick; Cancel opens a numbered list of every
+    // saved voice/recording so you can pick your own. The choice is forced for this
+    // render only (forcedAudioRef), then cleared when the render finishes.
+    forcedAudioRef.current=null;
+    const voicePool=getAudioPool();
+    if(voicePool.length>0){
+      const nameOf=(a,i)=>{
+        if(a.clonedVoiceId&&a.narrText) return (a.name||"Full narration")+" (engine voice)";
+        if(a.type==="audio/myvoice"||a.type==="audio/webm") return (a.name||"My recording")+" (your recording)";
+        return a.name||("Audio "+(i+1));
+      };
+      const autoPick=getAudioTrack();
+      const autoName=autoPick?nameOf(autoPick,voicePool.indexOf(autoPick)):"(none)";
+      const keep=window.confirm("Use this voice for the film?\n\n▶ "+autoName+"\n\nOK = yes, use it.\nCancel = choose a different voice / my recording.");
+      if(!keep){
+        const list=voicePool.map((a,i)=>(i+1)+". "+nameOf(a,i)).join("\n");
+        const ans=window.prompt("Choose the voice by number:\n\n"+list,"1");
+        const idx=(parseInt(ans||"",10)||0)-1;
+        if(idx>=0&&idx<voicePool.length){
+          const chosen=voicePool[idx];
+          forcedAudioRef.current=chosen.id||chosen.dbId||null;
+          log("Voice chosen for render: "+nameOf(chosen,idx));
+        } else {
+          log("Voice pick cancelled — using auto: "+autoName);
+        }
+      } else {
+        log("Voice confirmed: "+autoName);
+      }
+    }
     // ── PRIORITY SAVE — runs before anything else ──────────────────────────────
     // Saves current state immediately so a crash mid-render doesn't lose work.
     try{
@@ -5134,7 +5179,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
       // fall back to the narration length, then to natural clip lengths.
       const sliderSecs = (Number(filmDuration)>0 ? Number(filmDuration)*60 : 0);
       const narrationSecs = audioBuffer ? audioBuffer.duration : 0;
-      const targetTotal = sliderSecs>0 ? sliderSecs : narrationSecs;
+      const targetTotal = narrationSecs>0 ? narrationSecs : sliderSecs;
       let perClipTarget = 0; // 0 = use each clip's natural duration
       if(targetTotal>0 && clips.length>0){
         if(gapFill){
@@ -5297,6 +5342,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
       }catch(e){}
       try{if(audioCtx)audioCtx.close();}catch(e){}
     }catch(e){log("Render error: "+e.message);}
+    forcedAudioRef.current=null; // reset the render-time voice pick
     setRendering(false);
   };
 
