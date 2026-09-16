@@ -360,7 +360,8 @@ function speakText(voiceId, txt, onStart, onEnd) {
     const isHiQ = (v) => {
       const n = (v.name||"") + " " + (v.voiceURI||"");
       return /premium|enhanced|siri|neural|natural|online|multilingual/i.test(n);
-    };
+    }
+    const voiceChar = typeof VOICE_CHARACTERS
     const voiceChar = typeof VOICE_CHARACTERS !== "undefined"
       ? VOICE_CHARACTERS.find(v=>v.id===voiceId) : null;
     // Pick the voice once, reuse for every chunk
