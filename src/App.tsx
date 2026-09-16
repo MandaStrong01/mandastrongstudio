@@ -353,15 +353,12 @@ function speakText(voiceId, txt, onStart, onEnd) {
   const doSpeak = () => {
     if (typeof window === "undefined" || !window.speechSynthesis) { if (typeof onEnd === "function") onEnd(); return; }
     const allVoices = window.speechSynthesis.getVoices();
-    // ── QUALITY FIRST: prefer Enhanced/Premium/Siri/Neural/Natural voices ──
-    // Defined here at function scope so every branch (including the final
-    // fallback) can use it. Was previously nested and crashed the render
-    // with "Can't find variable: isHiQ".
+    // QUALITY FIRST — prefer Enhanced/Premium/Siri/Neural voices. Defined at the
+    // top of doSpeak so every branch below (including the final fallback) can use it.
     const isHiQ = (v) => {
       const n = (v.name||"") + " " + (v.voiceURI||"");
       return /premium|enhanced|siri|neural|natural|online|multilingual/i.test(n);
-    }
-    const voiceChar = typeof VOICE_CHARACTERS
+    };
     const voiceChar = typeof VOICE_CHARACTERS !== "undefined"
       ? VOICE_CHARACTERS.find(v=>v.id===voiceId) : null;
     // Pick the voice once, reuse for every chunk
@@ -385,8 +382,6 @@ function speakText(voiceId, txt, onStart, onEnd) {
       else if(origin.includes("australian")) candidates = premiumAussie;
       else if(gender==="female") candidates = premiumUSFemale;
       else candidates = premiumUSMale;
-    // ── QUALITY FIRST: always prefer the highest-quality voice the device has ──
-    // (isHiQ is defined at doSpeak scope above.)
     const hiQVoices = allVoices.filter(v=>v.lang&&v.lang.startsWith("en")&&isHiQ(v));
     const pool = hiQVoices.length ? hiQVoices : allVoices;
 
