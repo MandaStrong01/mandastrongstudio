@@ -4825,10 +4825,24 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
   const forcedAudioRef=useRef(null);
   // Every audio-ish asset on the timeline, then in the media library.
   // Shared by getAudioTrack (the picker) and the render-time voice confirm.
-  const getAudioPool=()=>[
+  // DE-DUPED: the auto-route effect copies audio onto the timeline, so the same
+  // recording lives in BOTH the timeline and mediaLib. Without de-duping it would
+  // appear twice in the pool — playing twice (the echo) and listing twice.
+  const getAudioPool=()=>{
+    const raw=[
       ...Object.values(timeline||{}).flat(),
       ...(mediaLib||[])
     ].filter(a=>a&&a.type&&(a.type.startsWith("audio")||a.type==="audio/narration"||a.type==="narration"||a.type==="audio/webm"));
+    const seen=new Set();
+    const out=[];
+    for(const a of raw){
+      const k=String(a.id||a.dbId||"")+"|"+String(a.name||"")+"|"+String(a.type||"");
+      if(seen.has(k))continue;
+      seen.add(k);
+      out.push(a);
+    }
+    return out;
+  };
   const getAudioTrack=()=>{
     // If the render-time confirm forced a specific track, that wins over everything.
     if(forcedAudioRef.current){
@@ -4838,16 +4852,20 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
     }
     const pool=getAudioPool();
     if(!pool.length)return undefined;
-    // PRIORITY 1: the cloned-voice FULL narration (carries clonedVoiceId + narrText).
-    // This is what "USE ENGINE TO COMPLETE FULL NARRATION" saves. It MUST win, or
-    // the render picks a plain narration sitting earlier in the list and defaults
-    // to a preset voice — which is exactly why your voice never continued.
+    // PRIORITY 1: YOUR OWN recording wins over everything. This is the 15-minute
+    // narration Amanda recorded herself ("USE MY VOICE AS NARRATION" / "My Voice
+    // Narration", type audio/myvoice WITHOUT a clonedVoiceId). Her real voice must
+    // beat any engine voice — that is the whole point of recording it.
+    const myRecording=pool.find(a=>a.type==="audio/myvoice"&&!a.clonedVoiceId);
+    if(myRecording)return myRecording;
+    // PRIORITY 2: the cloned/engine FULL narration (carries clonedVoiceId + narrText).
+    // This is what "USE ENGINE TO COMPLETE FULL NARRATION" saves.
     const cloned=pool.find(a=>a.clonedVoiceId&&a.narrText);
     if(cloned)return cloned;
-    // PRIORITY 2: your recorded-voice narration saved with "USE MY VOICE AS NARRATION".
+    // PRIORITY 3: any other recorded-voice narration.
     const myVoice=pool.find(a=>a.type==="audio/myvoice");
     if(myVoice)return myVoice;
-    // PRIORITY 3: anything else audio, first one wins (old behaviour).
+    // PRIORITY 4: anything else audio, first one wins (old behaviour).
     return pool[0];
   };
 
