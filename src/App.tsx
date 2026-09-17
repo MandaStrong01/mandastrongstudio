@@ -77,6 +77,7 @@ async function engineSpeak(text,meta){
       voice:meta.voice||"",
       gender:_g,
       origin:_o,
+      language:meta.language||"",
       speed:meta.speed||1
     })});
     let d=await res.json();
@@ -96,7 +97,45 @@ async function engineSpeak(text,meta){
   return "";
 }
 
-// ── HIDDEN: mint a personal cloned voice from a sample recording ──
+// ── TRANSLATE NARRATION AT RENDER ────────────────────────────────
+// Turns the narration into another language before it is spoken, using the
+// same claude-proxy the rest of the app uses. English (or empty) passes
+// straight through untouched. Returns the original text if anything fails,
+// so a translation problem can never block a render.
+const LANGUAGES = [
+  {code:"", label:"English (original)"},
+  {code:"Spanish", label:"Spanish"},
+  {code:"French", label:"French"},
+  {code:"German", label:"German"},
+  {code:"Italian", label:"Italian"},
+  {code:"Portuguese", label:"Portuguese"},
+  {code:"Dutch", label:"Dutch"},
+  {code:"Polish", label:"Polish"},
+  {code:"Russian", label:"Russian"},
+  {code:"Arabic", label:"Arabic"},
+  {code:"Hindi", label:"Hindi"},
+  {code:"Mandarin Chinese", label:"Mandarin Chinese"},
+  {code:"Japanese", label:"Japanese"},
+  {code:"Korean", label:"Korean"},
+  {code:"Turkish", label:"Turkish"},
+  {code:"Greek", label:"Greek"},
+];
+async function translateText(text, language){
+  const src = String(text||"").trim();
+  if(!src) return src;
+  if(!language || /english/i.test(language)) return src; // English = no change
+  try{
+    const d = await proxyFetch({
+      model:"claude-sonnet-4-20250514",
+      max_tokens:8000,
+      messages:[{role:"user",content:"Translate the following film narration into "+language+". Keep the tone, rhythm and meaning. Return ONLY the translated narration, no notes, no quotes, no preamble:\n\n"+src}]
+    });
+    const out = d&&d.content&&d.content[0]&&d.content[0].text ? d.content[0].text.trim() : "";
+    return out || src; // fall back to original if the model returns nothing
+  }catch(e){ return src; }
+}
+
+
 // Sends the sample to the engine's clone core and returns an opaque
 // MandaStrong voice id. Store it; later pass it as meta.voice to speak
 // in the cloned voice. Provider is never surfaced.
@@ -4770,6 +4809,8 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
   const [currentClipIdx,setCurrentClipIdx]=useState(-1);
   // ── GAP-FILL CHOICE (Y = generate extra scenes, N = stretch clips) ──
   const [gapFill,setGapFill]=useState(false);
+  // Language the narration is translated into at render. "" = English (no change).
+  const [renderLanguage,setRenderLanguage]=useState("");
   const canvasRef=useRef(null);
 
   const log=(msg)=>setRenderLog(p=>[...p,msg]);
@@ -4949,12 +4990,14 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
         // recording if the clone can't be reached.
         if(audioAsset.clonedVoiceId&&audioAsset.narrText){
           try{
+            if(renderLanguage){ log("Translating narration into "+renderLanguage+"..."); }
             log("Baking FULL narration in your cloned voice...");
-            const cChunks=buildChunks(audioAsset.narrText);
+            const narrForLang=await translateText(audioAsset.narrText,renderLanguage);
+            const cChunks=buildChunks(narrForLang);
             const decoded=[];
             for(const c of cChunks){
               if(!c||!c.text) continue;
-              const u=await engineSpeak(c.text,{voice:audioAsset.clonedVoiceId,gender:audioAsset.gender||"Female",origin:audioAsset.origin||"British"});
+              const u=await engineSpeak(c.text,{voice:audioAsset.clonedVoiceId,gender:audioAsset.gender||"Female",origin:audioAsset.origin||"British",language:renderLanguage});
               if(!u) continue;
               try{ const r=await fetch(u); const ab=await r.arrayBuffer(); decoded.push(await audioCtx.decodeAudioData(ab)); }catch(e){}
             }
@@ -4985,8 +5028,10 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
         if(audioAsset.type==="narration"||(!audioAsset.url&&!audioAsset.file&&audioAsset.text)){
           try{
             const vc=(typeof VOICE_CHARACTERS!=="undefined")?VOICE_CHARACTERS.find(v=>v.id===(audioAsset.voice||"blaze")):null;
-            const meta={voice:vc?.engineVoice||"",gender:vc?.gender||"",origin:vc?.origin||"",speed:vc?.rate||0.9};
-            const narrChunks=buildChunks(audioAsset.text||"");
+            const meta={voice:vc?.engineVoice||"",gender:vc?.gender||"",origin:vc?.origin||"",speed:vc?.rate||0.9,language:renderLanguage};
+            if(renderLanguage){ log("Translating narration into "+renderLanguage+"..."); }
+            const narrForLang=await translateText(audioAsset.text||"",renderLanguage);
+            const narrChunks=buildChunks(narrForLang);
             log("Baking narration through Cinema Voice Engine — "+narrChunks.length+" segment(s)...");
             const decoded=[];
             for(const c of narrChunks){
@@ -5444,6 +5489,15 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
               </div>
             </div>
           )}
+          {/* ── NARRATION LANGUAGE ─────────────────────────────────── */}
+          <div style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"14px 16px",marginBottom:16}}>
+            <div style={{color:GOLD,fontSize:11,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Narration language</div>
+            <div style={{color:GOLDDIM,fontSize:10,marginBottom:10,lineHeight:1.6}}>Pick the language for this film, clip or music video. The narration is translated and spoken in that language at render. English leaves it unchanged.</div>
+            <select value={renderLanguage} onChange={e=>setRenderLanguage(e.target.value)}
+              style={{width:"100%",background:"#0D0B06",border:"1px solid "+GOLDDIM,color:GOLD,padding:"10px 12px",fontSize:13,outline:"none",fontFamily:"'Archivo',system-ui,sans-serif",cursor:"pointer"}}>
+              {LANGUAGES.map(l=><option key={l.code} value={l.code} style={{background:"#0D0B06"}}>{l.label}</option>)}
+            </select>
+          </div>
           {/* ── FILL IN THE GAPS? ─────────────────────────────────── */}
           <div style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"14px 16px",marginBottom:16}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -6803,6 +6857,35 @@ export default function App() {
   },[timeline]);
   useEffect(()=>{
     try{localStorage.setItem("ms_medialib",JSON.stringify(mediaLib.map(a=>({...a,file:undefined}))));}catch(e){}
+  },[mediaLib]);
+
+  // AUTO-ROUTE — every generated clip lands on the correct track the moment it
+  // is saved. Video → track 0 (VIDEO), audio/narration → track 1 (AUDIO TRACK).
+  // Runs centrally off mediaLib so every save point is covered without threading
+  // setTimeline through the inner tools. De-dupes hard (id, dbId, and name+type)
+  // so a clip that comes in twice can never stack a wall of duplicates.
+  useEffect(()=>{
+    if(!mediaLib||!mediaLib.length)return;
+    setTimeline(prev=>{
+      const updated={...prev};
+      const key=(x)=>String(x&&(x.id||x.dbId||""))+"|"+String(x&&x.name||"")+"|"+String(x&&x.type||"");
+      let changed=false;
+      for(const asset of mediaLib){
+        if(!asset||!asset.type)continue;
+        const isAudio=asset.type.startsWith("audio")||asset.type==="narration"||asset.type==="audio/narration";
+        const isVideo=asset.type.startsWith("video")||asset.type==="video/webm";
+        if(!isAudio&&!isVideo)continue; // images stay in the library, not on a track
+        const trackIdx=isAudio?1:0;
+        const track=updated[trackIdx]||[];
+        const k=key(asset);
+        if(track.some(x=>key(x)===k))continue; // already on the track
+        updated[trackIdx]=[...track,asset];
+        changed=true;
+      }
+      if(!changed)return prev;
+      try{localStorage.setItem("ms_timeline",JSON.stringify(updated));}catch(e){}
+      return updated;
+    });
   },[mediaLib]);
 
   // Emergency crash save — fires when tab is closed or crashes
