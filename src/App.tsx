@@ -19,13 +19,16 @@ async function authToken(){
   try{ const {data}=await supabase.auth.getSession(); return data?.session?.access_token||""; }
   catch(e){ return ""; }
 }
-// Standard headers for an engine call, carrying the login token when present.
+// Standard headers for an ó
 async function engineAuthHeaders(){
   const t=await authToken();
   const h={"Content-Type":"application/json"};
   if(t) h["Authorization"]="Bearer "+t;
   return h;
 }
+
+
+
 
 // IndexedDB helpers for persistent clip storage
 const DB_NAME="mandastrong_db",DB_VER=1,STORE="clips";
