@@ -7004,7 +7004,7 @@ export default function App() {
 
   return (
     <div style={{background:"#171208",minHeight:"100vh",fontFamily:"'Archivo',system-ui,sans-serif"}}>
-      {showLanding&&<Landing onEnter={()=>setShowLanding(false)}/>}
+      {showLanding&&<Landing onEnter={()=>{setShowLanding(false);go(4);}}/>}
       {showIntro&&<IntroDoors onEnter={()=>setShowIntro(false)}/>}
       <Header go={go} setMenu={setMenu}/>
       {menu&&<QAMenu go={go} onClose={()=>setMenu(false)} user={user}/>}
