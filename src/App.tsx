@@ -6769,11 +6769,24 @@ export default function App() {
     // Actively remove the "Made in Bolt" badge — CSS alone can miss it
     const killBolt=()=>{
       try{
-        document.querySelectorAll('a[href*="bolt.new"],a[href*="bolt.host"],[class*="bolt"],[id*="bolt"],[data-bolt-badge]').forEach((n)=>{
-          const t=(n.textContent||"").toLowerCase();
-          if(t.includes("bolt")||(n.getAttribute("href")||"").includes("bolt")){const box=n.closest("div")||n;try{box.remove();}catch(e){try{n.remove();}catch(e2){}}}
-        });
-        document.querySelectorAll("body *").forEach((el)=>{try{const cs=getComputedStyle(el);if(cs.position==="fixed"){const txt=(el.textContent||"").toLowerCase();if(txt.includes("made in bolt")||txt.trim()==="bolt"){el.remove();}}}catch(e){}});
+        const scrub=(root)=>{
+          if(!root||!root.querySelectorAll)return;
+          try{
+            root.querySelectorAll('a[href*="bolt.new"],a[href*="bolt.host"],a[href*="stackblitz"],[class*="bolt"],[id*="bolt"],[data-bolt-badge]').forEach((n)=>{
+              const t=(n.textContent||"").toLowerCase();
+              const href=((n.getAttribute&&n.getAttribute("href"))||"").toLowerCase();
+              if(t.includes("bolt")||href.includes("bolt")||href.includes("stackblitz")){const box=(n.closest&&n.closest("div"))||n;try{box.remove();}catch(e){try{n.remove();}catch(e2){}}}
+            });
+          }catch(e){}
+          try{
+            root.querySelectorAll("*").forEach((el)=>{
+              try{const cs=getComputedStyle(el);if(cs&&cs.position==="fixed"){const txt=(el.textContent||"").toLowerCase();if(txt.includes("made in bolt")||txt.trim()==="bolt"){el.remove();return;}}}catch(e){}
+              // Bolt's free-tier badge lives in an open shadow root — pierce it.
+              if(el.shadowRoot)scrub(el.shadowRoot);
+            });
+          }catch(e){}
+        };
+        scrub(document);
       }catch(e){}
     };
     killBolt();
