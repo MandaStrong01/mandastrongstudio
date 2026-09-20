@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState, useRef, useEffect } from "react";
+impoert { useState, useRef, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 // ── SUPABASE AUTH ────────────────────────────────────────────────
