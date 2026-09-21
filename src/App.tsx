@@ -11,6 +11,11 @@ const SUPABASE_URL="https://njqfexhltjwpgvctmyaw.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_wqRnYf5pnp68Qo6-McfwyA_JNYrh2VC";
 const supabase=createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{
   auth:{persistSession:true,autoRefreshToken:true,storageKey:"ms_auth"}
+
+
+
+
+  
 });
 
 // The signed-in user's access token — sent to the engine so the credit gate
