@@ -533,7 +533,7 @@ function ProjectHistoryModal({ onClose, onResume, initialTab }) {
                   {h.note&&<div style={{color:WHITE,fontSize:11,marginTop:4,fontStyle:"italic"}}>{h.note}</div>}
                 </div>
                 <div style={{display:"flex",gap:6,flexShrink:0}}>
-                  <button onClick={()=>onResume(h)} style={{background:"#171208",border:"none",color:"#000",padding:"8px 18px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>{tab==="completed"?"Revisit":"Continue"}</button>
+                  <button onClick={()=>onResume(h)} style={{background:GOLD,border:"none",color:"#000",padding:"8px 18px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>{tab==="completed"?"Revisit":"Continue"}</button>
                   <button onClick={()=>del(originalIdx)} style={{background:"none",border:"1px solid #ef4444",color:"#ef4444",padding:"5px 10px",cursor:"pointer",fontSize:10,fontWeight:600,fontFamily:"'Archivo',system-ui,sans-serif"}}>✕</button>
                 </div>
               </div>
@@ -588,7 +588,7 @@ function QAMenu({ go, onClose, user }) {
           <button onClick={onClose} style={{background:"none",border:"none",color:GOLD,fontSize:20,cursor:"pointer"}}>✕</button>
         </div>
         <div style={{background:GOLD,padding:"9px 12px",marginBottom:10,textAlign:"center"}}>
-          <div style={{color:"#000",fontWeight:600,fontSize:10,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>MANDA STRONG STUDIO</div>
+          <div style={{color:"#000",fontWeight:600,fontSize:10,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>INFUTURE MOVIE STUDIOS</div>
         </div>
         <div style={{background:"#171208",border:"1px solid "+GOLDDIM,padding:"7px 10px",marginBottom:14,textAlign:"center"}}>
           <div style={{color:DIM,fontSize:9,letterSpacing:0.2}}>Plan</div>
@@ -613,8 +613,8 @@ function Header({ go, setMenu }) {
     <header style={{position:"sticky",top:0,zIndex:500,background:"#171208",borderBottom:"1px solid "+GOLDDIM+"",padding:"0 16px",height:52,display:"flex",alignItems:"center",gap:12}}>
       <button onClick={()=>setMenu(true)} style={{background:"none",border:"1px solid "+GOLDDIM,color:GOLD,width:34,height:34,cursor:"pointer",fontSize:16,flexShrink:0}}>☰</button>
       <div onClick={()=>go(1)} style={{cursor:"pointer",flexShrink:0}}>
-        <div style={{fontFamily:"'Archivo',system-ui,sans-serif",color:GOLD,fontSize:13,fontWeight:600,letterSpacing:0.2,lineHeight:1,textShadow:"none"}}>MANDA STRONG</div>
-        <div style={{fontFamily:"'Archivo',system-ui,sans-serif",color:GOLDDIM,fontSize:9,letterSpacing:0.4}}>Studio</div>
+        <div style={{fontFamily:"'Archivo',system-ui,sans-serif",color:GOLD,fontSize:13,fontWeight:600,letterSpacing:0.2,lineHeight:1,textShadow:"none"}}>INFUTURE</div>
+        <div style={{fontFamily:"'Archivo',system-ui,sans-serif",color:GOLDDIM,fontSize:9,letterSpacing:0.4}}>Movie Studios</div>
       </div>
       <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}>
         <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontWeight:500}}>
@@ -633,7 +633,7 @@ function Footer({ page, go, onSave, onHistory }) {
   return (
     <footer style={{position:"fixed",bottom:0,left:0,right:0,zIndex:400,background:"#171208",borderTop:"1px solid "+GOLDDIM+"",padding:"6px 20px 8px",display:"flex",flexDirection:"column",gap:4}}>
       <div style={{textAlign:"center"}}>
-        <span style={{color:GOLD,fontSize:11,letterSpacing:0,fontWeight:500}}>MANDASTRONG STUDIO · PROFESSIONAL CINEMA SYNTHESIS · MandaStrong1.Etsy.com</span>
+        <span style={{color:GOLD,fontSize:11,letterSpacing:0,fontWeight:500}}>INFUTURE MOVIE STUDIOS · PROFESSIONAL CINEMA SYNTHESIS · MandaStrong1.Etsy.com</span>
         {page===1&&<span style={{color:GOLD,fontSize:11,letterSpacing:0,fontWeight:500,opacity:0.75}}> · created 2025</span>}
       </div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:10,flexWrap:"wrap"}}>
@@ -3348,7 +3348,7 @@ Write the drawFrame body now.`}]
       <canvas ref={canvasRef} style={{position:"fixed",right:8,bottom:8,width:160,height:90,opacity:1,pointerEvents:"none",zIndex:9999,border:"1px solid #e8c96d",background:"#171208"}}/>
       <div style={{padding:"12px 20px",borderBottom:"1px solid "+GOLDDIM+"",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
         <div>
-          <div style={{fontSize:11,color:GOLD,letterSpacing:0.4,fontWeight:500}}>MANDASTRONG ENGINE v2 · CINEMA-GRADE RENDERER</div>
+          <div style={{fontSize:11,color:GOLD,letterSpacing:0.4,fontWeight:500}}>INFUTURE ENGINE v2 · CINEMA-GRADE RENDERER</div>
           <h1 style={{fontFamily:"'Archivo',system-ui,sans-serif",color:GOLD,letterSpacing:0.4,margin:0,fontSize:24,textTransform:"none"}}>Video generator</h1>
         </div>
         <div style={{color:GOLD,fontSize:11,fontWeight:500,letterSpacing:0.2}}>Mandastrong engine · any prompt · any subject</div>
@@ -3705,7 +3705,7 @@ Write the drawFrame body now.`}]
             style={{width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,padding:"10px 14px",color:WHITE,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"'Archivo',system-ui,sans-serif",marginBottom:14}}/>
           <div style={{marginBottom:14}}>
             <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Describe your scene</div>
-            <div style={{color:DIM,fontSize:11,marginBottom:8,lineHeight:1.7}}>Describe anything in plain English. MandaStrong Engine reads your prompt and renders a real cinematic scene.</div>
+            <div style={{color:DIM,fontSize:11,marginBottom:8,lineHeight:1.7}}>Describe anything in plain English. InFuture Engine reads your prompt and renders a real cinematic scene.</div>
             <textarea value={prompt} onChange={e=>setPrompt(e.target.value)}
               placeholder="e.g. A woman in a heavy coat places a folded paper into a wooden ballot box. Morning light from a window on the left."
               style={{width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,padding:"12px 14px",color:WHITE,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"'Archivo',system-ui,sans-serif",lineHeight:1.9,height:140,resize:"none"}}/>
@@ -3782,7 +3782,7 @@ Write the drawFrame body now.`}]
           )}
           <button onClick={generateVideo} disabled={generating||!prompt.trim()}
             style={{background:"#171208",border:"none",color:"#000",width:"100%",padding:"20px",fontSize:15,letterSpacing:0.2,cursor:generating||!prompt.trim()?"not-allowed":"pointer",fontWeight:600,fontFamily:"'Archivo',system-ui,sans-serif",opacity:generating||!prompt.trim()?0.5:1}}>
-            {generating?"⟳ MANDASTRONG ENGINE RENDERING... "+progress+"%":"Generate scene"}
+            {generating?"⟳ INFUTURE ENGINE RENDERING... "+progress+"%":"Generate scene"}
           </button>
         </div>
         <div style={{borderLeft:"1px solid "+GOLDDIM+"",display:"flex",flexDirection:"column"}}>
@@ -3791,7 +3791,7 @@ Write the drawFrame body now.`}]
               <video ref={videoRef} src={videoUrl} controls autoPlay loop playsInline style={{width:"100%",height:"100%",objectFit:"contain"}}/>
             ):(
               <div style={{textAlign:"center",padding:20}}>
-                <div style={{color:GOLD,fontSize:11,fontWeight:600,letterSpacing:0.2,marginBottom:8}}>MANDASTRONG ENGINE v2</div>
+                <div style={{color:GOLD,fontSize:11,fontWeight:600,letterSpacing:0.2,marginBottom:8}}>INFUTURE ENGINE v2</div>
                 <div style={{color:DIM,fontSize:10,lineHeight:2}}>Type any scene description.<br/>Hit Generate.<br/>Real cinematic output.</div>
               </div>
             )}
@@ -3832,7 +3832,7 @@ Write the drawFrame body now.`}]
               </div>
             ):(
               <div style={{padding:"16px 0",color:GOLDDIM,fontSize:10,lineHeight:2.2,letterSpacing:0}}>
-                <div style={{color:GOLD,fontWeight:600,fontSize:11,marginBottom:8}}>MANDASTRONG ENGINE v2</div>
+                <div style={{color:GOLD,fontWeight:600,fontSize:11,marginBottom:8}}>INFUTURE ENGINE v2</div>
                 8 rendering layers per frame<br/>
                 Multi-layer parallax depth<br/>
                 Volumetric candle flickering<br/>
@@ -3961,8 +3961,8 @@ function P1({ go }) {
         <style>{"@keyframes tw{0%,100%{opacity:.05}50%{opacity:.85}}"}</style>
         <div style={{position:"relative",zIndex:1}}>
           <div style={{fontSize:11,color:DIM,letterSpacing:0.4,marginBottom:12}}>Cinema intelligence platform — est. 2025</div>
-          <div style={{fontFamily:"'Archivo',system-ui,sans-serif",fontSize:"clamp(34px,6vw,58px)",fontWeight:600,color:GOLD,letterSpacing:0.4,lineHeight:1,textShadow:"none"}}>MANDA STRONG</div>
-          <div style={{fontFamily:"'Archivo',system-ui,sans-serif",fontSize:"clamp(34px,6vw,58px)",fontWeight:600,color:GOLD,letterSpacing:0.4,lineHeight:1,textShadow:"none",marginBottom:14}}>Studio</div>
+          <div style={{fontFamily:"'Archivo',system-ui,sans-serif",fontSize:"clamp(34px,6vw,58px)",fontWeight:600,color:GOLD,letterSpacing:0.4,lineHeight:1,textShadow:"none"}}>INFUTURE</div>
+          <div style={{fontFamily:"'Archivo',system-ui,sans-serif",fontSize:"clamp(34px,6vw,58px)",fontWeight:600,color:GOLD,letterSpacing:0.4,lineHeight:1,textShadow:"none",marginBottom:14}}>Movie Studios</div>
           <div style={{color:WHITE,fontSize:12,letterSpacing:0.4,marginBottom:28,fontWeight:600}}>600+ AI tools · 8K export · up to 3-hour films</div>
           <div style={{display:"flex",gap:14,justifyContent:"center",flexWrap:"wrap"}}>
             <button onClick={()=>go(4)} style={{...G("gold",false),fontSize:14,padding:"14px 38px",letterSpacing:0.2}}>Start creating</button>
@@ -3978,7 +3978,7 @@ function P1({ go }) {
           </div>
         ))}
       </div>
-      <ExampleReel go={go} title="What MandaStrong Studio makes"/>
+      <ExampleReel go={go} title="What InFuture Movie Studios makes"/>
       <div style={{textAlign:"center",paddingBottom:24,paddingTop:16}}>
         <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
           <button onClick={async()=>{
@@ -3989,12 +3989,12 @@ function P1({ go }) {
             // REAL DOWNLOAD: save a standalone launcher file to the user's computer.
             // Double-clicking it opens MandaStrong Studio full-screen in their browser.
             try{
-              const APP_URL="https://mandastrongmovies-101.bolt.host";
-              const launcher='<!doctype html><html><head><meta charset="utf-8"><title>MandaStrong Studio</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;background:#000}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body><iframe src="'+APP_URL+'" allow="camera;microphone;autoplay;fullscreen;clipboard-write" allowfullscreen></iframe><script>try{if(location.protocol==="file:"){location.href="'+APP_URL+'";}}catch(e){location.href="'+APP_URL+'";}<\\/script></body></html>';
+              const APP_URL="https://infuturem0viestudi0.bolt.host";
+              const launcher='<!doctype html><html><head><meta charset="utf-8"><title>InFuture Movie Studios</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;background:#000}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body><iframe src="'+APP_URL+'" allow="camera;microphone;autoplay;fullscreen;clipboard-write" allowfullscreen></iframe><script>try{if(location.protocol==="file:"){location.href="'+APP_URL+'";}}catch(e){location.href="'+APP_URL+'";}<\\/script></body></html>';
               const blob=new Blob([launcher],{type:"text/html"});
               const url=URL.createObjectURL(blob);
               const a=document.createElement("a");
-              a.href=url; a.download="MandaStrong Studio.html";
+              a.href=url; a.download="InFuture Movie Studios.html";
               document.body.appendChild(a); a.click();
               setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1500);
             }catch(e){}
@@ -4005,14 +4005,14 @@ function P1({ go }) {
                 window.deferredInstallPrompt.prompt();
                 const choice=await window.deferredInstallPrompt.userChoice;
                 window.deferredInstallPrompt=null;
-                if(choice&&choice.outcome==="accepted") alert(" Installing MandaStrong Studio to your home screen. Look for the gold M icon.");
+                if(choice&&choice.outcome==="accepted") alert(" Installing InFuture Movie Studios to your home screen. Look for the gold I icon.");
               }catch(e){}
             } else if(isIOS){
-              alert("✓ MandaStrong Studio.html downloaded to your device.\n\nTo also add it to your home screen on iPhone/iPad:\n1. Tap the Share button ⬆ in Safari\n2. Scroll down and tap 'Add to Home Screen'\n3. Tap 'Add'");
+              alert("✓ InFuture Movie Studios.html downloaded to your device.\n\nTo also add it to your home screen on iPhone/iPad:\n1. Tap the Share button ⬆ in Safari\n2. Scroll down and tap 'Add to Home Screen'\n3. Tap 'Add'");
             } else if(isAndroid){
-              alert("✓ MandaStrong Studio downloaded.\n\nTo also install it as an app:\n1. Tap the menu ⋮ in Chrome\n2. Tap 'Add to Home screen' or 'Install app'");
+              alert("✓ InFuture Movie Studios downloaded.\n\nTo also install it as an app:\n1. Tap the menu ⋮ in Chrome\n2. Tap 'Add to Home screen' or 'Install app'");
             } else {
-              alert("✓ MandaStrong Studio.html downloaded to your computer.\n\nDouble-click the file any time to open the studio full-screen.\n\nTo also install it: look for the install icon ⊕ in your browser's address bar.");
+              alert("✓ InFuture Movie Studios.html downloaded to your computer.\n\nDouble-click the file any time to open the studio full-screen.\n\nTo also install it: look for the install icon ⊕ in your browser's address bar.");
             }
           }} style={{background:GOLD,border:"none",color:"#000",padding:"14px 32px",fontSize:14,fontWeight:600,letterSpacing:0.2,cursor:"pointer",fontFamily:"'Archivo',system-ui,sans-serif",width:"100%",maxWidth:320}}>
             Download app
@@ -4030,7 +4030,7 @@ function P2({ go }) {
   return(
     <div style={{...Sp,padding:"0 0 40px"}}>
       <div style={{padding:"20px 24px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
-        <div><div style={{fontSize:10,color:GOLD,letterSpacing:0.4,fontWeight:500,marginBottom:4}}>Mandastrong studio · cinema intelligence platform</div><h1 style={{fontFamily:"'Archivo',system-ui,sans-serif",color:GOLD,fontSize:"clamp(22px,4vw,40px)",fontWeight:600,letterSpacing:0.4,margin:0}}>Studio dashboard</h1></div>
+        <div><div style={{fontSize:10,color:GOLD,letterSpacing:0.4,fontWeight:500,marginBottom:4}}>InFuture Movie Studios · cinema intelligence platform</div><h1 style={{fontFamily:"'Archivo',system-ui,sans-serif",color:GOLD,fontSize:"clamp(22px,4vw,40px)",fontWeight:600,letterSpacing:0.4,margin:0}}>Studio dashboard</h1></div>
         <button onClick={()=>go(5)} style={{background:GOLD,border:"none",color:"#000",padding:"14px 28px",fontSize:13,fontWeight:600,letterSpacing:0.2,cursor:"pointer",fontFamily:"'Archivo',system-ui,sans-serif"}}>+ new project</button>
       </div>
       <div style={{padding:"0 24px 20px"}}>
@@ -4129,7 +4129,7 @@ function P3() {
       <div style={{maxWidth:1100,margin:"0 auto"}}>
         <div style={{fontSize:12,color:GOLD,letterSpacing:0.4,marginBottom:8,fontWeight:500}}>Showcase</div>
         <h1 style={{...H1,fontSize:30,marginBottom:6}}>Proof of concept</h1>
-        <div style={{color:GOLDDIM,fontSize:13,marginBottom:10,letterSpacing:0}}>Upload up to 3 films, trailers, or demo reels created with MandaStrong Studio.</div>
+        <div style={{color:GOLDDIM,fontSize:13,marginBottom:10,letterSpacing:0}}>Upload up to 3 films, trailers, or demo reels created with InFuture Movie Studios.</div>
         <div style={{color:"#22c55e",fontSize:11,marginBottom:24,letterSpacing:0.2,fontWeight:600}}>Saved permanently — your films stay until you replace or remove them</div>
 
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:20}}>
@@ -4290,7 +4290,7 @@ function P4({ go, setUser }) {
             <div style={{fontSize:36,marginBottom:10}}></div>
             <h2 style={{...H1,fontSize:16,marginBottom:10}}>Explore first</h2>
             <p style={{color:WHITE,fontSize:14,lineHeight:1.7,marginBottom:20}}>Browse 600+ AI tools before committing. No account required.</p>
-            <button onClick={()=>{window.open(STRIPE.basic,"_blank");alert("Start your free 7-day trial to access MandaStrong Studio. No commitment required.");}} style={{...G("out",false),width:"100%"}}>Browse as guest — start free trial</button>
+            <button onClick={()=>{window.open(STRIPE.basic,"_blank");alert("Start your free 7-day trial to access InFuture Movie Studios. No commitment required.");}} style={{...G("out",false),width:"100%"}}>Browse as guest — start free trial</button>
           </div>
         </div>
         <div style={{textAlign:"center",marginBottom:24,display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>
@@ -5795,7 +5795,7 @@ function TutCanvas({drawFn}){
       brandGrad.addColorStop(0,"rgba(255,243,207,0.95)");
       brandGrad.addColorStop(1,"rgba(160,120,32,0.95)");
       ctx.fillStyle=brandGrad;
-      ctx.fillText("MANDASTRONG STUDIO",bar+10,brandY);
+      ctx.fillText("INFUTURE MOVIE STUDIOS",bar+10,brandY);
       // Thin gold line under brand
       ctx.strokeStyle="rgba(232,201,109,0.6)";ctx.lineWidth=1;
       ctx.beginPath();ctx.moveTo(bar+10,brandY+4);ctx.lineTo(bar+10+Math.round(H*0.28),brandY+4);ctx.stroke();
@@ -6032,7 +6032,7 @@ function P20() {
             {sec("CHANGES TO THIS DISCLAIMER",<>{p("MandaStrong Studio reserves the right to update this disclaimer at any time. Continued use of the platform following any update constitutes your acceptance of the revised terms.")}</>)}
 
             <div style={{background:"#0D0B06",border:"1px solid "+GOLDDIM,padding:"12px 16px",marginTop:8}}>
-              <p style={{color:GOLDDIM,fontSize:11,margin:0,letterSpacing:0}}>— Amanda Woolley · Founder · MandaStrong Studio · March 2026 · mandastrongmovies-101.bolt.host</p>
+              <p style={{color:GOLDDIM,fontSize:11,margin:0,letterSpacing:0}}>— Amanda Woolley · Founder · MandaStrong Studio · March 2026 · infuturem0viestudi0.bolt.host</p>
             </div>
           </div>
         )}
@@ -6158,7 +6158,7 @@ function P22() {
 function HowToGuide() {
   const [open,setOpen]=useState(null);
   const SECTIONS=[
-    {t:"Welcome — how to read this book",c:"This is more than a how-to. It is a complete guide to making films with AI on MandaStrong Studio (mandastrongmovies-101.bolt.host) AND a plain-English education in what AI actually is, so you are never at its mercy. Read Part One to understand the machine you are working with. Read Part Two to master the studio page by page. Read Part Three for the craft — prompting, voice, story, and ethics. You do not need any technical background. Every idea here is explained the way you would explain it to a friend across a kitchen table."},
+    {t:"Welcome — how to read this book",c:"This is more than a how-to. It is a complete guide to making films with AI on MandaStrong Studio (infuturem0viestudi0.bolt.host) AND a plain-English education in what AI actually is, so you are never at its mercy. Read Part One to understand the machine you are working with. Read Part Two to master the studio page by page. Read Part Three for the craft — prompting, voice, story, and ethics. You do not need any technical background. Every idea here is explained the way you would explain it to a friend across a kitchen table."},
 
     {t:"Part one · What AI actually is",c:"AI does not think, feel, or know things the way you do. A large language model — the kind of AI behind most creative tools — is a very powerful pattern machine. It has read an enormous amount of human writing and images and learned which words and shapes tend to follow which. When you ask it for something, it is not looking up an answer; it is predicting, piece by piece, the most likely continuation of your request. That is why it can sound confident and still be wrong. Understanding this one fact changes how you use it: you are the director, it is the crew. It is fast and tireless and knows a thousand styles, but it has no judgement about YOUR story. That judgement is yours, and it always will be."},
 
@@ -6168,9 +6168,9 @@ function HowToGuide() {
 
     {t:"Part one · AI and you — staying in charge",c:"AI is a tool, like a camera or a pen. It amplifies whoever holds it. It has no taste of its own, so your taste is the whole game. Never let a machine talk you out of a creative instinct, and never assume its confident answer is correct without checking. Keep your own copies of everything important. Understand that what you type may be processed on servers you don't control, so don't paste anything you'd be uncomfortable sharing. And remember the deeper point behind this whole studio: AI should widen the door to creativity, not replace the human standing in it. You are not being replaced. You are being equipped."},
 
-    {t:"Part two · Getting started",c:"Open mandastrongmovies-101.bolt.host. Log in with your credentials or start a free trial. Use the hamburger menu top left to jump to any of the 24 pages. AUTOSAVE ON is real — your work saves automatically every time you change page, generate a clip, or update your timeline. Hit SAVE PROJECT to create a named restore point you can return to from MY PROJECTS. Your plan and remaining usage are always visible from your account panel — tap the avatar top right."},
+    {t:"Part two · Getting started",c:"Open infuturem0viestudi0.bolt.host. Log in with your credentials or start a free trial. Use the hamburger menu top left to jump to any of the 24 pages. AUTOSAVE ON is real — your work saves automatically every time you change page, generate a clip, or update your timeline. Hit SAVE PROJECT to create a named restore point you can return to from MY PROJECTS. Your plan and remaining usage are always visible from your account panel — tap the avatar top right."},
 
-    {t:"Part two · Page 1 — home & install",c:"The front door of mandastrongmovies-101.bolt.host. The DOWNLOAD APP button installs the studio to your device like a real app, using your browser's built-in install prompt — on iPhone and iPad use Share then Add to Home Screen, as Apple does not allow one-tap install. The whole page is built to fit any screen, phone or laptop. From here, enter the studio and begin."},
+    {t:"Part two · Page 1 — home & install",c:"The front door of infuturem0viestudi0.bolt.host. The DOWNLOAD APP button installs the studio to your device like a real app, using your browser's built-in install prompt — on iPhone and iPad use Share then Add to Home Screen, as Apple does not allow one-tap install. The whole page is built to fit any screen, phone or laptop. From here, enter the studio and begin."},
 
     {t:"Part two · Page 4 — plans & usage credits",c:"Three plans: Basic $20, Pro $30, Studio $50 — pick the one that fits how much you create. At the very bottom is PURCHASE USAGE CREDITS: a one-time top-up for extra renders and generations when you need more than your plan includes. Credits never expire. All payments run through Stripe's secure checkout — the studio never sees your card details."},
 
@@ -6194,9 +6194,9 @@ function HowToGuide() {
 
     {t:"Part three · Ethics & responsibility",c:"With these tools you can make almost anything, which means the responsibility is yours. Don't put real people's faces or voices into films they never agreed to. Be honest when something is AI-generated if presenting it as real could mislead. Respect others' work rather than copying a living artist's style wholesale and calling it your own. And remember MandaStrong's founding mission — these tools exist to spread kindness, understanding, and hope, with proceeds supporting veterans' mental health and anti-bullying work. Make things that would make that mission proud."},
 
-    {t:"SAVING, RECOVERING & GETTING HELP",c:"AUTOSAVE ON saves as you work. SAVE PROJECT creates a named session — name it meaningfully. MY PROJECTS shows your history; CONTINUE PROJECT restores a session including all clips. An emergency save fires if the tab closes or crashes, so work is never permanently lost. Stuck? Agent Grok on Page 21 is your 24/7 production consultant with full knowledge of every page and workflow. This guide lives on your closing page at mandastrongmovies-101.bolt.host and is updated as the studio grows."},
+    {t:"SAVING, RECOVERING & GETTING HELP",c:"AUTOSAVE ON saves as you work. SAVE PROJECT creates a named session — name it meaningfully. MY PROJECTS shows your history; CONTINUE PROJECT restores a session including all clips. An emergency save fires if the tab closes or crashes, so work is never permanently lost. Stuck? Agent Grok on Page 21 is your 24/7 production consultant with full knowledge of every page and workflow. This guide lives on your closing page at infuturem0viestudi0.bolt.host and is updated as the studio grows."},
 
-    {t:"Recommended workflow — start to finish",c:"Page 5 fill Script to Movie's Producer, Describe, Production boxes WIRE INTO RENDER. Page 6 choose a voice PREPARE TO SPEAK SAVE TO MEDIA LIBRARY. Page 8 upload a reference photo generate each scene (your brief drives them) add background music and stereo if you like. Page 13 SYNC ALL TRACKS. Page 15 set the mix. Page 16 choose quality render. Page 17 preview. Page 18 export and share. That is a finished film, made by you, at mandastrongmovies-101.bolt.host."},
+    {t:"Recommended workflow — start to finish",c:"Page 5 fill Script to Movie's Producer, Describe, Production boxes WIRE INTO RENDER. Page 6 choose a voice PREPARE TO SPEAK SAVE TO MEDIA LIBRARY. Page 8 upload a reference photo generate each scene (your brief drives them) add background music and stereo if you like. Page 13 SYNC ALL TRACKS. Page 15 set the mix. Page 16 choose quality render. Page 17 preview. Page 18 export and share. That is a finished film, made by you, at infuturem0viestudi0.bolt.host."},
   ];
   return(
     <div style={{padding:"20px 32px 40px",maxWidth:860,margin:"0 auto"}}>
@@ -6574,10 +6574,10 @@ function P23({ go }) {
             {vidDead?(
               <div style={{width:"100%",height:"34vh",minHeight:180,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"radial-gradient(ellipse at center, #211A0E 0%, #0A0800 100%)"}}>
                 <div style={{fontSize:"clamp(28px,6vw,54px)",fontWeight:600,color:GOLD,letterSpacing:1,fontFamily:"'Archivo',system-ui,sans-serif"}}>THAT'S ALL FOLKS</div>
-                <div style={{marginTop:10,fontSize:11,letterSpacing:2,color:GOLDDIM,fontWeight:600}}>MANDASTRONG STUDIO</div>
+                <div style={{marginTop:10,fontSize:11,letterSpacing:2,color:GOLDDIM,fontWeight:600}}>INFUTURE MOVIE STUDIOS</div>
               </div>
             ):(
-            <video ref={bgRef} autoPlay loop playsInline muted preload="auto"
+            <video ref={el=>{ bgRef.current=el; if(el){ el.muted=true; const kick=()=>{ el.play().catch(()=>{}); }; el.onloadeddata=kick; el.oncanplay=kick; kick(); } }} autoPlay loop playsInline muted preload="auto"
               onError={()=>setVidDead(true)}
               onLoadedMetadata={(e)=>{try{if(e.currentTarget.currentTime<0.1)e.currentTarget.currentTime=0.1;}catch{}}}
               style={{display:"block",width:"100%",maxHeight:"34vh",objectFit:"cover",background:"#171208"}}>
@@ -6591,7 +6591,7 @@ function P23({ go }) {
             </video>
             )}
           </div>
-          <div style={{fontSize:10,color:GOLD,letterSpacing:0.4,marginBottom:8,fontWeight:500}}>Mandastrong studio · cinema intelligence platform</div>
+          <div style={{fontSize:10,color:GOLD,letterSpacing:0.4,marginBottom:8,fontWeight:500}}>InFuture Movie Studios · cinema intelligence platform</div>
           <h1 style={{fontFamily:"'Archivo',system-ui,sans-serif",color:GOLD,fontSize:"clamp(32px,5vw,52px)",fontWeight:600,letterSpacing:0.4,textShadow:"none",marginBottom:28}}>That's all folks</h1>
           <div style={{height:1,background:GOLDDIM,marginBottom:28}}/>
           <div style={{...Card(),textAlign:"left",marginBottom:28,background:"#050500ee",border:"2px solid "+SIGNAL}}>
@@ -6607,7 +6607,7 @@ function P23({ go }) {
             <p style={{color:WHITE,fontSize:13,lineHeight:1.9,margin:0}}>All proceeds from <strong style={{color:GOLD}}>MandaStrong1.Etsy.com</strong> are donated directly to humanitarian causes — veterans mental health, anti-bullying programmes in schools, and children in need.</p>
           </div>
           <button onClick={()=>setHowOpen(o=>!o)} style={{width:"100%",background:howOpen?GOLD:"#050500ee",border:"2px solid "+SIGNAL,color:howOpen?"#000":GOLD,padding:"18px 24px",cursor:"pointer",fontFamily:"'Archivo',system-ui,sans-serif",fontSize:15,fontWeight:600,letterSpacing:0.4,marginBottom:howOpen?0:28,display:"flex",justifyContent:"space-between",alignItems:"center",boxShadow:"none"}}>
-            <span>MANDASTRONG STUDIO — THE COMPLETE GUIDE &amp; AI HANDBOOK</span>
+            <span>INFUTURE MOVIE STUDIOS — THE COMPLETE GUIDE &amp; AI HANDBOOK</span>
             <span style={{fontSize:18}}>{howOpen?"▲":"▼"}</span>
           </button>
           {howOpen&&<div style={{background:"#030200ee",border:"2px solid "+SIGNAL,borderTop:"none",marginBottom:28}}><HowToGuide/></div>}
@@ -6652,7 +6652,7 @@ function Landing({ onEnter }){
       <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at center, rgba(10,11,13,0.35) 0%, rgba(10,11,13,0.92) 78%)"}}/>
       <div style={{position:"relative",textAlign:"center",padding:"0 24px",maxWidth:760}}>
         <div style={{fontSize:11,letterSpacing:3.4,color:"#C8A54B",marginBottom:18,fontWeight:600}}>CINEMA INTELLIGENCE PLATFORM</div>
-        <div style={{fontSize:"clamp(34px,8vw,74px)",lineHeight:1.02,fontWeight:600,color:"#EBD9A8",letterSpacing:-0.5}}>MandaStrong Studio</div>
+        <div style={{fontSize:"clamp(34px,8vw,74px)",lineHeight:1.02,fontWeight:600,color:"#EBD9A8",letterSpacing:-0.5}}>InFuture Movie Studios</div>
         <div style={{marginTop:16,fontSize:"clamp(13px,3.2vw,17px)",color:"#9A855A",lineHeight:1.5}}>Your story, made into a film.</div>
         <button onClick={onEnter} style={{marginTop:34,background:"#C8A54B",color:"#0A0B0D",border:"none",borderRadius:10,padding:"16px 40px",fontSize:15,fontWeight:600,letterSpacing:0.4,cursor:"pointer",fontFamily:"'Archivo',system-ui,sans-serif"}}>Press to Create</button>
       </div>
@@ -6737,8 +6737,8 @@ function IntroDoors({ onEnter }){
           <stop offset="0.55" stopColor="#ffffff" stopOpacity="0"/><stop offset="0.7" stopColor="#fff3c4" stopOpacity="0.45"/><stop offset="1" stopColor="#ffffff" stopOpacity="0"/>
         </linearGradient>
       </defs>
-      <text x="150" y="150" textAnchor="middle" fontFamily="Georgia,serif" fontSize="200" fontWeight="900" fill={"url(#goldM"+side+")"} stroke="#fff3c4" strokeWidth="0.6">M</text>
-      <text x="150" y="150" textAnchor="middle" fontFamily="Georgia,serif" fontSize="200" fontWeight="900" fill={"url(#sheen"+side+")"}>M</text>
+      <text x="150" y="150" textAnchor="middle" fontFamily="Georgia,serif" fontSize="200" fontWeight="900" fill={"url(#goldM"+side+")"} stroke="#fff3c4" strokeWidth="0.6">I</text>
+      <text x="150" y="150" textAnchor="middle" fontFamily="Georgia,serif" fontSize="200" fontWeight="900" fill={"url(#sheen"+side+")"}>I</text>
     </svg>
   );
   // Brushed-metallic door face: layered gold gradients + vertical sheen streaks + highlight edge
@@ -6779,7 +6779,7 @@ function IntroDoors({ onEnter }){
           boxShadow:"0 0 40px rgba(232,201,109,0.6)",borderRadius:10}}>
           Enter
         </button>
-        <div style={{color:GOLDDIM,fontSize:11,letterSpacing:0.2,marginTop:16}}>mandastrongmovies-101.bolt.host</div>
+        <div style={{color:GOLDDIM,fontSize:11,letterSpacing:0.2,marginTop:16}}>infuturem0viestudi0.bolt.host</div>
       </div>
     </div>
   );
@@ -6792,7 +6792,11 @@ export default function App() {
   const [page,setPage]=useState(()=>{try{const p=JSON.parse(localStorage.getItem("ms_page")||"1");return (typeof p==="number"&&p>=1&&p<=TOTAL)?p:1;}catch{return 1;}});
   // ── CINEMATIC INTRO — gold doors open to reveal the app ──
   const [showIntro,setShowIntro]=useState(false); // doors removed - app opens straight in
-  const [showLanding,setShowLanding]=useState(true); // landing screen -> Press to Create
+  // Show the "Press to Create" splash only on a true first visit. If you were
+  // already working — a saved page past 1, or a logged-in user — skip straight
+  // back into the app. Popping out (bathroom, lock screen) no longer dumps you
+  // on the splash as if you'd just arrived.
+  const [showLanding,setShowLanding]=useState(()=>{try{const p=JSON.parse(localStorage.getItem("ms_page")||"1");const u=JSON.parse(localStorage.getItem("ms_user")||"null");return !((typeof p==="number"&&p>1)||(u&&u.name));}catch{return true;}});
   const [menu,setMenu]=useState(false);
   useEffect(()=>{
     // Raise the storage ceiling so large uploads don't crash — ask the browser
@@ -6841,8 +6845,8 @@ export default function App() {
     // PWA MANIFEST — makes the DOWNLOAD APP button work as a real install
     try{
       const manifestData={
-        name:"MandaStrong Studio",
-        short_name:"MandaStrong",
+        name:"InFuture Movie Studios",
+        short_name:"InFuture",
         description:"Cinema Intelligence Platform — 600+ AI tools, 24 pages, up to 3-hour films",
         start_url:"/",
         display:"standalone",
@@ -6850,8 +6854,8 @@ export default function App() {
         theme_color:"#e8c96d",
         orientation:"any",
         icons:[
-          {src:"data:image/svg+xml;base64,"+btoa('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" fill="#000"/><text x="96" y="130" text-anchor="middle" font-family="Georgia" font-size="120" font-weight="900" fill="#e8c96d">M</text></svg>'),sizes:"192x192",type:"image/svg+xml",purpose:"any maskable"},
-          {src:"data:image/svg+xml;base64,"+btoa('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#000"/><text x="256" y="350" text-anchor="middle" font-family="Georgia" font-size="320" font-weight="900" fill="#e8c96d">M</text></svg>'),sizes:"512x512",type:"image/svg+xml",purpose:"any maskable"}
+          {src:"data:image/svg+xml;base64,"+btoa('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" fill="#000"/><text x="96" y="130" text-anchor="middle" font-family="Georgia" font-size="120" font-weight="900" fill="#e8c96d">I</text></svg>'),sizes:"192x192",type:"image/svg+xml",purpose:"any maskable"},
+          {src:"data:image/svg+xml;base64,"+btoa('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#000"/><text x="256" y="350" text-anchor="middle" font-family="Georgia" font-size="320" font-weight="900" fill="#e8c96d">I</text></svg>'),sizes:"512x512",type:"image/svg+xml",purpose:"any maskable"}
         ]
       };
       const manifestBlob=new Blob([JSON.stringify(manifestData)],{type:"application/json"});
