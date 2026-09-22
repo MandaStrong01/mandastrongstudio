@@ -2265,11 +2265,24 @@ function P6Voice({ onSave, setMediaLib }) {
         setMyVoices(upd);
         try{localStorage.setItem("ms_my_voices",JSON.stringify(upd.map(v=>({...v,url:undefined}))));}catch{}
       }
-      // Bake the whole script through the engine in the cloned voice.
-      const buf=await engineSpeak(script,{voice:vid});
+      // Bake the WHOLE script in the cloned voice. engineSpeak caps each call at
+      // 3500 chars, so a long documentary script was being cut to ~3 minutes.
+      // Chunk the full script sentence-by-sentence, voice every chunk, and stitch
+      // them into one audio file — the complete narration, however long.
       const id="narr_myvoice_full_"+Date.now();
       const asset={id,name:"Full Narration (my cloned voice) - "+new Date().toLocaleTimeString(),type:"audio/myvoice",dbId:id,clonedVoiceId:vid,engineVoice:vid,narrText:script,date:new Date().toISOString()};
-      if(buf){try{const b=(buf instanceof Blob)?buf:new Blob([buf],{type:"audio/mpeg"});await safeSaveClipToDB(id,b,asset.name,"audio/myvoice");}catch(e){}}
+      let buf=null;
+      try{
+        const parts=[];
+        const chunks=buildChunks(script).filter(c=>c&&c.text);
+        for(const c of chunks){
+          const u=await engineSpeak(c.text,{voice:vid});
+          if(!u)continue;
+          try{ const r=await fetch(u); parts.push(await r.blob()); }catch(e){}
+        }
+        if(parts.length) buf=new Blob(parts,{type:parts[0].type||"audio/mpeg"});
+      }catch(e){}
+      if(buf){try{await safeSaveClipToDB(id,buf,asset.name,"audio/myvoice");}catch(e){}}
       if(onSave)onSave(asset);
       if(setMediaLib)setMediaLib(p=>[...p,asset]);
       setNarrBusy(false);
