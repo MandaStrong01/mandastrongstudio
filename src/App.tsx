@@ -2729,6 +2729,51 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
   // we draw the scene here instead, on this device, for nothing. Claude writes
   // the drawFrame code, the browser paints it, MediaRecorder records it, and we
   // hand back a real playable video file exactly like the engine would.
+  // Turn one of YOUR photos into a moving documentary clip: slow zoom + drift,
+  // warm vignette, letterbox — real footage from your real images, no text.
+  const mmmKenBurns=async(dataUrl,secs,idx)=>{
+    return new Promise((resolve)=>{
+      try{
+        const img=new Image();
+        img.onload=()=>{
+          const W=1280,H=720,fps=24;
+          const cv=document.createElement("canvas");cv.width=W;cv.height=H;
+          const ctx=cv.getContext("2d");
+          const stream=cv.captureStream(fps);
+          let mime="video/webm";
+          try{for(const m of ["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm","video/mp4"]){if(window.MediaRecorder&&MediaRecorder.isTypeSupported(m)){mime=m;break;}}}catch(e){}
+          const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:4000000});
+          const chunks=[];rec.ondataavailable=ev=>{if(ev.data&&ev.data.size)chunks.push(ev.data);};
+          rec.onstop=()=>{try{resolve(URL.createObjectURL(new Blob(chunks,{type:mime})));}catch(e){resolve("");}};
+          const iw=img.naturalWidth||W, ih=img.naturalHeight||H;
+          const cover=Math.max(W/iw,H/ih);
+          const dir=idx%2===0?1:-1;
+          const holdMs=Math.max(3,secs||6)*1000;
+          const start=Date.now();
+          rec.start();
+          const step=()=>{
+            const el=Date.now()-start, t=Math.min(1,el/holdMs);
+            const zoom=cover*(1.06+0.12*t), dw=iw*zoom, dh=ih*zoom;
+            const driftX=dir*(W*0.04)*t, dx=(W-dw)/2-driftX, dy=(H-dh)/2;
+            try{
+              ctx.clearRect(0,0,W,H);
+              ctx.drawImage(img,dx,dy,dw,dh);
+              const vig=ctx.createRadialGradient(W/2,H/2,W*0.1,W/2,H/2,W*0.8);
+              vig.addColorStop(0,"rgba(0,0,0,0)");vig.addColorStop(1,"rgba(0,0,0,0.7)");
+              ctx.fillStyle=vig;ctx.fillRect(0,0,W,H);
+              ctx.fillStyle="#000";ctx.fillRect(0,0,W,H*0.05);ctx.fillRect(0,H*0.95,W,H*0.05);
+            }catch(e){}
+            if(el>=holdMs){try{rec.stop();}catch(e){resolve("");}return;}
+            requestAnimationFrame(step);
+          };
+          requestAnimationFrame(step);
+        };
+        img.onerror=()=>resolve("");
+        img.src=dataUrl;
+      }catch(e){resolve("");}
+    });
+  };
+
   const mmmCanvasFallback=async(scenePrompt,secs)=>{
     try{
       const res=await fetch("https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/claude-proxy",{
@@ -2856,11 +2901,20 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
         const sceneImg = mmmImages.length ? (mmmImages[i%mmmImages.length].dataUrl||"") : firstImg;
         url=await engineRender(sceneList[i],{duration:perSceneSec,image:sceneImg,aspect_ratio:"16:9"});
       }catch(e){ url=""; }
-      // Engine gave us nothing — draw it here instead, free, on this device.
+      // Engine gave us nothing. Prefer YOUR real photo with documentary motion
+      // (Ken Burns pan/zoom) over abstract gold shapes — real people, real footage.
       if(!url){
-        setMmmStage("Scene "+(i+1)+" — drawing on this device (no engine credit needed)…");
-        url=await mmmCanvasFallback(sceneList[i],perSceneSec);
-        usedFallback=!!url;
+        const sImg = mmmImages.length ? (mmmImages[i%mmmImages.length].dataUrl||"") : firstImg;
+        if(sImg){
+          setMmmStage("Scene "+(i+1)+" — using your photo with documentary motion…");
+          url=await mmmKenBurns(sImg,perSceneSec,i);
+          usedFallback=!!url;
+        }
+        if(!url){
+          setMmmStage("Scene "+(i+1)+" — drawing on this device…");
+          url=await mmmCanvasFallback(sceneList[i],perSceneSec);
+          usedFallback=!!url;
+        }
       }
       if(url){
         clipUrls.push(url);
