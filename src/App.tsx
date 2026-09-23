@@ -33,6 +33,111 @@ const openDB=()=>new Promise((res,rej)=>{const r=indexedDB.open(DB_NAME,DB_VER);
 
 function buildChunks(text){const clean=text.replace(/\s+/g," ").trim();const sentences=clean.match(/[^.!?]+[.!?]+[\s]*/g)||[clean];const chunks=[];for(const s of sentences){const trimmed=s.trim();if(trimmed.length>0){const type=trimmed.endsWith("?")?"question":trimmed.endsWith("!")?"exclaim":"sentence";chunks.push({text:trimmed,type});}}return chunks.length>0?chunks:[{text:clean.slice(0,200),type:"sentence"}];}
 
+// ── FULL-LENGTH NARRATION HELPERS ────────────────────────────────
+// Sentences, keeping any last bit with no full stop (buildChunks drops it).
+function msSentences(text){
+  const clean=String(text||"").replace(/\s+/g," ").trim();
+  if(!clean)return [];
+  const out=clean.match(/[^.!?]+[.!?]+["')\]]*\s*|[^.!?]+$/g)||[clean];
+  return out.map(x=>x.trim()).filter(Boolean);
+}
+// Groups sentences into engine-sized pieces (~2400 chars). A 90-minute script
+// becomes ~40 engine calls instead of ~800 - far fewer chances to drop a line.
+function msVoiceGroups(text,max){
+  max=max||2400;
+  const groups=[];let cur="";
+  for(const s of msSentences(text)){
+    if(cur&&(cur.length+1+s.length)>max){groups.push(cur);cur=s;}
+    else cur=cur?cur+" "+s:s;
+  }
+  if(cur)groups.push(cur);
+  return groups;
+}
+const msWordCount=(t)=>(String(t||"").trim().match(/\S+/g)||[]).length;
+// Works out which part of the script your own recording already covers
+// (from how long it is), and returns the REST for the engine to read.
+function msRemainderAfterRecording(script,recSecs){
+  const txt=String(script||"").trim();
+  if(!txt)return "";
+  if(!(recSecs>0))return txt;
+  const est=recSecs*2.4; // documentary pace ~ 145 words a minute
+  let units=txt.split(/\n\s*\n/).map(x=>x.trim()).filter(Boolean);
+  if(units.length<2)units=txt.split(/\n/).map(x=>x.trim()).filter(Boolean);
+  const joinWith=units.length>=2?"\n\n":" ";
+  if(units.length<2)units=msSentences(txt);
+  let acc=0,best=0,bestDiff=Infinity;
+  for(let i=0;i<units.length;i++){
+    acc+=msWordCount(units[i]);
+    const d=Math.abs(acc-est);
+    if(d<bestDiff){bestDiff=d;best=i+1;}
+  }
+  if(best<1)best=1;
+  return units.slice(best).join(joinWith).trim();
+}
+// Length in seconds of an audio blob (decoded once, then released).
+async function msBlobSeconds(blob){
+  let ctx=null;
+  try{
+    ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const buf=await ctx.decodeAudioData(await blob.arrayBuffer());
+    return buf.duration||0;
+  }catch(e){return 0;}
+  finally{try{if(ctx)ctx.close();}catch(e){}}
+}
+// Voices a whole text through the engine, piece by piece. Returns the audio
+// pieces in order plus how many pieces failed, so nothing is silently lost.
+async function msVoiceText(text,meta,onStep){
+  const groups=msVoiceGroups(text);
+  const parts=[];let failed=0;
+  for(let i=0;i<groups.length;i++){
+    if(onStep)onStep(i+1,groups.length);
+    let blob=null;
+    for(let attempt=0;attempt<2&&!blob;attempt++){
+      try{
+        const u=await engineSpeak(groups[i],meta);
+        if(u){const r=await fetch(u);if(r.ok){const b=await r.blob();if(b&&b.size>500)blob=b;}}
+      }catch(e){}
+    }
+    if(blob)parts.push(blob);else failed++;
+  }
+  return {parts,failed,total:groups.length};
+}
+// Plays a list of audio blobs back-to-back into the film. Each piece is
+// decoded just before it is needed, so a 90-minute narration never has to
+// sit in memory all at once (that is what crashes iPad).
+async function msMeasureSequence(ctx,blobs){
+  const durs=[];
+  for(const b of blobs){
+    try{const buf=await ctx.decodeAudioData(await b.arrayBuffer());durs.push(buf.duration||0);}
+    catch(e){durs.push(0);}
+  }
+  return durs;
+}
+function msPlaySequence(ctx,dests,blobs,durs,gapSec){
+  gapSec=gapSec||0;
+  let stopped=false;const live=[];
+  const t0=ctx.currentTime+0.25;
+  const starts=[];let acc=0;
+  for(let i=0;i<blobs.length;i++){starts.push(t0+acc);if(durs[i]>0)acc+=durs[i]+gapSec;}
+  (async()=>{
+    for(let i=0;i<blobs.length&&!stopped;i++){
+      if(!(durs[i]>0))continue;
+      // wait until ~10s before this piece is due
+      while(!stopped&&ctx.currentTime<starts[i]-10){await new Promise(r=>setTimeout(r,500));}
+      if(stopped)break;
+      try{
+        const buf=await ctx.decodeAudioData(await blobs[i].arrayBuffer());
+        const src=ctx.createBufferSource();src.buffer=buf;
+        for(const d of dests)src.connect(d);
+        src.start(Math.max(ctx.currentTime,starts[i]));
+        live.push(src);
+        src.onended=()=>{try{src.disconnect();}catch(e){};const k=live.indexOf(src);if(k>=0)live.splice(k,1);};
+      }catch(e){}
+    }
+  })();
+  return {total:acc,stop:()=>{stopped=true;for(const s of live){try{s.stop();}catch(e){}}}};
+}
+
 async function proxyFetch(body){
   const controller=new AbortController();
   const timeout=setTimeout(()=>controller.abort(),55000);
@@ -238,23 +343,7 @@ const getStorageStatus=async()=>{
   return {used:0,quota:1,pct:0};
 };
 // Remove oldest clips until we're back under the safe threshold (keeps render_final + newest).
-const autoPruneClips=async(keepNewest)=>{
-  try{
-    const all=await getAllClipsFromDB();
-    if(all.length<=keepNewest)return 0;
-    // Oldest first by timestamp embedded in id (Date.now-based ids sort correctly as strings of similar length)
-    const sortable=all.filter(c=>c.id!=="render_final"&&!String(c.id).startsWith("poc_"));
-    sortable.sort((a,b)=>{
-      const na=parseInt(String(a.id).replace(/\D/g,""))||0;
-      const nb=parseInt(String(b.id).replace(/\D/g,""))||0;
-      return na-nb;
-    });
-    const removeCount=Math.max(0,sortable.length-keepNewest);
-    let removed=0;
-    for(let i=0;i<removeCount;i++){await deleteClipFromDB(sortable[i].id);removed++;}
-    return removed;
-  }catch(e){return 0;}
-};
+const autoPruneClips=async(keepNewest)=>{ return 0; }; // never deletes user work
 // Guarded save — frees space first if storage is nearly full, then saves. Never silently crashes.
 const safeSaveClipToDB=async(id,blob,name,type)=>{
   try{
@@ -288,29 +377,14 @@ const getStoragePct=async()=>{
   }catch(e){}
   return 0;
 };
+// NEVER deletes your work. The old version ran on every app open and, once
+// storage passed 75% (a finished render easily does that), deleted your OLDEST
+// clips - recordings, images, scenes - with no warning. That was the wipe.
+// Now it only asks the browser to keep this site's storage permanently.
 const autoFreeStorage=async()=>{
-  try{
-    let pct=await getStoragePct();
-    // If over 75% full, drop oldest clips until under 60% (keeps recent work)
-    if(pct<0.75)return {freed:0,pct};
-    const clips=await getAllClipsFromDB();
-    // oldest first — ids that start with a timestamp sort naturally; fall back to insertion order
-    const sorted=[...clips].sort((a,b)=>{
-      const an=parseInt(String(a.id).replace(/\D/g,""))||0;
-      const bn=parseInt(String(b.id).replace(/\D/g,""))||0;
-      return an-bn;
-    });
-    let freed=0;
-    for(const c of sorted){
-      if(c.id==="render_final")continue; // never delete the finished film
-      if(String(c.id).startsWith("poc_"))continue; // never delete showcase proof-of-concept films
-      await deleteClipFromDB(c.id);
-      freed++;
-      pct=await getStoragePct();
-      if(pct<0.60)break;
-    }
-    return {freed,pct};
-  }catch(e){return {freed:0,pct:0};}
+  try{ if(navigator.storage&&navigator.storage.persist){ await navigator.storage.persist(); } }catch(e){}
+  let pct=0; try{ pct=await getStoragePct(); }catch(e){}
+  return {freed:0,pct};
 };
 
 const GOLD = "#C8A54B";
@@ -2245,50 +2319,47 @@ function P6Voice({ onSave, setMediaLib }) {
   // Record just the first paragraph in your own voice; the engine clones it
   // and reads the WHOLE narration script (the YOUR NARRATION SCRIPT box) in
   // your voice, then saves it to the media library / timeline for the render.
+  const [narrStep,setNarrStep]=useState("");
+  // YOUR recording plays first, in your real voice. The engine clones your voice
+  // and reads the REST of the script (everything after what you recorded). Both
+  // are saved together so the render plays: you -> engine, the whole script.
   const engineCompleteNarration=async()=>{
-    const mine=myVoices.find(v=>v.id===selVoice);
-    if(!mine){alert("Record or pick your own voice first.");return;}
+    const mine=myVoices.find(v=>v.id===selVoice)||myVoices[myVoices.length-1];
+    if(!mine){alert("Record your voice first.");return;}
     const script=(text||"").trim();
     if(!script){alert("Paste your narration into YOUR NARRATION SCRIPT first.");return;}
-    setNarrBusy(true);
+    setNarrBusy(true);setNarrStep("Reading your recording…");
     try{
+      let blob=null;
+      try{const st=await loadClipFromDB(mine.dbId||mine.id);if(st&&st.blob)blob=st.blob;}catch(e){}
+      if(!blob&&mine.url){try{blob=await (await fetch(mine.url)).blob();}catch(e){}}
+      if(!blob){setNarrBusy(false);setNarrStep("");alert("Could not find that recording's audio — record it again.");return;}
+      const recSecs=await msBlobSeconds(blob);
       let vid=mine.clonedVoiceId;
       if(!vid){
-        let blob=null;
-        try{const st=await loadClipFromDB(mine.dbId||mine.id);if(st&&st.blob)blob=st.blob;}catch(e){}
-        if(!blob&&mine.url){try{blob=await (await fetch(mine.url)).blob();}catch(e){}}
-        if(!blob){setNarrBusy(false);alert("Could not find that recording's audio — try recording again.");return;}
+        setNarrStep("Cloning your voice…");
         const dataUri=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(blob);});
         vid=await engineCloneVoice(dataUri);
-        if(!vid){setNarrBusy(false);alert("Voice clone did not complete. Check the engine has credit, then try again.");return;}
+        if(!vid){setNarrBusy(false);setNarrStep("");alert("Voice clone did not complete. Nothing was saved. Check the voice engine has credit, then try again.");return;}
         const upd=myVoices.map(v=>v.id===mine.id?{...v,clonedVoiceId:vid,engineVoice:vid}:v);
         setMyVoices(upd);
         try{localStorage.setItem("ms_my_voices",JSON.stringify(upd.map(v=>({...v,url:undefined}))));}catch{}
       }
-      // Bake the WHOLE script in the cloned voice. engineSpeak caps each call at
-      // 3500 chars, so a long documentary script was being cut to ~3 minutes.
-      // Chunk the full script sentence-by-sentence, voice every chunk, and stitch
-      // them into one audio file — the complete narration, however long.
+      const remainder=msRemainderAfterRecording(script,recSecs);
+      if(!remainder){setNarrBusy(false);setNarrStep("");alert("Your recording already covers the whole script — the render will use it as it is.");return;}
+      const res=await msVoiceText(remainder,{voice:vid},(i,n)=>setNarrStep("Engine reading the rest — part "+i+" of "+n+"…"));
+      if(!res.parts.length){setNarrBusy(false);setNarrStep("");alert("The engine returned no audio. Nothing was saved. Check the voice engine has credit, then try again.");return;}
+      setNarrStep("Saving…");
       const id="narr_myvoice_full_"+Date.now();
-      const asset={id,name:"Full Narration (my cloned voice) - "+new Date().toLocaleTimeString(),type:"audio/myvoice",dbId:id,clonedVoiceId:vid,engineVoice:vid,narrText:script,date:new Date().toISOString()};
-      let buf=null;
-      try{
-        const parts=[];
-        const chunks=buildChunks(script).filter(c=>c&&c.text);
-        for(const c of chunks){
-          const u=await engineSpeak(c.text,{voice:vid});
-          if(!u)continue;
-          try{ const r=await fetch(u); parts.push(await r.blob()); }catch(e){}
-        }
-        if(parts.length) buf=new Blob(parts,{type:parts[0].type||"audio/mpeg"});
-      }catch(e){}
-      if(buf){try{await safeSaveClipToDB(id,buf,asset.name,"audio/myvoice");}catch(e){}}
+      for(let i=0;i<res.parts.length;i++){ try{await saveClipToDB(id+"_p"+i,res.parts[i],"narration part "+(i+1),"audio/mpeg");}catch(e){} }
+      try{await safeSaveClipToDB(id,new Blob(res.parts,{type:res.parts[0].type||"audio/mpeg"}),"Full Narration","audio/myvoice");}catch(e){}
+      const asset={id,name:"Full Narration (you + engine) - "+new Date().toLocaleTimeString(),type:"audio/myvoice",dbId:id,clonedVoiceId:vid,engineVoice:vid,narrText:script,remainderText:remainder,leadRecordingId:mine.dbId||mine.id,partCount:res.parts.length,stitched:true,date:new Date().toISOString()};
       if(onSave)onSave(asset);
       if(setMediaLib)setMediaLib(p=>[...p,asset]);
-      setNarrBusy(false);
-      setSavedToLib(true); // STAYS on screen until you leave/reset — no 3s auto-clear
-      alert("Done — the engine narrated your full script in your voice and saved it to the timeline for the render.");
-    }catch(e){setNarrBusy(false);alert("Could not complete the narration — try again.");}
+      setNarrBusy(false);setNarrStep("");
+      setSavedToLib(true);
+      alert(res.failed?("Saved — but "+res.failed+" of "+res.total+" parts failed to voice. Press the button again to redo it."):"Done — your recording plays first, then the engine reads the rest of your script in your voice. Saved for the render.");
+    }catch(e){setNarrBusy(false);setNarrStep("");alert("Could not complete the narration — try again.");}
   };
 
   useEffect(()=>{
@@ -2480,7 +2551,7 @@ function P6Voice({ onSave, setMediaLib }) {
               </div>
               {(<>
                 <button onClick={saveMyVoiceAsNarration} style={{width:"100%",background:GOLD,border:"none",color:"#000",padding:"11px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif",marginBottom:6}}>Use my voice as narration</button>
-                <button onClick={engineCompleteNarration} disabled={narrBusy} style={{width:"100%",background:narrBusy?"#211A0E":"#171208",border:"2px solid "+SIGNAL,color:GOLD,padding:"11px",cursor:narrBusy?"wait":"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif",marginBottom:6}}>{narrBusy?"⟳ CLONING & COMPLETING…":"Use engine to complete full narration"}</button>
+                <button onClick={engineCompleteNarration} disabled={narrBusy} style={{width:"100%",background:narrBusy?"#211A0E":"#171208",border:"2px solid "+SIGNAL,color:GOLD,padding:"11px",cursor:narrBusy?"wait":"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif",marginBottom:6}}>{narrBusy?("⟳ "+(narrStep||"CLONING & COMPLETING…")):"Use engine to complete full narration"}</button>
               </>)}
             </>)}
             {myVoices.map(v=>(
@@ -2962,9 +3033,8 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
         setMmmStage("MandaStrong Cinema Engine — narrating your script…");
         const _mv=(typeof VOICE_CHARACTERS!=="undefined")?VOICE_CHARACTERS.find(v=>v.id===mmmVoiceId):null;
         const meta={voice:_mv?.engineVoice||mmmVoiceId,gender:_mv?.gender||"",origin:_mv?.origin||"",speed:_mv?.rate||1};
-        const chunks=(typeof buildChunks==="function"?buildChunks(source):[{text:source}]).filter(c=>c&&c.text);
-        const parts=[];
-        for(const c of chunks){ try{ const u=await engineSpeak(c.text,meta); if(u){ const b=await (await fetch(u)).blob(); parts.push(b);} }catch(e){} }
+        const vr=await msVoiceText(source,meta,(i,n)=>setMmmStage("MandaStrong Cinema Engine — narrating your script, part "+i+" of "+n+"…"));
+        const parts=vr.parts;
         if(parts.length){ narrUrl=URL.createObjectURL(new Blob(parts,{type:parts[0].type||"audio/mpeg"})); try{localStorage.setItem("ms_mmm_narr",narrUrl);}catch(e){} }
       }catch(e){}
     }
@@ -3281,26 +3351,31 @@ Write the drawFrame body now.`}]
         // Photo mode: draw photo base first, then AI atmospheric overlay
         const mainImg=loadedRefImages[0];
         drawFrame=new Function("ctx","W","H","t","sec","loadedRefImages",`
-          // Photo base — Ken Burns push-in
-          const pushIn=1+t*0.05;
-          const driftX=Math.sin(sec*0.08)*6;
-          const driftY=Math.cos(sec*0.06)*3;
-          const img=loadedRefImages[0].img;
-          if(img){
-            const ar=loadedRefImages[0].w/loadedRefImages[0].h;
-            const targetAR=W/H;
+          // DOCUMENTARY SHOTS: ONE photo full-screen at a time. With several
+          // photos the clip cuts between them in order (soft crossfade), each
+          // with its own slow push-in. Before this, photos 2-6 floated on top
+          // of photo 1 as small moving panels - four images at once.
+          const N=loadedRefImages.length;
+          const seg=1/N;
+          const idx=Math.min(N-1,Math.floor(t/seg));
+          const local=(t-idx*seg)/seg;
+          const drawShot=(ri,lt,dir)=>{
+            if(!ri||!ri.img)return;
+            const pushIn=1.04+lt*0.08;
+            const ar=ri.w/ri.h, targetAR=W/H;
             let dw,dh;
             if(ar>targetAR){dh=H*pushIn;dw=dh*ar;}else{dw=W*pushIn;dh=dw/ar;}
-            ctx.drawImage(img,(W-dw)/2+driftX,(H-dh)/2+driftY,dw,dh);
+            const driftX=dir*W*0.025*lt;
+            ctx.drawImage(ri.img,(W-dw)/2-driftX,(H-dh)/2,dw,dh);
+          };
+          ctx.globalAlpha=1;
+          drawShot(loadedRefImages[idx],local,idx%2===0?1:-1);
+          // crossfade into the next shot over the last 12% of this one
+          if(idx<N-1&&local>0.88){
+            ctx.globalAlpha=(local-0.88)/0.12;
+            drawShot(loadedRefImages[idx+1],0,(idx+1)%2===0?1:-1);
+            ctx.globalAlpha=1;
           }
-          // Additional photos as foreground layers
-          loadedRefImages.slice(1).forEach((ri,li)=>{
-            if(!ri||!ri.img)return;
-            const lw=W*0.38;const lh=lw*(ri.h/ri.w);
-            const lx=W*(0.22+li*0.28)+Math.sin(sec*0.4+li)*4;
-            const ly=H*0.5+Math.cos(sec*0.3+li)*3;
-            ctx.globalAlpha=0.85;ctx.drawImage(ri.img,lx-lw/2,ly-lh/2,lw,lh);ctx.globalAlpha=1;
-          });
           // AI atmospheric overlay
           ${drawFnBody}
         `);
@@ -5173,7 +5248,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
       return c2;
     };
     const timelineClips = getVideoClips(); // already in timeline order (falls back to mediaLib)
-    const hasTimeline = Object.values(timeline||{}).flat().some(a=>a&&a.type&&a.type.startsWith("video"));
+    const hasTimeline = Object.values(timeline||{}).flat().some(a=>a&&a.type&&(a.type.startsWith("video")||a.type.startsWith("image")));
     if(timelineClips.length>0){
       freshClips = timelineClips.map(relink);
       log("Loaded "+freshClips.length+" clips in timeline order");
@@ -5181,11 +5256,22 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
       freshClips = dbClipsAll.map(c2=>({id:c2.id,name:c2.name,type:c2.type||"video/webm",url:URL.createObjectURL(c2.blob),file:new File([c2.blob],c2.name,{type:c2.type||"video/webm"}),dbId:c2.id}));
       log("Loaded "+freshClips.length+" clips from storage");
     }
-    if(freshClips.length>0){ setMediaLib(freshClips); }
+    // MERGE, never replace. Replacing the library with just the render clips
+    // wiped your recordings, narration and other assets out of the library.
+    if(freshClips.length>0){
+      setMediaLib(prev=>{
+        const k=(x)=>String(x&&(x.dbId||x.id)||"")+"|"+String(x&&x.name||"");
+        const fresh=new Map(freshClips.map(c2=>[k(c2),c2]));
+        const out=(prev||[]).map(a=>fresh.has(k(a))?{...a,...fresh.get(k(a))}:a);
+        const have=new Set(out.map(k));
+        for(const c2 of freshClips){ if(!have.has(k(c2))) out.push(c2); }
+        return out;
+      });
+    }
 
     // Fall back to current mediaLib if nothing resolved.
     // Accept mp4 AND webm here too, or webm clips get dropped from the render.
-    const isVidClip=(c2)=>c2&&c2.type&&(c2.type.startsWith("video")||((c2.type.includes("webm")||c2.type.includes("mp4"))&&!c2.type.startsWith("audio")));
+    const isVidClip=(c2)=>c2&&c2.type&&(c2.type.startsWith("video")||c2.type.startsWith("image")||((c2.type.includes("webm")||c2.type.includes("mp4"))&&!c2.type.startsWith("audio")));
     let clips = freshClips.length > 0 ? freshClips.filter(isVidClip) : getVideoClips();
     // ── EXCLUDE old rendered films and empty clips ──────────────────────────
     // A previously-rendered "InFuture_Film..." file in the library has no real
@@ -5224,41 +5310,94 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
       const audioDest=audioCtx.createMediaStreamDestination();
       let audioSource=null,audioBuffer=null;
       let liveNarration=false;
+      let narrSeq=null, narrPlayer=null;
       if(audioAsset){
         // ── CLONED-VOICE FULL NARRATION ──────────────────────────────────────
         // If the audio asset carries a clone id + the script text (from page 6's
         // "USE ENGINE TO COMPLETE FULL NARRATION"), narrate the WHOLE script through
         // the engine in the cloned voice and bake it in. Falls back to the stored
         // recording if the clone can't be reached.
-        if(audioAsset.clonedVoiceId&&audioAsset.narrText){
+        // ── FULL NARRATION: YOUR RECORDING, THEN THE ENGINE FINISHES IT ──────
+        // Plays your own recording first, in your real voice, then the engine's
+        // clone of your voice reads the rest of the script. Also kicks in when
+        // you picked your plain recording but said YES to the engine finishing
+        // it on page 6 - before, the film just stopped after your paragraph.
+        const _consentYes=(()=>{try{return localStorage.getItem("ms_clone_consent")==="yes"||localStorage.getItem("ms_narr_consent")==="yes";}catch(e){return false;}})();
+        const _script=(()=>{try{return (localStorage.getItem("ms_narr_text")||"").trim();}catch(e){return "";}})();
+        const _isOwnRec=audioAsset.type==="audio/myvoice"&&!audioAsset.clonedVoiceId;
+        if((audioAsset.clonedVoiceId&&audioAsset.narrText)||(_isOwnRec&&_consentYes&&_script)){
           try{
-            if(renderLanguage){ log("Translating narration into "+renderLanguage+"..."); }
-            log("Baking FULL narration in your cloned voice...");
-            const narrForLang=await translateText(audioAsset.narrText,renderLanguage);
-            const cChunks=buildChunks(narrForLang);
-            const decoded=[];
-            for(const c of cChunks){
-              if(!c||!c.text) continue;
-              const u=await engineSpeak(c.text,{voice:audioAsset.clonedVoiceId,gender:audioAsset.gender||"Female",origin:audioAsset.origin||"British",language:renderLanguage});
-              if(!u) continue;
-              try{ const r=await fetch(u); const ab=await r.arrayBuffer(); decoded.push(await audioCtx.decodeAudioData(ab)); }catch(e){}
+            const blobs=[];
+            const loadBlob=async(id)=>{try{const st=await loadClipFromDB(id);return st&&st.blob?st.blob:null;}catch(e){return null;}};
+            const voiceIt=async(txt,vid)=>{
+              const r=await msVoiceText(txt,{voice:vid,language:renderLanguage},(i,n)=>log("  Engine voicing part "+i+" of "+n+"..."));
+              if(r.failed)log("  Warning: "+r.failed+" of "+r.total+" narration parts failed to voice");
+              return r.parts;
+            };
+            if(renderLanguage){
+              // Another language: the engine reads the WHOLE script in your cloned voice.
+              let vid=audioAsset.clonedVoiceId||"";
+              if(!vid){const lb=await loadBlob(audioAsset.dbId||audioAsset.id);if(lb){const du=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(lb);});vid=await engineCloneVoice(du);}}
+              log("Translating narration into "+renderLanguage+"...");
+              const tr=await translateText(audioAsset.narrText||_script,renderLanguage);
+              if(vid)blobs.push(...await voiceIt(tr,vid));
+            } else if(audioAsset.clonedVoiceId&&audioAsset.narrText&&!audioAsset.stitched){
+              // Older full narration (whole script in the cloned voice).
+              const whole=await loadBlob(audioAsset.dbId||audioAsset.id);
+              if(whole)blobs.push(whole);else blobs.push(...await voiceIt(audioAsset.narrText,audioAsset.clonedVoiceId));
+            } else if(audioAsset.stitched){
+              const lead=await loadBlob(audioAsset.leadRecordingId);
+              if(lead)blobs.push(lead);else log("  Your recording wasn't found — engine reads from where it would have ended");
+              const parts=[];
+              for(let i=0;i<(audioAsset.partCount||0);i++){const pb=await loadBlob((audioAsset.dbId||audioAsset.id)+"_p"+i);if(pb)parts.push(pb);}
+              if(parts.length)blobs.push(...parts);
+              else blobs.push(...await voiceIt(audioAsset.remainderText||audioAsset.narrText,audioAsset.clonedVoiceId));
+            } else {
+              // Plain recording + YES on page 6: finish it now.
+              log("Your recording + engine finishing the script...");
+              const lead=await loadBlob(audioAsset.dbId||audioAsset.id);
+              if(lead){
+                blobs.push(lead);
+                const recSecs=await msBlobSeconds(lead);
+                const remainder=msRemainderAfterRecording(_script,recSecs);
+                if(remainder){
+                  let vid="";
+                  try{const mv=JSON.parse(localStorage.getItem("ms_my_voices")||"[]");const m=mv.find(v=>v&&v.clonedVoiceId&&((v.dbId&&v.dbId===(audioAsset.dbId||audioAsset.id))||v.id===audioAsset.id));if(m)vid=m.clonedVoiceId;}catch(e){}
+                  if(!vid){
+                    log("  Cloning your voice...");
+                    const du=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(lead);});
+                    vid=await engineCloneVoice(du);
+                  }
+                  if(vid){
+                    const parts=await voiceIt(remainder,vid);
+                    blobs.push(...parts);
+                    // Keep it, so the next render doesn't voice it all again.
+                    if(parts.length){
+                      try{
+                        const nid="narr_myvoice_full_"+Date.now();
+                        for(let i=0;i<parts.length;i++){await saveClipToDB(nid+"_p"+i,parts[i],"narration part "+(i+1),"audio/mpeg");}
+                        const na={id:nid,name:"Full Narration (you + engine) - "+new Date().toLocaleTimeString(),type:"audio/myvoice",dbId:nid,clonedVoiceId:vid,engineVoice:vid,narrText:_script,remainderText:remainder,leadRecordingId:audioAsset.dbId||audioAsset.id,partCount:parts.length,stitched:true,date:new Date().toISOString()};
+                        setMediaLib(p=>[...(p||[]),na]);
+                      }catch(e){}
+                    }
+                  } else log("  Voice clone failed — check the voice engine has credit");
+                }
+              }
             }
-            if(decoded.length){
-              const total=decoded.reduce((s,b)=>s+b.duration,0);
-              const merged=audioCtx.createBuffer(1,Math.max(1,Math.ceil(total*audioCtx.sampleRate)),audioCtx.sampleRate);
-              const out=merged.getChannelData(0); let off=0;
-              for(const b of decoded){ out.set(b.getChannelData(0),Math.floor(off*audioCtx.sampleRate)); off+=b.duration; }
-              audioBuffer=merged;
-              log("Full narration baked in your cloned voice:"+total.toFixed(1)+"s");
+            if(blobs.length){
+              const durs=await msMeasureSequence(audioCtx,blobs);
+              const total=durs.reduce((x,y)=>x+(y>0?y+0.4:0),0);
+              if(total>0){
+                narrSeq={blobs,durs,total};
+                log("Full narration ready: "+(total/60).toFixed(1)+" min ("+blobs.length+" part"+(blobs.length!==1?"s":"")+")");
+              }
             }
-          }catch(e){log("Cloned-voice narration error — trying the recording: "+e.message);}
-          // Fall through to the recording if the clone produced nothing.
-          if(!audioBuffer){
+          }catch(e){log("Full narration error: "+e.message);}
+          // Last resort: just your recording.
+          if(!narrSeq){
             try{
-              const dbId=audioAsset.dbId||audioAsset.id;
-              let audioBlob=null;
-              if(dbId){const stored=await loadClipFromDB(dbId);if(stored&&stored.blob)audioBlob=stored.blob;}
-              if(audioBlob){const arrayBuf=await audioBlob.arrayBuffer();audioBuffer=await audioCtx.decodeAudioData(arrayBuf);log("Played your recording instead:"+audioBuffer.duration.toFixed(1)+"s");}
+              const stored=await loadClipFromDB(audioAsset.leadRecordingId||audioAsset.dbId||audioAsset.id);
+              if(stored&&stored.blob){audioBuffer=await audioCtx.decodeAudioData(await stored.blob.arrayBuffer());log("Played your recording only:"+audioBuffer.duration.toFixed(1)+"s");}
             }catch(e){}
           }
         } else
@@ -5393,6 +5532,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
         }catch(e){}
       },Math.round(1000/fps));
       if(audioSource)audioSource.start(0);
+      if(narrSeq){narrPlayer=msPlaySequence(audioCtx,[audioDest,audioCtx.destination],narrSeq.blobs,narrSeq.durs,0.4);}
       if(musicSource){try{musicSource.start(0);}catch(e){}}
       // Live-speak fallback ONLY when the engine bake could not deliver audio.
       if(liveNarration&&audioAsset?.text){
@@ -5465,7 +5605,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
       // clip can hold as long as the slider needs. If the slider is somehow unset,
       // fall back to the narration length, then to natural clip lengths.
       const sliderSecs = (Number(filmDuration)>0 ? Number(filmDuration)*60 : 0);
-      const narrationSecs = audioBuffer ? audioBuffer.duration : 0;
+      const narrationSecs = narrSeq ? narrSeq.total : (audioBuffer ? audioBuffer.duration : 0);
       const targetTotal = narrationSecs>0 ? narrationSecs : sliderSecs;
       let perClipTarget = 0; // 0 = use each clip's natural duration
       if(targetTotal>0 && clips.length>0){
@@ -5641,6 +5781,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
       try{clearInterval(dataInterval);}catch(e){}
       try{clearInterval(heartbeat);}catch(e){}
       if(audioSource){try{audioSource.stop();}catch(e){}}
+      if(narrPlayer){try{narrPlayer.stop();}catch(e){}}
       if(musicSource){try{musicSource.stop();}catch(e){}}
       // Flush any final data before stopping
       try{if(recorder.state==="recording")recorder.requestData();}catch(e){}
