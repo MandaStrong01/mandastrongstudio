@@ -4114,7 +4114,7 @@ async function pexelsClip(query){
     if(url) pexelsCache[query] = url;
     return url;
   }catch(e){ return null; }
-}i
+}
 
 
 function Frame({ seed, local, vid, localVid, query, label, sub, dur, h=160, onClick }) {
@@ -5404,7 +5404,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
               const durs=await msMeasureSequence(audioCtx,blobs);
               const total=durs.reduce((x,y)=>x+(y>0?y+0.4:0),0);
               if(total>0){
-                narrSeq={blobs,durs,total};l
+                narrSeq={blobs,durs,total};
                 log("Full narration ready: "+(total/60).toFixed(1)+" min ("+blobs.length+" part"+(blobs.length!==1?"s":"")+")");
               }
             }
