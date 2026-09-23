@@ -7142,15 +7142,139 @@ function IntroDoors({ onEnter }){
 // Keep existing clients: anyone who opens an OLD address is sent to the current
 // live site, so bookmarks and shared links never break.
 const CURRENT_SITE="https://infutura.bolt.host";
+const OLD_HOSTS=["infuturem0viestudi0s.bolt.host","infuturem0viestudi0.bolt.host","infuturemoviestudios.bolt.host","infuturemoviestudio.bolt.host","mandastrongmovies-101.bolt.host","mandastrongmovies101.bolt.host","mandastrongstudio2026.bolt.host","mandastrong-01.bolt.host","mandastrong01.bolt.host"];
+// ── RESCUE: your work is saved in the browser UNDER THE ADDRESS you used. ──
+// Work done on an old address stays filed under that address. The old
+// redirect sent you away before you could reach it, so My Projects looked
+// empty on infutura. Now an old address that still holds your work shows a
+// MOVE MY WORK screen instead of bouncing you. Nothing is deleted anywhere.
+const msHasSavedWork=()=>{
+  try{
+    const keys=["ms_project_history","ms_timeline","ms_medialib","ms_narr_text","ms_my_voices","ms_mmm_text","ms_render_brief","ms_writing_boxes"];
+    for(const k of keys){const v=localStorage.getItem(k);if(v&&v!=="[]"&&v!=="{}"&&v!=="\"\""&&v!=="null"&&v.length>2)return true;}
+  }catch(e){}
+  return false;
+};
+let MS_RESCUE=false;
+let MS_RECEIVING=false;
 if(typeof window!=="undefined"){
   try{
     const h=(location.host||"").toLowerCase();
-    const OLD=["infuturem0viestudi0s.bolt.host","infuturem0viestudi0.bolt.host","infuturemoviestudios.bolt.host","infuturemoviestudio.bolt.host","mandastrongmovies-101.bolt.host","mandastrongmovies101.bolt.host","mandastrongstudio2026.bolt.host","mandastrong-01.bolt.host","mandastrong01.bolt.host"];
-    if(OLD.includes(h)){ location.replace(CURRENT_SITE+location.pathname+location.search); }
+    const q=new URLSearchParams(location.search||"");
+    if(OLD_HOSTS.includes(h)){
+      let stay=false;try{stay=q.has("stay")||sessionStorage.getItem("ms_stay")==="1";if(stay)sessionStorage.setItem("ms_stay","1");}catch(e){}
+      let moved=false;try{moved=localStorage.getItem("ms_moved_to_infutura")==="1";}catch(e){}
+      if(stay){ /* work here on the old address */ }
+      else if(!moved&&msHasSavedWork()){ MS_RESCUE=true; }
+      else { location.replace(CURRENT_SITE+location.pathname+location.search); }
+    }
+    // RECEIVER: infutura opened by the old address's MOVE MY WORK button.
+    if(!OLD_HOSTS.includes(h)&&q.has("receive")&&window.opener){
+      MS_RECEIVING=true;
+      const okOrigins=OLD_HOSTS.map(x=>"https://"+x);
+      const cover=document.createElement("div");
+      cover.style.cssText="position:fixed;inset:0;z-index:2147483647;background:#0D0B06;color:#C8A54B;display:flex;align-items:center;justify-content:center;font:600 18px system-ui;text-align:center;padding:24px";
+      cover.textContent="Receiving your work… keep this tab open.";
+      const addCover=()=>{try{document.body.appendChild(cover);}catch(e){}};
+      if(document.body)addCover();else document.addEventListener("DOMContentLoaded",addCover);
+      let got=false;
+      const ping=setInterval(()=>{try{if(!got)window.opener.postMessage({type:"ms_ready"},"*");}catch(e){}},500);
+      window.addEventListener("message",async(e)=>{
+        if(!okOrigins.includes(e.origin))return;
+        const d=e.data||{};
+        if(d.type!=="ms_transfer"||got)return;
+        got=true;clearInterval(ping);
+        let projects=0,clipsIn=0;
+        try{
+          const ls=d.ls||{};
+          for(const k of Object.keys(ls)){
+            if(!k.startsWith("ms_")||k==="ms_page"||k==="ms_moved_to_infutura")continue;
+            const incoming=ls[k];
+            if(k==="ms_project_history"){
+              let mine=[],theirs=[];
+              try{mine=JSON.parse(localStorage.getItem(k)||"[]");}catch(x){}
+              try{theirs=JSON.parse(incoming||"[]");}catch(x){}
+              const key=(p)=>String(p&&p.name)+"|"+String(p&&p.date);
+              const have=new Set(mine.map(key));
+              const merged=[...theirs.filter(p=>!have.has(key(p))),...mine];
+              projects=theirs.length;
+              localStorage.setItem(k,JSON.stringify(merged));
+              continue;
+            }
+            const cur=localStorage.getItem(k);
+            if(!cur||cur==="[]"||cur==="{}"||cur==="\"\""||cur==="null")localStorage.setItem(k,incoming);
+          }
+        }catch(x){}
+        try{
+          const db=await openDB();
+          const existing=await new Promise((res)=>{const tx=db.transaction(STORE,"readonly");const r=tx.objectStore(STORE).getAllKeys();r.onsuccess=()=>res(new Set(r.result||[]));r.onerror=()=>res(new Set());});
+          for(const c of (d.clips||[])){
+            if(!c||!c.id||existing.has(c.id))continue;
+            await new Promise((res)=>{const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).put(c);tx.oncomplete=res;tx.onerror=res;});
+            clipsIn++;
+          }
+        }catch(x){}
+        try{e.source.postMessage({type:"ms_done",projects,clips:clipsIn},e.origin);}catch(x){}
+        cover.textContent="Done — "+projects+" project(s) and "+clipsIn+" file(s) moved. Opening…";
+        setTimeout(()=>location.replace(CURRENT_SITE+"/"),1500);
+      });
+    }
   }catch(e){}
 }
 
-export default function App() {
+function RescueScreen(){
+  const [state,setState]=useState("idle");
+  const [msg,setMsg]=useState("");
+  const count=(()=>{try{return JSON.parse(localStorage.getItem("ms_project_history")||"[]").length;}catch(e){return 0;}})();
+  const moveIt=()=>{
+    const w=window.open(CURRENT_SITE+"/?receive=1","_blank");
+    if(!w){setMsg("Your browser blocked the new tab. Tap OPEN MY WORK HERE instead — nothing is lost.");return;}
+    setState("moving");setMsg("Opening infutura and copying your work…");
+    let sent=false;
+    const onMsg=async(e)=>{
+      if(e.origin!==CURRENT_SITE)return;
+      const d=e.data||{};
+      if(d.type==="ms_ready"&&!sent){
+        sent=true;
+        const ls={};
+        try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith("ms_"))ls[k]=localStorage.getItem(k);}}catch(x){}
+        let clips=[];try{clips=await getAllClipsFromDB();}catch(x){}
+        setMsg("Sending "+count+" project(s) and "+clips.length+" file(s)…");
+        try{w.postMessage({type:"ms_transfer",ls,clips},CURRENT_SITE);}catch(x){setMsg("Couldn't send: "+x.message);sent=false;}
+      }
+      if(d.type==="ms_done"){
+        window.removeEventListener("message",onMsg);
+        try{localStorage.setItem("ms_moved_to_infutura","1");}catch(x){}
+        setState("done");
+        setMsg("Done — "+d.projects+" project(s) and "+d.clips+" file(s) are now on infutura. Your copy here is kept too.");
+      }
+    };
+    window.addEventListener("message",onMsg);
+  };
+  const stayHere=()=>{try{sessionStorage.setItem("ms_stay","1");}catch(e){}location.reload();};
+  const btn={width:"100%",padding:"16px",fontSize:15,fontWeight:700,cursor:"pointer",marginTop:12,fontFamily:"system-ui,sans-serif"};
+  return (
+    <div style={{minHeight:"100vh",background:"#0D0B06",color:"#EDE6D3",display:"flex",alignItems:"center",justifyContent:"center",padding:16,fontFamily:"system-ui,sans-serif"}}>
+      <div style={{maxWidth:460,width:"100%",textAlign:"center"}}>
+        <div style={{color:"#C8A54B",fontSize:13,fontWeight:700,letterSpacing:1}}>INFUTURE MOVIE STUDIOS</div>
+        <h1 style={{color:"#C8A54B",fontSize:24,margin:"10px 0"}}>Your work is here</h1>
+        <p style={{fontSize:15,lineHeight:1.5}}>{count} saved project{count!==1?"s":""} found on this address, plus your narration and clips.</p>
+        {state!=="done"&&<button onClick={moveIt} disabled={state==="moving"} style={{...btn,background:"#C8A54B",color:"#000",border:"none"}}>{state==="moving"?"MOVING…":"MOVE MY WORK TO INFUTURA"}</button>}
+        {state==="done"&&<button onClick={()=>location.replace(CURRENT_SITE+"/")} style={{...btn,background:"#C8A54B",color:"#000",border:"none"}}>GO TO INFUTURA</button>}
+        <button onClick={stayHere} style={{...btn,background:"#000",color:"#C8A54B",border:"2px solid #C8A54B"}}>OPEN MY WORK HERE</button>
+        {msg&&<p style={{marginTop:16,fontSize:14,color:"#C8A54B"}}>{msg}</p>}
+      </div>
+    </div>
+  );
+}
+
+export default function App(){
+  if(MS_RESCUE)return <RescueScreen/>;
+  if(MS_RECEIVING)return <div style={{minHeight:"100vh",background:"#0D0B06"}}/>;
+  return <AppMain/>;
+}
+
+function AppMain() {
   // Start on the page the user was last on — not always Page 1. iOS reloads the
   // app when it's backgrounded (stepping away, locking the screen), and before
   // this it always snapped back to Page 1. Read the saved page so it stays put.
