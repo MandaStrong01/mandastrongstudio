@@ -570,6 +570,18 @@ function ProjectHistoryModal({ onClose, onResume, initialTab }) {
   const [tab,setTab]=useState(initialTab||"in_progress");
   useEffect(()=>{try{setHistory(JSON.parse(localStorage.getItem("ms_project_history")||"[]"));}catch{};},[]);
   const del=(idx)=>{const u=history.filter((_,i)=>i!==idx);setHistory(u);localStorage.setItem("ms_project_history",JSON.stringify(u));};
+  const [findMsg,setFindMsg]=useState("");
+  const [finding,setFinding]=useState(false);
+  const findWork=async()=>{
+    setFinding(true);setFindMsg("Looking for your work on every old address…");
+    const r=await msFindMyWork((m)=>setFindMsg(m));
+    setFinding(false);
+    if(r.blocked){setFindMsg("The browser blocked the helper tab. Allow pop-ups for this site, then tap again.");return;}
+    try{setHistory(JSON.parse(localStorage.getItem("ms_project_history")||"[]"));}catch(e){}
+    if(r.projects||r.clips){setFindMsg("Found and brought back: "+r.projects+" project(s), "+r.clips+" file(s). From: "+r.found.join(", ")+". Reloading…");setTimeout(()=>location.reload(),2500);}
+    else if(r.found.length){setFindMsg("Your work from "+r.found.join(", ")+" is already here.");}
+    else setFindMsg("No saved work found on the old addresses in this browser.");
+  };
   const filtered=history.filter(h=>(h.status||"in_progress")===tab);
   const inProgressCount=history.filter(h=>(h.status||"in_progress")==="in_progress").length;
   const completedCount=history.filter(h=>h.status==="completed").length;
@@ -586,6 +598,10 @@ function ProjectHistoryModal({ onClose, onResume, initialTab }) {
         <div style={{display:"flex",borderBottom:"1px solid "+GOLDDIM,flexShrink:0}}>
           <button onClick={()=>setTab("in_progress")} style={{flex:1,background:tab==="in_progress"?"#211A0E":"transparent",border:"none",borderBottom:tab==="in_progress"?"2px solid "+SIGNAL:"none",color:tab==="in_progress"?GOLD:DIM,padding:"12px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>⟳ open project ({inProgressCount})</button>
           <button onClick={()=>setTab("completed")} style={{flex:1,background:tab==="completed"?"#211A0E":"transparent",border:"none",borderBottom:tab==="completed"?"2px solid "+SIGNAL:"none",color:tab==="completed"?GOLD:DIM,padding:"12px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>✓ my projects ({completedCount})</button>
+        </div>
+        <div style={{padding:"12px 18px 0",flexShrink:0}}>
+          <button onClick={findWork} disabled={finding} style={{width:"100%",background:GOLD,border:"none",color:"#000",padding:"13px",cursor:finding?"wait":"pointer",fontSize:13,fontWeight:700,letterSpacing:0.3,fontFamily:"'Archivo',system-ui,sans-serif"}}>{finding?"FINDING YOUR WORK…":"FIND MY WORK"}</button>
+          {findMsg&&<div style={{color:GOLD,fontSize:12,marginTop:8,lineHeight:1.5}}>{findMsg}</div>}
         </div>
         <div style={{flex:1,overflowY:"auto",padding:18}}>
           {filtered.length===0?(
@@ -4098,7 +4114,7 @@ async function pexelsClip(query){
     if(url) pexelsCache[query] = url;
     return url;
   }catch(e){ return null; }
-}
+}i
 
 
 function Frame({ seed, local, vid, localVid, query, label, sub, dur, h=160, onClick }) {
@@ -5388,7 +5404,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
               const durs=await msMeasureSequence(audioCtx,blobs);
               const total=durs.reduce((x,y)=>x+(y>0?y+0.4:0),0);
               if(total>0){
-                narrSeq={blobs,durs,total};
+                narrSeq={blobs,durs,total};l
                 log("Full narration ready: "+(total/60).toFixed(1)+" min ("+blobs.length+" part"+(blobs.length!==1?"s":"")+")");
               }
             }
@@ -7161,6 +7177,16 @@ if(typeof window!=="undefined"){
   try{
     const h=(location.host||"").toLowerCase();
     const q=new URLSearchParams(location.search||"");
+    if(q.has("sendback")&&window.opener){
+      MS_RECEIVING=true; // keep the app idle in this helper tab
+      (async()=>{
+        const ls={};
+        try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith("ms_"))ls[k]=localStorage.getItem(k);}}catch(x){}
+        let clips=[];try{clips=await getAllClipsFromDB();}catch(x){}
+        let count=0;try{count=JSON.parse(localStorage.getItem("ms_project_history")||"[]").length;}catch(x){}
+        try{window.opener.postMessage({type:"ms_transfer",ls,clips,count},CURRENT_SITE);}catch(x){}
+      })();
+    } else
     if(OLD_HOSTS.includes(h)){
       let stay=false;try{stay=q.has("stay")||sessionStorage.getItem("ms_stay")==="1";if(stay)sessionStorage.setItem("ms_stay","1");}catch(e){}
       let moved=false;try{moved=localStorage.getItem("ms_moved_to_infutura")==="1";}catch(e){}
@@ -7184,42 +7210,83 @@ if(typeof window!=="undefined"){
         const d=e.data||{};
         if(d.type!=="ms_transfer"||got)return;
         got=true;clearInterval(ping);
-        let projects=0,clipsIn=0;
-        try{
-          const ls=d.ls||{};
-          for(const k of Object.keys(ls)){
-            if(!k.startsWith("ms_")||k==="ms_page"||k==="ms_moved_to_infutura")continue;
-            const incoming=ls[k];
-            if(k==="ms_project_history"){
-              let mine=[],theirs=[];
-              try{mine=JSON.parse(localStorage.getItem(k)||"[]");}catch(x){}
-              try{theirs=JSON.parse(incoming||"[]");}catch(x){}
-              const key=(p)=>String(p&&p.name)+"|"+String(p&&p.date);
-              const have=new Set(mine.map(key));
-              const merged=[...theirs.filter(p=>!have.has(key(p))),...mine];
-              projects=theirs.length;
-              localStorage.setItem(k,JSON.stringify(merged));
-              continue;
-            }
-            const cur=localStorage.getItem(k);
-            if(!cur||cur==="[]"||cur==="{}"||cur==="\"\""||cur==="null")localStorage.setItem(k,incoming);
-          }
-        }catch(x){}
-        try{
-          const db=await openDB();
-          const existing=await new Promise((res)=>{const tx=db.transaction(STORE,"readonly");const r=tx.objectStore(STORE).getAllKeys();r.onsuccess=()=>res(new Set(r.result||[]));r.onerror=()=>res(new Set());});
-          for(const c of (d.clips||[])){
-            if(!c||!c.id||existing.has(c.id))continue;
-            await new Promise((res)=>{const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).put(c);tx.oncomplete=res;tx.onerror=res;});
-            clipsIn++;
-          }
-        }catch(x){}
+        const {projects,clips:clipsIn}=await msMergeTransfer(d);
         try{e.source.postMessage({type:"ms_done",projects,clips:clipsIn},e.origin);}catch(x){}
         cover.textContent="Done — "+projects+" project(s) and "+clipsIn+" file(s) moved. Opening…";
         setTimeout(()=>location.replace(CURRENT_SITE+"/"),1500);
       });
     }
   }catch(e){}
+}
+
+// Merges work sent from another address INTO this one. Never overwrites:
+// projects are added to the list, other boxes only fill if empty here,
+// clips are added only if this address doesn't already have them.
+async function msMergeTransfer(d){
+  let projects=0,clipsIn=0;
+  try{
+    const ls=(d&&d.ls)||{};
+    for(const k of Object.keys(ls)){
+      if(!k.startsWith("ms_")||k==="ms_page"||k==="ms_moved_to_infutura")continue;
+      const incoming=ls[k];
+      if(k==="ms_project_history"){
+        let mine=[],theirs=[];
+        try{mine=JSON.parse(localStorage.getItem(k)||"[]");}catch(x){}
+        try{theirs=JSON.parse(incoming||"[]");}catch(x){}
+        const key=(p)=>String(p&&p.name)+"|"+String(p&&p.date);
+        const have=new Set(mine.map(key));
+        const add=theirs.filter(p=>!have.has(key(p)));
+        projects=add.length;
+        localStorage.setItem(k,JSON.stringify([...add,...mine]));
+        continue;
+      }
+      const cur=localStorage.getItem(k);
+      if(!cur||cur==="[]"||cur==="{}"||cur==="\"\""||cur==="null")localStorage.setItem(k,incoming);
+    }
+  }catch(x){}
+  try{
+    const db=await openDB();
+    const existing=await new Promise((res)=>{const tx=db.transaction(STORE,"readonly");const r=tx.objectStore(STORE).getAllKeys();r.onsuccess=()=>res(new Set(r.result||[]));r.onerror=()=>res(new Set());});
+    for(const c of ((d&&d.clips)||[])){
+      if(!c||!c.id||existing.has(c.id))continue;
+      await new Promise((res)=>{const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).put(c);tx.oncomplete=res;tx.onerror=res;});
+      clipsIn++;
+    }
+  }catch(x){}
+  return {projects,clips:clipsIn};
+}
+// Every address the studio has ever lived on. FIND MY WORK checks them all.
+const FIND_HOSTS=["infuturem0viestudi0s.bolt.host","infuturem0viestudi0.bolt.host","infuturemoviestudios.bolt.host","infuturemoviestudio.bolt.host","mandsstrongmovie.bolt.host","mandastrongmovie.bolt.host","mandastrongmovies.bolt.host","mandastrongmovies-101.bolt.host","mandastrongmovies101.bolt.host","mandastrongstudio2026.bolt.host","mandastrong-01.bolt.host","mandastrong01.bolt.host"];
+// Opens each old address in ONE helper tab, one after another. Each old
+// address sends back whatever work it holds, and it is merged in here.
+async function msFindMyWork(onStep){
+  const w=window.open("about:blank","_blank");
+  if(!w)return {blocked:true,projects:0,clips:0,found:[]};
+  let projects=0,clips=0;const found=[];
+  const here=(location.host||"").toLowerCase();
+  for(const host of FIND_HOSTS){
+    if(host===here)continue;
+    if(onStep)onStep("Checking "+host+"…");
+    const origin="https://"+host;
+    const got=await new Promise((resolve)=>{
+      let done=false;
+      const fin=(v)=>{if(done)return;done=true;window.removeEventListener("message",on);clearTimeout(t);resolve(v);};
+      const on=async(e)=>{
+        if(e.origin!==origin)return;
+        const d=e.data||{};
+        if(d.type!=="ms_transfer")return;
+        const r=await msMergeTransfer(d);
+        try{e.source.postMessage({type:"ms_done",projects:r.projects,clips:r.clips},e.origin);}catch(x){}
+        fin({...r,had:(d.count||0)});
+      };
+      window.addEventListener("message",on);
+      const t=setTimeout(()=>fin(null),12000);
+      try{w.location.href=origin+"/?sendback=1";}catch(x){fin(null);}
+    });
+    if(got&&(got.had>0||got.projects>0||got.clips>0)){projects+=got.projects;clips+=got.clips;found.push(host+" ("+got.had+" project"+(got.had!==1?"s":"")+")");}
+  }
+  try{w.close();}catch(x){}
+  return {blocked:false,projects,clips,found};
 }
 
 function RescueScreen(){
