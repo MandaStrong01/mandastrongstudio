@@ -345,32 +345,10 @@ const getStorageStatus=async()=>{
 // Remove oldest clips until we're back under the safe threshold (keeps render_final + newest).
 const autoPruneClips=async(keepNewest)=>{ return 0; }; // never deletes user work
 // Guarded save — frees space first if storage is nearly full, then saves. Never silently crashes.
-// Backs up a saved clip to the server (Supabase Storage + media_files row) so it
-// survives a cleared browser or a different device. Silent no-op if signed out
-// or offline — IndexedDB above is always the source of truth for playback.
-async function serverBackupClip(id,blob,name,type){
-  try{
-    const {data:{user}}=await supabase.auth.getUser();
-    if(!user)return;
-    const path=user.id+"/"+id+"_"+encodeURIComponent(name||"clip");
-    const {error:upErr}=await supabase.storage.from("media").upload(path,blob,{upsert:true,contentType:type||"application/octet-stream"});
-    if(upErr)return;
-    const {data:pub}=supabase.storage.from("media").getPublicUrl(path);
-    const file_url=pub&&pub.publicUrl?pub.publicUrl:"";
-    if(!file_url)return;
-    await supabase.from("media_files").insert({
-      user_id:user.id,
-      file_name:String(name||id),
-      file_type:String(type||"application/octet-stream"),
-      file_url,
-      file_size:blob&&blob.size?blob.size:null
-    });
-  }catch(e){ /* server backup is best-effort — never blocks the save */ }
-}
 const safeSaveClipToDB=async(id,blob,name,type)=>{
   try{
     const s=await getStorageStatus();
-    if(s.pct>0.95){
+    if(s.pct>0.95){ 
       // Only prune if extremely full and only delete render_final files, not user source clips
       try{
         const clips=await getAllClipsFromDB();
@@ -379,11 +357,10 @@ const safeSaveClipToDB=async(id,blob,name,type)=>{
       }catch(e){}
     }
     await saveClipToDB(id,blob,name,type);
-    serverBackupClip(id,blob,name,type); // fire-and-forget, never blocks the local save
     return true;
   }catch(e){
     // If it still failed, try once more without deleting anything
-    try{ await saveClipToDB(id,blob,name,type); serverBackupClip(id,blob,name,type); return true; }
+    try{ await saveClipToDB(id,blob,name,type); return true; }
     catch(e2){ return false; }
   }
 };
@@ -1837,7 +1814,7 @@ function MusicVideoStudio({ onClose, onSave }) {
                   </div>
                   <div style={{color:GOLDDIM,fontSize:10,marginTop:4,textAlign:"center",letterSpacing:0}}>{audioFile?"Tap to replace":"or tap to browse — MP3 · WAV · M4A"}</div>
                 </div>
-                <input ref={audioInputRef} type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg" style={{display:"none"}} onChange={handleAudioUpload}/>
+                <input ref={audioInputRef} type="file" accept="audio/*,.mp3,.wav,.webm,.m4a,.aac,.ogg" style={{display:"none"}} onChange={handleAudioUpload}/>
                 <RecordYourOwnSong onRecorded={(blob,name)=>{setAudioFile(blob);const u=URL.createObjectURL(blob);setAudioUrl(u);setAudioName(name);}}/>
                 {audioFile&&<button onClick={()=>{setAudioFile(null);setAudioUrl("");setAudioName("");}} style={{background:"none",border:"1px solid #ef4444",color:"#ef4444",padding:"3px 10px",cursor:"pointer",fontSize:10,fontWeight:600,marginTop:6}}>Remove audio</button>}
                 <div onClick={()=>set("stereo",!config.stereo)} style={{display:"flex",alignItems:"center",gap:10,marginTop:14,padding:"10px 12px",background:"#171208",border:"1px solid "+(config.stereo?GOLD:GOLDDIM),cursor:"pointer"}}>
@@ -2565,7 +2542,7 @@ function P6Voice({ onSave, setMediaLib }) {
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search voices..." style={{...inp,padding:"6px 10px",fontSize:11,height:30}}/>
           </div>
           <div style={{flex:1,overflowY:"auto",padding:"6px 6px 80px"}}>
-            <input ref={myVoiceInputRef} type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg" style={{display:"none"}} onChange={e=>{const f=e.target.files&&e.target.files[0];if(f)addMyVoice(f);e.target.value="";}}/>
+            <input ref={myVoiceInputRef} type="file" accept="audio/*,.mp3,.wav,.webm,.m4a,.aac,.ogg" style={{display:"none"}} onChange={e=>{const f=e.target.files&&e.target.files[0];if(f)addMyVoice(f);e.target.value="";}}/>
             {recordingMine?(
               <div style={{display:"flex",alignItems:"center",gap:8,background:"#1a0000",border:"2px solid #ef4444",padding:"9px 12px",marginBottom:6}}>
                 <div style={{width:10,height:10,borderRadius:"50%",background:"#ef4444",boxShadow:"0 0 8px #ef4444"}}/>
@@ -7392,29 +7369,6 @@ function AppMain() {
     // Viewport — responsive for all devices
     let vp=document.querySelector("meta[name=viewport]");
     if(!vp){vp=document.createElement("meta");vp.name="viewport";document.head.appendChild(vp);}
-    // Pull down any server-backed clips this device doesn't have yet (from another
-    // device, or after clearing browser storage). Runs once per app load, silent,
-    // never blocks the UI.
-    (async()=>{
-      try{
-        const {data:{user}}=await supabase.auth.getUser();
-        if(!user)return;
-        const {data:rows,error}=await supabase.from("media_files").select("id,file_name,file_type,file_url").eq("user_id",user.id);
-        if(error||!rows||!rows.length)return;
-        const local=await getAllClipsFromDB();
-        const haveIds=new Set(local.map(c=>String(c.id)));
-        for(const row of rows){
-          const localId="server_"+row.id;
-          if(haveIds.has(localId))continue;
-          try{
-            const r=await fetch(row.file_url);
-            if(!r.ok)continue;
-            const blob=await r.blob();
-            await saveClipToDB(localId,blob,row.file_name,row.file_type);
-          }catch(e){}
-        }
-      }catch(e){}
-    })();
     // Set viewport based on device type
     const hua=navigator.userAgent.toLowerCase();
     const isHPhone=/android.*mobile|iphone|ipod/.test(hua);
