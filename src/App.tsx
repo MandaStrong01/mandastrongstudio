@@ -3624,11 +3624,11 @@ Write the drawFrame body now.`}]
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
               <div>
                 <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Style</div>
-                <select value={mmmStyle} onChange={e=>setMmmStyle(e.target.value)}
-                  style={{width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,color:GOLD,padding:"9px 12px",fontSize:12,fontFamily:"'Archivo',system-ui,sans-serif",cursor:"pointer"}}>
+                <select value={mmmStyle} onChange={e=>setMmmStyle(i
+                  style={{width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,coloriiiiiii8ii:GOLD,padding:"9px 12px",fontSize:12,fontFamily:"'Archivo',system-ui,sans-serif",cursor:"pointer"}}>
                   {RENDER_STYLES.map(s=><option key={s.id} value={s.id} style={{background:"#171208"}}>{s.label}</option>)}
                 </select>
-              </div>
+              </div>ooouuuuuui
               <div>
                 <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Genre</div>
                 <select value={mmmGenre} onChange={e=>setMmmGenre(e.target.value)}
