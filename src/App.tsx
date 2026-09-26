@@ -345,10 +345,32 @@ const getStorageStatus=async()=>{
 // Remove oldest clips until we're back under the safe threshold (keeps render_final + newest).
 const autoPruneClips=async(keepNewest)=>{ return 0; }; // never deletes user work
 // Guarded save — frees space first if storage is nearly full, then saves. Never silently crashes.
+// Backs up a saved clip to the server (Supabase Storage + media_files row) so it
+// survives a cleared browser or a different device. Silent no-op if signed out
+// or offline — IndexedDB above is always the source of truth for playback.
+async function serverBackupClip(id,blob,name,type){
+  try{
+    const {data:{user}}=await supabase.auth.getUser();
+    if(!user)return;
+    const path=user.id+"/"+id+"_"+encodeURIComponent(name||"clip");
+    const {error:upErr}=await supabase.storage.from("media").upload(path,blob,{upsert:true,contentType:type||"application/octet-stream"});
+    if(upErr)return;
+    const {data:pub}=supabase.storage.from("media").getPublicUrl(path);
+    const file_url=pub&&pub.publicUrl?pub.publicUrl:"";
+    if(!file_url)return;
+    await supabase.from("media_files").insert({
+      user_id:user.id,
+      file_name:String(name||id),
+      file_type:String(type||"application/octet-stream"),
+      file_url,
+      file_size:blob&&blob.size?blob.size:null
+    });
+  }catch(e){ /* server backup is best-effort — never blocks the save */ }
+}
 const safeSaveClipToDB=async(id,blob,name,type)=>{
   try{
     const s=await getStorageStatus();
-    if(s.pct>0.95){ 
+    if(s.pct>0.95){
       // Only prune if extremely full and only delete render_final files, not user source clips
       try{
         const clips=await getAllClipsFromDB();
@@ -357,10 +379,11 @@ const safeSaveClipToDB=async(id,blob,name,type)=>{
       }catch(e){}
     }
     await saveClipToDB(id,blob,name,type);
+    serverBackupClip(id,blob,name,type); // fire-and-forget, never blocks the local save
     return true;
   }catch(e){
     // If it still failed, try once more without deleting anything
-    try{ await saveClipToDB(id,blob,name,type); return true; }
+    try{ await saveClipToDB(id,blob,name,type); serverBackupClip(id,blob,name,type); return true; }
     catch(e2){ return false; }
   }
 };
@@ -1455,7 +1478,7 @@ function MusicVideoStudio({ onClose, onSave }) {
           const skinBot=isMale?"rgba(135,88,52,1)":"rgba(155,102,65,1)";
           // Shoulder width — male broader
           const shoulderW=isMale?H*0.075:H*0.055;
-
+llł
           if(isSilhouette){
             ctx.fillStyle="rgba(2,1,1,0.97)";
             // Head
@@ -3624,11 +3647,11 @@ Write the drawFrame body now.`}]
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
               <div>
                 <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Style</div>
-                <select value={mmmStyle} onChange={e=>setMmmStyle(i
-                  style={{width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,coloriiiiiii8ii:GOLD,padding:"9px 12px",fontSize:12,fontFamily:"'Archivo',system-ui,sans-serif",cursor:"pointer"}}>
+                <select value={mmmStyle} onChange={e=>setMmmStyle(e.target.value)}
+                  style={{width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,color:GOLD,padding:"9px 12px",fontSize:12,fontFamily:"'Archivo',system-ui,sans-serif",cursor:"pointer"}}>
                   {RENDER_STYLES.map(s=><option key={s.id} value={s.id} style={{background:"#171208"}}>{s.label}</option>)}
                 </select>
-              </div>ooouuuuuui
+              </div>
               <div>
                 <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Genre</div>
                 <select value={mmmGenre} onChange={e=>setMmmGenre(e.target.value)}
@@ -7369,6 +7392,29 @@ function AppMain() {
     // Viewport — responsive for all devices
     let vp=document.querySelector("meta[name=viewport]");
     if(!vp){vp=document.createElement("meta");vp.name="viewport";document.head.appendChild(vp);}
+    // Pull down any server-backed clips this device doesn't have yet (from another
+    // device, or after clearing browser storage). Runs once per app load, silent,
+    // never blocks the UI.
+    (async()=>{
+      try{
+        const {data:{user}}=await supabase.auth.getUser();
+        if(!user)return;
+        const {data:rows,error}=await supabase.from("media_files").select("id,file_name,file_type,file_url").eq("user_id",user.id);
+        if(error||!rows||!rows.length)return;
+        const local=await getAllClipsFromDB();
+        const haveIds=new Set(local.map(c=>String(c.id)));
+        for(const row of rows){
+          const localId="server_"+row.id;
+          if(haveIds.has(localId))continue;
+          try{
+            const r=await fetch(row.file_url);
+            if(!r.ok)continue;
+            const blob=await r.blob();
+            await saveClipToDB(localId,blob,row.file_name,row.file_type);
+          }catch(e){}
+        }
+      }catch(e){}
+    })();
     // Set viewport based on device type
     const hua=navigator.userAgent.toLowerCase();
     const isHPhone=/android.*mobile|iphone|ipod/.test(hua);
