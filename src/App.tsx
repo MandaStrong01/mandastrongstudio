@@ -433,7 +433,7 @@ const SIGNAL = "#D4AF37";
 const PANEL = "#171208";
 const PANEL2 = "#211A0E";
 const LIVE = "#FF5A4E";
-const TOTAL = 24;
+const TOTAL = 25;
 
 const STRIPE = {
   basic:"https://buy.stripe.com/cNi8wRe8a9ZtcZh7YeafS05",
@@ -7370,7 +7370,7 @@ function AppMain() {
   // this it always snapped back to Page 1. Read the saved page so it stays put.
   // Always open on page 1. Your work (timeline, clips, media) is saved separately
   // and is NOT wiped by this — only the starting page is reset to 1 each load.
-  const [page,setPage]=useState(1);
+  const [page,setPage]=useState(()=>{try{const v=JSON.parse(localStorage.getItem("ms_page")||"1");return (typeof v==="number"&&v>=1&&v<=TOTAL)?v:1;}catch{return 1;}});
   // ── CINEMATIC INTRO — gold doors open to reveal the app ──
   const [showIntro,setShowIntro]=useState(false); // doors removed - app opens straight in
   // Show the "Press to Create" splash only on a true first visit. If you were
@@ -7714,7 +7714,8 @@ function AppMain() {
       case 21: return <P21/>;
       case 22: return <P22/>;
       case 23: return <P23 go={go}/>;
-      case 24: return <P24CharacterStudio onSave={saveAsset} go={go}/>;
+      case 24: return <P23 go={go}/>;p
+      case 25: return <P24CharacterStudio onSave={saveAsset} go={go}/>;
       default: return <P1 go={go}/>;
     }
   };
