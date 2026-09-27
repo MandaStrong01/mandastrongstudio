@@ -792,7 +792,24 @@ function ToolPanel({ tool, onClose, onSave }) {
   const photoRef = useRef(null);
   const inp = {width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,padding:"9px 12px",color:WHITE,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"'Archivo',system-ui,sans-serif"};
 
-  const speak = (vid, txt) => speakText(vid, txt, ()=>setPlaying(vid), ()=>setPlaying(null));
+  const speak = async (vid, txt) => {
+    setPlaying(vid);
+    try{
+      const voiceChar = STOCK_VOICES.find(x=>x.id===vid);
+      const url = await engineSpeak(txt, {
+        voice: vid,
+        gender: voiceChar && /female/i.test(voiceChar.desc) ? "Female" : "Male",
+        origin: voiceChar && voiceChar.accent || ""
+      });
+      if(url){
+        const ok = await playEngineAudio(url, 1);
+        setPlaying(null);
+        if(ok) return;
+      }
+    }catch(e){}
+    // Engine unavailable — fall back to on-device voice so playback still works.
+    speakText(vid, txt, ()=>setPlaying(vid), ()=>setPlaying(null));
+  };
 
   const runAI = async () => {
     if (!describe.trim()) return;
@@ -7714,7 +7731,7 @@ function AppMain() {
       case 21: return <P21/>;
       case 22: return <P22/>;
       case 23: return <P23 go={go}/>;
-      case 24: return <P23 go={go}/>;p
+      case 24: return <P23 go={go}/>;
       case 25: return <P24CharacterStudio onSave={saveAsset} go={go}/>;
       default: return <P1 go={go}/>;
     }
