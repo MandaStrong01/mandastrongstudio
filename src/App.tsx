@@ -2346,7 +2346,7 @@ function P6Voice({ onSave, setMediaLib }) {
   const cloneMyVoice=async()=>{
     const mine=myVoices.find(v=>v.id===selVoice);
     if(!mine){alert("Pick or record one of your own voices first, then clone it.");return;}
-    if(mine.clonedVoiceId){alert("This voice is already cloned. Select it and the engine will narrate in your cloned voice.");return;}
+    // Always make a fresh clone: old clones expire at the voice service.
     setCloning(true);
     try{
       // Get the real audio for the sample, as a data URI the engine can read.
@@ -2391,8 +2391,8 @@ function P6Voice({ onSave, setMediaLib }) {
       if(!blob&&mine.url){try{blob=await (await fetch(mine.url)).blob();}catch(e){}}
       if(!blob){setNarrBusy(false);setNarrStep("");alert("Could not find that recording's audio — record it again.");return;}
       const recSecs=await msBlobSeconds(blob);
-      let vid=mine.clonedVoiceId;
-      if(!vid){
+      let vid="";
+      {
         setNarrStep("Cloning your voice…");
         const dataUri=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(blob);});
         vid=await engineCloneVoice(dataUri);
@@ -5392,7 +5392,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
             };
             if(renderLanguage){
               // Another language: the engine reads the WHOLE script in your cloned voice.
-              let vid=audioAsset.clonedVoiceId||"";
+              let vid="";
               if(!vid){const lb=await loadBlob(audioAsset.dbId||audioAsset.id);if(lb){const du=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(lb);});vid=await engineCloneVoice(du);}}
               log("Translating narration into "+renderLanguage+"...");
               const tr=await translateText(audioAsset.narrText||_script,renderLanguage);
@@ -5418,7 +5418,6 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
                 const remainder=msRemainderAfterRecording(_script,recSecs);
                 if(remainder){
                   let vid="";
-                  try{const mv=JSON.parse(localStorage.getItem("ms_my_voices")||"[]");const m=mv.find(v=>v&&v.clonedVoiceId&&((v.dbId&&v.dbId===(audioAsset.dbId||audioAsset.id))||v.id===audioAsset.id));if(m)vid=m.clonedVoiceId;}catch(e){}
                   if(!vid){
                     log("  Cloning your voice...");
                     const du=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(lead);});
