@@ -433,7 +433,7 @@ const SIGNAL = "#D4AF37";
 const PANEL = "#171208";
 const PANEL2 = "#211A0E";
 const LIVE = "#FF5A4E";
-const TOTAL = 24;
+const TOTAL = 25;
 
 const STRIPE = {
   basic:"https://buy.stripe.com/cNi8wRe8a9ZtcZh7YeafS05",
@@ -792,7 +792,24 @@ function ToolPanel({ tool, onClose, onSave }) {
   const photoRef = useRef(null);
   const inp = {width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,padding:"9px 12px",color:WHITE,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"'Archivo',system-ui,sans-serif"};
 
-  const speak = (vid, txt) => speakText(vid, txt, ()=>setPlaying(vid), ()=>setPlaying(null));
+  const speak = async (vid, txt) => {
+    setPlaying(vid);
+    try{
+      const voiceChar = STOCK_VOICES.find(x=>x.id===vid);
+      const url = await engineSpeak(txt, {
+        voice: vid,
+        gender: voiceChar && /female/i.test(voiceChar.desc) ? "Female" : "Male",
+        origin: voiceChar && voiceChar.accent || ""
+      });
+      if(url){
+        const ok = await playEngineAudio(url, 1);
+        setPlaying(null);
+        if(ok) return;
+      }
+    }catch(e){}
+    // Engine unavailable — fall back to on-device voice so playback still works.
+    speakText(vid, txt, ()=>setPlaying(vid), ()=>setPlaying(null));
+  };
 
   const runAI = async () => {
     if (!describe.trim()) return;
@@ -1478,7 +1495,7 @@ function MusicVideoStudio({ onClose, onSave }) {
           const skinBot=isMale?"rgba(135,88,52,1)":"rgba(155,102,65,1)";
           // Shoulder width — male broader
           const shoulderW=isMale?H*0.075:H*0.055;
-
+llł
           if(isSilhouette){
             ctx.fillStyle="rgba(2,1,1,0.97)";
             // Head
@@ -2329,7 +2346,7 @@ function P6Voice({ onSave, setMediaLib }) {
   const cloneMyVoice=async()=>{
     const mine=myVoices.find(v=>v.id===selVoice);
     if(!mine){alert("Pick or record one of your own voices first, then clone it.");return;}
-    if(mine.clonedVoiceId){alert("This voice is already cloned. Select it and the engine will narrate in your cloned voice.");return;}
+    // Always make a fresh clone: old clones expire at the voice service.
     setCloning(true);
     try{
       // Get the real audio for the sample, as a data URI the engine can read.
@@ -2374,8 +2391,8 @@ function P6Voice({ onSave, setMediaLib }) {
       if(!blob&&mine.url){try{blob=await (await fetch(mine.url)).blob();}catch(e){}}
       if(!blob){setNarrBusy(false);setNarrStep("");alert("Could not find that recording's audio — record it again.");return;}
       const recSecs=await msBlobSeconds(blob);
-      let vid=mine.clonedVoiceId;
-      if(!vid){
+      let vid="";
+      {
         setNarrStep("Cloning your voice…");
         const dataUri=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(blob);});
         vid=await engineCloneVoice(dataUri);
@@ -5375,7 +5392,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
             };
             if(renderLanguage){
               // Another language: the engine reads the WHOLE script in your cloned voice.
-              let vid=audioAsset.clonedVoiceId||"";
+              let vid="";
               if(!vid){const lb=await loadBlob(audioAsset.dbId||audioAsset.id);if(lb){const du=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(lb);});vid=await engineCloneVoice(du);}}
               log("Translating narration into "+renderLanguage+"...");
               const tr=await translateText(audioAsset.narrText||_script,renderLanguage);
@@ -5401,7 +5418,6 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
                 const remainder=msRemainderAfterRecording(_script,recSecs);
                 if(remainder){
                   let vid="";
-                  try{const mv=JSON.parse(localStorage.getItem("ms_my_voices")||"[]");const m=mv.find(v=>v&&v.clonedVoiceId&&((v.dbId&&v.dbId===(audioAsset.dbId||audioAsset.id))||v.id===audioAsset.id));if(m)vid=m.clonedVoiceId;}catch(e){}
                   if(!vid){
                     log("  Cloning your voice...");
                     const du=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(lead);});
@@ -7370,7 +7386,7 @@ function AppMain() {
   // this it always snapped back to Page 1. Read the saved page so it stays put.
   // Always open on page 1. Your work (timeline, clips, media) is saved separately
   // and is NOT wiped by this — only the starting page is reset to 1 each load.
-  const [page,setPage]=useState(1);
+  const [page,setPage]=useState(()=>{try{const v=JSON.parse(localStorage.getItem("ms_page")||"1");return (typeof v==="number"&&v>=1&&v<=TOTAL)?v:1;}catch{return 1;}});
   // ── CINEMATIC INTRO — gold doors open to reveal the app ──
   const [showIntro,setShowIntro]=useState(false); // doors removed - app opens straight in
   // Show the "Press to Create" splash only on a true first visit. If you were
@@ -7714,7 +7730,8 @@ function AppMain() {
       case 21: return <P21/>;
       case 22: return <P22/>;
       case 23: return <P23 go={go}/>;
-      case 24: return <P24CharacterStudio onSave={saveAsset} go={go}/>;
+      case 24: return <P23 go={go}/>;
+      case 25: return <P24CharacterStudio onSave={saveAsset} go={go}/>;
       default: return <P1 go={go}/>;
     }
   };
