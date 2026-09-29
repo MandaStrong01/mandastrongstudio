@@ -3483,6 +3483,15 @@ Write the drawFrame body now.`}]
           }
           dest.stream.getAudioTracks().forEach(tk=>stream.addTrack(tk));
           addLog("Background music ready — mixing into film");
+          // Also drop this track into the media library, tagged as music, so the
+          // FINAL film render (Page 16) can find and use it too — picking music
+          // here used to go nowhere beyond this one clip's own render.
+          if(onSave){
+            try{
+              onSave({id:"music_"+track.id+"_"+Date.now(),name:track.label+" (music)",type:"audio/music",url:track.url});
+              addLog("Music also added to your library for the final film render");
+            }catch(e){}
+          }
         }
       }catch(e){ addLog("Music note: "+e.message+" — rendering without music"); musicCtx=null; musicSource=null; }
     }
@@ -5179,7 +5188,9 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
     const raw=[
       ...Object.values(timeline||{}).flat(),
       ...(mediaLib||[])
-    ].filter(a=>a&&a.type&&(a.type.startsWith("audio")||a.type==="audio/narration"||a.type==="narration"||a.type==="audio/webm"));
+    // audio/music is excluded here — it's a background bed, never a narration
+    // candidate, so it can never get picked as your speaking voice by mistake.
+    ].filter(a=>a&&a.type&&a.type!=="audio/music"&&(a.type.startsWith("audio")||a.type==="audio/narration"||a.type==="narration"||a.type==="audio/webm"));
     const seen=new Set();
     const out=[];
     for(const a of raw){
@@ -5227,11 +5238,11 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
   const getMusicTrack=(narr)=>{
     const isMusic=(a)=>a&&a.type&&(a.type==="audio/music"||a.type==="music"||/music|score|soundtrack|bgm|bed/i.test(a.name||""));
     const pool=[...Object.values(timeline||{}).flat(),...(mediaLib||[])].filter(Boolean);
-    const tagged=pool.find(isMusic);
-    if(tagged)return tagged;
-    // else: a distinct second audio asset (not the narration)
-    const audios=pool.filter(a=>a.type&&(a.type.startsWith("audio")||a.type==="audio/webm"));
-    return audios.find(a=>narr?(a.id!==narr.id&&a.dbId!==narr.dbId):true&&a!==narr);
+    // ONLY an asset explicitly tagged/named as music. This used to fall back to
+    // "any other audio asset" when nothing was tagged, which meant a SECOND
+    // voice recording got grabbed and mixed in quietly as fake "music" — that
+    // was the double-voice bug (her own narration playing twice, one soft).
+    return pool.find(isMusic);
   };
 
   const startRender=async()=>{
