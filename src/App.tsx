@@ -2304,7 +2304,13 @@ function P6Voice({ onSave, setMediaLib }) {
       mr.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
       mr.onstop=async()=>{
         const blob=new Blob(chunks,{type:"audio/webm"});
-        const f=new File([blob],"My Recording "+new Date().toLocaleTimeString()+".webm",{type:"audio/webm"});
+        // Ask for a name so recordings don't all end up "My Recording <time>" —
+        // makes it possible to tell them apart later. Cancel/blank keeps the old default.
+        const defaultName="My Recording "+new Date().toLocaleTimeString();
+        let chosen=null;
+        try{chosen=window.prompt("Name this recording (so you can find it later):",defaultName);}catch(e){}
+        const fname=(chosen&&chosen.trim())?chosen.trim():defaultName;
+        const f=new File([blob],fname+".webm",{type:"audio/webm"});
         await addMyVoice(f);
         stream.getTracks().forEach(t=>t.stop());
         setRecordingMine(false);setRecTime(0);
@@ -2546,8 +2552,14 @@ function P6Voice({ onSave, setMediaLib }) {
       const merged=new Blob(parts,{type:parts[0].type||"audio/mpeg"});
       const url=URL.createObjectURL(merged);
       const ext=(merged.type.includes("wav"))?".wav":(merged.type.includes("webm"))?".webm":".mp3";
+      // Ask for a filename so downloads don't all collide as "Narration_<voice>_<time>" —
+      // lets her give each one a name she'll recognise later.
+      const defaultName="Narration_"+(selected.name||"voice")+"_"+Date.now();
+      let chosenName=null;
+      try{chosenName=window.prompt("Name this narration file:",defaultName);}catch(e){}
+      const finalName=(chosenName&&chosenName.trim())?chosenName.trim():defaultName;
       const a=document.createElement("a");
-      a.href=url; a.download="Narration_"+(selected.name||"voice")+"_"+Date.now()+ext; a.rel="noopener noreferrer";
+      a.href=url; a.download=finalName+ext; a.rel="noopener noreferrer";
       document.body.appendChild(a); a.click();
       setTimeout(()=>{try{document.body.removeChild(a);URL.revokeObjectURL(url);}catch(e){}},2000);
     }catch(e){alert("Download failed: "+(e&&e.message||e));}
