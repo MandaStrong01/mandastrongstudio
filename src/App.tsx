@@ -2304,13 +2304,7 @@ function P6Voice({ onSave, setMediaLib }) {
       mr.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
       mr.onstop=async()=>{
         const blob=new Blob(chunks,{type:"audio/webm"});
-        // Ask for a name so recordings don't all end up "My Recording <time>" —
-        // makes it possible to tell them apart later. Cancel/blank keeps the old default.
-        const defaultName="My Recording "+new Date().toLocaleTimeString();
-        let chosen=null;
-        try{chosen=window.prompt("Name this recording (so you can find it later):",defaultName);}catch(e){}
-        const fname=(chosen&&chosen.trim())?chosen.trim():defaultName;
-        const f=new File([blob],fname+".webm",{type:"audio/webm"});
+        const f=new File([blob],"My Recording "+new Date().toLocaleTimeString()+".webm",{type:"audio/webm"});
         await addMyVoice(f);
         stream.getTracks().forEach(t=>t.stop());
         setRecordingMine(false);setRecTime(0);
@@ -2352,7 +2346,7 @@ function P6Voice({ onSave, setMediaLib }) {
   const cloneMyVoice=async()=>{
     const mine=myVoices.find(v=>v.id===selVoice);
     if(!mine){alert("Pick or record one of your own voices first, then clone it.");return;}
-    // Always make a fresh clone: old clones expire at the voice service.
+    if(mine.clonedVoiceId){alert("This voice is already cloned. Select it and the engine will narrate in your cloned voice.");return;}
     setCloning(true);
     try{
       // Get the real audio for the sample, as a data URI the engine can read.
@@ -2397,8 +2391,8 @@ function P6Voice({ onSave, setMediaLib }) {
       if(!blob&&mine.url){try{blob=await (await fetch(mine.url)).blob();}catch(e){}}
       if(!blob){setNarrBusy(false);setNarrStep("");alert("Could not find that recording's audio — record it again.");return;}
       const recSecs=await msBlobSeconds(blob);
-      let vid="";
-      {
+      let vid=mine.clonedVoiceId;
+      if(!vid){
         setNarrStep("Cloning your voice…");
         const dataUri=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(blob);});
         vid=await engineCloneVoice(dataUri);
@@ -2552,14 +2546,8 @@ function P6Voice({ onSave, setMediaLib }) {
       const merged=new Blob(parts,{type:parts[0].type||"audio/mpeg"});
       const url=URL.createObjectURL(merged);
       const ext=(merged.type.includes("wav"))?".wav":(merged.type.includes("webm"))?".webm":".mp3";
-      // Ask for a filename so downloads don't all collide as "Narration_<voice>_<time>" —
-      // lets her give each one a name she'll recognise later.
-      const defaultName="Narration_"+(selected.name||"voice")+"_"+Date.now();
-      let chosenName=null;
-      try{chosenName=window.prompt("Name this narration file:",defaultName);}catch(e){}
-      const finalName=(chosenName&&chosenName.trim())?chosenName.trim():defaultName;
       const a=document.createElement("a");
-      a.href=url; a.download=finalName+ext; a.rel="noopener noreferrer";
+      a.href=url; a.download="Narration_"+(selected.name||"voice")+"_"+Date.now()+ext; a.rel="noopener noreferrer";
       document.body.appendChild(a); a.click();
       setTimeout(()=>{try{document.body.removeChild(a);URL.revokeObjectURL(url);}catch(e){}},2000);
     }catch(e){alert("Download failed: "+(e&&e.message||e));}
@@ -3495,15 +3483,6 @@ Write the drawFrame body now.`}]
           }
           dest.stream.getAudioTracks().forEach(tk=>stream.addTrack(tk));
           addLog("Background music ready — mixing into film");
-          // Also drop this track into the media library, tagged as music, so the
-          // FINAL film render (Page 16) can find and use it too — picking music
-          // here used to go nowhere beyond this one clip's own render.
-          if(onSave){
-            try{
-              onSave({id:"music_"+track.id+"_"+Date.now(),name:track.label+" (music)",type:"audio/music",url:track.url});
-              addLog("Music also added to your library for the final film render");
-            }catch(e){}
-          }
         }
       }catch(e){ addLog("Music note: "+e.message+" — rendering without music"); musicCtx=null; musicSource=null; }
     }
@@ -5200,9 +5179,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
     const raw=[
       ...Object.values(timeline||{}).flat(),
       ...(mediaLib||[])
-    // audio/music is excluded here — it's a background bed, never a narration
-    // candidate, so it can never get picked as your speaking voice by mistake.
-    ].filter(a=>a&&a.type&&a.type!=="audio/music"&&(a.type.startsWith("audio")||a.type==="audio/narration"||a.type==="narration"||a.type==="audio/webm"));
+    ].filter(a=>a&&a.type&&(a.type.startsWith("audio")||a.type==="audio/narration"||a.type==="narration"||a.type==="audio/webm"));
     const seen=new Set();
     const out=[];
     for(const a of raw){
@@ -5250,11 +5227,11 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
   const getMusicTrack=(narr)=>{
     const isMusic=(a)=>a&&a.type&&(a.type==="audio/music"||a.type==="music"||/music|score|soundtrack|bgm|bed/i.test(a.name||""));
     const pool=[...Object.values(timeline||{}).flat(),...(mediaLib||[])].filter(Boolean);
-    // ONLY an asset explicitly tagged/named as music. This used to fall back to
-    // "any other audio asset" when nothing was tagged, which meant a SECOND
-    // voice recording got grabbed and mixed in quietly as fake "music" — that
-    // was the double-voice bug (her own narration playing twice, one soft).
-    return pool.find(isMusic);
+    const tagged=pool.find(isMusic);
+    if(tagged)return tagged;
+    // else: a distinct second audio asset (not the narration)
+    const audios=pool.filter(a=>a.type&&(a.type.startsWith("audio")||a.type==="audio/webm"));
+    return audios.find(a=>narr?(a.id!==narr.id&&a.dbId!==narr.dbId):true&&a!==narr);
   };
 
   const startRender=async()=>{
@@ -5415,7 +5392,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
             };
             if(renderLanguage){
               // Another language: the engine reads the WHOLE script in your cloned voice.
-              let vid="";
+              let vid=audioAsset.clonedVoiceId||"";
               if(!vid){const lb=await loadBlob(audioAsset.dbId||audioAsset.id);if(lb){const du=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(lb);});vid=await engineCloneVoice(du);}}
               log("Translating narration into "+renderLanguage+"...");
               const tr=await translateText(audioAsset.narrText||_script,renderLanguage);
@@ -5441,6 +5418,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
                 const remainder=msRemainderAfterRecording(_script,recSecs);
                 if(remainder){
                   let vid="";
+                  try{const mv=JSON.parse(localStorage.getItem("ms_my_voices")||"[]");const m=mv.find(v=>v&&v.clonedVoiceId&&((v.dbId&&v.dbId===(audioAsset.dbId||audioAsset.id))||v.id===audioAsset.id));if(m)vid=m.clonedVoiceId;}catch(e){}
                   if(!vid){
                     log("  Cloning your voice...");
                     const du=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(lead);});
@@ -7477,14 +7455,6 @@ function AppMain() {
           if(t.includes("bolt")||(n.getAttribute("href")||"").includes("bolt")){const box=n.closest("div")||n;try{box.remove();}catch(e){try{n.remove();}catch(e2){}}}
         });
         document.querySelectorAll("body *").forEach((el)=>{try{const cs=getComputedStyle(el);if(cs.position==="fixed"){const txt=(el.textContent||"").toLowerCase();if(txt.includes("made in bolt")||txt.trim()==="bolt"){el.remove();}}}catch(e){}});
-        // Sep 27: also pierce open shadow roots and remove Bolt iframes/custom elements
-        document.querySelectorAll("iframe[src*='bolt']").forEach((f)=>{try{f.remove();}catch(e){}});
-        document.querySelectorAll("*").forEach((el)=>{try{
-          const tag=(el.tagName||"").toLowerCase();
-          if(tag.includes("bolt")){el.remove();return;}
-          const sr=el.shadowRoot;
-          if(sr){const t=(sr.textContent||"").toLowerCase();const h=sr.innerHTML||"";if(t.includes("bolt")||h.includes("bolt.new")){el.remove();}}
-        }catch(e){}});
       }catch(e){}
     };
     killBolt();
