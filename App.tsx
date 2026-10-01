@@ -5144,6 +5144,8 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
   const [quality,setQuality]=useState("1080p");
   const [progress,setProgress]=useState(0);
   const [rendering,setRendering]=useState(false);
+  const renderingRef=useRef(false);
+  useEffect(()=>{ renderingRef.current=rendering; },[rendering]);
   const [done,setDone]=useState(false);
   const [renderUrl,setRenderUrl]=useState("");
   const [renderLog,setRenderLog]=useState([]);
@@ -5197,6 +5199,28 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
 
   // Holds the id of a voice/narration the render-time confirm forced. null = auto-pick.
   const forcedAudioRef=useRef(null);
+  // ── SCREEN WAKE LOCK — keeps the screen (and this render) alive ────────────
+  // Long films (60 min AI For Humanity, 2-hr Doxy) record in real time. Without
+  // this, the device's own screen auto-lock pauses/kills the capture partway
+  // through, even with the tab kept in front — that was the "Render produced
+  // no video data / browser blocked canvas capture" failure. This holds the
+  // screen awake for the whole render and lets go the moment it's done.
+  const wakeLockRef=useRef(null);
+  const acquireWakeLock=async()=>{
+    try{
+      if("wakeLock" in navigator){
+        wakeLockRef.current=await navigator.wakeLock.request("screen");
+      }
+    }catch(e){ /* not fatal — render still proceeds, just without the lock */ }
+  };
+  const releaseWakeLock=async()=>{
+    try{ if(wakeLockRef.current){ await wakeLockRef.current.release(); wakeLockRef.current=null; } }catch(e){}
+  };
+  useEffect(()=>{
+    const onVis=()=>{ if(document.visibilityState==="visible" && renderingRef.current && !wakeLockRef.current) acquireWakeLock(); };
+    document.addEventListener("visibilitychange",onVis);
+    return ()=>document.removeEventListener("visibilitychange",onVis);
+  },[]);
   // Every audio-ish asset on the timeline, then in the media library.
   // Shared by getAudioTrack (the picker) and the render-time voice confirm.
   // DE-DUPED: the auto-route effect copies audio onto the timeline, so the same
@@ -5406,6 +5430,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
     if(clips.length===0){alert("No video clips found. Generate clips on Page 8 first.");return;}
     log("Rendering "+clips.length+" scene clips (old render files excluded)");
     setRendering(true);setDone(false);setProgress(0);setRenderLog([]);setRenderUrl("");setCurrentClipIdx(-1);
+    await acquireWakeLock();
     try{
       log("MandaStrong Cinema Engine v2 initialising...");
       log("Clips: "+clips.length+" | Quality: "+quality+" | FPS: "+fps);
@@ -5606,6 +5631,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
       if(!vTrack||vTrack.readyState!=="live"){
         log("Canvas capture unavailable in this browser.");
         alert("This browser blocked video capture. Try Chrome or Safari with the tab kept in front.");
+        await releaseWakeLock();
         setRendering(false);return;
       }
       const tracks=[...videoStream.getTracks(),...audioDest.stream.getTracks()];
@@ -5962,6 +5988,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
       try{if(audioCtx)audioCtx.close();}catch(e){}
     }catch(e){log("Render error: "+e.message);}
     forcedAudioRef.current=null; // reset the render-time voice pick
+    await releaseWakeLock();
     setRendering(false);
   };
 
