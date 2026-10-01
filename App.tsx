@@ -2346,7 +2346,7 @@ function P6Voice({ onSave, setMediaLib }) {
   const cloneMyVoice=async()=>{
     const mine=myVoices.find(v=>v.id===selVoice);
     if(!mine){alert("Pick or record one of your own voices first, then clone it.");return;}
-    // Always make a fresh clone: old clones expire at the voice service.
+    if(mine.clonedVoiceId){alert("This voice is already cloned. Select it and the engine will narrate in your cloned voice.");return;}
     setCloning(true);
     try{
       // Get the real audio for the sample, as a data URI the engine can read.
@@ -2391,8 +2391,8 @@ function P6Voice({ onSave, setMediaLib }) {
       if(!blob&&mine.url){try{blob=await (await fetch(mine.url)).blob();}catch(e){}}
       if(!blob){setNarrBusy(false);setNarrStep("");alert("Could not find that recording's audio — record it again.");return;}
       const recSecs=await msBlobSeconds(blob);
-      let vid="";
-      {
+      let vid=mine.clonedVoiceId;
+      if(!vid){
         setNarrStep("Cloning your voice…");
         const dataUri=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(blob);});
         vid=await engineCloneVoice(dataUri);
@@ -2849,19 +2849,30 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
     {id:"natural",label:"Natural"},
   ];
 
-  const mmmAddFiles=(files)=>{
+  // Reads files ONE AT A TIME, in the order you picked them. Before this, every
+  // image kicked off its own independent FileReader all at once (forEach), and
+  // whichever one happened to finish reading first landed first in the list —
+  // so a bigger photo near the start of your script could land near the end,
+  // scrambling the order your images matched your script. Now each file is
+  // fully read before the next one starts, so the order you selected is always
+  // the order they land in.
+  const mmmAddFiles=async(files)=>{
     const arr=Array.from(files||[]);
-    arr.forEach(f=>{
-      if(f.type.startsWith("image")){
-        const r=new FileReader();
-        r.onload=ev=>setMmmImages(p=>[...p,{name:f.name,dataUrl:ev.target.result}]);
-        r.readAsDataURL(f);
-      }else if(f.type.startsWith("text")||f.name.match(/\.(txt|md|fdx|fountain)$/i)){
-        const r=new FileReader();
-        r.onload=ev=>setMmmText(p=>(p?p+"\n\n":"")+String(ev.target.result||""));
-        r.readAsText(f);
-      }
+    const readAs=(file,asText)=>new Promise(res=>{
+      const r=new FileReader();
+      r.onload=ev=>res(ev.target.result);
+      r.onerror=()=>res(null);
+      if(asText)r.readAsText(file);else r.readAsDataURL(file);
     });
+    for(const f of arr){
+      if(f.type.startsWith("image")){
+        const dataUrl=await readAs(f,false);
+        if(dataUrl)setMmmImages(p=>[...p,{name:f.name,dataUrl}]);
+      }else if(f.type.startsWith("text")||f.name.match(/\.(txt|md|fdx|fountain)$/i)){
+        const text=await readAs(f,true);
+        if(text)setMmmText(p=>(p?p+"\n\n":"")+String(text||""));
+      }
+    }
   };
 
   // ── FREE CANVAS FALLBACK ────────────────────────────────────────────────
@@ -5190,65 +5201,91 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
     }
     return out;
   };
-  const getAudioTrack=()=>{
+  const getAudioTrack=(poolOverride)=>{
     // If the render-time confirm forced a specific track, that wins over everything.
     if(forcedAudioRef.current){
-      const pool0=getAudioPool();
+      const pool0=poolOverride||getAudioPool();
       const forced=pool0.find(a=>(a.id&&a.id===forcedAudioRef.current)||(a.dbId&&a.dbId===forcedAudioRef.current));
       if(forced)return forced;
     }
-    const pool=getAudioPool();
+    const pool=poolOverride||getAudioPool();
     if(!pool.length)return undefined;
-    // PRIORITY 1: YOUR OWN recording wins over everything. This is the 15-minute
-    // narration Amanda recorded herself ("USE MY VOICE AS NARRATION" / "My Voice
-    // Narration", type audio/myvoice WITHOUT a clonedVoiceId). Her real voice must
-    // beat any engine voice — that is the whole point of recording it.
-    // PRIORITY 1: the FULL narration — your voice cloned, reading the WHOLE script
+    // PRIORITY 1: the FULL narration — YOUR voice cloned, reading the WHOLE script
     // (carries clonedVoiceId + narrText). This is "USE ENGINE TO COMPLETE FULL
-    // NARRATION". It MUST win, or the render plays only the one paragraph you
-    // recorded and stops. This is the fix for narration cutting off after para 1.
+    // NARRATION" — your own cloned voice, not a preset.
     const cloned=pool.find(a=>a.clonedVoiceId&&a.narrText);
     if(cloned)return cloned;
-    // PRIORITY 2: a plain narration that carries the full script text.
-    const fullText=pool.find(a=>(a.type==="narration"||a.type==="audio/narration")&&(a.narrText||a.text));
-    if(fullText)return fullText;
-    // PRIORITY 3: your own single recording (one paragraph) — only if there is no
-    // full narration saved.
+    // PRIORITY 2: your own recording — type audio/myvoice. This MUST beat a generic
+    // engine narration. Before this fix, a leftover generic "narration" asset (read
+    // in a default preset voice, e.g. a male voice) outranked your actual recorded
+    // voice — so the film played a stranger's voice over your own, even though you'd
+    // recorded and/or cloned yourself. Your real voice is the whole point.
     const myRecording=pool.find(a=>a.type==="audio/myvoice"&&!a.clonedVoiceId);
     if(myRecording)return myRecording;
     const myVoice=pool.find(a=>a.type==="audio/myvoice");
     if(myVoice)return myVoice;
+    // PRIORITY 3: a plain narration carrying full script text, but in a PRESET
+    // voice (no clone, no recording of yours exists) — last resort only.
+    const fullText=pool.find(a=>(a.type==="narration"||a.type==="audio/narration")&&(a.narrText||a.text));
+    if(fullText)return fullText;
     // PRIORITY 4: anything else audio, first one wins (old behaviour).
     return pool[0];
   };
 
   // Background music bed. A music asset is any audio the user tagged as music,
   // or a second audio asset that is NOT the narration we're already using.
-  const getMusicTrack=(narr)=>{
+  const getMusicTrack=(narr,poolOverride)=>{
     const isMusic=(a)=>a&&a.type&&(a.type==="audio/music"||a.type==="music"||/music|score|soundtrack|bgm|bed/i.test(a.name||""));
-    const pool=[...Object.values(timeline||{}).flat(),...(mediaLib||[])].filter(Boolean);
-    const tagged=pool.find(isMusic);
-    if(tagged)return tagged;
-    // else: a distinct second audio asset (not the narration)
-    const audios=pool.filter(a=>a.type&&(a.type.startsWith("audio")||a.type==="audio/webm"));
-    return audios.find(a=>narr?(a.id!==narr.id&&a.dbId!==narr.dbId):true&&a!==narr);
+    const pool=poolOverride||[...Object.values(timeline||{}).flat(),...(mediaLib||[])].filter(Boolean);
+    // ONLY a track actually tagged/named as music counts as music. Before this,
+    // if nothing was tagged, it grabbed ANY other audio file in the library as a
+    // "music bed" — which meant an old recording or a leftover narration take
+    // got mixed in UNDER your real narration as a second voice. No tagged music
+    // found = no music track. Silence is correct; a stray second voice is not.
+    return pool.find(isMusic);
   };
 
   const startRender=async()=>{
+    // ── LIVE STORAGE PULL — fetched ONCE, upfront, straight from IndexedDB ─────
+    // Before this fix, video clips were re-checked against storage at render
+    // time (below) but narration/music were only read from the in-memory
+    // mediaLib/timeline state. If the page had just loaded — or "Open Project"
+    // hadn't finished its own restore yet — that in-memory state could still be
+    // empty for a few moments. Video quietly self-healed from storage; audio did
+    // not, so the film could come out with no voice and no music and NO ERROR,
+    // even though everything was actually saved safely. Now everything (video,
+    // narration, music) is pulled from storage once, right here, before anything
+    // else runs, so the render always sees what's really been saved — no matter
+    // how or when it was added.
+    let dbClipsAll = [];
+    try{ dbClipsAll = await getAllClipsFromDB(); }catch(e){ console.warn("DB load failed",e); }
+    const dbAudioAssets = dbClipsAll
+      .filter(c2=>c2&&c2.type&&c2.type.startsWith("audio"))
+      .map(c2=>({id:c2.id,dbId:c2.id,name:c2.name,type:c2.type||"audio/mpeg",url:URL.createObjectURL(c2.blob)}));
+    const mergePools=(a,b)=>{
+      const seen=new Set(); const out=[];
+      for(const x of [...(a||[]),...(b||[])]){
+        if(!x)continue;
+        const k=String(x.id||x.dbId||"")+"|"+String(x.name||"");
+        if(seen.has(k))continue; seen.add(k); out.push(x);
+      }
+      return out;
+    };
+
     // ── VOICE CONFIRM — before any render work ─────────────────────────────────
     // Asks which narration/voice to use, so the render never silently defaults to
     // a preset voice. OK keeps the auto-pick; Cancel opens a numbered list of every
     // saved voice/recording so you can pick your own. The choice is forced for this
     // render only (forcedAudioRef), then cleared when the render finishes.
     forcedAudioRef.current=null;
-    const voicePool=getAudioPool();
+    const voicePool=mergePools(getAudioPool(),dbAudioAssets);
     if(voicePool.length>0){
       const nameOf=(a,i)=>{
         if(a.clonedVoiceId&&a.narrText) return (a.name||"Full narration")+" (engine voice)";
         if(a.type==="audio/myvoice"||a.type==="audio/webm") return (a.name||"My recording")+" (your recording)";
         return a.name||("Audio "+(i+1));
       };
-      const autoPick=getAudioTrack();
+      const autoPick=getAudioTrack(voicePool);
       const autoName=autoPick?nameOf(autoPick,voicePool.indexOf(autoPick)):"(none)";
       const keep=window.confirm("Use this voice for the film?\n\n▶ "+autoName+"\n\nOK = yes, use it.\nCancel = choose a different voice / my recording.");
       if(!keep){
@@ -5265,6 +5302,8 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
       } else {
         log("Voice confirmed: "+autoName);
       }
+    } else {
+      log("No narration/voice found in storage — film will render silent unless one is added.");
     }
     // ── PRIORITY SAVE — runs before anything else ──────────────────────────────
     // Saves current state immediately so a crash mid-render doesn't lose work.
@@ -5276,12 +5315,11 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
     // ── PRE-RENDER STORAGE CHECK — never touches source clips ──────────────────
     // Only clears old render_final files, never user-generated source clips.
     // Before this fix, autoPruneClips was destroying 12 of 13 clips before render.
+    // Reuses the dbClipsAll already pulled above — no need to hit storage twice.
     try{
-      const clips=await getAllClipsFromDB();
-      // Delete only old finished renders, never source scene clips
-      const oldRenders=clips.filter(c=>String(c.id).includes("render_final_old"));
+      const oldRenders=dbClipsAll.filter(c=>String(c.id).includes("render_final_old"));
       for(const c of oldRenders){await deleteClipFromDB(c.id);}
-      log("Memory check complete — "+clips.length+" clips preserved");
+      log("Memory check complete — "+dbClipsAll.length+" clips preserved");
     }catch(e){}
 
     // ── CLIP ORDER: the TIMELINE is the authority ──────────────────────────
@@ -5292,8 +5330,6 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
     // straight from the timeline, and use IndexedDB ONLY to refresh each clip's
     // blob/url. The number-sort runs ONLY when there is no timeline at all.
     let freshClips = [];
-    let dbClipsAll = [];
-    try{ dbClipsAll = await getAllClipsFromDB(); }catch(e){ console.warn("DB load failed",e); }
     const dbById = new Map(); const dbByName = new Map();
     for(const c2 of dbClipsAll){ dbById.set(c2.id,c2); if(c2.name)dbByName.set(c2.name,c2); }
     const relink=(c2)=>{
@@ -5350,7 +5386,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
     } else {
       log("Render order locked to timeline: "+clips.map(c2=>(c2.name||"").slice(0,18)).join(" → "));
     }
-    const audioAsset=getAudioTrack();
+    const audioAsset=getAudioTrack(voicePool);
     if(clips.length===0){alert("No video clips found. Generate clips on Page 8 first.");return;}
     log("Rendering "+clips.length+" scene clips (old render files excluded)");
     setRendering(true);setDone(false);setProgress(0);setRenderLog([]);setRenderUrl("");setCurrentClipIdx(-1);
@@ -5392,7 +5428,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
             };
             if(renderLanguage){
               // Another language: the engine reads the WHOLE script in your cloned voice.
-              let vid="";
+              let vid=audioAsset.clonedVoiceId||"";
               if(!vid){const lb=await loadBlob(audioAsset.dbId||audioAsset.id);if(lb){const du=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(lb);});vid=await engineCloneVoice(du);}}
               log("Translating narration into "+renderLanguage+"...");
               const tr=await translateText(audioAsset.narrText||_script,renderLanguage);
@@ -5418,6 +5454,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
                 const remainder=msRemainderAfterRecording(_script,recSecs);
                 if(remainder){
                   let vid="";
+                  try{const mv=JSON.parse(localStorage.getItem("ms_my_voices")||"[]");const m=mv.find(v=>v&&v.clonedVoiceId&&((v.dbId&&v.dbId===(audioAsset.dbId||audioAsset.id))||v.id===audioAsset.id));if(m)vid=m.clonedVoiceId;}catch(e){}
                   if(!vid){
                     log("  Cloning your voice...");
                     const du=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(lead);});
@@ -5521,7 +5558,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
       // stays on top (locked mix VOICE 85 / MUSIC 40 ≈ 0.25 gain under voice).
       let musicSource=null;
       try{
-        const musicAsset=getMusicTrack(audioAsset);
+        const musicAsset=getMusicTrack(audioAsset,voicePool);
         if(musicAsset){
           let mBlob=null;
           const mId=musicAsset.dbId||musicAsset.id;
@@ -5653,17 +5690,54 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
         }
       }catch(e){log("Storage reload: "+e.message);}
 
+      // ── NARRATION-TO-IMAGE MATCH — each image's screen time follows ITS OWN
+      // narration segment, instead of every clip getting an identical average
+      // share of the total length. The saved script (ms_narr_text) is split into
+      // one segment per paragraph, matched 1-for-1 to your clips in order. If the
+      // narration has MORE segments than you have images, a scene is generated
+      // for every leftover segment — never left blank, never stretched to cover
+      // the gap. If it has FEWER, the trailing images just share the last timing.
+      let perClipDurations = null; // null = old uniform/stretch behaviour below
+      try{
+        const scriptText=(()=>{try{return (localStorage.getItem("ms_narr_text")||"").trim();}catch(e){return "";}})();
+        if(scriptText && clips.length>0 && narrSeq && narrSeq.total>0){
+          let segments=scriptText.split(/\n\s*\n/).map(s=>s.trim()).filter(Boolean);
+          if(segments.length<2) segments=[scriptText];
+          if(segments.length>clips.length){
+            const extra=segments.length-clips.length;
+            log("Narration has "+extra+" more segment"+(extra!==1?"s":"")+" than you have images — generating "+extra+" scene"+(extra!==1?"s":"")+" to match.");
+            for(let s=clips.length;s<segments.length;s++){
+              const seed=segments[s].replace(/[^\w\s]/g,"").trim().slice(0,80)||"cinematic scene";
+              clips.push({name:seed+".generated",type:"video/generated",__generated:true});
+            }
+          }
+          // Each segment's share of screen time follows its own length (a long
+          // paragraph gets more time than a short one), scaled to the measured
+          // narration length — not a flat average across every clip.
+          const lens=segments.map(s=>Math.max(1,s.length));
+          const totalLen=lens.reduce((a,b)=>a+b,0);
+          const totalNarr=narrSeq.total;
+          perClipDurations=clips.map((c,i)=>{
+            const segLen=lens[Math.min(i,lens.length-1)]||1;
+            return Math.max(3,(segLen/totalLen)*totalNarr);
+          });
+          log("Narration matched to "+clips.length+" scenes by segment length ("+(totalNarr/60).toFixed(1)+" min total).");
+        }
+      }catch(e){log("Narration match skipped: "+e.message);}
+
       // ── GAP-FILL: the DURATION SLIDER is master ─────────────────────────────
       // filmDuration (1–180 min, set on the timeline page) decides the film length.
       // Clips stretch to fill that total: each clip holds (sliderSecs / clipCount).
       // The old 65s-per-clip cap is lifted — the engine accepts long clips, so a
       // clip can hold as long as the slider needs. If the slider is somehow unset,
       // fall back to the narration length, then to natural clip lengths.
+      // Skipped entirely when the narration-to-image match above already set
+      // per-clip durations — that match is more precise than an even split.
       const sliderSecs = (Number(filmDuration)>0 ? Number(filmDuration)*60 : 0);
       const narrationSecs = narrSeq ? narrSeq.total : (audioBuffer ? audioBuffer.duration : 0);
       const targetTotal = narrationSecs>0 ? narrationSecs : sliderSecs;
       let perClipTarget = 0; // 0 = use each clip's natural duration
-      if(targetTotal>0 && clips.length>0){
+      if(!perClipDurations && targetTotal>0 && clips.length>0){
         if(gapFill){
           let naturalTotal=0;
           for(const c of clips){ const m=(c.name||"").match(/(\d+)s/); naturalTotal += m?parseInt(m[1]):30; }
@@ -5690,6 +5764,8 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
         const clip=clips[ci];setCurrentClipIdx(ci);
         log("Clip "+(ci+1)+"/"+clips.length+": "+clip.name.slice(0,45));
         setProgress(5+Math.round((ci/clips.length)*80));
+        // This clip's own matched narration-segment duration, if the match above ran.
+        const holdOverride = perClipDurations ? perClipDurations[ci] : null;
 
         // ── IMAGE CLIP → moving documentary footage (Ken Burns pan/zoom) ────────
         // A still image is animated with a slow continuous zoom and drift so it
@@ -5702,7 +5778,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
             await new Promise(resolve=>{
               const img=new Image();
               img.onload=()=>{
-                const holdS = perClipTarget>0?perClipTarget:6;
+                const holdS = holdOverride!=null?holdOverride:(perClipTarget>0?perClipTarget:6);
                 const startT=Date.now();
                 const iw=img.naturalWidth||dims.w, ih=img.naturalHeight||dims.h;
                 // cover-fit the image to the canvas
@@ -5753,7 +5829,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
               // the engine accepts long clips, so a clip can hold as long as needed.
               // Never below its natural length. Loop the source within the window so
               // the picture keeps moving instead of freezing.
-              const clipDur=perClipTarget>0?Math.max(perClipTarget,natural):Math.min(natural,65);
+              const clipDur=holdOverride!=null?Math.max(holdOverride,0.5):(perClipTarget>0?Math.max(perClipTarget,natural):Math.min(natural,65));
               vid.currentTime=0;
               vid.loop=true; // replay within the hold window; render stops it by time, not by end
               // Wait for first frame to decode before drawing
@@ -5790,7 +5866,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
               requestAnimationFrame(draw);
             };
             vid.onerror=()=>finish(false);
-            setTimeout(()=>finish(false),Math.max(70000,(perClipTarget>0?perClipTarget:65)*1000+15000));
+            setTimeout(()=>finish(false),Math.max(70000,(holdOverride!=null?holdOverride:(perClipTarget>0?perClipTarget:65))*1000+15000));
             vid.load();
           });
         }
@@ -5799,7 +5875,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
         if(!videoPlayed){
           log("  Clip not playable — generating scene: "+clip.name.slice(0,30)+"...");
           const natSec=parseInt(clip.name.match(/(\d+)s/)?.[1]||"30");
-          const clipDurSec=perClipTarget>0?Math.max(perClipTarget,natSec):natSec;
+          const clipDurSec=holdOverride!=null?Math.max(holdOverride,3):(perClipTarget>0?Math.max(perClipTarget,natSec):natSec);
           const ok=await renderSceneToCanvas(clip.name,clipDurSec);
           if(!ok){
             // Last resort: plain black hold — real-time paced. No words on screen;
@@ -6011,7 +6087,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
         <div style={{borderLeft:"1px solid "+GOLDDIM+"",display:"flex",flexDirection:"column",background:"#020200"}}>
           <div style={{background:"#171208",aspectRatio:"16/9",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
             {renderUrl?(
-              <video src={renderUrl} controls autoPlay loop playsInline style={{width:"100%",height:"100%",objectFit:"contain"}}/>
+              <video src={renderUrl} controls autoPlay playsInline style={{width:"100%",height:"100%",objectFit:"contain"}}/>
             ):(
               <div style={{textAlign:"center",padding:20}}>
                 <div style={{color:GOLD,fontSize:28,marginBottom:8}}>Render</div>
@@ -7454,14 +7530,6 @@ function AppMain() {
           if(t.includes("bolt")||(n.getAttribute("href")||"").includes("bolt")){const box=n.closest("div")||n;try{box.remove();}catch(e){try{n.remove();}catch(e2){}}}
         });
         document.querySelectorAll("body *").forEach((el)=>{try{const cs=getComputedStyle(el);if(cs.position==="fixed"){const txt=(el.textContent||"").toLowerCase();if(txt.includes("made in bolt")||txt.trim()==="bolt"){el.remove();}}}catch(e){}});
-        // Sep 27: also pierce open shadow roots and remove Bolt iframes/custom elements
-        document.querySelectorAll("iframe[src*='bolt']").forEach((f)=>{try{f.remove();}catch(e){}});
-        document.querySelectorAll("*").forEach((el)=>{try{
-          const tag=(el.tagName||"").toLowerCase();
-          if(tag.includes("bolt")){el.remove();return;}
-          const sr=el.shadowRoot;
-          if(sr){const t=(sr.textContent||"").toLowerCase();const h=sr.innerHTML||"";if(t.includes("bolt")||h.includes("bolt.new")){el.remove();}}
-        }catch(e){}});
       }catch(e){}
     };
     killBolt();
