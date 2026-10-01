@@ -2226,7 +2226,23 @@ function P6Voice({ onSave, setMediaLib }) {
   // Narration script auto-saves as you type and reloads when you come back, so a
   // long script is never lost by leaving the page. (Before: it started empty every
   // time and was never persisted — that is how narration work got lost.)
-  const [text,setText]=useState(()=>{try{return localStorage.getItem("ms_narr_text")||"";}catch{return "";}});
+  // GUARD: a chunk of the app's own source code (not your script) can end up
+  // saved in here from a bad copy/paste, and it stays stuck on every reload
+  // since this box auto-saves whatever is in it. Feeding that to the voice
+  // engine as "narration" is what was crashing the page. On load, if what's
+  // saved here is clearly code (not a script you'd read aloud), it's wiped
+  // automatically instead of trapping you with it every time.
+  const looksLikeCode=(s)=>{
+    if(!s)return false;
+    return /style=\{\{|fontFamily:|GOLDDIM|=>|function\s+\w+\(/.test(s);
+  };
+  const [text,setText]=useState(()=>{
+    try{
+      const saved=localStorage.getItem("ms_narr_text")||"";
+      if(looksLikeCode(saved)){ localStorage.setItem("ms_narr_text",""); return ""; }
+      return saved;
+    }catch{return "";}
+  });
   useEffect(()=>{try{localStorage.setItem("ms_narr_text",text);}catch(e){}},[text]);
   const [loading,setLoading]=useState(false);
   const [speaking,setSpeaking]=useState(false); const [mood,setMood]=useState("Neutral");
