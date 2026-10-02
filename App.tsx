@@ -2548,6 +2548,11 @@ function P6Voice({ onSave, setMediaLib }) {
   const downloadNarration=async()=>{
     const txt=(text||"").trim();
     if(!txt){alert("Type or paste your narration script first.");return;}
+    // Ask what to name the file BEFORE rendering — cancel backs out with no wasted render.
+    let fileName="";
+    try{ fileName=window.prompt("Name this narration file:",(selected.name||"Narration")); }catch(e){ fileName=(selected.name||"Narration"); }
+    if(fileName===null)return; // user hit Cancel
+    fileName=(fileName||"Narration").trim().replace(/[\\/:*?"<>|]/g,"").slice(0,80)||"Narration";
     setDlBusy(true);
     try{
       const meta={voice:selected.engineVoice||"",gender:selected.gender||"",origin:selected.origin||"",speed:speed*(selected.rate||0.9)};
@@ -2559,11 +2564,17 @@ function P6Voice({ onSave, setMediaLib }) {
         try{const r=await fetch(u);const b=await r.blob();parts.push(b);}catch(e){}
       }
       if(!parts.length){alert("Couldn't render the narration audio — check the engine and try again.");setDlBusy(false);return;}
-      const merged=new Blob(parts,{type:parts[0].type||"audio/mpeg"});
+      // FORCE MP3 — the engine always returns MP3 audio (audio/mpeg); the old
+      // code trusted the browser's own blob.type label, and some browsers
+      // report that same MP3 data back as a generic/empty type, which fell
+      // through to ".webm" even though the bytes were never webm. Label it
+      // honestly by what it actually is: MP3, unless it's truly WAV.
+      const looksWav=(parts[0].type||"").includes("wav");
+      const merged=new Blob(parts,{type:looksWav?"audio/wav":"audio/mpeg"});
       const url=URL.createObjectURL(merged);
-      const ext=(merged.type.includes("wav"))?".wav":(merged.type.includes("webm"))?".webm":".mp3";
+      const ext=looksWav?".wav":".mp3";
       const a=document.createElement("a");
-      a.href=url; a.download="Narration_"+(selected.name||"voice")+"_"+Date.now()+ext; a.rel="noopener noreferrer";
+      a.href=url; a.download=fileName+ext; a.rel="noopener noreferrer";
       document.body.appendChild(a); a.click();
       setTimeout(()=>{try{document.body.removeChild(a);URL.revokeObjectURL(url);}catch(e){}},2000);
     }catch(e){alert("Download failed: "+(e&&e.message||e));}
@@ -6209,7 +6220,23 @@ function P17({ go, rendered, mediaLib }) {
 }
 
 function P18({ rendered, mediaLib }) {
-  const vs=rendered?.url||(mediaLib.find(a=>a.type&&a.type.startsWith("video"))?mediaLib.find(a=>a.type&&a.type.startsWith("video")).url:"");
+  // BUG FIX: this used to look ONLY at the `rendered` prop (lost on reload/
+  // navigation) and mediaLib, never at IndexedDB — so a film that rendered
+  // and saved perfectly fine could still show "No film yet" here. Page 17
+  // (Film Preview) already falls back to IndexedDB's "render_final"; this
+  // page now does the same, so the real file is always found.
+  const [vs,setVs]=useState(rendered?.url||"");
+  useEffect(()=>{
+    if(rendered?.url){setVs(rendered.url);return;}
+    loadClipFromDB("render_final").then(r=>{
+      if(r?.blob){setVs(URL.createObjectURL(r.blob));return;}
+      const latest=mediaLib?.filter(a=>a?.type?.startsWith("video")).slice(-1)[0];
+      if(latest?.url)setVs(latest.url);
+    }).catch(()=>{
+      const latest=mediaLib?.filter(a=>a?.type?.startsWith("video")).slice(-1)[0];
+      if(latest?.url)setVs(latest.url);
+    });
+  },[rendered,mediaLib]);
   const dl=()=>{if(!vs){alert("No film yet — render first!");return;}msDownload(vs,"InFuture_Film.webm");};
   return (
     <div style={{...Sp,padding:40}}>
