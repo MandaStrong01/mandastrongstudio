@@ -2543,11 +2543,23 @@ function P6Voice({ onSave, setMediaLib }) {
         try{const r=await fetch(u);const b=await r.blob();parts.push(b);}catch(e){}
       }
       if(!parts.length){alert("Couldn't render the narration audio — check the engine and try again.");setDlBusy(false);return;}
-      const merged=new Blob(parts,{type:parts[0].type||"audio/mpeg"});
+      const isWav=(parts[0].type||"").includes("wav");
+      const merged=new Blob(parts,{type:isWav?"audio/wav":"audio/mpeg"});
+      const ext=isWav?".wav":".mp3";
+      let name=window.prompt("Name your narration file:","Narration_"+(selected.name||"voice"));
+      if(name===null){setDlBusy(false);return;}
+      name=(name.trim()||("Narration_"+(selected.name||"voice"))).replace(/[\\/:*?"<>|]/g,"_");
+      if(!/\.(mp3|wav)$/i.test(name))name+=ext;
+      if(window.showSaveFilePicker){
+        try{
+          const h=await window.showSaveFilePicker({suggestedName:name});
+          const w=await h.createWritable();await w.write(merged);await w.close();
+          setDlBusy(false);return;
+        }catch(e){if(e&&e.name==="AbortError"){setDlBusy(false);return;}}
+      }
       const url=URL.createObjectURL(merged);
-      const ext=(merged.type.includes("wav"))?".wav":(merged.type.includes("webm"))?".webm":".mp3";
       const a=document.createElement("a");
-      a.href=url; a.download="Narration_"+(selected.name||"voice")+"_"+Date.now()+ext; a.rel="noopener noreferrer";
+      a.href=url; a.download=name; a.rel="noopener noreferrer";
       document.body.appendChild(a); a.click();
       setTimeout(()=>{try{document.body.removeChild(a);URL.revokeObjectURL(url);}catch(e){}},2000);
     }catch(e){alert("Download failed: "+(e&&e.message||e));}
