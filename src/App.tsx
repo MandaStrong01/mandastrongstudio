@@ -59,12 +59,17 @@ const msWordCount=(t)=>(String(t||"").trim().match(/\S+/g)||[]).length;
 function msRemainderAfterRecording(script,recSecs){
   const txt=String(script||"").trim();
   if(!txt)return "";
+  // Cut on the REAL paragraph (or line) break — your recording is the first
+  // paragraph, the engine reads the rest. A speaking-speed guess re-read part of
+  // what you'd already said ("hearing myself in the background").
+  let units=txt.split(/\n\s*\n/).map(x=>x.trim()).filter(Boolean);
+  if(units.length>=2) return units.slice(1).join("\n\n").trim();
+  units=txt.split(/\n/).map(x=>x.trim()).filter(Boolean);
+  if(units.length>=2) return units.slice(1).join("\n").trim();
+  // No paragraph/line breaks at all — fall back to the old estimate only here
   if(!(recSecs>0))return txt;
   const est=recSecs*2.4; // documentary pace ~ 145 words a minute
-  let units=txt.split(/\n\s*\n/).map(x=>x.trim()).filter(Boolean);
-  if(units.length<2)units=txt.split(/\n/).map(x=>x.trim()).filter(Boolean);
-  const joinWith=units.length>=2?"\n\n":" ";
-  if(units.length<2)units=msSentences(txt);
+  units=msSentences(txt);
   let acc=0,best=0,bestDiff=Infinity;
   for(let i=0;i<units.length;i++){
     acc+=msWordCount(units[i]);
@@ -72,7 +77,7 @@ function msRemainderAfterRecording(script,recSecs){
     if(d<bestDiff){bestDiff=d;best=i+1;}
   }
   if(best<1)best=1;
-  return units.slice(best).join(joinWith).trim();
+  return units.slice(best).join(" ").trim();
 }
 // Length in seconds of an audio blob (decoded once, then released).
 async function msBlobSeconds(blob){
@@ -5154,6 +5159,8 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
   const [quality,setQuality]=useState("1080p");
   const [progress,setProgress]=useState(0);
   const [rendering,setRendering]=useState(false);
+  const renderingRef=useRef(false);
+  useEffect(()=>{ renderingRef.current=rendering; },[rendering]);
   const [done,setDone]=useState(false);
   const [renderUrl,setRenderUrl]=useState("");
   const [renderLog,setRenderLog]=useState([]);
@@ -5207,6 +5214,25 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
 
   // Holds the id of a voice/narration the render-time confirm forced. null = auto-pick.
   const forcedAudioRef=useRef(null);
+  // SCREEN WAKE LOCK — a 60-minute render captures in real time; if the screen
+  // auto-locks, the capture dies with "Render produced no video data". This holds
+  // the screen awake for the whole render and lets go the moment it's done.
+  const wakeLockRef=useRef(null);
+  const acquireWakeLock=async()=>{
+    try{
+      if("wakeLock" in navigator){
+        wakeLockRef.current=await navigator.wakeLock.request("screen");
+      }
+    }catch(e){ /* not fatal — render still proceeds, just without the lock */ }
+  };
+  const releaseWakeLock=async()=>{
+    try{ if(wakeLockRef.current){ await wakeLockRef.current.release(); wakeLockRef.current=null; } }catch(e){}
+  };
+  useEffect(()=>{
+    const onVis=()=>{ if(document.visibilityState==="visible" && renderingRef.current && !wakeLockRef.current) acquireWakeLock(); };
+    document.addEventListener("visibilitychange",onVis);
+    return ()=>document.removeEventListener("visibilitychange",onVis);
+  },[]);
   // Every audio-ish asset on the timeline, then in the media library.
   // Shared by getAudioTrack (the picker) and the render-time voice confirm.
   // DE-DUPED: the auto-route effect copies audio onto the timeline, so the same
@@ -5416,6 +5442,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
     if(clips.length===0){alert("No video clips found. Generate clips on Page 8 first.");return;}
     log("Rendering "+clips.length+" scene clips (old render files excluded)");
     setRendering(true);setDone(false);setProgress(0);setRenderLog([]);setRenderUrl("");setCurrentClipIdx(-1);
+    await acquireWakeLock();
     try{
       log("MandaStrong Cinema Engine v2 initialising...");
       log("Clips: "+clips.length+" | Quality: "+quality+" | FPS: "+fps);
@@ -5616,6 +5643,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
       if(!vTrack||vTrack.readyState!=="live"){
         log("Canvas capture unavailable in this browser.");
         alert("This browser blocked video capture. Try Chrome or Safari with the tab kept in front.");
+        await releaseWakeLock();
         setRendering(false);return;
       }
       const tracks=[...videoStream.getTracks(),...audioDest.stream.getTracks()];
@@ -5950,6 +5978,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
         log("Your browser blocked canvas capture. Fix: keep this tab in front");
         log("for the whole render, and try 720p · 24FPS.");
         setProgress(0);setDone(false);setRendering(false);
+        await releaseWakeLock();
         try{clearInterval(dataInterval);}catch(e){}
         try{clearInterval(heartbeat);}catch(e){}
         try{if(audioCtx)audioCtx.close();}catch(e){}
@@ -5972,6 +6001,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
       try{if(audioCtx)audioCtx.close();}catch(e){}
     }catch(e){log("Render error: "+e.message);}
     forcedAudioRef.current=null; // reset the render-time voice pick
+    await releaseWakeLock();
     setRendering(false);
   };
 
@@ -6191,14 +6221,41 @@ function P17({ go, rendered, mediaLib }) {
   );
 }
 
-function P18({ rendered, mediaLib }) {
-  const vs=rendered?.url||(mediaLib.find(a=>a.type&&a.type.startsWith("video"))?mediaLib.find(a=>a.type&&a.type.startsWith("video")).url:"");
-  const dl=()=>{if(!vs){alert("No film yet — render first!");return;}msDownload(vs,"InFuture_Film.webm");};
+function P18({ rendered, mediaLib, onExported }) {
+  // The finished film lives in storage as "render_final" — the temporary
+  // `rendered` link is lost on reload, which showed "No film yet" / not found.
+  const [vs,setVs]=useState(rendered?.url||"");
+  const [clearMsg,setClearMsg]=useState("");
+  useEffect(()=>{
+    if(rendered?.url){setVs(rendered.url);return;}
+    loadClipFromDB("render_final").then(r=>{
+      if(r?.blob){setVs(URL.createObjectURL(r.blob));return;}
+      const latest=mediaLib?.filter(a=>a?.type?.startsWith("video")).slice(-1)[0];
+      if(latest?.url)setVs(latest.url);
+    }).catch(()=>{
+      const latest=mediaLib?.filter(a=>a?.type?.startsWith("video")).slice(-1)[0];
+      if(latest?.url)setVs(latest.url);
+    });
+  },[rendered,mediaLib]);
+  const dl=async()=>{
+    if(!vs){alert("No film yet — render first!");return;}
+    msDownload(vs,"InFuture_Film.webm");
+    if(!onExported)return;
+    // Once exported, clear the scene files out of the library — but ONLY if the
+    // finished film is safely in storage, so nothing can be lost.
+    try{
+      const saved=await loadClipFromDB("render_final");
+      if(!(saved&&saved.blob)){setClearMsg("Exported. Library kept — your film isn't saved in storage yet.");return;}
+      const n=await onExported();
+      setClearMsg("Exported. Cleared "+n+" scene file"+(n===1?"":"s")+" from your library. Your film and recordings are kept.");
+    }catch(e){}
+  };
   return (
     <div style={{...Sp,padding:40}}>
       <div style={{maxWidth:780,margin:"0 auto"}}>
         <div style={{fontSize:11,color:GOLD,letterSpacing:0.4,marginBottom:4,fontWeight:500}}>Distribution</div>
         <h1 style={{...H1,fontSize:28,marginBottom:14}}>Export & distribute</h1>
+        {clearMsg&&<div style={{color:GOLD,fontSize:12,marginBottom:14,lineHeight:1.5}}>{clearMsg}</div>}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:20}}>
           {[["","DOWNLOAD TO DEVICE",dl],["","SAVE PROJECT FILE",()=>{}],["","SHARE TO COMMUNITY",()=>{}]].map(([ic,lb,fn])=>(
             <button key={lb} onClick={fn} style={{...Card(),cursor:"pointer",textAlign:"center",padding:16,display:"block"}}>
@@ -7707,6 +7764,39 @@ function AppMain() {
     });
   },[mediaLib]);
 
+  // CLEAR THE LIBRARY AFTER EXPORT — the finished film is kept (render_final) and
+  // so are voices/narration recordings (audio) and proof-of-concept films. Only the
+  // scene clips and images are removed, from storage, the library and the timeline,
+  // so the library stops growing forever (27 → 421). The project's timeline, text
+  // boxes and settings stay saved in My Projects.
+  const clearLibraryAfterExport=async()=>{
+    const keep=(a)=>{
+      const id=String((a&&(a.dbId||a.id))||"");
+      const t=String((a&&a.type)||"");
+      if(!(t.startsWith("video")||t.startsWith("image")))return true; // audio/voices stay
+      return id.startsWith("render_final")||id.startsWith("poc_");   // finished films stay
+    };
+    const toDrop=(mediaLib||[]).filter(a=>a&&!keep(a));
+    const dropIds=new Set();
+    for(const a of toDrop){
+      for(const k of [a.dbId,a.id]){
+        if(!k)continue;
+        dropIds.add(String(k));
+        try{await deleteClipFromDB(k);}catch(e){}
+      }
+      try{if(a.url&&String(a.url).startsWith("blob:"))URL.revokeObjectURL(a.url);}catch(e){}
+    }
+    setMediaLib(prev=>(prev||[]).filter(a=>!(a&&(dropIds.has(String(a.dbId||""))||dropIds.has(String(a.id||""))))));
+    setTimeline(prev=>{
+      const next={};
+      for(const k of Object.keys(prev||{})){
+        next[k]=(prev[k]||[]).filter(x=>!(x&&(dropIds.has(String(x.dbId||""))||dropIds.has(String(x.id||"")))));
+      }
+      return next;
+    });
+    return toDrop.length;
+  };
+
   // Emergency crash save — fires when tab is closed or crashes
   useEffect(()=>{
     const emergencySave=()=>{
@@ -7826,7 +7916,7 @@ function AppMain() {
       case 15: return <P15/>;
       case 16: return <P16 go={go} timeline={timeline} setRendered={setRendered} mediaLib={mediaLib} setMediaLib={setMediaLib} user={user} filmDuration={filmDuration} setFilmDuration={setFilmDuration}/>;
       case 17: return <P17 go={go} rendered={rendered} mediaLib={mediaLib}/>;
-      case 18: return <P18 rendered={rendered} mediaLib={mediaLib}/>;
+      case 18: return <P18 rendered={rendered} mediaLib={mediaLib} onExported={clearLibraryAfterExport}/>;
       case 19: return <P19 go={go}/>;
       case 20: return <P20/>;
       case 21: return <P21/>;
