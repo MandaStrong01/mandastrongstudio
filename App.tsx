@@ -2651,20 +2651,7 @@ function P6Voice({ onSave, setMediaLib }) {
                   </div>
                   <div style={{display:"flex",gap:4,flexShrink:0}}>
                     {v.url&&<button onClick={e=>{e.stopPropagation();const a=new Audio(v.url);a.play().catch(()=>{});}} style={{background:GOLDDIM,border:"none",color:"#000",padding:"3px 8px",cursor:"pointer",fontSize:9,fontWeight:600}}>▶</button>}
-                    {v.url&&<button title="Save this recording to your device" onClick={async e=>{e.stopPropagation();
-                      try{
-                        const r=await fetch(v.url);const b=await r.blob();
-                        const t=b.type||"";const ext=".mp3";
-                        let nm=window.prompt("Name this recording:",(v.name||"My recording").replace(/[\\/:*?"<>|]/g,"_"));
-                        if(nm===null)return;
-                        nm=(nm.trim()||"My recording").replace(/[\\/:*?"<>|]/g,"_");
-                        nm=nm.replace(/\.(wav|m4a|webm|ogg|aac)$/i,"");if(!/\.(mp3|mp4)$/i.test(nm))nm+=ext;
-                        const f=new File([b],nm,{type:t||"audio/mpeg"});
-                        if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:nm});return;}catch(er){if(er&&er.name==="AbortError")return;}}
-                        const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=nm;a.rel="noopener";document.body.appendChild(a);a.click();
-                        setTimeout(()=>{try{document.body.removeChild(a);URL.revokeObjectURL(u);}catch(er){}},3000);
-                      }catch(er){alert("Couldn't save this recording: "+(er&&er.message||er));}
-                    }} style={{background:GOLD,border:"none",color:"#000",padding:"3px 8px",cursor:"pointer",fontSize:9,fontWeight:600}}>⬇</button>}
+                    
                     <button onClick={e=>{e.stopPropagation();delMyVoice(v.id);}} style={{background:"#171208",border:"1px solid "+GOLDDIM,color:GOLD,padding:"3px 8px",cursor:"pointer",fontSize:9,fontWeight:600}}>✕</button>
                   </div>
                 </div>
