@@ -89,7 +89,7 @@ export default function BuilderPage({ onBack }: BuilderPageProps) {
                 >
                   <Sparkles className="w-12 h-12 text-white mx-auto mb-3" />
                   <h3 className="text-white font-bold text-lg mb-2">Use AI Tools</h3>
-                  <p className="text-pink-200 text-sm">Generate content with 600+ AI tools</p>
+                  <p className="text-pink-200 text-sm">Generate content with 200+ AI tools</p>
                 </button>
               </div>
 

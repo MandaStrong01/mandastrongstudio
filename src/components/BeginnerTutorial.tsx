@@ -18,7 +18,7 @@ export default function BeginnerTutorial({ onClose, onNavigate }: BeginnerTutori
     },
     {
       title: "Phase 1: Pre-Production",
-      content: "Pages 4-10 contain 600+ AI tools to help you create scripts, characters, storyboards, and plan your movie. You don't need to use all tools - pick what you need!",
+      content: "Pages 4-10 contain 200+ AI tools to help you create scripts, characters, storyboards, and plan your movie. You don't need to use all tools - pick what you need!",
       icon: "📝",
       action: { label: "Go to AI Tools", page: 4 },
     },

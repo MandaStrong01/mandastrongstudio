@@ -28,7 +28,7 @@ export default function UserGuide({ onClose }: UserGuideProps) {
             <section className="bg-black/50 border border-purple-500 rounded-lg p-6">
               <h2 className="text-2xl font-bold text-purple-400 mb-4">Welcome to MandaStrong1 Studio</h2>
               <p className="text-purple-200 leading-relaxed mb-4">
-                MandaStrong1 Studio is a comprehensive video creation platform featuring 600+ AI-powered tools,
+                MandaStrong1 Studio is a comprehensive video creation platform featuring 200+ AI-powered tools,
                 professional editing capabilities, and seamless workflow management. Whether you're creating short
                 clips or feature-length films, this studio has everything you need.
               </p>
