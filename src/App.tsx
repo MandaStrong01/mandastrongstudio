@@ -4369,7 +4369,7 @@ function P2({ go }) {
           {templates.map(tmpl=>(
             <div key={tmpl.t} style={{background:tmpl.bg,border:"1px solid "+GOLDDIM+"33",padding:"16px 18px",cursor:"pointer"}}
               onMouseEnter={e=>{e.currentTarget.style.borderColor=GOLD;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=GOLDDIM+"33";}}>
-              <div style={{marginBottom:10}}><Frame seed={tmpl.seed} local={tmpl.local} dur={tmpl.dur} h={104}/></div>
+              <div style={{marginBottom:10}}><Frame seed={tmpl.seed} local={tmpl.local} vid={tmpl.vid} localVid={tmpl.localVid} dur={tmpl.dur} h={104}/></div>
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><span style={{color:GOLD,fontWeight:600,fontSize:13,letterSpacing:0.2}}>{tmpl.t}</span></div>
               <div style={{color:WHITE,fontSize:12,lineHeight:1.6,marginBottom:10}}>{tmpl.d}</div>
               <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
