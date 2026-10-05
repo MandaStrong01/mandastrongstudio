@@ -424,7 +424,7 @@ function msDownload(url, filename){
   try{
     if(!url){return;}
     const a=document.createElement("a");
-    a.href=url; a.download=filename||"InFuture.webm"; a.rel="noopener noreferrer";
+    a.href=url; a.download=String(filename||"InFuture.mp4").replace(/\.webm$/i,".mp4"); a.rel="noopener noreferrer";
     document.body.appendChild(a); a.click();
     setTimeout(()=>{try{document.body.removeChild(a);}catch(e){}},1500);
   }catch(e){ try{window.open(url,"_blank");}catch(e2){} }
@@ -927,7 +927,7 @@ function ToolPanel({ tool, onClose, onSave }) {
               const f=e.target.files&&e.target.files[0];
               if(f&&onSave){onSave({id:Date.now()+Math.random(),name:f.name,type:f.type,file:f,url:URL.createObjectURL(f)});setSaved(true);}
             }}/>
-            <input ref={fileRef} type="file" accept="video/*,audio/*,image/*,text/*" style={{display:"none"}} onChange={e=>{
+            <input ref={fileRef} type="file" accept="video/*,audio/*,image/*,text/*,.mp4,.mov,.m4v,.mp3,.m4a,.wav,.aac,.webm" style={{display:"none"}} onChange={e=>{
               const f=e.target.files&&e.target.files[0];
               if(f&&onSave){onSave({id:Date.now()+Math.random(),name:f.name,type:f.type,file:f,url:URL.createObjectURL(f)});setSaved(true);}
             }}/>
@@ -1940,7 +1940,7 @@ llł
                   </div>
                   {audioFile&&<div style={{color:GOLDDIM,fontSize:10,marginTop:4,textAlign:"center"}}>Audio will sync with your video — starts and ends together</div>}
                 </div>
-                <input ref={audioInputRef} type="file" accept="audio/*" style={{display:"none"}} onChange={handleAudioUpload}/>
+                <input ref={audioInputRef} type="file" accept="audio/*,.mp3,.m4a,.wav,.aac,.ogg,.mp4" style={{display:"none"}} onChange={handleAudioUpload}/>
                 {audioFile&&<button onClick={()=>{setAudioFile(null);setAudioUrl("");setAudioName("");}} style={{background:"none",border:"1px solid #ef4444",color:"#ef4444",padding:"3px 10px",cursor:"pointer",fontSize:10,fontWeight:600,marginBottom:8}}>Remove audio</button>}
 
                 {/* Scene description */}
@@ -2640,11 +2640,11 @@ function P6Voice({ onSave, setMediaLib }) {
                     {v.url&&<button title="Save this recording to your device" onClick={async e=>{e.stopPropagation();
                       try{
                         const r=await fetch(v.url);const b=await r.blob();
-                        const t=b.type||"";const ext=t.includes("wav")?".wav":t.includes("mp4")||t.includes("m4a")||t.includes("aac")?".m4a":t.includes("webm")?".webm":t.includes("ogg")?".ogg":".mp3";
+                        const t=b.type||"";const ext=".mp3";
                         let nm=window.prompt("Name this recording:",(v.name||"My recording").replace(/[\\/:*?"<>|]/g,"_"));
                         if(nm===null)return;
                         nm=(nm.trim()||"My recording").replace(/[\\/:*?"<>|]/g,"_");
-                        if(!/\.(mp3|wav|m4a|webm|ogg)$/i.test(nm))nm+=ext;
+                        nm=nm.replace(/\.(wav|m4a|webm|ogg|aac)$/i,"");if(!/\.(mp3|mp4)$/i.test(nm))nm+=ext;
                         const f=new File([b],nm,{type:t||"audio/mpeg"});
                         if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:nm});return;}catch(er){if(er&&er.name==="AbortError")return;}}
                         const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=nm;a.rel="noopener";document.body.appendChild(a);a.click();
@@ -4120,7 +4120,7 @@ Write the drawFrame body now.`}]
           {videoUrl&&!generating&&(
             <div style={{padding:"10px 14px",borderBottom:"1px solid "+GOLDDIM+"",display:"flex",flexDirection:"column",gap:6}}>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                <button onClick={()=>msDownload(videoUrl,(title||"scene")+"_"+duration+"s.webm")}
+                <button onClick={()=>msDownload(videoUrl,(title||"scene")+"_"+duration+"s.mp4")}
                   style={{background:"transparent",border:"1px solid "+GOLDDIM,color:GOLD,padding:"8px",fontSize:10,cursor:"pointer",textAlign:"center",letterSpacing:0,fontWeight:600,fontFamily:"'Archivo',system-ui,sans-serif",display:"block"}}>Download</button>
                 <button onClick={saveToLibrary}
                   style={{background:saved?"#171208":"transparent",border:"1px solid "+GOLDDIM,color:saved?"#000":GOLD,padding:"8px",fontSize:10,cursor:"pointer",fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>
@@ -4776,7 +4776,7 @@ function MergeVideos({ onSave }) {
 
   return (
     <div>
-      <input ref={fileRef} type="file" multiple accept="video/*" style={{display:"none"}} onChange={e=>addClips(e.target.files)}/>
+      <input ref={fileRef} type="file" multiple accept="video/*,.mp4,.mov,.m4v,.webm" style={{display:"none"}} onChange={e=>addClips(e.target.files)}/>
       <button onClick={()=>fileRef.current&&fileRef.current.click()}
         style={{width:"100%",background:"#171208",border:"1px solid "+GOLDDIM,color:WHITE,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif",marginBottom:10}}>
         ⬆ ADD VIDEOS TO MERGE ({clips.length} loaded)
@@ -4826,7 +4826,7 @@ function MergeVideos({ onSave }) {
       {mergedUrl&&(
         <div style={{background:"#061406",border:"1px solid #22c55e",padding:"10px 14px"}}>
           <div style={{color:"#22c55e",fontWeight:600,fontSize:11,letterSpacing:0.2,marginBottom:6}}>Merged film saved to media library — ready for timeline</div>
-          <button onClick={()=>msDownload(mergedUrl,"InFuture_Merged.webm")}
+          <button onClick={()=>msDownload(mergedUrl,"InFuture_Merged.mp4")}
             style={{background:"transparent",border:"none",color:GOLD,fontSize:10,fontWeight:600,letterSpacing:0.2,cursor:"pointer",padding:0,textDecoration:"underline",fontFamily:"'Archivo',system-ui,sans-serif"}}>Download merged film</button>
         </div>
       )}
@@ -4893,7 +4893,7 @@ function P11({ mediaLib, setMediaLib }) {
             </div>
           </div>
         )}
-        <input ref={fileRef} type="file" multiple accept="video/*,audio/*,image/*" onChange={e=>onFiles(e.target.files)} style={{display:"none"}}/>
+        <input ref={fileRef} type="file" multiple accept="video/*,audio/*,image/*,.mp4,.mov,.m4v,.mp3,.m4a,.wav,.aac,.webm" onChange={e=>onFiles(e.target.files)} style={{display:"none"}}/>
       </div>
       <div style={{marginTop:20}}>
         <div style={{background:"#171208",border:"2px solid "+SIGNAL,padding:16,marginBottom:12}}>
@@ -6239,7 +6239,7 @@ function P18({ rendered, mediaLib, onExported }) {
   },[rendered,mediaLib]);
   const dl=async()=>{
     if(!vs){alert("No film yet — render first!");return;}
-    msDownload(vs,"InFuture_Film.webm");
+    msDownload(vs,"InFuture_Film.mp4");
     if(!onExported)return;
     // Once exported, clear the scene files out of the library — but ONLY if the
     // finished film is safely in storage, so nothing can be lost.
@@ -7023,7 +7023,7 @@ function P24CharacterStudio({ onSave, go }) {
               <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap"}}>
                 <button onClick={lsRecord} style={{flex:1,minWidth:140,background:lsRecording?"#c0392b":"#171208",border:"1px solid "+(lsRecording?"#000":GOLDDIM),color:lsRecording?"#fff":WHITE,padding:"11px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>{lsRecording?"Stop recording":"Record voice"}</button>
                 <button onClick={()=>{const i=document.getElementById("lsAudioInput");if(i)i.click();}} style={{flex:1,minWidth:140,background:"#171208",border:"1px solid "+GOLDDIM,color:WHITE,padding:"11px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0,fontFamily:"'Archivo',system-ui,sans-serif"}}>⤴ upload voice</button>
-                <input id="lsAudioInput" type="file" accept="audio/*" style={{display:"none"}} onChange={lsPickAudio}/>
+                <input id="lsAudioInput" type="file" accept="audio/*,.mp3,.m4a,.wav,.aac,.mp4" style={{display:"none"}} onChange={lsPickAudio}/>
               </div>
               {lsAudioName&&<div style={{color:GOLD,fontSize:11,marginBottom:10}}>Voice ready: {lsAudioName}</div>}
               <button onClick={makeAvatarSpeak} disabled={lsBusy} style={{width:"100%",padding:15,background:lsBusy?"#333":GOLD,color:lsBusy?"#888":"#000",border:"none",fontWeight:600,fontSize:15,letterSpacing:0.2,cursor:lsBusy?"default":"pointer",fontFamily:"'Archivo',system-ui,sans-serif"}}>{lsBusy?"GENERATING…":"Make avatar speak"}</button>
