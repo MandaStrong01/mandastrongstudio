@@ -1,7 +1,7 @@
 {
   "name": "MandaStrong Studio Pro",
   "short_name": "MandaStrong",
-  "description": "Professional AI-powered video production studio with 600+ tools",
+  "description": "Professional AI-powered video production studio with 200+ tools",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",
