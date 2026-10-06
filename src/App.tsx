@@ -2874,6 +2874,7 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
   const [mmmVolume,setMmmVolume]=useState(1);
   const [mmmBgSound,setMmmBgSound]=useState(true);
   const [mmmBgVolume,setMmmBgVolume]=useState(0.3);
+  useEffect(()=>{try{localStorage.setItem("ms_mmm_bed",mmmBgSound?"on":"off");localStorage.setItem("ms_mmm_bedvol",String(mmmBgVolume));}catch(e){}},[mmmBgSound,mmmBgVolume]);
   // Music bed for the Make My Movie player: the track picked in "Add background
   // music" if any, otherwise a calm cinematic default. Only when Music bed is ON.
   const mmmMusicSrc=mmmBgSound?((MUSIC_LIBRARY.find(m=>m.id===musicTrack)||MUSIC_LIBRARY.find(m=>m.id==="ambient")||MUSIC_LIBRARY[0]||{}).url||""):"";
@@ -5650,6 +5651,44 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
           }
         }
       }catch(e){log("Music bed skipped: "+e.message);}
+      // No tagged music? Use a built-in stereo ambient bed, made right here (needs no
+      // download, so it always works). Respects the Make My Movie music switch + volume.
+      try{
+        const bedOff=(()=>{try{return localStorage.getItem("ms_mmm_bed")==="off";}catch(e){return false;}})();
+        const bedVol=(()=>{try{const v=parseFloat(localStorage.getItem("ms_mmm_bedvol"));return isFinite(v)?Math.max(0.05,Math.min(1,v)):0.3;}catch(e){return 0.3;}})();
+        if(!musicSource&&!bedOff){
+          const sr=audioCtx.sampleRate, secs=32, n=Math.floor(sr*secs);
+          const pad=audioCtx.createBuffer(2,n,sr);
+          const chords=[[110,164.81,220,277.18],[87.31,130.81,174.61,261.63],[130.81,196,261.63,329.63],[98,146.83,196,246.94]];
+          const seg=secs/chords.length, xf=2;
+          for(let ch=0;ch<2;ch++){
+            const d=pad.getChannelData(ch);
+            for(let c=0;c<chords.length;c++){
+              const t0=c*seg-xf/2, t1=(c+1)*seg+xf/2;
+              const i0=Math.max(0,Math.floor(t0*sr)), i1=Math.min(n,Math.floor(t1*sr));
+              for(let i=i0;i<i1;i++){
+                const t=i/sr, lt=t-t0, len=t1-t0;
+                const env=Math.min(1,lt/xf,(len-lt)/xf);
+                let v=0;
+                for(let k=0;k<chords[c].length;k++){
+                  const f=chords[c][k]*(ch===0?1:1.003);
+                  v+=Math.sin(2*Math.PI*f*t+k)*(1+0.25*Math.sin(2*Math.PI*0.12*t+k+ch*1.7));
+                }
+                d[i]+=v*env*0.07;
+              }
+            }
+            // wrap-around: fade the loop seam so it never clicks
+            const fade=Math.floor(sr*1.5);
+            for(let i=0;i<fade;i++){const g=i/fade;d[i]*=g;d[n-1-i]*=g;}
+          }
+          musicSource=audioCtx.createBufferSource();
+          musicSource.buffer=pad;musicSource.loop=true;
+          const mGain2=audioCtx.createGain();
+          mGain2.gain.value=Math.min(0.5,bedVol*0.8);
+          musicSource.connect(mGain2);mGain2.connect(audioDest);mGain2.connect(audioCtx.destination);
+          log("Background music bed (stereo ambient) mixed in under narration");
+        } else if(!musicSource&&bedOff){log("Music bed is OFF in Make My Movie — no music");}
+      }catch(e){log("Built-in music bed skipped: "+e.message);}
       // Draw several plain frames BEFORE capturing so the stream is definitely live.
       // No words on screen — the film shows only the source footage.
       for(let w=0;w<5;w++){
@@ -5685,6 +5724,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
       ctx.fillStyle="#000";ctx.fillRect(0,0,dims.w,dims.h);
       await new Promise(r=>setTimeout(r,200));
       recorder.start(1000);
+      const renderT0=Date.now();
       // iPad Safari fix: force the recorder to flush data every second so chunks
       // never end up empty, and keep the canvas stream alive with a heartbeat.
       const dataInterval=setInterval(()=>{try{if(recorder.state==="recording")recorder.requestData();}catch(e){}},1000);
@@ -5968,6 +6008,21 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
         }
       }
       setCurrentClipIdx(-1);
+      // Never end before the narration does: if the pictures ran out early, keep the
+      // last picture on screen (slow dim) until the voice has finished.
+      {
+        const narrEnd=narrSeq?narrSeq.total:(audioBuffer?audioBuffer.duration:0);
+        const elapsedNow=(Date.now()-renderT0)/1000;
+        if(narrEnd>elapsedNow+1){
+          log("Pictures finished early — holding the last scene until the narration ends ("+Math.round(narrEnd-elapsedNow)+"s)");
+          while((Date.now()-renderT0)/1000<narrEnd){
+            const left=narrEnd-(Date.now()-renderT0)/1000;
+            setProgress(Math.min(91,Math.max(5,Math.round(85+(1-left/narrEnd)*6))));
+            try{ctx.fillStyle="rgba(0,0,0,0.004)";ctx.fillRect(0,0,dims.w,dims.h);}catch(e){}
+            await new Promise(r=>setTimeout(r,250));
+          }
+        }
+      }
       // End card — real-time paced
       {const ecFrames=fps*2;const ecStart=performance.now();
       await new Promise(resolve=>{
@@ -6161,7 +6216,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
         <div style={{borderLeft:"1px solid "+GOLDDIM+"",display:"flex",flexDirection:"column",background:"#020200"}}>
           <div style={{background:"#171208",aspectRatio:"16/9",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
             {renderUrl?(
-              <video src={renderUrl} controls autoPlay playsInline style={{width:"100%",height:"100%",objectFit:"contain"}}/>
+              <video src={renderUrl} controls autoPlay playsInline onLoadedMetadata={e=>msFixDuration(e.currentTarget,()=>{})} style={{width:"100%",height:"100%",objectFit:"contain"}}/>
             ):(
               <div style={{textAlign:"center",padding:20}}>
                 <div style={{color:GOLD,fontSize:28,marginBottom:8}}>Render</div>
@@ -6190,6 +6245,24 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
   );
 }
 
+// Browser-recorded WebM files have no length in them, so players show Infinity.
+// Seeking far past the end makes the browser work out the real length.
+function msFixDuration(v,setDur){
+  if(!v)return;
+  const d=v.duration;
+  if(isFinite(d)&&d>0){setDur(d);return;}
+  const onUpd=()=>{
+    if(isFinite(v.duration)&&v.duration>0){
+      v.removeEventListener("timeupdate",onUpd);
+      const real=v.duration;
+      try{v.currentTime=0;}catch(e){}
+      setDur(real);
+    }
+  };
+  v.addEventListener("timeupdate",onUpd);
+  try{v.currentTime=1e9;}catch(e){}
+}
+
 function P17({ go, rendered, mediaLib }) {
   const videoRef = useRef(null);
   const [isPlaying,setIsPlaying]=useState(false);
@@ -6209,7 +6282,7 @@ function P17({ go, rendered, mediaLib }) {
       if(latest?.url) setVs(latest.url);
     });
   },[rendered,mediaLib]);
-  const fmt=s=>{const m=Math.floor(s/60);const sc=Math.floor(s%60);return String(m).padStart(2,"0")+":"+String(sc).padStart(2,"0");};
+  const fmt=s=>{if(!isFinite(s)||s<0)s=0;const m=Math.floor(s/60);const sc=Math.floor(s%60);return String(m).padStart(2,"0")+":"+String(sc).padStart(2,"0");};
   const togglePlay=()=>{if(!videoRef.current)return;if(isPlaying){videoRef.current.pause();setIsPlaying(false);}else{videoRef.current.play();setIsPlaying(true);}};
   return (
     <div style={{...Sp,padding:40}}>
@@ -6218,7 +6291,7 @@ function P17({ go, rendered, mediaLib }) {
         <div style={{background:"#171208",overflow:"hidden",marginBottom:14,aspectRatio:"16/9",display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid "+GOLDDIM}}>
           {vs?<video ref={videoRef} src={vs} style={{width:"100%",height:"100%"}} controls
             onTimeUpdate={()=>setCurrentTime(videoRef.current?.currentTime||0)}
-            onLoadedMetadata={()=>setDuration(videoRef.current?.duration||0)}
+            onLoadedMetadata={()=>msFixDuration(videoRef.current,setDuration)}
             onEnded={()=>setIsPlaying(false)}
             onError={e=>{console.warn("Preview video error",e);}}/>:
             <div style={{textAlign:"center",color:GOLDDIM,fontSize:40}}></div>}
@@ -6230,7 +6303,7 @@ function P17({ go, rendered, mediaLib }) {
           <button onClick={()=>{if(videoRef.current)videoRef.current.currentTime+=10;}} style={{...G("out",true)}}>⏩</button>
           <div style={{flex:1,height:4,background:"#171208",cursor:"pointer"}}
             onClick={e=>{if(!videoRef.current||!duration)return;const r=e.currentTarget.getBoundingClientRect();videoRef.current.currentTime=((e.clientX-r.left)/r.width)*duration;}}>
-            <div style={{width:duration?(currentTime/duration*100):0+"%",height:"100%",background:GOLD}}/>
+            <div style={{width:(duration&&isFinite(duration)?Math.min(100,currentTime/duration*100):0)+"%",height:"100%",background:GOLD}}/>
           </div>
           <span style={{color:WHITE,fontSize:12,fontWeight:500,whiteSpace:"nowrap"}}>{fmt(currentTime)} / {fmt(duration||0)}</span>
         </div>
