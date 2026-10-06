@@ -5170,7 +5170,7 @@ function P15() {
   );
 }
 
-function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDuration, setFilmDuration }) {
+function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDuration, setFilmDuration, onRendered }) {
   const [quality,setQuality]=useState("1080p");
   const [progress,setProgress]=useState(0);
   const [rendering,setRendering]=useState(false);
@@ -6071,6 +6071,18 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
           new Promise(r=>setTimeout(r,6000))
         ]);
       }catch(e){}
+      // ── CLEAR AFTER RENDER — once the finished film is safely in storage, the scene
+      // files and the timeline are cleared so the next project starts clean and the
+      // library never piles up. Your film, voices and recordings are kept.
+      try{
+        if(onRendered){
+          const savedFilm=await loadClipFromDB("render_final");
+          if(savedFilm&&savedFilm.blob&&savedFilm.blob.size>10000){
+            const n=await onRendered();
+            log("Film saved. Cleared "+n+" scene file"+(n===1?"":"s")+" and the timeline — ready for your next project");
+          } else log("Film not confirmed in storage yet — library and timeline kept so nothing is lost");
+        }
+      }catch(e){log("Clear after render skipped: "+e.message);}
       try{if(audioCtx)audioCtx.close();}catch(e){}
     }catch(e){log("Render error: "+e.message);}
     forcedAudioRef.current=null; // reset the render-time voice pick
@@ -8005,7 +8017,7 @@ function AppMain() {
       case 13: return <P13 go={go} mediaLib={mediaLib} timeline={timeline} setTimeline={setTimeline} user={user} filmDuration={filmDuration} setFilmDuration={setFilmDuration}/>;
       case 14: return <P14/>;
       case 15: return <P15/>;
-      case 16: return <P16 go={go} timeline={timeline} setRendered={setRendered} mediaLib={mediaLib} setMediaLib={setMediaLib} user={user} filmDuration={filmDuration} setFilmDuration={setFilmDuration}/>;
+      case 16: return <P16 go={go} timeline={timeline} setRendered={setRendered} mediaLib={mediaLib} setMediaLib={setMediaLib} user={user} filmDuration={filmDuration} setFilmDuration={setFilmDuration} onRendered={async()=>{const n=await clearLibraryAfterExport();setTimeline({});return n;}}/>;
       case 17: return <P17 go={go} rendered={rendered} mediaLib={mediaLib}/>;
       case 18: return <P18 rendered={rendered} mediaLib={mediaLib} onExported={clearLibraryAfterExport}/>;
       case 19: return <P19 go={go}/>;
