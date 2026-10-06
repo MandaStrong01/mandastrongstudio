@@ -5518,7 +5518,11 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
               if(lead){
                 blobs.push(lead);
                 const recSecs=await msBlobSeconds(lead);
-                const remainder=msRemainderAfterRecording(_script,recSecs);
+                // A recording of 10+ minutes is a full-length narration: use it as it is.
+                // The engine only finishes SHORT recordings. Before this, a long recording
+                // still got the cloned voice re-reading "the rest" of the script on top.
+                const remainder=recSecs>=600?"":msRemainderAfterRecording(_script,recSecs);
+                if(recSecs>=600)log("Your recording is full length — using it as is, no engine voice added");
                 if(remainder){
                   let vid="";
                   try{const mv=JSON.parse(localStorage.getItem("ms_my_voices")||"[]");const m=mv.find(v=>v&&v.clonedVoiceId&&((v.dbId&&v.dbId===(audioAsset.dbId||audioAsset.id))||v.id===audioAsset.id));if(m)vid=m.clonedVoiceId;}catch(e){}
