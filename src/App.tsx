@@ -7495,7 +7495,7 @@ function RescueScreen(){
   const moveIt=()=>{
     const w=window.open(CURRENT_SITE+"/?receive=1","_blank");
     if(!w){setMsg("Your browser blocked the new tab. Tap OPEN MY WORK HERE instead — nothing is lost.");return;}
-    setState("moving");setMsg("Opening infutura and copying your work…");
+    setState("moving");setMsg("Opening infuture1.bolt.host and copying your work…");
     let sent=false;
     const onMsg=async(e)=>{
       if(e.origin!==CURRENT_SITE)return;
@@ -7512,7 +7512,7 @@ function RescueScreen(){
         window.removeEventListener("message",onMsg);
         try{localStorage.setItem("ms_moved_to_infutura","1");}catch(x){}
         setState("done");
-        setMsg("Done — "+d.projects+" project(s) and "+d.clips+" file(s) are now on infutura. Your copy here is kept too.");
+        setMsg("Done — "+d.projects+" project(s) and "+d.clips+" file(s) are now on infuture1.bolt.host. Your copy here is kept too.");
       }
     };
     window.addEventListener("message",onMsg);
@@ -7525,8 +7525,8 @@ function RescueScreen(){
         <div style={{color:"#C8A54B",fontSize:13,fontWeight:700,letterSpacing:1}}>INFUTURE MOVIE STUDIOS</div>
         <h1 style={{color:"#C8A54B",fontSize:24,margin:"10px 0"}}>Your work is here</h1>
         <p style={{fontSize:15,lineHeight:1.5}}>{count} saved project{count!==1?"s":""} found on this address, plus your narration and clips.</p>
-        {state!=="done"&&<button onClick={moveIt} disabled={state==="moving"} style={{...btn,background:"#C8A54B",color:"#000",border:"none"}}>{state==="moving"?"MOVING…":"MOVE MY WORK TO INFUTURA"}</button>}
-        {state==="done"&&<button onClick={()=>location.replace(CURRENT_SITE+"/")} style={{...btn,background:"#C8A54B",color:"#000",border:"none"}}>GO TO INFUTURA</button>}
+        {state!=="done"&&<button onClick={moveIt} disabled={state==="moving"} style={{...btn,background:"#C8A54B",color:"#000",border:"none"}}>{state==="moving"?"MOVING…":"MOVE MY WORK TO INFUTURE"}</button>}
+        {state==="done"&&<button onClick={()=>location.replace(CURRENT_SITE+"/")} style={{...btn,background:"#C8A54B",color:"#000",border:"none"}}>GO TO INFUTURE</button>}
         <button onClick={stayHere} style={{...btn,background:"#000",color:"#C8A54B",border:"2px solid #C8A54B"}}>OPEN MY WORK HERE</button>
         {msg&&<p style={{marginTop:16,fontSize:14,color:"#C8A54B"}}>{msg}</p>}
       </div>
