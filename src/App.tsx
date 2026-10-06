@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 // ── SUPABASE AUTH ────────────────────────────────────────────────
@@ -2796,7 +2796,7 @@ function MSUserCounter(){
   );
 }
 
-function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
+function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
   const canvasRef=useRef(null);
   const videoRef=useRef(null);
   const refMediaRef=useRef(null);
@@ -2874,6 +2874,12 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
   const [mmmVolume,setMmmVolume]=useState(1);
   const [mmmBgSound,setMmmBgSound]=useState(true);
   const [mmmBgVolume,setMmmBgVolume]=useState(0.3);
+  const [mmmRatio,setMmmRatio]=useState(()=>{try{return localStorage.getItem("ms_mmm_ratio")||"16:9";}catch{return "16:9";}});
+  const [mmmPlaying,setMmmPlaying]=useState(false);
+  const [mmmClock,setMmmClock]=useState(0);
+  const [mmmSceneNo,setMmmSceneNo]=useState(1);
+  useEffect(()=>{try{localStorage.setItem("ms_mmm_ratio",mmmRatio);}catch(e){}},[mmmRatio]);
+  const mmmAR=mmmRatio.replace(":","/");
   useEffect(()=>{try{localStorage.setItem("ms_mmm_bed",mmmBgSound?"on":"off");localStorage.setItem("ms_mmm_bedvol",String(mmmBgVolume));}catch(e){}},[mmmBgSound,mmmBgVolume]);
   // Music bed for the Make My Movie player: the track picked in "Add background
   // music" if any, otherwise a calm cinematic default. Only when Music bed is ON.
@@ -3087,7 +3093,7 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
         // Feed one of YOUR uploaded images to each scene in turn (not just scene 1),
         // so your reference photos drive the whole film, not only the first shot.
         const sceneImg = mmmImages.length ? (mmmImages[i%mmmImages.length].dataUrl||"") : firstImg;
-        url=await engineRender(sceneList[i],{duration:perSceneSec,image:sceneImg,aspect_ratio:"16:9"});
+        url=await engineRender(sceneList[i],{duration:perSceneSec,image:sceneImg,aspect_ratio:mmmRatio});
       }catch(e){ url=""; }
       // Engine gave us nothing. Prefer YOUR real photo with documentary motion
       // (Ken Burns pan/zoom) over abstract gold shapes — real people, real footage.
@@ -3139,7 +3145,7 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
         const meta={voice:_mv?.engineVoice||mmmVoiceId,gender:_mv?.gender||"",origin:_mv?.origin||"",speed:_mv?.rate||1};
         const vr=await msVoiceText(source,meta,(i,n)=>setMmmStage("MandaStrong Cinema Engine — narrating your script, part "+i+" of "+n+"…"));
         const parts=vr.parts;
-        if(parts.length){ narrUrl=URL.createObjectURL(new Blob(parts,{type:parts[0].type||"audio/mpeg"})); try{localStorage.setItem("ms_mmm_narr",narrUrl);}catch(e){} }
+        if(parts.length){ narrUrl=URL.createObjectURL(new Blob(parts,{type:parts[0].type||"audio/mpeg"})); try{localStorage.setItem("ms_mmm_narr",narrUrl);}catch(e){} try{ const nb=new Blob(parts,{type:parts[0].type||"audio/mpeg"}); await Promise.race([safeSaveClipToDB("mmmnarr_"+Date.now(),nb,"MakeMyMovie_narration"+((nb.type||"").includes("mp4")?".m4a":".mp3"),nb.type||"audio/mpeg"),new Promise(r=>setTimeout(()=>r("t"),8000))]); }catch(e){} }
       }catch(e){}
     }
     setMmmNarrUrl(narrUrl);
@@ -3185,6 +3191,88 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
     const mus=mmmMusicRef.current; if(!mus)return;
     try{ mus.volume=Math.max(0,Math.min(1,mmmBgVolume)); if(!mmmBgSound)mus.pause(); }catch(e){}
   },[mmmBgVolume,mmmBgSound]);
+
+  // ── One-shot page: unified transport (video + narration + music together) ──
+  const mmmListNow=()=>{ try{return JSON.parse(localStorage.getItem("ms_mmm_playlist")||"[]");}catch(e){return [];} };
+  useEffect(()=>{ if(mmmDone){ setMmmPlaying(true); setMmmClock(0); setMmmSceneNo(1); } },[mmmDone,mmmNarrUrl]);
+  useEffect(()=>{
+    if(!mmmPlaying)return;
+    const t=setInterval(()=>setMmmClock(c=>c+0.25),250);
+    return ()=>clearInterval(t);
+  },[mmmPlaying]);
+  useEffect(()=>{
+    const v=mmmVideoRef.current; if(!v||!mmmDone)return;
+    const onP=()=>setMmmSceneNo(mmmIdxRef.current+1);
+    v.addEventListener("play",onP);
+    const n=mmmNarrRef.current; const onNE=()=>setMmmPlaying(false);
+    if(n)n.addEventListener("ended",onNE);
+    return ()=>{ v.removeEventListener("play",onP); if(n)n.removeEventListener("ended",onNE); };
+  },[mmmDone,mmmNarrUrl,mmmFilmUrl]);
+  const mmmTogglePlay=()=>{
+    const v=mmmVideoRef.current,n=mmmNarrRef.current,m=mmmMusicRef.current;
+    if(mmmPlaying){ try{v&&v.pause();}catch(e){} try{n&&n.pause();}catch(e){} try{m&&m.pause();}catch(e){} setMmmPlaying(false); }
+    else{ try{v&&v.play().catch(()=>{});}catch(e){} try{n&&n.play().catch(()=>{});}catch(e){} try{m&&mmmBgSound&&m.play().catch(()=>{});}catch(e){} setMmmPlaying(true); }
+  };
+  const mmmRestart=()=>{
+    const list=mmmListNow(); const v=mmmVideoRef.current,n=mmmNarrRef.current,m=mmmMusicRef.current;
+    mmmIdxRef.current=0; setMmmSceneNo(1); setMmmClock(0);
+    try{ if(v&&list.length){v.src=list[0];} v&&v.play().catch(()=>{}); }catch(e){}
+    try{ if(n){n.currentTime=0;n.play().catch(()=>{});} }catch(e){}
+    try{ if(m&&mmmBgSound){m.currentTime=0;m.play().catch(()=>{});} }catch(e){}
+    setMmmPlaying(true);
+  };
+  const mmmFmtClock=(t)=>{ t=Math.max(0,Math.floor(t)); const h=Math.floor(t/3600),m=Math.floor((t%3600)/60),sec=t%60; return (h?h+":"+(m<10?"0":""):"")+m+":"+(sec<10?"0":"")+sec; };
+  // Bring back scenes already made, after a reload or coming back to the page.
+  useEffect(()=>{
+    let dead=false;
+    (async()=>{
+      try{
+        if(mmmDone||mmmBusy)return;
+        const all=await getAllClipsFromDB();
+        const sc=all.filter(c=>c&&c.blob&&/^MakeMyMovie_scene\d+/i.test(c.name||"")&&c.blob.size>1000)
+          .sort((a,b)=>(parseInt((a.name.match(/scene(\d+)/i)||[])[1])||0)-(parseInt((b.name.match(/scene(\d+)/i)||[])[1])||0));
+        if(dead||!sc.length)return;
+        const urls=sc.map(c=>URL.createObjectURL(c.blob));
+        try{localStorage.setItem("ms_mmm_playlist",JSON.stringify(urls));}catch(e){}
+        setMmmScenes(sc.map((c,i)=>({text:c.name,status:"done",url:urls[i]})));
+        const nr=all.filter(c=>c&&c.blob&&/^MakeMyMovie_narration/i.test(c.name||"")).sort((a,b)=>String(b.id).localeCompare(String(a.id)))[0];
+        if(nr)setMmmNarrUrl(URL.createObjectURL(nr.blob));
+        setMmmFilmUrl(urls[0]); setMmmStage("Your movie is ready."); setMmmPct(100); setMmmDone(true);
+      }catch(e){}
+    })();
+    return ()=>{dead=true;};
+  },[]);
+  const mmmTransport=mmmDone?(
+    <div style={{marginTop:10,padding:10,border:"1px solid "+GOLDDIM+"66",borderRadius:6,background:"#171208"}}>
+      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
+        <button onClick={mmmTogglePlay} style={{flex:"0 0 92px",padding:"10px 0",background:GOLD,color:"#000",border:"none",borderRadius:5,fontWeight:700,fontSize:14,cursor:"pointer"}}>{mmmPlaying?"PAUSE":"PLAY"}</button>
+        <button onClick={mmmRestart} style={{flex:"0 0 92px",padding:"10px 0",background:"#171208",color:GOLD,border:"1px solid "+GOLDDIM,borderRadius:5,fontWeight:600,fontSize:13,cursor:"pointer"}}>RESTART</button>
+        <div style={{flex:1,textAlign:"right",color:"#fff",fontSize:12}}>Scene {Math.min(mmmSceneNo,Math.max(1,mmmListNow().length))} of {Math.max(1,mmmListNow().length)} · {mmmFmtClock(mmmClock)}</div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:8}}>
+        <div>
+          <div style={{color:GOLD,fontSize:11,fontWeight:600,marginBottom:3}}>Voice {Math.round(mmmVolume*100)}%</div>
+          <input type="range" min={0} max={1} step={0.05} value={mmmVolume} onChange={e=>{const x=Number(e.target.value);setMmmVolume(x);try{if(mmmNarrRef.current)mmmNarrRef.current.volume=x;}catch(_){}}} style={{width:"100%",accentColor:GOLD}}/>
+        </div>
+        <div style={{opacity:mmmBgSound?1:0.4}}>
+          <div style={{color:GOLD,fontSize:11,fontWeight:600,marginBottom:3}}>Music {Math.round(mmmBgVolume*100)}%</div>
+          <input type="range" min={0} max={1} step={0.05} value={mmmBgVolume} disabled={!mmmBgSound} onChange={e=>setMmmBgVolume(Number(e.target.value))} style={{width:"100%",accentColor:GOLD}}/>
+        </div>
+      </div>
+      <div style={{color:GOLD,fontSize:11,fontWeight:600,marginBottom:4}}>Screen ratio</div>
+      <div style={{display:"flex",gap:6,marginBottom:8}}>
+        {["16:9","9:16","1:1","21:9"].map(r=>(
+          <button key={r} onClick={()=>setMmmRatio(r)} style={{flex:1,padding:"8px 0",background:mmmRatio===r?GOLD:"#171208",color:mmmRatio===r?"#000":GOLD,border:"1px solid "+GOLDDIM,borderRadius:5,fontWeight:600,fontSize:12,cursor:"pointer"}}>{r}</button>
+        ))}
+      </div>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+        <button onClick={()=>{try{const e=mmmVideoRef.current;(e.requestFullscreen||e.webkitEnterFullscreen||e.webkitRequestFullscreen).call(e);}catch(_){}}} style={{flex:"1 1 45%",padding:10,background:"#171208",color:GOLD,border:"1px solid "+GOLDDIM,borderRadius:5,fontWeight:600,fontSize:12,cursor:"pointer"}}>FULL SCREEN</button>
+        <button onClick={()=>{try{navigator.share?navigator.share({title:"My Movie",url:mmmFilmUrl}):window.open(mmmFilmUrl,"_blank");}catch(e){window.open(mmmFilmUrl,"_blank");}}} style={{flex:"1 1 45%",padding:10,background:"#171208",color:GOLD,border:"1px solid "+GOLDDIM,borderRadius:5,fontWeight:600,fontSize:12,cursor:"pointer"}}>SHARE</button>
+        {go&&<button onClick={()=>go(16)} style={{flex:"1 1 45%",padding:10,background:GOLD,color:"#000",border:"none",borderRadius:5,fontWeight:700,fontSize:12,cursor:"pointer"}}>RENDER FINAL FILM →</button>}
+        {go&&<button onClick={()=>go(18)} style={{flex:"1 1 45%",padding:10,background:"#171208",color:GOLD,border:"1px solid "+GOLDDIM,borderRadius:5,fontWeight:600,fontSize:12,cursor:"pointer"}}>EXPORT PAGE →</button>}
+      </div>
+    </div>
+  ):null;
 
   const [mmmLsBusy,setMmmLsBusy]=useState(false);
   const [mmmLsVideo,setMmmLsVideo]=useState("");
@@ -3748,6 +3836,15 @@ Write the drawFrame body now.`}]
               </div>
             </div>
 
+            <div style={{marginBottom:12}}>
+              <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Screen ratio</div>
+              <div style={{display:"flex",gap:6}}>
+                {["16:9","9:16","1:1","21:9"].map(r=>(
+                  <button key={r} onClick={()=>setMmmRatio(r)} style={{flex:1,padding:"9px 0",background:mmmRatio===r?GOLD:"#171208",color:mmmRatio===r?"#000":GOLD,border:"1px solid "+GOLDDIM,borderRadius:5,fontWeight:600,fontSize:12,cursor:"pointer"}}>{r}</button>
+                ))}
+              </div>
+            </div>
+
             <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:12}}>
               <button onClick={()=>setMmmEnhance(v=>!v)} style={{flex:"1 1 45%",padding:"10px",background:mmmEnhance?GOLD:"#171208",color:mmmEnhance?"#000":GOLD,border:"1px solid "+GOLDDIM,borderRadius:5,fontWeight:600,fontSize:12,letterSpacing:0,cursor:"pointer"}}>Enhance {mmmEnhance?"ON":"OFF"}</button>
               <button onClick={()=>setMmmLipSync(v=>!v)} style={{flex:"1 1 45%",padding:"10px",background:mmmLipSync?GOLD:"#171208",color:mmmLipSync?"#000":GOLD,border:"1px solid "+GOLDDIM,borderRadius:5,fontWeight:600,fontSize:12,letterSpacing:0,cursor:"pointer"}}>Lip sync {mmmLipSync?"ON":"OFF"}</button>
@@ -3777,7 +3874,7 @@ Write the drawFrame body now.`}]
                   {mmmLsBusy?"SYNCING...":"GENERATE TALKING SCENE"}
                 </button>
                 {mmmLsVideo&&(
-                  <video src={mmmLsVideo} controls playsInline style={{width:"100%",marginTop:10,borderRadius:6,border:"1px solid "+GOLDDIM,background:"#171208",aspectRatio:"16/9"}}/>
+                  <MsVideo src={mmmLsVideo} controls playsInline style={{width:"100%",marginTop:10,borderRadius:6,border:"1px solid "+GOLDDIM,background:"#171208",aspectRatio:"16/9"}}/>
                 )}
               </div>
             )}
@@ -3807,8 +3904,9 @@ Write the drawFrame body now.`}]
             {(mmmDone||mmmFilmUrl)&&(
               <div style={{marginTop:16}}>
                 <div style={{color:GOLD,fontSize:13,letterSpacing:0.2,fontWeight:600,marginBottom:8,textAlign:"center"}}>{mmmDone?"Preview":"Live preview — scenes appear as they render"}</div>
-                <video ref={mmmVideoRef} src={mmmFilmUrl} controls autoPlay playsInline
-                  style={{width:"100%",borderRadius:8,border:"1px solid "+GOLDDIM,background:"#171208",aspectRatio:"16/9"}}/>
+                <MsVideo ref={mmmVideoRef} src={mmmFilmUrl} controls autoPlay playsInline
+                  style={{width:"100%",borderRadius:8,border:"1px solid "+GOLDDIM,background:"#171208",aspectRatio:mmmAR,objectFit:"contain"}}/>
+                {mmmTransport}
                 {mmmDone&&(<div style={{display:"flex",gap:10,marginTop:12}}>
                   <button onClick={mmmDownloadAll}
                     style={{flex:1,padding:14,background:GOLD,color:"#000",border:"none",fontWeight:600,fontSize:15,letterSpacing:0.2,borderRadius:6,cursor:"pointer",fontFamily:"'Archivo',system-ui,sans-serif"}}>
@@ -3900,8 +3998,9 @@ Write the drawFrame body now.`}]
         {(mmmDone||mmmFilmUrl)&&(
           <div style={{marginTop:14}}>
             {!mmmDone&&<div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:6,textAlign:"center"}}>Live preview — scenes appear as they render</div>}
-            <video ref={mmmVideoRef} src={mmmFilmUrl} controls autoPlay playsInline
-              style={{width:"100%",borderRadius:8,border:"1px solid "+GOLDDIM,background:"#171208",aspectRatio:"16/9"}}/>
+            <MsVideo ref={mmmVideoRef} src={mmmFilmUrl} controls autoPlay playsInline
+              style={{width:"100%",borderRadius:8,border:"1px solid "+GOLDDIM,background:"#171208",aspectRatio:mmmAR,objectFit:"contain",maxHeight:mmmRatio==="9:16"?560:undefined}}/>
+            {mmmTransport}
             {mmmNarrUrl&&<audio ref={mmmNarrRef} src={mmmNarrUrl} preload="auto" style={{display:"none"}}/>}
             {mmmBgSound&&mmmMusicSrc&&<audio ref={mmmMusicRef} src={mmmMusicSrc} loop preload="auto" style={{display:"none"}}/>}
             {mmmDone&&(<>
@@ -4116,7 +4215,7 @@ Write the drawFrame body now.`}]
         <div style={{borderLeft:"1px solid "+GOLDDIM+"",display:"flex",flexDirection:"column"}}>
           <div style={{background:"#171208",aspectRatio:"16/9",display:"flex",alignItems:"center",justifyContent:"center",borderBottom:"1px solid "+GOLDDIM+"",overflow:"hidden"}}>
             {videoUrl?(
-              <video ref={videoRef} src={videoUrl} controls autoPlay loop playsInline style={{width:"100%",height:"100%",objectFit:"contain"}}/>
+              <MsVideo ref={videoRef} src={videoUrl} controls autoPlay loop playsInline style={{width:"100%",height:"100%",objectFit:"contain"}}/>
             ):(
               <div style={{textAlign:"center",padding:20}}>
                 <div style={{color:GOLD,fontSize:11,fontWeight:600,letterSpacing:0.2,marginBottom:8}}>MANDASTRONG ENGINE v2</div>
@@ -4470,7 +4569,7 @@ function P3() {
                 onClick={()=>!uploads[i]&&refs[i].current&&refs[i].current.click()}>
                 {uploads[i]?(
                   uploads[i].type.startsWith("video")?(
-                    <video ref={videoRefs[i]} src={uploads[i].url} controls playsInline style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+                    <MsVideo ref={videoRefs[i]} src={uploads[i].url} controls playsInline style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
                   ):(
                     <img src={uploads[i].url} alt="upload" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
                   )
@@ -6228,7 +6327,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
         <div style={{borderLeft:"1px solid "+GOLDDIM+"",display:"flex",flexDirection:"column",background:"#020200"}}>
           <div style={{background:"#171208",aspectRatio:"16/9",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
             {renderUrl?(
-              <video src={renderUrl} controls autoPlay playsInline onLoadedMetadata={e=>msFixDuration(e.currentTarget,()=>{})} style={{width:"100%",height:"100%",objectFit:"contain"}}/>
+              <MsVideo src={renderUrl} controls autoPlay playsInline onLoadedMetadata={e=>msFixDuration(e.currentTarget,()=>{})} style={{width:"100%",height:"100%",objectFit:"contain"}}/>
             ):(
               <div style={{textAlign:"center",padding:20}}>
                 <div style={{color:GOLD,fontSize:28,marginBottom:8}}>Render</div>
@@ -6259,6 +6358,33 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
 
 // Browser-recorded WebM files have no length in them, so players show Infinity.
 // Seeking far past the end makes the browser work out the real length.
+// Shared player: every user-facing video goes through this so it actually plays.
+// Fixes missing WebM duration, retries once, falls back to a tap-to-play button
+// when the browser blocks autoplay, and shows a Download link if the file can't play.
+const MsVideo=React.forwardRef(function MsVideo(props,fwd){
+  const {onLoadedMetadata,onError,autoPlay,src,style,...rest}=props;
+  const inner=useRef(null);
+  const [tap,setTap]=useState(false);
+  const [bad,setBad]=useState(false);
+  const tried=useRef(0);
+  const setRef=el=>{ inner.current=el; if(typeof fwd==="function")fwd(el); else if(fwd)fwd.current=el; };
+  useEffect(()=>{ setBad(false); setTap(false); tried.current=0; },[src]);
+  const tryPlay=()=>{ const v=inner.current; if(!v)return; const r=v.play(); if(r&&r.catch)r.catch(()=>{ try{ v.muted=true; const r2=v.play(); if(r2&&r2.catch)r2.catch(()=>setTap(true)); }catch(e){setTap(true);} }); };
+  return(
+    <div style={{position:"relative",width:"100%",height:style&&style.height?style.height:undefined}}>
+      <video {...rest} ref={setRef} src={src} playsInline preload="auto" style={{...style,width:"100%"}}
+        onLoadedMetadata={e=>{ try{msFixDuration(e.currentTarget,()=>{});}catch(_){} if(onLoadedMetadata)onLoadedMetadata(e); if(autoPlay)tryPlay(); }}
+        onError={e=>{ if(tried.current<1){ tried.current++; try{ const v=e.currentTarget; const u=v.src; v.src=""; v.src=u; v.load(); }catch(_){} } else setBad(true); if(onError)onError(e); }}/>
+      {tap&&!bad&&<button onClick={()=>{setTap(false);const v=inner.current;if(v){v.muted=false;v.play().catch(()=>{});}}}
+        style={{position:"absolute",inset:0,margin:"auto",width:76,height:76,borderRadius:"50%",background:"rgba(0,0,0,0.65)",border:"2px solid #E8C96D",color:"#E8C96D",fontSize:30,cursor:"pointer"}}>▶</button>}
+      {bad&&<div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8,background:"rgba(0,0,0,0.8)",color:"#fff",fontSize:12,textAlign:"center",padding:12}}>
+        <div>This browser can't play this clip.</div>
+        <a href={src} download="InFuture_clip" style={{color:"#E8C96D",fontWeight:600}}>Download it</a>
+      </div>}
+    </div>
+  );
+});
+
 function msFixDuration(v,setDur){
   if(!v)return;
   const d=v.duration;
@@ -6505,6 +6631,8 @@ function P19({ go }) {
     {n:"10",t:"Saving & Project History",d:"Real auto-save keeps your work safe at all times. Emergency crash save fires if the tab closes. Named sessions in MY PROJECTS for full restore.",dur:"2:00",l:"Beginner",page:1,tips:["AUTOSAVE ON is real — saves every time you change page, timeline, or media","💾 SAVE PROJECT creates a named restore point in MY PROJECTS"," MY PROJECTS CONTINUE PROJECT restores your full session including clips"]},
     {n:"11",t:"Character Studio — Page 24",d:"Create and save reusable characters with reference photos, voice assignments, and appearance notes. Use in any scene.",dur:"3:00",l:"Intermediate",page:24,tips:["Upload a reference photo for each character","Assign a voice from the 54-character library","Hit USE IN SCENE to send the character to your Media Library"]},
     {n:"12",t:"Documentary Workflow — Full Case Study",d:"Complete end-to-end documentary production: script to 4K render. 13 scenes, narration, timeline assembly, and export.",dur:"5:00",l:"Advanced",page:8,tips:["Page 5 paste director instructions + full narration script into Script to Movie","Page 6 → select your voice → PREPARE TO SPEAK → SAVE TO MEDIA LIBRARY","Page 8 → generate all scenes → Page 13 → Sync → Page 16 → Render 4K"]},
+    {n:"13",t:"Make My Movie — One-Shot Page",d:"The fast route for beginners and pros. Paste your story, add photos, pick style, voice, music and screen ratio, then hit MAKE MY MOVIE. Watch, mix, download and send to final render — all on Page 8.",dur:"4:00",l:"Beginner",page:8,tips:["Paste your story or script into the box — the engine builds the scenes","Add your own photos — they drive every scene","Pick RATIO first: 16:9 film, 9:16 phone, 1:1 square, 21:9 wide","Use PLAY / PAUSE / RESTART — picture, voice and music move together","Voice and Music sliders change the mix live","DOWNLOAD saves every scene; RENDER FINAL FILM → opens Page 16","Your scenes come back after a reload — nothing to redo"]},
+    {n:"14",t:"If a Video Won't Play",d:"Quick fixes when a clip shows black, silent or stuck. Every player now retries, and shows a tap-to-play button or a download link.",dur:"2:00",l:"Beginner",page:17,tips:["Tap the ▶ button if the browser blocks autoplay","Use Chrome, or Safari 15 or newer, with the tab in front","If you see Download it — save the clip and play it from your device","Timer showing 0:00? Press play once — it reads the real length","Render ended early? The film now holds its last picture until the voice finishes","After a finished render the scene files and timeline clear by themselves"]},
   ];
 
   const lc={Beginner:"#22c55e",Intermediate:"#f59e0b",Advanced:"#ef4444"};
@@ -6867,11 +6995,17 @@ function HowToGuide() {
 
     {t:"SAVING, RECOVERING & GETTING HELP",c:"AUTOSAVE ON saves as you work. SAVE PROJECT creates a named session — name it meaningfully. MY PROJECTS shows your history; CONTINUE PROJECT restores a session including all clips. An emergency save fires if the tab closes or crashes, so work is never permanently lost. Stuck? Agent Grok on Page 21 is your 24/7 production consultant with full knowledge of every page and workflow. This guide lives on your closing page at infuture1.bolt.host and is updated as the studio grows."},
 
+    {t:"Part two · Make My Movie — the one-shot page",c:"Page 8 has a one-shot route. Everything is on the one page. 1) Paste your story or script. 2) Add your own photos. 3) Pick Style, Genre, Colour grade and Narration voice. 4) Pick the Screen ratio: 16:9 for film, 9:16 for phones, 1:1 for squares, 21:9 for wide. 5) Set Music bed ON or OFF. 6) Hit MAKE MY MOVIE. The engine builds each scene. If the engine has no credit, your own photos are used with slow camera motion. Your narration is made from the whole script. When it is ready the viewer starts. PLAY, PAUSE and RESTART control the picture, the voice and the music together. Voice and Music sliders change the mix live. Change the ratio any time. FULL SCREEN fills the screen. DOWNLOAD saves every scene. SHARE sends the link. RENDER FINAL FILM opens Page 16. EXPORT PAGE opens Page 18. Scenes you already made come back when you return to the page."},
+
+    {t:"Part two · Final render, then a clean slate",c:"Page 16 joins your clips, voice and music into one film. A quiet music bed is added if you have not picked a track. The film never ends before the narration. When the finished film is safely saved, the scene files and the timeline clear by themselves. Your finished film, your voice recordings and your audio stay. Your next project starts clean. Download your film first, then start again."},
+
+    {t:"Troubleshooting · when a video will not play",c:"Every player in the studio now helps itself. It retries once. If the browser blocks autoplay you see a ▶ button — tap it. If the browser cannot play the file you see a Download it link — save it and play it from your device. A timer stuck on 0:00 or infinity fixes itself after the first play. Use Chrome, or Safari 15 or newer. Keep the tab in front while rendering. If a render looks wrong, hit RESTART, then try Page 17 to preview the finished film."},
+
     {t:"Recommended workflow — start to finish",c:"Page 5 fill Script to Movie's Producer, Describe, Production boxes WIRE INTO RENDER. Page 6 choose a voice PREPARE TO SPEAK SAVE TO MEDIA LIBRARY. Page 8 upload a reference photo generate each scene (your brief drives them) add background music and stereo if you like. Page 13 SYNC ALL TRACKS. Page 15 set the mix. Page 16 choose quality render. Page 17 preview. Page 18 export and share. That is a finished film, made by you, at infuture1.bolt.host."},
   ];
   return(
     <div style={{padding:"20px 32px 40px",maxWidth:860,margin:"0 auto"}}>
-      <div style={{color:GOLD,fontWeight:600,fontSize:12,letterSpacing:0.4,marginBottom:12,textAlign:"center"}}>How to use mandastrong studio — click any section</div>
+      <div style={{color:GOLD,fontWeight:600,fontSize:12,letterSpacing:0.4,marginBottom:12,textAlign:"center"}}>How to use InFuture Movie Studios — click any section</div>
       {SECTIONS.map((g,i)=>{
         const isOpen=open===i;
         return(
@@ -7134,7 +7268,7 @@ function P24CharacterStudio({ onSave, go }) {
               {lsBusy&&<div style={{marginTop:10,color:GOLD,fontSize:12,letterSpacing:0}}>{lsStage}</div>}
               {lsVideo&&(
                 <div style={{marginTop:12}}>
-                  <video src={lsVideo} controls autoPlay playsInline style={{width:"100%",border:"1px solid "+GOLDDIM,background:"#171208"}}/>
+                  <MsVideo src={lsVideo} controls autoPlay playsInline style={{width:"100%",border:"1px solid "+GOLDDIM,background:"#171208"}}/>
                   <button onClick={lsDownload} style={{width:"100%",marginTop:8,padding:13,background:GOLD,color:"#000",border:"none",fontWeight:600,fontSize:14,letterSpacing:0.2,cursor:"pointer",fontFamily:"'Archivo',system-ui,sans-serif"}}>Download lip-sync video</button>
                 </div>
               )}
@@ -8009,7 +8143,7 @@ function AppMain() {
       case 5: return <ToolPage title="WRITING TOOLS" subtitle="AI WORKSTATION 01 — WRITING" tools={WRITING} onSave={saveAsset}/>;
       case 6: return <P6Voice onSave={saveAsset} setMediaLib={setMediaLib}/>;
       case 7: return <ToolPage title="IMAGE TOOLS" subtitle="AI WORKSTATION 03 — IMAGE" tools={IMAGE_T} onSave={saveAsset}/>;
-      case 8: return <P8VideoGenerator onSave={saveAsset} user={user} filmDuration={filmDuration} setFilmDuration={setFilmDuration}/>;
+      case 8: return <P8VideoGenerator onSave={saveAsset} user={user} filmDuration={filmDuration} setFilmDuration={setFilmDuration} go={go}/>;
       case 9: return <ToolPage title="MOTION & VFX" subtitle="AI WORKSTATION 05 — MOTION" tools={MOTION} onSave={saveAsset}/>;
       case 10: return <ToolPage title="ENHANCEMENT STUDIO" subtitle="AI WORKSTATION 06 — ENHANCE" tools={MOTION} onSave={saveAsset}/>;
       case 11: return <P11 mediaLib={mediaLib} setMediaLib={setMediaLib}/>;
