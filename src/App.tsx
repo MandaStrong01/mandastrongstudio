@@ -2860,6 +2860,7 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
   const [mmmFilmUrl,setMmmFilmUrl]=useState("");
   const [mmmNarrUrl,setMmmNarrUrl]=useState("");
   const mmmNarrRef=useRef(null);
+  const mmmMusicRef=useRef(null);
   const [mmmError,setMmmError]=useState("");
   const mmmDropRef=useRef(null);
   const mmmTargetMin=filmDuration||30;
@@ -2873,6 +2874,9 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
   const [mmmVolume,setMmmVolume]=useState(1);
   const [mmmBgSound,setMmmBgSound]=useState(true);
   const [mmmBgVolume,setMmmBgVolume]=useState(0.3);
+  // Music bed for the Make My Movie player: the track picked in "Add background
+  // music" if any, otherwise a calm cinematic default. Only when Music bed is ON.
+  const mmmMusicSrc=mmmBgSound?((MUSIC_LIBRARY.find(m=>m.id===musicTrack)||MUSIC_LIBRARY.find(m=>m.id==="ambient")||MUSIC_LIBRARY[0]||{}).url||""):"";
   const MMM_GRADES=[
     {id:"gold",label:"Gold & Amber"},
     {id:"cold",label:"Cold Blue"},
@@ -3166,12 +3170,20 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration }) {
     // Mute the silent scene clips so ONLY your narration is heard over the film.
     const narr=mmmNarrRef.current;
     if(narr&&mmmNarrUrl){ try{ v.muted=true; narr.currentTime=0; narr.volume=Math.max(0,Math.min(1,mmmVolume)); narr.play().catch(()=>{}); }catch(e){} }
+    // Quiet music bed under the narration, looped for the whole film.
+    const mus=mmmMusicRef.current;
+    if(mus&&mmmBgSound&&mmmMusicSrc){ try{ mus.loop=true; mus.currentTime=0; mus.volume=Math.max(0,Math.min(1,mmmBgVolume)); mus.play().catch(()=>{}); }catch(e){} }
     // When one scene ends, advance to the next — but DON'T stop the narration; it
     // runs continuously across the whole film so your voice never cuts off.
     const onEnd=()=>{ mmmIdxRef.current++; if(mmmIdxRef.current<list.length){ v.src=list[mmmIdxRef.current]; v.play().catch(()=>{}); } };
     v.addEventListener("ended",onEnd);
-    return ()=>{ v.removeEventListener("ended",onEnd); try{if(narr)narr.pause();}catch(e){} };
-  },[mmmDone,mmmNarrUrl]);
+    return ()=>{ v.removeEventListener("ended",onEnd); try{if(narr)narr.pause();}catch(e){} try{if(mus)mus.pause();}catch(e){} };
+  },[mmmDone,mmmNarrUrl,mmmBgSound,mmmMusicSrc]);
+  // Music volume slider and Music bed ON/OFF now act live on the music bed.
+  useEffect(()=>{
+    const mus=mmmMusicRef.current; if(!mus)return;
+    try{ mus.volume=Math.max(0,Math.min(1,mmmBgVolume)); if(!mmmBgSound)mus.pause(); }catch(e){}
+  },[mmmBgVolume,mmmBgSound]);
 
   const [mmmLsBusy,setMmmLsBusy]=useState(false);
   const [mmmLsVideo,setMmmLsVideo]=useState("");
@@ -3890,6 +3902,7 @@ Write the drawFrame body now.`}]
             <video ref={mmmVideoRef} src={mmmFilmUrl} controls autoPlay playsInline
               style={{width:"100%",borderRadius:8,border:"1px solid "+GOLDDIM,background:"#171208",aspectRatio:"16/9"}}/>
             {mmmNarrUrl&&<audio ref={mmmNarrRef} src={mmmNarrUrl} preload="auto" style={{display:"none"}}/>}
+            {mmmBgSound&&mmmMusicSrc&&<audio ref={mmmMusicRef} src={mmmMusicSrc} loop preload="auto" style={{display:"none"}}/>}
             {mmmDone&&(<>
               <button onClick={mmmDownloadAll}
                 style={{width:"100%",padding:14,marginTop:10,background:GOLD,color:"#000",border:"none",fontWeight:600,fontSize:16,letterSpacing:0.2,borderRadius:6,cursor:"pointer",fontFamily:"'Archivo',system-ui,sans-serif"}}>
