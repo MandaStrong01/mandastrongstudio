@@ -3964,6 +3964,27 @@ Write the drawFrame body now.`}]
           style={{width:"100%",accentColor:GOLD,marginBottom:2}}/>
         <div style={{display:"flex",justifyContent:"space-between",color:DIM,fontSize:10,marginBottom:12}}><span>1 min</span><span>3 hours</span></div>
 
+        <div style={{padding:10,border:"1px solid "+GOLDDIM+"66",borderRadius:6,marginBottom:10}}>
+          <div style={{color:GOLD,fontSize:12,fontWeight:600,marginBottom:6}}>Finishing touches</div>
+          <div style={{color:GOLD,fontSize:11,marginBottom:4}}>Screen ratio</div>
+          <div style={{display:"flex",gap:6,marginBottom:8}}>
+            {["16:9","9:16","1:1","21:9"].map(r=>(
+              <button key={r} onClick={()=>setMmmRatio(r)} style={{flex:1,padding:"8px 0",background:mmmRatio===r?GOLD:"#171208",color:mmmRatio===r?"#000":GOLD,border:"1px solid "+GOLDDIM,borderRadius:5,fontWeight:600,fontSize:12,cursor:"pointer"}}>{r}</button>
+            ))}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:8}}>
+            <div>
+              <div style={{color:GOLD,fontSize:11,fontWeight:600,marginBottom:3}}>Voice {Math.round(mmmVolume*100)}%</div>
+              <input type="range" min={0} max={1} step={0.05} value={mmmVolume} onChange={e=>setMmmVolume(Number(e.target.value))} style={{width:"100%",accentColor:GOLD}}/>
+            </div>
+            <div style={{opacity:mmmBgSound?1:0.4}}>
+              <div style={{color:GOLD,fontSize:11,fontWeight:600,marginBottom:3}}>Music {Math.round(mmmBgVolume*100)}%</div>
+              <input type="range" min={0} max={1} step={0.05} value={mmmBgVolume} disabled={!mmmBgSound} onChange={e=>setMmmBgVolume(Number(e.target.value))} style={{width:"100%",accentColor:GOLD}}/>
+            </div>
+          </div>
+          <button onClick={()=>setMmmBgSound(v=>!v)} style={{width:"100%",padding:9,background:mmmBgSound?GOLD:"#171208",color:mmmBgSound?"#000":GOLD,border:"1px solid "+GOLDDIM,borderRadius:5,fontWeight:600,fontSize:12,cursor:"pointer"}}>Music bed {mmmBgSound?"ON":"OFF"}</button>
+        </div>
+
         <button onClick={()=>setMmmStudio(true)}
           style={{width:"100%",padding:15,marginBottom:10,background:GOLD,color:"#000",border:"none",fontWeight:600,fontSize:17,letterSpacing:0.2,borderRadius:6,cursor:"pointer",fontFamily:"'Archivo',system-ui,sans-serif"}}>
           OPEN MAKE MY MOVIE STUDIO
@@ -3992,6 +4013,12 @@ Write the drawFrame body now.`}]
                 <span style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>Scene {i+1}: {s.text}</span>
               </div>
             ))}
+          </div>
+        )}
+
+        {!(mmmDone||mmmFilmUrl)&&(
+          <div style={{marginTop:14}}>
+            <div style={{aspectRatio:mmmAR,maxHeight:mmmRatio==="9:16"?420:undefined,margin:"0 auto",border:"1px dashed "+GOLDDIM,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",color:DIM,fontSize:12,textAlign:"center",padding:12}}>Your movie plays here. Play, restart, volume, ratio, full screen, download and final render appear once it is made.</div>
           </div>
         )}
 
