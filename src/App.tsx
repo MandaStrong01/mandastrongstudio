@@ -3121,7 +3121,7 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
           usedFallback=!!url;
         }
         if(!url){
-          setMmmStage("Scene "+(i+1)+" — drawing on this device…");
+          setMmmStage("Scene "+(i+1)+" — NO PHOTO ADDED, so only plain gold shapes can be drawn. Add photos for real footage…");try{ if(!mmmImages.length&&!firstImg)setMmmError("No photos added. Scenes without photos are plain shapes. Stop, add your photos, then run again."); }catch(e){}
           url=await mmmCanvasFallback(sceneList[i],perSceneSec);
           usedFallback=!!url;
         }
