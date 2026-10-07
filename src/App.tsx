@@ -2908,9 +2908,25 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
       if(asText)r.readAsText(file);else r.readAsDataURL(file);
     });
     for(const f of arr){
-      if(f.type.startsWith("image")){
-        const dataUrl=await readAs(f,false);
-        if(dataUrl)setMmmImages(p=>[...p,{name:f.name,dataUrl}]);
+      if((f.type||"").startsWith("image")||/\.(jpe?g|png|webp|gif|heic|heif|avif|bmp)$/i.test(f.name||"")){
+        let dataUrl=await readAs(f,false);
+        if(dataUrl){
+          // Shrink to a light JPEG so it always shows and saves (also converts iPad HEIC photos when the browser can read them).
+          try{
+            const small=await new Promise(res=>{
+              const im=new Image();
+              im.onload=()=>{ try{
+                const m=1280, sc=Math.min(1,m/Math.max(im.width,im.height));
+                const c=document.createElement("canvas"); c.width=Math.max(1,Math.round(im.width*sc)); c.height=Math.max(1,Math.round(im.height*sc));
+                c.getContext("2d").drawImage(im,0,0,c.width,c.height); res(c.toDataURL("image/jpeg",0.85));
+              }catch(e){res(null);} };
+              im.onerror=()=>res(null);
+              im.src=dataUrl;
+            });
+            if(small)dataUrl=small;
+          }catch(e){}
+          setMmmImages(p=>[...p,{name:f.name,dataUrl}]);
+        }
       }else if(f.type.startsWith("text")||f.name.match(/\.(txt|md|fdx|fountain)$/i)){
         const text=await readAs(f,true);
         if(text)setMmmText(p=>(p?p+"\n\n":"")+String(text||""));
