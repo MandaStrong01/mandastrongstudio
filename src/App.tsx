@@ -2901,6 +2901,35 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
   const [mmmSceneNo,setMmmSceneNo]=useState(1);
   useEffect(()=>{try{localStorage.setItem("ms_mmm_ratio",mmmRatio);}catch(e){}},[mmmRatio]);
   const mmmAR=mmmRatio.replace(":","/");
+  // ── YOUR OWN RECORDING AS THE NARRATION (picked up automatically) ──
+  const [mmmOwn,setMmmOwn]=useState({id:"",name:"",url:""});
+  const [mmmOwnOff,setMmmOwnOff]=useState(()=>{try{return localStorage.getItem("ms_mmm_ownoff")==="1";}catch{return false;}});
+  useEffect(()=>{try{localStorage.setItem("ms_mmm_ownoff",mmmOwnOff?"1":"0");}catch(e){}},[mmmOwnOff]);
+  useEffect(()=>{
+    let dead=false;
+    (async()=>{
+      try{
+        const all=await getAllClipsFromDB();
+        const aud=all.filter(x=>x&&x.blob&&x.blob.size>100000&&(String(x.id).startsWith("narr_myvoice_")||String(x.id).startsWith("myvoice_")||String(x.id).startsWith("mmmown_")));
+        if(!aud.length||dead)return;
+        let pick=null; try{ const k=localStorage.getItem("ms_mmm_ownnarr"); if(k)pick=aud.find(x=>x.id===k); }catch(e){}
+        if(!pick){
+          const sv=aud.filter(x=>String(x.id).startsWith("narr_myvoice_")).sort((a,b)=>String(b.id).localeCompare(String(a.id)));
+          pick=sv[0]||aud.sort((a,b)=>b.blob.size-a.blob.size)[0];
+        }
+        if(pick&&!dead)setMmmOwn({id:pick.id,name:(pick.name||"Your recording").replace(/^My Voice Narration - /,"My voice narration "),url:URL.createObjectURL(pick.blob)});
+      }catch(e){}
+    })();
+    return ()=>{dead=true;};
+  },[]);
+  const mmmPickOwn=async(file)=>{
+    if(!file)return;
+    const id="mmmown_"+Date.now();
+    try{ await safeSaveClipToDB(id,file,file.name||"My recording","audio/myvoice"); }catch(e){}
+    try{ localStorage.setItem("ms_mmm_ownnarr",id); }catch(e){}
+    setMmmOwn({id,name:file.name||"My recording",url:URL.createObjectURL(file)});
+    setMmmOwnOff(false);
+  };
   useEffect(()=>{try{localStorage.setItem("ms_mmm_bed",mmmBgSound?"on":"off");localStorage.setItem("ms_mmm_bedvol",String(mmmBgVolume));}catch(e){}},[mmmBgSound,mmmBgVolume]);
   // Music bed for the Make My Movie player: the track picked in "Add background
   // music" if any, otherwise a calm cinematic default. Only when Music bed is ON.
@@ -3175,7 +3204,10 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
     // truncated) into one audio track and lay it over the movie, so your voice
     // carries the whole documentary — not just the first paragraph.
     let narrUrl="";
-    if(source){
+    if(mmmOwn.url&&!mmmOwnOff){
+      narrUrl=mmmOwn.url; setMmmStage("Using your own recording as the narration…");
+      try{localStorage.setItem("ms_mmm_narr",narrUrl);}catch(e){}
+    }else if(source){
       try{
         setMmmStage("MandaStrong Cinema Engine — narrating your script…");
         const _mv=(typeof VOICE_CHARACTERS!=="undefined")?VOICE_CHARACTERS.find(v=>v.id===mmmVoiceId):null;
@@ -3245,6 +3277,7 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
     if(n)n.addEventListener("ended",onNE);
     return ()=>{ v.removeEventListener("play",onP); if(n)n.removeEventListener("ended",onNE); };
   },[mmmDone,mmmNarrUrl,mmmFilmUrl]);
+  useEffect(()=>{ if(mmmDone&&!mmmNarrUrl&&mmmOwn.url&&!mmmOwnOff)setMmmNarrUrl(mmmOwn.url); },[mmmDone,mmmNarrUrl,mmmOwn.url,mmmOwnOff]);
   const mmmTogglePlay=()=>{
     const v=mmmVideoRef.current,n=mmmNarrRef.current,m=mmmMusicRef.current;
     if(mmmPlaying){ try{v&&v.pause();}catch(e){} try{n&&n.pause();}catch(e){} try{m&&m.pause();}catch(e){} setMmmPlaying(false); }
@@ -4117,6 +4150,20 @@ Write the drawFrame body now.`}]
           onChange={e=>setFilmDuration&&setFilmDuration(Number(e.target.value))}
           style={{width:"100%",accentColor:GOLD,marginBottom:2}}/>
         <div style={{display:"flex",justifyContent:"space-between",color:DIM,fontSize:10,marginBottom:12}}><span>1 min</span><span>3 hours</span></div>
+
+        <div style={{padding:10,border:"1px solid "+GOLDDIM+"66",borderRadius:6,marginBottom:10}}>
+          <div style={{color:GOLD,fontSize:12,fontWeight:600,marginBottom:6}}>Narration</div>
+          {mmmOwn.url&&!mmmOwnOff?(
+            <div style={{color:"#fff",fontSize:12,marginBottom:8}}>Using your own recording: <span style={{color:GOLD}}>{mmmOwn.name}</span></div>
+          ):(
+            <div style={{color:DIM,fontSize:12,marginBottom:8}}>{mmmOwn.url?"The voice engine will read your script.":"No recording yet. The voice engine will read your script."}</div>
+          )}
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            <button onClick={()=>{const i=document.getElementById("mmmOwnInput");if(i)i.click();}} style={{flex:"1 1 45%",padding:9,background:GOLD,color:"#000",border:"none",borderRadius:5,fontWeight:600,fontSize:12,cursor:"pointer"}}>{mmmOwn.url?"CHANGE MY RECORDING":"ADD MY RECORDING"}</button>
+            {mmmOwn.url&&<button onClick={()=>setMmmOwnOff(v=>!v)} style={{flex:"1 1 45%",padding:9,background:"#171208",color:GOLD,border:"1px solid "+GOLDDIM,borderRadius:5,fontWeight:600,fontSize:12,cursor:"pointer"}}>{mmmOwnOff?"USE MY RECORDING":"USE VOICE ENGINE"}</button>}
+          </div>
+          <input id="mmmOwnInput" type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.mp4" style={{display:"none"}} onChange={e=>{const f=e.target.files&&e.target.files[0];if(f)mmmPickOwn(f);e.target.value="";}}/>
+        </div>
 
         <div style={{padding:10,border:"1px solid "+GOLDDIM+"66",borderRadius:6,marginBottom:10}}>
           <div style={{color:GOLD,fontSize:12,fontWeight:600,marginBottom:6}}>Finishing touches</div>
