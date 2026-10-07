@@ -2813,6 +2813,8 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
   const [addMusic,setAddMusic]=useState(false);
   const [musicTrack,setMusicTrack]=useState("");
   const [genStereo,setGenStereo]=useState(true);
+  const [aspect,setAspect]=useState("16/9");
+  const [expQ,setExpQ]=useState("hd");
   const [useBrief,setUseBrief]=useState(true);
   const [hasBrief,setHasBrief]=useState(false);
   useEffect(()=>{try{const b=JSON.parse(localStorage.getItem("ms_render_brief")||"null");setHasBrief(!!(b&&b.brief));}catch{setHasBrief(false);}},[]);
@@ -3258,6 +3260,103 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
     })();
     return ()=>{dead=true;};
   },[]);
+  // ── One-shot page: EXPORT the whole film as ONE file (picture + voice + music, chosen ratio) ──
+  const [mmmExp,setMmmExp]=useState({busy:false,pct:0,msg:"",url:"",name:""});
+  const mmmExpCancel=useRef(false);
+  const mmmExportFilm=async()=>{
+    const list=mmmListNow(); if(!list.length||mmmExp.busy)return;
+    try{ mmmVideoRef.current&&mmmVideoRef.current.pause(); mmmNarrRef.current&&mmmNarrRef.current.pause(); mmmMusicRef.current&&mmmMusicRef.current.pause(); }catch(e){}
+    setMmmPlaying(false);
+    mmmExpCancel.current=false;
+    setMmmExp({busy:true,pct:1,msg:"Getting ready…",url:"",name:""});
+    let wl=null; try{ wl=await navigator.wakeLock.request("screen"); }catch(e){}
+    let ac=null;
+    try{
+      const AR={"16:9":[16,9],"9:16":[9,16],"1:1":[1,1],"21:9":[21,9]}[mmmRatio]||[16,9];
+      const base=1280; let W,H;
+      if(AR[0]>=AR[1]){W=base;H=Math.round(base*AR[1]/AR[0]);}else{H=base;W=Math.round(base*AR[0]/AR[1]);}
+      W=Math.round(W/2)*2; H=Math.round(H/2)*2;
+      const canvas=document.createElement("canvas"); canvas.width=W; canvas.height=H;
+      const ctx=canvas.getContext("2d"); ctx.fillStyle="#000"; ctx.fillRect(0,0,W,H);
+      const AC=window.AudioContext||window.webkitAudioContext; ac=new AC(); try{await ac.resume();}catch(e){}
+      const dest=ac.createMediaStreamDestination();
+      // voice
+      let narr=null;
+      if(mmmNarrUrl){
+        narr=new Audio(); narr.src=mmmNarrUrl; narr.preload="auto";
+        const g=ac.createGain(); g.gain.value=Math.max(0,Math.min(1,mmmVolume));
+        ac.createMediaElementSource(narr).connect(g); g.connect(dest);
+      }
+      // music bed: your picked track if it can be read, otherwise the built-in soft bed
+      let bed=null;
+      if(mmmBgSound){
+        try{
+          if(!mmmMusicSrc)throw new Error("none");
+          const ab=await (await fetch(mmmMusicSrc)).arrayBuffer();
+          const buf=await ac.decodeAudioData(ab);
+          const src=ac.createBufferSource(); src.buffer=buf; src.loop=true;
+          const g=ac.createGain(); g.gain.value=Math.max(0,Math.min(1,mmmBgVolume)); src.connect(g); g.connect(dest);
+          bed={src};
+        }catch(e){ bed=msBedSource(ac,dest,Math.min(0.5,Math.max(0,mmmBgVolume)*0.8)); }
+      }
+      const stream=canvas.captureStream(30);
+      dest.stream.getAudioTracks().forEach(t=>stream.addTrack(t));
+      const mimes=["video/mp4;codecs=avc1,mp4a.40.2","video/mp4","video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"];
+      const mimeType=mimes.find(m=>{try{return MediaRecorder.isTypeSupported(m);}catch(e){return false;}})||"";
+      const rec=new MediaRecorder(stream,mimeType?{mimeType,videoBitsPerSecond:8000000,audioBitsPerSecond:192000}:{});
+      const chunks=[]; rec.ondataavailable=e=>{ if(e.data&&e.data.size>0)chunks.push(e.data); };
+      const done=new Promise(res=>{ rec.onstop=res; });
+      rec.start(1000);
+      if(bed&&bed.src)try{ bed.src.start(0); }catch(e){}
+      if(narr)try{ await narr.play(); }catch(e){}
+      const t0=Date.now();
+      const drawV=(v)=>{
+        ctx.fillStyle="#000"; ctx.fillRect(0,0,W,H);
+        const vw=v.videoWidth||W, vh=v.videoHeight||H; const sc=Math.min(W/vw,H/vh);
+        const dw=vw*sc, dh=vh*sc; try{ ctx.drawImage(v,(W-dw)/2,(H-dh)/2,dw,dh); }catch(e){}
+      };
+      let lastFrameV=null;
+      for(let i=0;i<list.length&&!mmmExpCancel.current;i++){
+        setMmmExp(x=>({...x,pct:Math.min(95,Math.round((i/list.length)*95)),msg:"Scene "+(i+1)+" of "+list.length+" · "+mmmFmtClock((Date.now()-t0)/1000)}));
+        const v=document.createElement("video"); v.muted=true; v.playsInline=true; v.preload="auto"; v.src=list[i];
+        await new Promise(res=>{ v.onloadeddata=res; v.onerror=res; setTimeout(res,15000); });
+        try{ await v.play(); }catch(e){ continue; }
+        await new Promise(res=>{
+          let fin=false; const end=()=>{ if(!fin){fin=true;clearInterval(tm);res();} };
+          v.onended=end; v.onerror=end;
+          const tm=setInterval(()=>{ if(mmmExpCancel.current){end();return;} drawV(v); },33);
+          setTimeout(end,((isFinite(v.duration)&&v.duration>0?v.duration:90)+5)*1000);
+        });
+        lastFrameV=v;
+      }
+      // keep the last picture on screen until the voice has finished
+      if(narr&&!mmmExpCancel.current){
+        await new Promise(res=>{
+          const tm=setInterval(()=>{ if(lastFrameV)drawV(lastFrameV); if(narr.ended||narr.paused||mmmExpCancel.current){clearInterval(tm);res();} },100);
+          narr.onended=()=>{clearInterval(tm);res();};
+        });
+      }
+      try{ narr&&narr.pause(); }catch(e){}
+      try{ bed&&bed.src&&bed.src.stop(); }catch(e){}
+      try{ rec.state!=="inactive"&&rec.stop(); }catch(e){}
+      await done;
+      if(mmmExpCancel.current){ setMmmExp({busy:false,pct:0,msg:"Stopped.",url:"",name:""}); }
+      else{
+        const type=(mimeType||"video/webm").split(";")[0];
+        const blob=new Blob(chunks,{type});
+        const ext=type.includes("mp4")?".mp4":".webm";
+        const name="InFuture_Movie_"+mmmRatio.replace(":","x")+ext;
+        const url=URL.createObjectURL(blob);
+        try{ await Promise.race([safeSaveClipToDB("mmmfinal_"+Date.now(),blob,"MakeMyMovie_FINAL"+ext,type),new Promise(r=>setTimeout(()=>r("t"),8000))]); }catch(e){}
+        setMmmExp({busy:false,pct:100,msg:"Your film is ready.",url,name});
+        try{ const a=document.createElement("a"); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); }catch(e){}
+      }
+    }catch(e){
+      setMmmExp({busy:false,pct:0,msg:"Export problem: "+(e&&e.message?e.message:e)+". Try again with this tab in front.",url:"",name:""});
+    }
+    try{ ac&&ac.close(); }catch(e){}
+    try{ wl&&wl.release(); }catch(e){}
+  };
   const mmmTransport=mmmDone?(
     <div style={{marginTop:10,padding:10,border:"1px solid "+GOLDDIM+"66",borderRadius:6,background:"#171208"}}>
       <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
@@ -3281,7 +3380,19 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
           <button key={r} onClick={()=>setMmmRatio(r)} style={{flex:1,padding:"8px 0",background:mmmRatio===r?GOLD:"#171208",color:mmmRatio===r?"#000":GOLD,border:"1px solid "+GOLDDIM,borderRadius:5,fontWeight:600,fontSize:12,cursor:"pointer"}}>{r}</button>
         ))}
       </div>
-      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+      <div style={{marginTop:10,padding:10,border:"1px solid "+GOLD,borderRadius:6}}>
+        <button onClick={mmmExp.busy?()=>{mmmExpCancel.current=true;}:mmmExportFilm}
+          style={{width:"100%",padding:13,background:mmmExp.busy?"#171208":GOLD,color:mmmExp.busy?GOLD:"#000",border:mmmExp.busy?"1px solid "+GOLDDIM:"none",borderRadius:5,fontWeight:700,fontSize:14,cursor:"pointer"}}>
+          {mmmExp.busy?"STOP EXPORT":"EXPORT FINAL FILM — ONE FILE"}
+        </button>
+        <div style={{color:DIM,fontSize:11,marginTop:6,textAlign:"center"}}>Picture, voice and music in one file, at the ratio you picked. Keep this tab in front while it runs.</div>
+        {(mmmExp.busy||mmmExp.msg)&&<div style={{marginTop:8}}>
+          <div style={{background:"#171208",height:8,border:"1px solid "+GOLDDIM,borderRadius:4,overflow:"hidden"}}><div style={{background:GOLD,height:"100%",width:mmmExp.pct+"%",transition:"width .3s"}}/></div>
+          <div style={{color:"#fff",fontSize:11,marginTop:4,textAlign:"center"}}>{mmmExp.msg}</div>
+        </div>}
+        {mmmExp.url&&<a href={mmmExp.url} download={mmmExp.name} style={{display:"block",marginTop:8,padding:12,background:GOLD,color:"#000",borderRadius:5,fontWeight:700,fontSize:14,textAlign:"center",textDecoration:"none"}}>DOWNLOAD FINAL FILM</a>}
+      </div>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:10}}>
         <button onClick={()=>{try{const e=mmmVideoRef.current;(e.requestFullscreen||e.webkitEnterFullscreen||e.webkitRequestFullscreen).call(e);}catch(_){}}} style={{flex:"1 1 45%",padding:10,background:"#171208",color:GOLD,border:"1px solid "+GOLDDIM,borderRadius:5,fontWeight:600,fontSize:12,cursor:"pointer"}}>FULL SCREEN</button>
         <button onClick={()=>{try{navigator.share?navigator.share({title:"My Movie",url:mmmFilmUrl}):window.open(mmmFilmUrl,"_blank");}catch(e){window.open(mmmFilmUrl,"_blank");}}} style={{flex:"1 1 45%",padding:10,background:"#171208",color:GOLD,border:"1px solid "+GOLDDIM,borderRadius:5,fontWeight:600,fontSize:12,cursor:"pointer"}}>SHARE</button>
         {go&&<button onClick={()=>go(16)} style={{flex:"1 1 45%",padding:10,background:GOLD,color:"#000",border:"none",borderRadius:5,fontWeight:700,fontSize:12,cursor:"pointer"}}>RENDER FINAL FILM →</button>}
@@ -3431,6 +3542,7 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
       const engineUrl=await engineRender(effectivePrompt,{
         duration,
         image:refDataUrl||"",
+        aspect_ratio:aspect.replace("/",":"),
         onTick:(i)=>{ setProgress(Math.min(88,12+i*2)); addLog("Cinema Engine rendering — "+Math.min(88,12+i*2)+"%"); }
       });
       if(engineUrl){
@@ -3557,7 +3669,13 @@ Write the drawFrame body now.`}]
     // ── STEP 2: Set up canvas + MediaRecorder ──
     const canvas=canvasRef.current;
     if(!canvas){setGenerating(false);addLog("Canvas error");return;}
-    canvas.width=1280;canvas.height=720;
+    const _AR={"16/9":[16,9],"9/16":[9,16],"1/1":[1,1],"4/3":[4,3],"21/9":[21,9]}[aspect]||[16,9];
+    const _BASE={sd:720,hd:1280,fhd:1920,uhd:3840}[expQ]||1280;
+    let _W,_H;
+    if(_AR[0]>=_AR[1]){_W=_BASE;_H=Math.round(_BASE*_AR[1]/_AR[0]);}
+    else{_H=_BASE;_W=Math.round(_BASE*_AR[0]/_AR[1]);}
+    _W=Math.round(_W/2)*2;_H=Math.round(_H/2)*2;
+    canvas.width=_W;canvas.height=_H;
     const ctx=canvas.getContext("2d");
 
     // Build the drawFrame function — wraps AI code + photo base layer
@@ -3605,7 +3723,7 @@ Write the drawFrame body now.`}]
     }
 
     // Test render frame 0
-    try{drawFrame(ctx,1280,720,0,0,loadedRefImages);}catch(e){addLog("Frame test warning: "+e.message);}
+    try{drawFrame(ctx,_W,_H,0,0,loadedRefImages);}catch(e){addLog("Frame test warning: "+e.message);}
     await new Promise(r=>setTimeout(r,100));
     setProgress(32);
 
@@ -3646,7 +3764,8 @@ Write the drawFrame body now.`}]
         }
       }catch(e){ addLog("Music note: "+e.message+" — rendering without music"); musicCtx=null; musicSource=null; }
     }
-    const recorder=new MediaRecorder(stream,{mimeType,videoBitsPerSecond:6000000});
+    const _BR={sd:2500000,hd:6000000,fhd:12000000,uhd:40000000}[expQ]||6000000;
+    const recorder=new MediaRecorder(stream,{mimeType,videoBitsPerSecond:_BR});
     if(musicSource){ try{ musicSource.start(0); }catch(e){} }
     const chunks=[];
     recorder.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
@@ -3659,23 +3778,23 @@ Write the drawFrame body now.`}]
       const tick=()=>{
         if(frame>=totalFrames){resolve(null);return;}
         const t=frame/totalFrames;const sec=frame/fps;
-        ctx.clearRect(0,0,1280,720);
-        try{drawFrame(ctx,1280,720,t,sec,loadedRefImages);}catch(e){ctx.fillStyle="#0D0B06";ctx.fillRect(0,0,1280,720);}
+        ctx.clearRect(0,0,_W,_H);
+        try{drawFrame(ctx,_W,_H,t,sec,loadedRefImages);}catch(e){ctx.fillStyle="#0D0B06";ctx.fillRect(0,0,_W,_H);}
         // Consistent post-processing on every frame
         const vig=ctx.createRadialGradient(640,360,80,640,360,650);
         vig.addColorStop(0,"rgba(0,0,0,0)");vig.addColorStop(1,"rgba(0,0,0,0.8)");
-        ctx.fillStyle=vig;ctx.fillRect(0,0,1280,720);
+        ctx.fillStyle=vig;ctx.fillRect(0,0,_W,_H);
         // ── AUTO-ENHANCEMENT — warm gold grade + contrast + highlight recovery ──
-        ctx.fillStyle="rgba(232,180,60,0.06)";ctx.fillRect(0,0,1280,720);
-        ctx.fillStyle="rgba(0,0,0,0.08)";ctx.fillRect(0,0,1280,720);
+        ctx.fillStyle="rgba(232,180,60,0.06)";ctx.fillRect(0,0,_W,_H);
+        ctx.fillStyle="rgba(0,0,0,0.08)";ctx.fillRect(0,0,_W,_H);
         const hr2=ctx.createRadialGradient(640,216,0,640,216,512);
         hr2.addColorStop(0,"rgba(255,255,240,0.04)");hr2.addColorStop(1,"rgba(0,0,0,0)");
-        ctx.fillStyle=hr2;ctx.fillRect(0,0,1280,720);
+        ctx.fillStyle=hr2;ctx.fillRect(0,0,_W,_H);
         // ──────────────────────────────────────────────────────────────────────
-        ctx.fillStyle="#000";ctx.fillRect(0,0,1280,50);ctx.fillRect(0,670,1280,50);
-        for(let g=0;g<20;g++){const gv=Math.random()>0.5?160:20;ctx.fillStyle="rgba("+gv+","+gv+","+gv+",0.008)";ctx.fillRect(Math.random()*1280,Math.random()*720,1.2,1.2);}
-        if(t<0.05){ctx.fillStyle="rgba(0,0,0,"+(1-t/0.05)+")";ctx.fillRect(0,0,1280,720);}
-        if(t>0.92){ctx.fillStyle="rgba(0,0,0,"+((t-0.92)/0.08)+")";ctx.fillRect(0,0,1280,720);}
+        ctx.fillStyle="#000";ctx.fillRect(0,0,_W,50);ctx.fillRect(0,_H-50,_W,50);
+        for(let g=0;g<20;g++){const gv=Math.random()>0.5?160:20;ctx.fillStyle="rgba("+gv+","+gv+","+gv+",0.008)";ctx.fillRect(Math.random()*_W,Math.random()*_H,1.2,1.2);}
+        if(t<0.05){ctx.fillStyle="rgba(0,0,0,"+(1-t/0.05)+")";ctx.fillRect(0,0,_W,_H);}
+        if(t>0.92){ctx.fillStyle="rgba(0,0,0,"+((t-0.92)/0.08)+")";ctx.fillRect(0,0,_W,_H);}
         setProgress(35+Math.round((frame/totalFrames)*60));
         if(frame%(fps*5)===0)addLog("  "+Math.round(sec)+"s / "+duration+"s rendered");
         frame++;
@@ -4238,6 +4357,32 @@ Write the drawFrame body now.`}]
               </div>
             )}
           </div>
+          {/* ── ASPECT RATIO ──────────────────────────────────────── */}
+          <div style={{marginBottom:14}}>
+            <div style={{color:GOLD,fontSize:11,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Aspect ratio</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:5}}>
+              {[["16/9","16:9","Cinema"],["9/16","9:16","Reels"],["1/1","1:1","Square"],["4/3","4:3","Classic"],["21/9","21:9","Scope"]].map(a=>(
+                <button key={a[0]} onClick={()=>setAspect(a[0])}
+                  style={{background:aspect===a[0]?GOLD:"#171208",border:"1px solid "+(aspect===a[0]?GOLD:GOLDDIM),padding:"7px 2px",cursor:"pointer",textAlign:"center"}}>
+                  <div style={{color:aspect===a[0]?"#000":WHITE,fontSize:11,fontWeight:700}}>{a[1]}</div>
+                  <div style={{color:aspect===a[0]?"#000":GOLDDIM,fontSize:8}}>{a[2]}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* ── EXPORT QUALITY ────────────────────────────────────── */}
+          <div style={{marginBottom:14}}>
+            <div style={{color:GOLD,fontSize:11,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Export quality</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:5}}>
+              {[["sd","SD","720"],["hd","HD","1280"],["fhd","Full HD","1920"],["uhd","4K","3840"]].map(q=>(
+                <button key={q[0]} onClick={()=>setExpQ(q[0])}
+                  style={{background:expQ===q[0]?GOLD:"#171208",border:"1px solid "+(expQ===q[0]?GOLD:GOLDDIM),padding:"7px 2px",cursor:"pointer",textAlign:"center"}}>
+                  <div style={{color:expQ===q[0]?"#000":WHITE,fontSize:11,fontWeight:700}}>{q[1]}</div>
+                  <div style={{color:expQ===q[0]?"#000":GOLDDIM,fontSize:8}}>{q[2]}px</div>
+                </button>
+              ))}
+            </div>
+          </div>
           {/* ── USE STEREO SOUND ─────────────────────────────────── */}
           <div onClick={()=>setGenStereo(s=>!s)} style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,padding:"12px 14px",background:"#171208",border:"1px solid "+(genStereo?GOLD:GOLDDIM),cursor:"pointer"}}>
             <div style={{width:20,height:20,borderRadius:4,border:"2px solid "+(genStereo?GOLD:GOLDDIM),background:genStereo?GOLD:"transparent",color:"#000",fontWeight:600,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{genStereo?"✓":""}</div>
@@ -4256,7 +4401,7 @@ Write the drawFrame body now.`}]
           </button>
         </div>
         <div style={{borderLeft:"1px solid "+GOLDDIM+"",display:"flex",flexDirection:"column"}}>
-          <div style={{background:"#171208",aspectRatio:"16/9",display:"flex",alignItems:"center",justifyContent:"center",borderBottom:"1px solid "+GOLDDIM+"",overflow:"hidden"}}>
+          <div style={{background:"#171208",aspectRatio:aspect,maxHeight:aspect==="9/16"?620:undefined,display:"flex",alignItems:"center",justifyContent:"center",borderBottom:"1px solid "+GOLDDIM+"",overflow:"hidden"}}>
             {videoUrl?(
               <MsVideo ref={videoRef} src={videoUrl} controls autoPlay loop playsInline style={{width:"100%",height:"100%",objectFit:"contain"}}/>
             ):(
@@ -6401,6 +6546,26 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
 
 // Browser-recorded WebM files have no length in them, so players show Infinity.
 // Seeking far past the end makes the browser work out the real length.
+// Soft stereo ambient bed, made in the browser. Used when no music file can be fetched.
+function msBedSource(ac,dest,vol){
+  const sr=ac.sampleRate, secs=32, n=Math.floor(sr*secs);
+  const pad=ac.createBuffer(2,n,sr);
+  const chords=[[110,164.81,220,277.18],[87.31,130.81,174.61,261.63],[130.81,196,261.63,329.63],[98,146.83,196,246.94]];
+  for(let ch=0;ch<2;ch++){
+    const d=pad.getChannelData(ch);
+    for(let i=0;i<n;i++){
+      const t=i/sr, seg=Math.floor(t/8)%4, st=t%8;
+      const env=Math.min(1,st/2)*Math.min(1,(8-st)/2);
+      let v=0; const c=chords[seg];
+      for(let k=0;k<c.length;k++){ v+=Math.sin(2*Math.PI*c[k]*(1+(ch?0.002:-0.002)*(k+1))*t)*(0.22/(1+k*0.3)); }
+      d[i]=v*env*0.6;
+    }
+  }
+  const src=ac.createBufferSource(); src.buffer=pad; src.loop=true;
+  const g=ac.createGain(); g.gain.value=vol; src.connect(g); g.connect(dest);
+  return {src,gain:g};
+}
+
 // Shared player: every user-facing video goes through this so it actually plays.
 // Fixes missing WebM duration, retries once, falls back to a tap-to-play button
 // when the browser blocks autoplay, and shows a Download link if the file can't play.
