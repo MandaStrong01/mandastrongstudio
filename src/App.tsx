@@ -2963,23 +2963,28 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
       const f=arr[fi];
       setMmmAddMsg("Adding "+(fi+1)+" of "+arr.length+"…");
       if((f.type||"").startsWith("image")||/\.(jpe?g|png|webp|gif|heic|heif|avif|bmp)$/i.test(f.name||"")){
-        let dataUrl=await readAs(f,false);
-        if(dataUrl){
-          // Shrink to a light JPEG so it always shows and saves (also converts iPad HEIC photos when the browser can read them).
+        const orig=await readAs(f,false);
+        if(orig){
+          // Show the photo straight away, exactly as before.
+          setMmmImages(p=>[...p,{name:f.name,dataUrl:orig}]); added++;
+          // Then quietly swap in a lighter copy. If this step is slow or fails, the photo stays as is.
           try{
-            const small=await new Promise(res=>{
-              const im=new Image();
-              im.onload=()=>{ try{
-                const m=1280, sc=Math.min(1,m/Math.max(im.width,im.height));
-                const c=document.createElement("canvas"); c.width=Math.max(1,Math.round(im.width*sc)); c.height=Math.max(1,Math.round(im.height*sc));
-                c.getContext("2d").drawImage(im,0,0,c.width,c.height); res(c.toDataURL("image/jpeg",0.85));
-              }catch(e){res(null);} };
-              im.onerror=()=>res(null);
-              im.src=dataUrl;
-            });
-            if(small)dataUrl=small;
+            const small=await Promise.race([
+              new Promise(res=>{
+                const im=new Image();
+                im.onload=()=>{ try{
+                  const m=1280, sc=Math.min(1,m/Math.max(im.width,im.height));
+                  if(sc>=1){res(null);return;}
+                  const c=document.createElement("canvas"); c.width=Math.max(1,Math.round(im.width*sc)); c.height=Math.max(1,Math.round(im.height*sc));
+                  c.getContext("2d").drawImage(im,0,0,c.width,c.height); res(c.toDataURL("image/jpeg",0.85));
+                }catch(e){res(null);} };
+                im.onerror=()=>res(null);
+                im.src=orig;
+              }),
+              new Promise(res=>setTimeout(()=>res(null),6000))
+            ]);
+            if(small&&small.length<orig.length)setMmmImages(p=>p.map(x=>x.dataUrl===orig?{...x,dataUrl:small}:x));
           }catch(e){}
-          setMmmImages(p=>[...p,{name:f.name,dataUrl}]); added++;
         }else failed.push(f.name||"file");
       }else if(f.type.startsWith("text")||f.name.match(/\.(txt|md|fdx|fountain)$/i)){
         const text=await readAs(f,true);
