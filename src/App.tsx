@@ -2884,6 +2884,7 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
   const mmmMusicRef=useRef(null);
   const [mmmError,setMmmError]=useState("");
   const mmmDropRef=useRef(null);
+  const [mmmAddMsg,setMmmAddMsg]=useState("");
   const mmmTargetMin=filmDuration||30;
   const [mmmStudio,setMmmStudio]=useState(false);
   const [mmmStyle,setMmmStyle]=useState("cinematic");
@@ -2957,7 +2958,10 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
       r.onerror=()=>res(null);
       if(asText)r.readAsText(file);else r.readAsDataURL(file);
     });
-    for(const f of arr){
+    let added=0; const failed=[];
+    for(let fi=0;fi<arr.length;fi++){
+      const f=arr[fi];
+      setMmmAddMsg("Adding "+(fi+1)+" of "+arr.length+"…");
       if((f.type||"").startsWith("image")||/\.(jpe?g|png|webp|gif|heic|heif|avif|bmp)$/i.test(f.name||"")){
         let dataUrl=await readAs(f,false);
         if(dataUrl){
@@ -2975,13 +2979,14 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
             });
             if(small)dataUrl=small;
           }catch(e){}
-          setMmmImages(p=>[...p,{name:f.name,dataUrl}]);
-        }
+          setMmmImages(p=>[...p,{name:f.name,dataUrl}]); added++;
+        }else failed.push(f.name||"file");
       }else if(f.type.startsWith("text")||f.name.match(/\.(txt|md|fdx|fountain)$/i)){
         const text=await readAs(f,true);
-        if(text)setMmmText(p=>(p?p+"\n\n":"")+String(text||""));
-      }
+        if(text){ setMmmText(p=>(p?p+"\n\n":"")+String(text||"")); added++; } else failed.push(f.name||"file");
+      }else failed.push(f.name||"file");
     }
+    setMmmAddMsg(added+" added"+(failed.length?". Could not read: "+failed.slice(0,3).join(", ")+(failed.length>3?" and more":""):"."));
   };
 
   // ── FREE CANVAS FALLBACK ────────────────────────────────────────────────
@@ -3963,14 +3968,14 @@ Write the drawFrame body now.`}]
               placeholder="Paste your whole film here. Nothing is lost when you leave this box."
               style={{width:"100%",boxSizing:"border-box",background:"#171208",border:"1px solid "+GOLDDIM,borderRadius:6,color:"#fff",padding:11,fontSize:13,fontFamily:"'Archivo',system-ui,sans-serif",resize:"vertical",marginBottom:10}}/>
 
-            <div onDragOver={e=>{e.preventDefault();}}
+            <label htmlFor="mmmStudioFileInput" onDragOver={e=>{e.preventDefault();}}
               onDrop={e=>{e.preventDefault();mmmAddFiles(e.dataTransfer.files);}}
-              onClick={()=>{const inp=document.getElementById("mmmStudioFileInput");if(inp)inp.click();}}
-              style={{textAlign:"center",border:"1px dashed "+GOLD+"77",borderRadius:6,padding:12,color:DIM,fontSize:12,letterSpacing:0,marginBottom:10,cursor:"pointer"}}>
+              style={{display:"block",textAlign:"center",border:"1px dashed "+GOLD+"77",borderRadius:6,padding:12,color:DIM,fontSize:12,letterSpacing:0,marginBottom:10,cursor:"pointer"}}>
               DROP OR TAP TO ADD SCRIPT AND IMAGES
-              <input id="mmmStudioFileInput" type="file" multiple accept="image/*,text/*,.txt,.md,.fdx,.fountain" style={{display:"none"}}
-                onChange={e=>mmmAddFiles(e.target.files)}/>
-            </div>
+              <input id="mmmStudioFileInput" type="file" multiple accept="image/*,text/*,.txt,.md,.fdx,.fountain,.heic,.heif" style={{display:"none"}}
+                onChange={e=>{const fl=Array.from(e.target.files||[]);e.target.value="";mmmAddFiles(fl);}}/>
+            </label>
+            {mmmAddMsg&&<div style={{color:GOLD,fontSize:11,textAlign:"center",marginBottom:8}}>{mmmAddMsg}{mmmImages.length>0?" · "+mmmImages.length+" photo"+(mmmImages.length>1?"s":"")+" ready":""}</div>}
             {mmmImages.length>0&&(
               <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:12}}>
                 {mmmImages.map((im,i)=>(
@@ -4121,15 +4126,15 @@ Write the drawFrame body now.`}]
           placeholder="Paste your whole film here — script, producer instructions, prompts, notes. Or drag files onto the box below."
           style={{width:"100%",boxSizing:"border-box",background:"#171208",border:"1px solid "+GOLDDIM,borderRadius:6,color:"#fff",padding:11,fontSize:13,fontFamily:"'Archivo',system-ui,sans-serif",resize:"vertical",marginBottom:8}}/>
 
-        <div ref={mmmDropRef}
+        <label ref={mmmDropRef} htmlFor="mmmFileInput"
           onDragOver={e=>{e.preventDefault();}}
           onDrop={e=>{e.preventDefault();mmmAddFiles(e.dataTransfer.files);}}
-          onClick={()=>{const inp=document.getElementById("mmmFileInput");if(inp)inp.click();}}
-          style={{textAlign:"center",border:"1px dashed "+GOLD+"77",borderRadius:6,padding:12,color:DIM,fontSize:12,letterSpacing:0,marginBottom:10,cursor:"pointer"}}>
+          style={{display:"block",textAlign:"center",border:"1px dashed "+GOLD+"77",borderRadius:6,padding:12,color:DIM,fontSize:12,letterSpacing:0,marginBottom:10,cursor:"pointer"}}>
           DROP OR TAP TO ADD SCRIPT &amp; IMAGES
-          <input id="mmmFileInput" type="file" multiple accept="image/*,text/*,.txt,.md,.fdx,.fountain" style={{display:"none"}}
-            onChange={e=>mmmAddFiles(e.target.files)}/>
-        </div>
+          <input id="mmmFileInput" type="file" multiple accept="image/*,text/*,.txt,.md,.fdx,.fountain,.heic,.heif" style={{display:"none"}}
+            onChange={e=>{const fl=Array.from(e.target.files||[]);e.target.value="";mmmAddFiles(fl);}}/>
+        </label>
+        {mmmAddMsg&&<div style={{color:GOLD,fontSize:11,textAlign:"center",marginBottom:8}}>{mmmAddMsg}{mmmImages.length>0?" · "+mmmImages.length+" photo"+(mmmImages.length>1?"s":"")+" ready":""}</div>}
         {mmmImages.length>0&&(
           <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:10}}>
             {mmmImages.map((im,i)=>(
