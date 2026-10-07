@@ -2236,7 +2236,7 @@ function P6Voice({ onSave, setMediaLib }) {
   const [loading,setLoading]=useState(false);
   const [speaking,setSpeaking]=useState(false); const [mood,setMood]=useState("Neutral");
   const [savedToLib,setSavedToLib]=useState(false); const [showMVS,setShowMVS]=useState(false);
-  const [selVoice,setSelVoice]=useState("james"); const [search,setSearch]=useState("");
+  const [selVoice,setSelVoice]=useState(""); const [search,setSearch]=useState("");
   const [filterGender,setFilterGender]=useState("All"); const [filterAge,setFilterAge]=useState("All");
   const [filterOrigin,setFilterOrigin]=useState("All"); const [speed,setSpeed]=useState(0.62);
   const [pitchV,setPitchV]=useState(0.86); const [pauseLen,setPauseLen]=useState(1600);
@@ -2443,7 +2443,9 @@ function P6Voice({ onSave, setMediaLib }) {
   // engine voice id (the clone) flows into speakNow's meta.voice and the
   // engine narrates in the cloned voice.
   const mineSel=myVoices.find(v=>v.id===selVoice&&v.clonedVoiceId);
-  const selected=mineSel||VOICE_CHARACTERS.find(v=>v.id===selVoice)||VOICE_CHARACTERS[0];
+  const mineOwn=myVoices.find(v=>v.id===selVoice);
+  const NO_VOICE={id:"",name:"No voice picked yet",emoji:"🎙",origin:"—",gender:"—",age:"—",style:"Pick a voice from the list, or upload or record your own.",desc:"Nothing is chosen for you.",rate:0.9,pitch:1.0,engineVoice:""};
+  const selected=mineSel||(mineOwn?{...mineOwn,rate:1,pitch:1,engineVoice:""}:null)||VOICE_CHARACTERS.find(v=>v.id===selVoice)||NO_VOICE;
 
   const pickSysVoice=(vc)=>{
     const allRaw=sysVoices.length?sysVoices:((typeof window!=="undefined"&&window.speechSynthesis)?window.speechSynthesis.getVoices().filter(v=>v.lang&&v.lang.startsWith("en")):[]);
@@ -2506,6 +2508,17 @@ function P6Voice({ onSave, setMediaLib }) {
 
   // Engine voice first. Identical on every device. Device voice only if the engine cannot deliver.
   const speakNow=async(txt)=>{
+    // Your own uploaded or recorded voice plays exactly as recorded. No voice is chosen for you.
+    const mineRec=myVoices.find(v=>v.id===selVoice&&!v.clonedVoiceId);
+    if(mineRec){
+      window.speechSynthesis.cancel(); stopEngineAudio();
+      let u=mineRec.url;
+      try{ const st=await loadClipFromDB(mineRec.dbId||mineRec.id); if(st&&st.blob)u=URL.createObjectURL(st.blob); }catch(e){}
+      if(!u){ alert("Could not find that recording. Upload or record it again."); return; }
+      try{ const a=new Audio(u); a.volume=volume; setSpeaking(true); a.onended=()=>setSpeaking(false); a.onerror=()=>setSpeaking(false); await a.play(); }catch(e){ setSpeaking(false); }
+      return;
+    }
+    if(!selVoice){ alert("Pick a voice from the list first, or upload or record your own."); return; }
     window.speechSynthesis.cancel(); stopEngineAudio();
     if(timerRef.current)clearTimeout(timerRef.current);
     const chunks=buildChunks(txt); chunksRef.current=chunks; idxRef.current=0;
@@ -2537,6 +2550,8 @@ function P6Voice({ onSave, setMediaLib }) {
   const downloadNarration=async()=>{
     const txt=(text||"").trim();
     if(!txt){alert("Type or paste your narration script first.");return;}
+    if(!selVoice){alert("Pick a voice from the list first, or upload or record your own.");return;}
+    if(myVoices.find(v=>v.id===selVoice&&!v.clonedVoiceId)){alert("That is your own recording. Use the arrow on its card to save it, or press Use my voice as narration.");return;}
     setDlBusy(true);
     try{
       const meta={voice:selected.engineVoice||"",gender:selected.gender||"",origin:selected.origin||"",speed:speed*(selected.rate||0.9)};
@@ -2572,7 +2587,9 @@ function P6Voice({ onSave, setMediaLib }) {
   };
 
   const processAndSpeak=async()=>{
-    if(!text.trim())return;setLoading(true);
+    if(!text.trim())return;
+    if(!selVoice||myVoices.find(v=>v.id===selVoice&&!v.clonedVoiceId)){speakNow(text);return;}
+    setLoading(true);
     try{
       const d=await proxyFetch({model:"claude-sonnet-4-20250514",max_tokens:2000,messages:[{role:"user",content:"Speech coach for TTS. Speaker: "+selected.name+" - "+selected.style+". Mood: "+mood+". Reformat for natural speech: short sentences, commas for pauses, numbers spelled out. Return ONLY reformatted text:\n\n"+text}]});
       speakNow(d&&d.content&&d.content[0]?d.content[0].text.trim():text);
@@ -2718,6 +2735,8 @@ function P6Voice({ onSave, setMediaLib }) {
           </button>
           <button onClick={async()=>{
             if(!text.trim())return;
+            if(!selVoice){alert("Pick a voice from the list first, or upload or record your own.");return;}
+            if(myVoices.find(v=>v.id===selVoice&&!v.clonedVoiceId)){saveMyVoiceAsNarration();return;}
             setSavedToLib(false);
             const asset={
               id:"narr_"+Date.now(),
