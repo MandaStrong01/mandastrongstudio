@@ -8291,6 +8291,28 @@ function AppMain() {
   // so the library stops growing forever (27 → 421). The project's timeline, text
   // boxes and settings stay saved in My Projects.
   const clearLibraryAfterExport=async()=>{
+    // Save the rest to My Projects FIRST, so nothing is lost when the screen
+    // goes fresh. Render + export happen back to back, so the second save
+    // replaces the first instead of adding another copy.
+    try{
+      const grab=(k)=>{try{return localStorage.getItem(k)||"";}catch{return "";}};
+      const now=Date.now();
+      const entry={name:"Exported film — "+new Date().toLocaleString("en-GB",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}),
+        note:"Saved automatically after export",page,status:"exported",exportedAt:now,assetCount:(mediaLib||[]).length,
+        date:new Date().toLocaleString("en-GB",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}),
+        savedPage:page,savedTimeline:JSON.parse(JSON.stringify(timeline||{})),savedUser:user,
+        savedBoxes:{narr:grab("ms_narr_text"),mmm:grab("ms_mmm_text"),mmmImages:grab("ms_mmm_images"),brief:grab("ms_render_brief"),
+          s2mDescribe:grab("ms_s2m_describe"),s2mProducer:grab("ms_s2m_producer"),s2mProduction:grab("ms_s2m_production"),
+          genPrompt:grab("ms_gen_prompt"),genTitle:grab("ms_gen_title"),writingBoxes:grab("ms_writing_boxes")}};
+      const hist=JSON.parse(localStorage.getItem("ms_project_history")||"[]");
+      const last=hist[hist.length-1];
+      const timelineEmpty=!entry.savedTimeline||!Object.values(entry.savedTimeline).some(t=>t&&t.length);
+      if(last&&last.status==="exported"&&last.exportedAt&&now-last.exportedAt<3*60*60*1000){
+        if(!timelineEmpty)hist[hist.length-1]={...entry,savedTimeline:entry.savedTimeline};
+        else hist[hist.length-1]={...last,...entry,savedTimeline:last.savedTimeline};
+      }else{hist.push(entry);if(hist.length>20)hist.shift();}
+      localStorage.setItem("ms_project_history",JSON.stringify(hist));
+    }catch(e){}
     const keep=(a)=>{
       const id=String((a&&(a.dbId||a.id))||"");
       const t=String((a&&a.type)||"");
@@ -8307,7 +8329,52 @@ function AppMain() {
       }
       try{if(a.url&&String(a.url).startsWith("blob:"))URL.revokeObjectURL(a.url);}catch(e){}
     }
-    setMediaLib(prev=>(prev||[]).filter(a=>!(a&&(dropIds.has(String(a.dbId||""))||dropIds.has(String(a.id||""))))));
+    // ── DUPLICATE VOICES/RECORDINGS — keep ONE of each ──────────────────────
+    // Recordings were never cleared, and the recovery scan kept re-adding copies,
+    // so My Voices piled up (140+). After export, exact copies (same name AND same
+    // audio size) are removed from storage, the library and the My Voices list.
+    // One of everything is kept. Cloned voices win over plain copies.
+    const remap=new Map();
+    try{
+      const clips=await getAllClipsFromDB();
+      const isVoice=(c)=>c&&c.blob&&(String(c.type||"").startsWith("audio")||
+        String(c.id||"").startsWith("myvoice_")||String(c.id||"").startsWith("narr_myvoice_"));
+      let mv=[];try{mv=JSON.parse(localStorage.getItem("ms_my_voices")||"[]")||[];}catch(e){}
+      const cloned=new Set(mv.filter(v=>v&&v.clonedVoiceId).map(v=>String(v.dbId||v.id)));
+      const norm=(n)=>String(n||"").replace(/\.[^.]+$/,"").trim().toLowerCase();
+      const keepByKey=new Map();
+      const voiceClips=clips.filter(isVoice).sort((a,b)=>(cloned.has(String(b.id))?1:0)-(cloned.has(String(a.id))?1:0));
+      for(const c of voiceClips){
+        const key=norm(c.name)+"|"+(c.blob.size||0);
+        const k=keepByKey.get(key);
+        if(!k){keepByKey.set(key,String(c.id));continue;}
+        remap.set(String(c.id),k);
+        dropIds.add(String(c.id));
+        try{await deleteClipFromDB(c.id);}catch(e){}
+      }
+      // My Voices list: point copies at the kept recording, then one entry each.
+      const seen=new Set();const cleanMv=[];
+      for(const v of mv){
+        if(!v)continue;
+        const id=String(v.dbId||v.id||"");
+        const kid=remap.get(id)||id;
+        if(seen.has(kid))continue;
+        seen.add(kid);
+        cleanMv.push(remap.has(id)?{...v,id:kid,dbId:kid}:v);
+      }
+      try{localStorage.setItem("ms_my_voices",JSON.stringify(cleanMv.map(v=>({...v,url:undefined}))));}catch(e){}
+    }catch(e){}
+    setMediaLib(prev=>{
+      const seen=new Set();
+      return (prev||[]).filter(a=>{
+        if(!a)return false;
+        const id=String(a.dbId||a.id||"");
+        if(remap.has(id))return false;
+        if(dropIds.has(String(a.dbId||""))||dropIds.has(String(a.id||"")))return false;
+        if(seen.has(id))return false;
+        seen.add(id);return true;
+      });
+    });
     setTimeline(prev=>{
       const next={};
       for(const k of Object.keys(prev||{})){
