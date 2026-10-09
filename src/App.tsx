@@ -5392,6 +5392,14 @@ function P13({ go, mediaLib, timeline, setTimeline, user, filmDuration, setFilmD
           <button onClick={()=>go(16)} style={{...G("gold",false)}}>Render</button>
           <button onClick={()=>go(11)} style={{...G("out",true)}}>Upload media</button>
           <button onClick={async()=>{
+            const w="Doxy";
+            const all=Object.values(timeline||{}).flat().filter(x=>x&&String(x.name||"").toLowerCase().includes(w.toLowerCase()));
+            if(!all.length){alert("No clips with \""+w+"\" in the name were found on the timeline.");return;}
+            if(!window.confirm("Move "+all.length+" "+w+" clips off the timeline?\n\nThey are saved in MY PROJECTS. Everything else stays."))return;
+            try{if(onClearScenes)await onClearScenes({match:w,name:w+" clips — "+new Date().toLocaleString("en-GB",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}),note:w+" clips moved off the timeline. Press Continue to bring them back.",status:"in_progress"});}catch(e){}
+            setTimeline(prev=>{const next={};for(const k of Object.keys(prev||{})){next[k]=(prev[k]||[]).filter(x=>!(x&&String(x.name||"").toLowerCase().includes(w.toLowerCase())));}return next;});
+          }} style={{...G("out",true)}}>Remove Doxy</button>
+          <button onClick={async()=>{
             const n=(mediaLib||[]).filter(x=>x&&x.type&&(x.type.startsWith("video")||x.type.startsWith("image"))&&!String(x.dbId||x.id||"").startsWith("render_final")&&!String(x.dbId||x.id||"").startsWith("poc_")).length;
             if(!window.confirm("Move "+n+" saved clips and images off the timeline?\n\nThey are saved in MY PROJECTS. Press Continue on that project any time to bring them back.\n\nYour voice recordings and finished films stay."))return;
             try{if(onClearScenes)await onClearScenes({name:"Timeline cleared — "+new Date().toLocaleString("en-GB",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}),note:"Saved when the timeline was cleared. Press Continue to bring these clips back.",status:"in_progress"});}catch(e){}
@@ -8312,7 +8320,21 @@ function AppMain() {
       if(!(t.startsWith("video")||t.startsWith("image")))return true; // audio/voices stay
       return id.startsWith("render_final")||id.startsWith("poc_");   // finished films stay
     };
-    const toDrop=(mediaLib||[]).filter(a=>a&&!keep(a));
+    const word=o.match?String(o.match).toLowerCase():"";
+    const nameHit=(a)=>!!(a&&String(a.name||"").toLowerCase().includes(word));
+    let toDrop=(mediaLib||[]).filter(a=>a&&!keep(a)&&(!word||nameHit(a)));
+    if(word){
+      // also catch matching clips that sit on the timeline but not in the library list
+      const seenIds=new Set(toDrop.map(a=>String(a.dbId||a.id||"")));
+      for(const t of Object.values(timeline||{}).flat()){
+        if(!t||!nameHit(t))continue;
+        const tt=String(t.type||"");
+        if(!(tt.startsWith("video")||tt.startsWith("image")))continue;
+        const id=String(t.dbId||t.id||"");
+        if(id.startsWith("render_final")||id.startsWith("poc_")||seenIds.has(id))continue;
+        seenIds.add(id);toDrop.push(t);
+      }
+    }
     const dropIds=new Set();
     const now=Date.now();
     const archId=String(now);
@@ -8336,7 +8358,7 @@ function AppMain() {
       const entry={name:o.name||("Exported film — "+stamp),
         note:o.note||"Saved automatically after export",page,status:o.status||"exported",exportedAt:now,assetCount:(mediaLib||[]).length,
         date:stamp,
-        savedPage:page,savedTimeline:JSON.parse(JSON.stringify(timeline||{})),savedUser:user,
+        savedPage:page,savedTimeline:(word?(()=>{const t={};for(const k of Object.keys(timeline||{})){const arr=(timeline[k]||[]).filter(nameHit);if(arr.length)t[k]=JSON.parse(JSON.stringify(arr));}return t;})():JSON.parse(JSON.stringify(timeline||{}))),savedUser:user,
         archiveIds:archived>0?[archId]:[],
         savedBoxes:{narr:grab("ms_narr_text"),mmm:grab("ms_mmm_text"),mmmImages:grab("ms_mmm_images"),brief:grab("ms_render_brief"),
           s2mDescribe:grab("ms_s2m_describe"),s2mProducer:grab("ms_s2m_producer"),s2mProduction:grab("ms_s2m_production"),
