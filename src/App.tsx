@@ -318,6 +318,31 @@ async function engineRenderMany(prompts,opts){
   return results.filter(Boolean);
 }
 
+// Turns an uploaded photo (blob/object URL) into a small JPEG data URL the engine can use as the
+// starting picture. Large phone photos are shrunk first so the request is never refused for size.
+async function photoToEngineImage(url,maxPx){
+  maxPx=maxPx||1024;
+  try{
+    const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url;});
+    const sc=Math.min(1,maxPx/Math.max(img.naturalWidth||1,img.naturalHeight||1));
+    const w=Math.max(2,Math.round((img.naturalWidth||1)*sc)),h=Math.max(2,Math.round((img.naturalHeight||1)*sc));
+    const cv=document.createElement("canvas");cv.width=w;cv.height=h;
+    cv.getContext("2d").drawImage(img,0,0,w,h);
+    return cv.toDataURL("image/jpeg",0.85);
+  }catch(e){return "";}
+}
+// The engine only reads the first ~1800 characters. The SHOT must come first so it is never cut off;
+// only a short look line (grade, grain, lens) is taken from the long Page 5 brief.
+function buildEnginePrompt(shot,brief){
+  const s=String(shot||"").trim().slice(0,1150);
+  let look="";
+  if(brief){
+    const sentences=String(brief).split(/[.!?]\s+/).filter(x=>/grade|grain|35mm|letterbox|gold|amber|photorealistic|cinematic|no text|no captions/i.test(x)&&!/human beings|audience|people|voice:|=====/i.test(x)&&x.length<220);
+    look=sentences.join(" ").slice(0,380);
+  }
+  return s+(look?("\nLOOK: "+look):"")+"\nNo one speaks. Mouths closed. Show exactly the scene described above.";
+}
+
 // Pulls footage into the browser so canvas can draw it without tainting.
 async function engineToLocalVideo(url){
   try{
@@ -3597,20 +3622,24 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
       setProgress(12);
       // ── SCRIPT-TO-MOVIE BRIEF ── Page 5's Producer/Describe/Production
       // notes, if the user wired them into the render, drive every scene.
-      let effectivePrompt=prompt.trim();
+      let briefText="";
       if(useBrief){
         try{
           const bd=JSON.parse(localStorage.getItem("ms_render_brief")||"null");
-          if(bd&&bd.brief){ effectivePrompt=bd.brief+"\nSHOT FOR THIS SCENE:\n"+effectivePrompt; addLog(" Using Script-to-Movie brief (Producer + Describe + Production) from Page 5"); }
+          if(bd&&bd.brief){ briefText=bd.brief; addLog(" Using Script-to-Movie look from Page 5 (your scene comes first)"); }
         }catch(e){}
       }
-      // ── NO SPEAKING ── The film carries ONE overlay narration track. On-screen
-      // people must NOT appear to talk. Force closed mouths / no dialogue into
-      // every scene so lips never move as if speaking.
-      effectivePrompt=effectivePrompt+"\n\nIMPORTANT: No one in this shot is speaking. All mouths are closed and still. No talking, no dialogue, no lip movement, no singing. People may be present and expressive through eyes and body, but they never move their lips as if speaking.";
+      // The scene you wrote leads. Only a short look line is added after it, and nobody speaks on screen.
+      const effectivePrompt=buildEnginePrompt(prompt,briefText);
+      // Your uploaded photo becomes the starting picture. Without a photo the engine builds the scene from your words alone.
+      let engineImage=refDataUrl||"";
+      if(!engineImage){
+        const firstPhoto=(refImages||[]).find(r=>r&&!r.isVideo);
+        if(firstPhoto){ engineImage=await photoToEngineImage(firstPhoto.url,1024); addLog(engineImage?"\u2713 Your photo is being sent to the engine as the starting picture":"Could not read your photo - building the scene from your words"); }
+      }
       const engineUrl=await engineRender(effectivePrompt,{
         duration,
-        image:refDataUrl||"",
+        image:engineImage||"",
         aspect_ratio:aspect.replace("/",":"),
         onTick:(i)=>{ setProgress(Math.min(88,12+i*2)); addLog("Cinema Engine rendering — "+Math.min(88,12+i*2)+"%"); }
       });
