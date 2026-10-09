@@ -332,7 +332,13 @@ async function engineToLocalVideo(url){
 }
 const saveClipToDB=async(id,blob,name,type)=>{try{const db=await openDB();const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).put({id,blob,name,type});await new Promise((r,j)=>{tx.oncomplete=r;tx.onerror=j;});}catch(e){console.warn("DB save failed",e);}};
 const loadClipFromDB=async(id)=>{try{const db=await openDB();return new Promise((res,rej)=>{const tx=db.transaction(STORE,"readonly");const req=tx.objectStore(STORE).get(id);req.onsuccess=()=>res(req.result);req.onerror=rej;});}catch(e){return null;}};
-const getAllClipsFromDB=async()=>{try{const db=await openDB();return new Promise((res,rej)=>{const tx=db.transaction(STORE,"readonly");const req=tx.objectStore(STORE).getAll();req.onsuccess=()=>res(req.result||[]);req.onerror=rej;});}catch(e){return[];}};
+const getAllClipsFromDB=async(includeArchived=false)=>{try{const db=await openDB();return new Promise((res,rej)=>{const tx=db.transaction(STORE,"readonly");const req=tx.objectStore(STORE).getAll();req.onsuccess=()=>{const all=req.result||[];res(includeArchived?all:all.filter(c=>!String((c&&c.id)||"").startsWith("arch_")));};req.onerror=rej;});}catch(e){return[];}};
+// ── PROJECT ARCHIVE — saved clips move out of the working library into My Projects ──
+// An archived clip keeps its picture/video, but is hidden from the library and the timeline
+// ("arch_" prefix). CONTINUE on that project moves it back. Nothing is deleted.
+const archiveClipInDB=async(id,archId)=>{try{const c=await loadClipFromDB(id);if(!c||!c.blob)return false;await saveClipToDB("arch_"+archId+"_"+id,c.blob,c.name,c.type);await deleteClipFromDB(id);return true;}catch(e){return false;}};
+const restoreArchiveFromDB=async(archId)=>{let n=0;try{const pre="arch_"+archId+"_";const all=await getAllClipsFromDB(true);for(const c of all){const cid=String((c&&c.id)||"");if(!cid.startsWith(pre))continue;const orig=cid.slice(pre.length);const have=await loadClipFromDB(orig);if(!have)await saveClipToDB(orig,c.blob,c.name,c.type);await deleteClipFromDB(cid);n++;}}catch(e){}return n;};
+const deleteArchiveFromDB=async(archId)=>{try{const pre="arch_"+archId+"_";const all=await getAllClipsFromDB(true);for(const c of all){const cid=String((c&&c.id)||"");if(cid.startsWith(pre))await deleteClipFromDB(cid);}}catch(e){}};
 const deleteClipFromDB=async(id)=>{try{const db=await openDB();const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).delete(id);await new Promise((r,j)=>{tx.oncomplete=r;tx.onerror=j;});}catch(e){}};
 
 // ── Background storage manager — prevents the save-crash on low-memory machines ──
@@ -597,7 +603,7 @@ function ProjectHistoryModal({ onClose, onResume, initialTab }) {
   const [history,setHistory]=useState([]);
   const [tab,setTab]=useState(initialTab||"in_progress");
   useEffect(()=>{try{setHistory(JSON.parse(localStorage.getItem("ms_project_history")||"[]"));}catch{};},[]);
-  const del=(idx)=>{const u=history.filter((_,i)=>i!==idx);setHistory(u);localStorage.setItem("ms_project_history",JSON.stringify(u));};
+  const del=(idx)=>{const gone=history[idx];if(gone&&(gone.archiveIds||[]).length&&!confirm("Delete this project and its saved clips for good?"))return;((gone&&gone.archiveIds)||[]).forEach(aid=>{deleteArchiveFromDB(aid);});const u=history.filter((_,i)=>i!==idx);setHistory(u);localStorage.setItem("ms_project_history",JSON.stringify(u));};
   const [findMsg,setFindMsg]=useState("");
   const [finding,setFinding]=useState(false);
   const findWork=async()=>{
@@ -610,9 +616,10 @@ function ProjectHistoryModal({ onClose, onResume, initialTab }) {
     else if(r.found.length){setFindMsg("Your work from "+r.found.join(", ")+" is already here.");}
     else setFindMsg("No saved work found on the old addresses in this browser.");
   };
-  const filtered=history.filter(h=>(h.status||"in_progress")===tab);
-  const inProgressCount=history.filter(h=>(h.status||"in_progress")==="in_progress").length;
-  const completedCount=history.filter(h=>h.status==="completed").length;
+  const tabOf=(h)=>{const st=h.status||"in_progress";return st==="exported"?"completed":st;};
+  const filtered=history.filter(h=>tabOf(h)===tab);
+  const inProgressCount=history.filter(h=>tabOf(h)==="in_progress").length;
+  const completedCount=history.filter(h=>tabOf(h)==="completed").length;
   return (
     <div style={{position:"fixed",inset:0,zIndex:1200,background:"rgba(0,0,0,0.96)",display:"flex",alignItems:"center",justifyContent:"center"}}>
       <div style={{width:"min(620px,95vw)",background:"#0D0B06",border:"2px solid "+SIGNAL,maxHeight:"85vh",display:"flex",flexDirection:"column"}}>
@@ -660,7 +667,7 @@ function ProjectHistoryModal({ onClose, onResume, initialTab }) {
         </div>
         {history.length>0&&(
           <div style={{borderTop:"1px solid "+GOLDDIM+"",padding:"10px 18px",flexShrink:0}}>
-            <button onClick={()=>{if(confirm("Delete all project history?")){{localStorage.removeItem("ms_project_history");setHistory([]);}}}} style={{background:"none",border:"1px solid #ef4444",color:"#ef4444",padding:"5px 14px",cursor:"pointer",fontSize:10,fontWeight:600,fontFamily:"'Archivo',system-ui,sans-serif"}}>Clear all</button>
+            <button onClick={()=>{if(confirm("Delete all project history and saved clips?")){{history.forEach(h=>((h&&h.archiveIds)||[]).forEach(aid=>{deleteArchiveFromDB(aid);}));localStorage.removeItem("ms_project_history");setHistory([]);}}}} style={{background:"none",border:"1px solid #ef4444",color:"#ef4444",padding:"5px 14px",cursor:"pointer",fontSize:10,fontWeight:600,fontFamily:"'Archivo',system-ui,sans-serif"}}>Clear all</button>
           </div>
         )}
       </div>
@@ -5386,8 +5393,8 @@ function P13({ go, mediaLib, timeline, setTimeline, user, filmDuration, setFilmD
           <button onClick={()=>go(11)} style={{...G("out",true)}}>Upload media</button>
           <button onClick={async()=>{
             const n=(mediaLib||[]).filter(x=>x&&x.type&&(x.type.startsWith("video")||x.type.startsWith("image"))&&!String(x.dbId||x.id||"").startsWith("render_final")&&!String(x.dbId||x.id||"").startsWith("poc_")).length;
-            if(!window.confirm("Clear "+n+" saved clips and images from the timeline AND the media library?\n\nYour voice recordings and finished films stay."))return;
-            try{if(onClearScenes)await onClearScenes();}catch(e){}
+            if(!window.confirm("Move "+n+" saved clips and images off the timeline?\n\nThey are saved in MY PROJECTS. Press Continue on that project any time to bring them back.\n\nYour voice recordings and finished films stay."))return;
+            try{if(onClearScenes)await onClearScenes({name:"Timeline cleared — "+new Date().toLocaleString("en-GB",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}),note:"Saved when the timeline was cleared. Press Continue to bring these clips back.",status:"in_progress"});}catch(e){}
             setTimeline({});
           }} style={{...G("out",true)}}>Clear all</button>
         </div>
@@ -8295,29 +8302,10 @@ function AppMain() {
   // scene clips and images are removed, from storage, the library and the timeline,
   // so the library stops growing forever (27 → 421). The project's timeline, text
   // boxes and settings stay saved in My Projects.
-  const clearLibraryAfterExport=async()=>{
-    // Save the rest to My Projects FIRST, so nothing is lost when the screen
-    // goes fresh. Render + export happen back to back, so the second save
-    // replaces the first instead of adding another copy.
-    try{
-      const grab=(k)=>{try{return localStorage.getItem(k)||"";}catch{return "";}};
-      const now=Date.now();
-      const entry={name:"Exported film — "+new Date().toLocaleString("en-GB",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}),
-        note:"Saved automatically after export",page,status:"exported",exportedAt:now,assetCount:(mediaLib||[]).length,
-        date:new Date().toLocaleString("en-GB",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}),
-        savedPage:page,savedTimeline:JSON.parse(JSON.stringify(timeline||{})),savedUser:user,
-        savedBoxes:{narr:grab("ms_narr_text"),mmm:grab("ms_mmm_text"),mmmImages:grab("ms_mmm_images"),brief:grab("ms_render_brief"),
-          s2mDescribe:grab("ms_s2m_describe"),s2mProducer:grab("ms_s2m_producer"),s2mProduction:grab("ms_s2m_production"),
-          genPrompt:grab("ms_gen_prompt"),genTitle:grab("ms_gen_title"),writingBoxes:grab("ms_writing_boxes")}};
-      const hist=JSON.parse(localStorage.getItem("ms_project_history")||"[]");
-      const last=hist[hist.length-1];
-      const timelineEmpty=!entry.savedTimeline||!Object.values(entry.savedTimeline).some(t=>t&&t.length);
-      if(last&&last.status==="exported"&&last.exportedAt&&now-last.exportedAt<3*60*60*1000){
-        if(!timelineEmpty)hist[hist.length-1]={...entry,savedTimeline:entry.savedTimeline};
-        else hist[hist.length-1]={...last,...entry,savedTimeline:last.savedTimeline};
-      }else{hist.push(entry);if(hist.length>20)hist.shift();}
-      localStorage.setItem("ms_project_history",JSON.stringify(hist));
-    }catch(e){}
+  const clearLibraryAfterExport=async(opts)=>{
+    const o=opts||{};
+    // Scene clips and images are MOVED into My Projects (not deleted), so users can
+    // go back and look at their history. Voices and finished films stay in the library.
     const keep=(a)=>{
       const id=String((a&&(a.dbId||a.id))||"");
       const t=String((a&&a.type)||"");
@@ -8326,14 +8314,46 @@ function AppMain() {
     };
     const toDrop=(mediaLib||[]).filter(a=>a&&!keep(a));
     const dropIds=new Set();
+    const now=Date.now();
+    const archId=String(now);
+    let archived=0;
     for(const a of toDrop){
+      const done=new Set();
       for(const k of [a.dbId,a.id]){
         if(!k)continue;
         dropIds.add(String(k));
-        try{await deleteClipFromDB(k);}catch(e){}
+        if(done.has(String(k)))continue;
+        done.add(String(k));
+        try{if(await archiveClipInDB(k,archId))archived++;}catch(e){}
       }
       try{if(a.url&&String(a.url).startsWith("blob:"))URL.revokeObjectURL(a.url);}catch(e){}
     }
+    // Save to My Projects. Render + export happen back to back, so the second save
+    // replaces the first instead of adding another copy (clips archived stay linked).
+    try{
+      const grab=(k)=>{try{return localStorage.getItem(k)||"";}catch{return "";}};
+      const stamp=new Date().toLocaleString("en-GB",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+      const entry={name:o.name||("Exported film — "+stamp),
+        note:o.note||"Saved automatically after export",page,status:o.status||"exported",exportedAt:now,assetCount:(mediaLib||[]).length,
+        date:stamp,
+        savedPage:page,savedTimeline:JSON.parse(JSON.stringify(timeline||{})),savedUser:user,
+        archiveIds:archived>0?[archId]:[],
+        savedBoxes:{narr:grab("ms_narr_text"),mmm:grab("ms_mmm_text"),mmmImages:grab("ms_mmm_images"),brief:grab("ms_render_brief"),
+          s2mDescribe:grab("ms_s2m_describe"),s2mProducer:grab("ms_s2m_producer"),s2mProduction:grab("ms_s2m_production"),
+          genPrompt:grab("ms_gen_prompt"),genTitle:grab("ms_gen_title"),writingBoxes:grab("ms_writing_boxes")}};
+      const hist=JSON.parse(localStorage.getItem("ms_project_history")||"[]");
+      const last=hist[hist.length-1];
+      const timelineEmpty=!entry.savedTimeline||!Object.values(entry.savedTimeline).some(t=>t&&t.length);
+      if(!o.name&&last&&last.status==="exported"&&last.exportedAt&&now-last.exportedAt<3*60*60*1000){
+        const ids=[...(last.archiveIds||[]),...entry.archiveIds];
+        if(!timelineEmpty)hist[hist.length-1]={...entry,archiveIds:ids};
+        else hist[hist.length-1]={...last,...entry,savedTimeline:last.savedTimeline,archiveIds:ids};
+      }else{
+        hist.push(entry);
+        if(hist.length>20){const gone=hist.shift();for(const aid of ((gone&&gone.archiveIds)||[])){try{await deleteArchiveFromDB(aid);}catch(e){}}}
+      }
+      localStorage.setItem("ms_project_history",JSON.stringify(hist));
+    }catch(e){}
     // ── DUPLICATE VOICES/RECORDINGS — keep ONE of each ──────────────────────
     // Recordings were never cleared, and the recovery scan kept re-adding copies,
     // so My Voices piled up (140+). After export, exact copies (same name AND same
@@ -8485,6 +8505,7 @@ function AppMain() {
         put("ms_render_brief",b.brief);put("ms_s2m_describe",b.s2mDescribe);put("ms_s2m_producer",b.s2mProducer);
         put("ms_s2m_production",b.s2mProduction);put("ms_gen_prompt",b.genPrompt);put("ms_gen_title",b.genTitle);
         put("ms_writing_boxes",b.writingBoxes);}
+      try{for(const aid of (h.archiveIds||[]))await restoreArchiveFromDB(aid);}catch(e){}
       try{const dbClips=await getAllClipsFromDB();if(dbClips.length>0){const restored=dbClips.map(c2=>({id:c2.id,name:c2.name,type:c2.type||"video/webm",url:URL.createObjectURL(c2.blob),file:new File([c2.blob],c2.name,{type:c2.type||"video/webm"}),dbId:c2.id}));setMediaLib(restored);}}catch(e){}
       go(h.savedPage||h.page||5);setShowHistory(false);setSavedNotice(true);setTimeout(()=>setSavedNotice(false),2500);
     }catch(e){setShowHistory(false);}
