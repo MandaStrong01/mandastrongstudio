@@ -5316,7 +5316,7 @@ function P12({ go, mediaLib }) {
   );
 }
 
-function P13({ go, mediaLib, timeline, setTimeline, user, filmDuration, setFilmDuration }) {
+function P13({ go, mediaLib, timeline, setTimeline, user, filmDuration, setFilmDuration, onClearScenes }) {
   const [tracks,setTracks]=useState(["VIDEO TRACK","AUDIO TRACK","TEXT / TITLES"]);
   const addToTrack=(idx,asset)=>setTimeline(p=>({...p,[idx]:[...(p[idx]||[]),asset]}));
   return (
@@ -5384,7 +5384,12 @@ function P13({ go, mediaLib, timeline, setTimeline, user, filmDuration, setFilmD
           }} style={{background:GOLD,border:"none",color:"#000",padding:"5px 14px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Archivo',system-ui,sans-serif"}}>Sync all tracks</button>
           <button onClick={()=>go(16)} style={{...G("gold",false)}}>Render</button>
           <button onClick={()=>go(11)} style={{...G("out",true)}}>Upload media</button>
-          <button onClick={()=>setTimeline({})} style={{...G("out",true)}}>Clear all</button>
+          <button onClick={async()=>{
+            const n=(mediaLib||[]).filter(x=>x&&x.type&&(x.type.startsWith("video")||x.type.startsWith("image"))&&!String(x.dbId||x.id||"").startsWith("render_final")&&!String(x.dbId||x.id||"").startsWith("poc_")).length;
+            if(!window.confirm("Clear "+n+" saved clips and images from the timeline AND the media library?\n\nYour voice recordings and finished films stay."))return;
+            try{if(onClearScenes)await onClearScenes();}catch(e){}
+            setTimeline({});
+          }} style={{...G("out",true)}}>Clear all</button>
         </div>
       </div>
       <div style={{background:"#171208",height:100,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:12,border:"1px solid "+GOLDDIM}}>
@@ -8499,7 +8504,7 @@ function AppMain() {
       case 10: return <ToolPage title="ENHANCEMENT STUDIO" subtitle="AI WORKSTATION 06 — ENHANCE" tools={MOTION} onSave={saveAsset}/>;
       case 11: return <P11 mediaLib={mediaLib} setMediaLib={setMediaLib}/>;
       case 12: return <P12 go={go} mediaLib={mediaLib}/>;
-      case 13: return <P13 go={go} mediaLib={mediaLib} timeline={timeline} setTimeline={setTimeline} user={user} filmDuration={filmDuration} setFilmDuration={setFilmDuration}/>;
+      case 13: return <P13 go={go} mediaLib={mediaLib} timeline={timeline} setTimeline={setTimeline} user={user} filmDuration={filmDuration} setFilmDuration={setFilmDuration} onClearScenes={clearLibraryAfterExport}/>;
       case 14: return <P14/>;
       case 15: return <P15/>;
       case 16: return <P16 go={go} timeline={timeline} setRendered={setRendered} mediaLib={mediaLib} setMediaLib={setMediaLib} user={user} filmDuration={filmDuration} setFilmDuration={setFilmDuration} onRendered={async()=>{const n=await clearLibraryAfterExport();setTimeline({});return n;}}/>;
