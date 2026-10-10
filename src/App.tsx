@@ -810,7 +810,7 @@ function Footer({ page, go, onSave, onHistory }) {
         <button onClick={()=>go(Math.min(TOTAL,page+1))} disabled={page===TOTAL} style={{...G("gold",true),opacity:page===TOTAL?0.3:1}}>Next</button>
         <button onClick={onSave} style={{...G("out",true),fontSize:11,letterSpacing:0.2}}>Save project</button>
         <button onClick={onHistory} style={{background:"#0E0F12",border:"1px solid "+GOLDDIM,color:GOLD,padding:"5px 14px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>My projects</button>
-        <span style={{color:"#22c55e",fontSize:11,fontWeight:500}}>Autosave on</span>
+        <span style={{color:GOLD,fontSize:11,fontWeight:500}}>Autosave on</span>
       </div>
     </footer>
   );
@@ -2063,7 +2063,7 @@ llł
 
                 {/* Autosave indicator */}
                 <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
-                  <span style={{color:"#22c55e",fontSize:11,fontWeight:600}}>Autosave on</span>
+                  <span style={{color:GOLD,fontSize:11,fontWeight:500}}>Autosave on</span>
                   <span style={{color:GOLDDIM,fontSize:10}}>Your settings are saved as you work</span>
                 </div>
 
@@ -4706,8 +4706,8 @@ function P1({ go }) {
         <style>{"@keyframes tw{0%,100%{opacity:.05}50%{opacity:.85}}"}</style>
         <div style={{position:"relative",zIndex:1}}>
           <div style={{fontSize:11,color:DIM,letterSpacing:0.4,marginBottom:12}}>Cinema intelligence platform — est. 2025</div>
-          <div style={{fontFamily:"'Manrope',system-ui,sans-serif",fontSize:"clamp(34px,6vw,58px)",fontWeight:600,color:GOLD,letterSpacing:0.4,lineHeight:1,textShadow:"none"}}>INFUTURE</div>
-          <div style={{fontFamily:"'Manrope',system-ui,sans-serif",fontSize:"clamp(34px,6vw,58px)",fontWeight:600,color:GOLD,letterSpacing:0.4,lineHeight:1,textShadow:"none",marginBottom:14}}>Movie Studios</div>
+          <div style={{fontFamily:"'Fraunces',Georgia,serif",fontSize:"clamp(38px,6.5vw,66px)",fontWeight:300,color:WHITE,letterSpacing:-1.2,lineHeight:1.02,textShadow:"none"}}>InFuture</div>
+          <div style={{fontFamily:"'Fraunces',Georgia,serif",fontSize:"clamp(38px,6.5vw,66px)",fontWeight:300,color:GOLD,letterSpacing:-1.2,lineHeight:1.02,textShadow:"none",marginBottom:18}}>Movie Studios</div>
           <div style={{color:WHITE,fontSize:12,letterSpacing:0.4,marginBottom:28,fontWeight:600}}>200+ AI tools · 8K export · up to 3-hour films</div>
           <div style={{display:"flex",gap:14,justifyContent:"center",flexWrap:"wrap"}}>
             <button onClick={()=>go(4)} style={{...G("gold",false),fontSize:14,padding:"14px 38px",letterSpacing:0.2}}>Start creating</button>
