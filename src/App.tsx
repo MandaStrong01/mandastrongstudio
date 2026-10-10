@@ -5042,7 +5042,7 @@ function P4({ go, setUser }) {
       const {data,error}=await supabase.auth.signInWithPassword({email:email.trim(),password:pass});
       if(error||!data?.user){
         setBusy(false);
-        alert(error?.message||"Sign in failed. Check your email and password.");
+        alert("Sign in failed. Check your email and password.");
         return;
       }
       // Read the account's real plan from the subscriptions table (falls back to Guest).
@@ -5062,7 +5062,7 @@ function P4({ go, setUser }) {
     setBusy(true);
     try{
       const {data,error}=await supabase.auth.signUp({email:re.trim(),password:pass});
-      if(error){ setBusy(false); alert(error.message||"Could not create account."); return; }
+      if(error){ setBusy(false); console.error("Sign up failed:",error); alert("If that email can be used, your account has been created. Please check your inbox."); return; }
       // New accounts start on the trial checkout. Their render credit is set by the
       // subscription their payment creates — the engine will not spend beyond it.
       setUser({name:name||re,email:re,plan:"Studio Trial",isAdmin:false,uid:data?.user?.id||""});

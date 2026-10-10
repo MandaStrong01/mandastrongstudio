@@ -23,6 +23,24 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // The caller must be a signed-in user. Without this check anyone holding the
+    // public key can make the server download arbitrary files into storage.
+    const authHeader = req.headers.get('Authorization') || '';
+    const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+    const { data: userData, error: userError } = token
+      ? await supabase.auth.getUser(token)
+      : { data: { user: null }, error: new Error('missing token') };
+
+    if (userError || !userData?.user) {
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
     const { googleDriveUrl }: RequestBody = await req.json();
 
     const extractFileId = (url: string): string | null => {
@@ -83,9 +101,20 @@ Deno.serve(async (req: Request) => {
       throw new Error('File too small - likely an error page');
     }
 
+    const MAX_BYTES = 5 * 1024 * 1024 * 1024;
+    if (blob.size > MAX_BYTES) {
+      return new Response(
+        JSON.stringify({ error: 'File is too large' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
     console.log(`File size: ${blob.size} bytes`);
 
-    const fileName = `doxy_120min_${Date.now()}.mp4`;
+    const fileName = `${userData.user.id}/doxy_120min_${Date.now()}.mp4`;
     console.log('Uploading to Supabase storage...');
 
     const { data, error } = await supabase.storage
@@ -124,7 +153,7 @@ Deno.serve(async (req: Request) => {
     console.error('Error:', error);
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Upload failed',
+        error: 'Upload failed',
         details: 'The file may be too large or not publicly accessible on Google Drive'
       }),
       {

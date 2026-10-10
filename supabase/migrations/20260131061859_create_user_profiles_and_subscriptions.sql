@@ -52,31 +52,67 @@ CREATE POLICY "Users can update own profile"
   USING (auth.uid() = id)
   WITH CHECK (auth.uid() = id);
 
+-- Admin check helper. Runs as definer so admin policies on `profiles` do not
+-- recursively evaluate `profiles` policies.
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles p
+    WHERE p.id = auth.uid() AND p.is_admin = true
+  );
+$;
+
+REVOKE ALL ON FUNCTION public.is_admin() FROM public;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
+
 CREATE POLICY "Admins can view all profiles"
   ON profiles FOR SELECT
   TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid() AND profiles.is_admin = true
-    )
-  );
+  USING (public.is_admin());
 
 CREATE POLICY "Admins can update any profile"
   ON profiles FOR UPDATE
   TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid() AND profiles.is_admin = true
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid() AND profiles.is_admin = true
-    )
-  );
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+
+-- Prevent a user from granting themselves admin rights.
+-- "Users can update own profile" is a row-level rule and therefore covers every
+-- column of the row, including is_admin. This trigger makes is_admin changeable
+-- only by an existing admin or by the service role.
+CREATE OR REPLACE FUNCTION public.guard_profiles_is_admin()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $
+BEGIN
+  IF NEW.is_admin IS DISTINCT FROM OLD.is_admin THEN
+    IF current_setting('role', true) = 'service_role'
+       OR auth.role() = 'service_role'
+       OR EXISTS (
+            SELECT 1 FROM public.profiles p
+            WHERE p.id = auth.uid() AND p.is_admin = true
+          )
+    THEN
+      RETURN NEW;
+    END IF;
+    RAISE EXCEPTION 'not permitted';
+  END IF;
+  RETURN NEW;
+END;
+$;
+
+DROP TRIGGER IF EXISTS guard_profiles_is_admin_trg ON profiles;
+CREATE TRIGGER guard_profiles_is_admin_trg
+  BEFORE UPDATE ON profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.guard_profiles_is_admin();
 
 -- Create subscriptions table
 CREATE TABLE IF NOT EXISTS subscriptions (
@@ -103,28 +139,23 @@ CREATE POLICY "Users can view own subscription"
 CREATE POLICY "Admins can view all subscriptions"
   ON subscriptions FOR SELECT
   TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid() AND profiles.is_admin = true
-    )
-  );
+  USING (public.is_admin());
 
-CREATE POLICY "Admins can manage all subscriptions"
-  ON subscriptions FOR ALL
+CREATE POLICY "Admins can insert subscriptions"
+  ON subscriptions FOR INSERT
   TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid() AND profiles.is_admin = true
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid() AND profiles.is_admin = true
-    )
-  );
+  WITH CHECK (public.is_admin());
+
+CREATE POLICY "Admins can update subscriptions"
+  ON subscriptions FOR UPDATE
+  TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+
+CREATE POLICY "Admins can delete subscriptions"
+  ON subscriptions FOR DELETE
+  TO authenticated
+  USING (public.is_admin());
 
 -- Function to automatically create profile on user signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -174,7 +205,8 @@ CREATE TRIGGER update_subscriptions_updated_at
     EXECUTE FUNCTION update_updated_at_column();
 
 -- Create a helpful view that joins profiles with subscriptions
-CREATE OR REPLACE VIEW user_profiles_with_subscription AS
+CREATE OR REPLACE VIEW user_profiles_with_subscription
+WITH (security_invoker = true) AS
 SELECT
   p.id,
   p.full_name,

@@ -1,0 +1,2 @@
+[functions.google-drive-uploader]
+verify_jwt = true

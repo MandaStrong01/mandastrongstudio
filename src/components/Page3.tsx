@@ -26,7 +26,8 @@ export default function Page3({ onNext, onBack }: Page3Props) {
     });
 
     if (error) {
-      setMessage(`Login failed: ${error.message}`);
+      console.error('Login failed:', error);
+      setMessage('Login failed. Please check your email and password.');
     } else {
       setMessage('Login successful! Redirecting to payment...');
       await updateUserPlan(data.user.id, selectedPlan);
@@ -50,7 +51,8 @@ export default function Page3({ onNext, onBack }: Page3Props) {
     });
 
     if (error) {
-      setMessage(`Registration failed: ${error.message}`);
+      console.error('Registration failed:', error);
+      setMessage('If that email can be used, your account has been created. Please check your inbox.');
     } else {
       setMessage('Account created! Redirecting to payment...');
       if (data.user) {

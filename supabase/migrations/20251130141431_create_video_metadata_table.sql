@@ -54,11 +54,18 @@ CREATE TABLE IF NOT EXISTS video_metadata (
 
 ALTER TABLE video_metadata ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Anyone can read video metadata"
+-- Owners read their own uploads; unauthenticated visitors only see guest rows.
+CREATE POLICY "Users can read own video metadata"
   ON video_metadata
   FOR SELECT
-  TO public
-  USING (true);
+  TO authenticated
+  USING (auth.uid() = user_id OR user_id IS NULL);
+
+CREATE POLICY "Anonymous users can read guest video metadata"
+  ON video_metadata
+  FOR SELECT
+  TO anon
+  USING (user_id IS NULL);
 
 CREATE POLICY "Authenticated users can insert their own metadata"
   ON video_metadata
@@ -79,12 +86,8 @@ CREATE POLICY "Users can update their own metadata"
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Anonymous users can update their metadata"
-  ON video_metadata
-  FOR UPDATE
-  TO anon
-  USING (user_id IS NULL)
-  WITH CHECK (user_id IS NULL);
+-- No anonymous UPDATE: an unauthenticated caller has no identity, so such a
+-- policy lets any visitor rewrite every guest row (including public_url).
 
 CREATE INDEX IF NOT EXISTS idx_video_metadata_user_id ON video_metadata(user_id);
 CREATE INDEX IF NOT EXISTS idx_video_metadata_file_path ON video_metadata(file_path);

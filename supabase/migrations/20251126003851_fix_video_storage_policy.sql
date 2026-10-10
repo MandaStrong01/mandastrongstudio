@@ -14,9 +14,16 @@
 -- Drop the existing authenticated-only upload policy
 DROP POLICY IF EXISTS "Authenticated users can upload videos" ON storage.objects;
 
--- Allow both authenticated and anonymous users to upload videos
-CREATE POLICY "Anyone can upload videos"
+-- Uploads require a signed-in account. Granting INSERT to the public role turns
+-- the bucket into open file hosting for the whole internet.
+CREATE POLICY "Authenticated users can upload videos"
 ON storage.objects
 FOR INSERT
-TO public
-WITH CHECK (bucket_id = 'videos');
+TO authenticated
+WITH CHECK (bucket_id = 'videos' AND owner = auth.uid());
+
+-- Bound what can land in the bucket, server side.
+UPDATE storage.buckets
+SET file_size_limit = 5368709120,
+    allowed_mime_types = ARRAY['video/mp4','video/webm','video/quicktime','video/x-matroska']
+WHERE id = 'videos';

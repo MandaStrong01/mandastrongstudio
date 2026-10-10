@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Upload, Film, CheckCircle, AlertCircle, Home, Play, Pause, X } from 'lucide-react';
+import { Upload, Film, CircleCheck as CheckCircle, CircleAlert as AlertCircle, Chrome as Home, Play, Pause, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import * as tus from 'tus-js-client';
 
@@ -95,9 +95,9 @@ export default function VideoUploadPage({ onHome, onPlayMovie }: VideoUploadPage
           fileName: file.name,
           progress: uploadStatus?.progress || 0,
           status: 'error',
-          message: error.message || 'Upload failed'
+          message: 'Upload failed'
         });
-        setError(error.message || 'Upload failed');
+        setError('Upload failed. Please try again.');
       },
       onProgress: (bytesUploaded, bytesTotal) => {
         const percentage = ((bytesUploaded / bytesTotal) * 100).toFixed(2);

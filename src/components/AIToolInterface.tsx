@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Loader2, Download, Sparkles } from 'lucide-react';
+import { X, Loader as Loader2, Download, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface AIToolInterfaceProps {
@@ -104,7 +104,7 @@ export default function AIToolInterface({ toolName, toolCategory, onClose }: AIT
 
         if (insertError) {
           console.error('Database save error:', insertError);
-          setError('Asset generated but not saved. Error: ' + insertError.message);
+          setError('Asset generated but could not be saved. Please try again.');
         } else {
           setSuccess('Success! Asset saved to Media Board. Go to Page 11 to view all your assets.');
         }

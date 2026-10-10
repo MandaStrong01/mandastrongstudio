@@ -13,10 +13,11 @@
 -- Drop existing update policy that requires authentication
 DROP POLICY IF EXISTS "Users can update own videos" ON storage.objects;
 
--- Allow anonymous users to update videos (needed for upsert)
-CREATE POLICY "Anyone can update videos"
+-- Only the uploader may overwrite their own video. An unrestricted UPDATE here
+-- would let any visitor replace the contents of anyone else's file.
+CREATE POLICY "Users can update own videos"
 ON storage.objects
 FOR UPDATE
-TO public
-USING (bucket_id = 'videos')
-WITH CHECK (bucket_id = 'videos');
+TO authenticated
+USING (bucket_id = 'videos' AND owner = auth.uid())
+WITH CHECK (bucket_id = 'videos' AND owner = auth.uid());

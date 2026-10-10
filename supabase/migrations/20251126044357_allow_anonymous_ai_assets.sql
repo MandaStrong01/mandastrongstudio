@@ -16,16 +16,16 @@
 CREATE POLICY "Anonymous users can insert assets"
   ON ai_assets FOR INSERT
   TO anon
-  WITH CHECK (true);
+  WITH CHECK (user_id IS NULL);
 
 -- Allow anonymous users to view all assets
 CREATE POLICY "Anonymous users can view assets"
   ON ai_assets FOR SELECT
   TO anon
-  USING (true);
+  USING (user_id IS NULL);
 
 -- Allow anonymous users to delete assets (for cleanup)
 CREATE POLICY "Anonymous users can delete assets"
   ON ai_assets FOR DELETE
   TO anon
-  USING (true);
+  USING (user_id IS NULL);

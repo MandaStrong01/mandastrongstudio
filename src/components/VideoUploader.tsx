@@ -52,10 +52,16 @@ export default function VideoUploader({
       setStatusMessage('Server is downloading from Google Drive (this may take several minutes)...');
       setUploadProgress(30);
 
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('not signed in');
+      }
+
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ googleDriveUrl })
@@ -78,7 +84,7 @@ export default function VideoUploader({
     } catch (error) {
       console.error('Google Drive upload error:', error);
       setUploadStatus('error');
-      setStatusMessage(error instanceof Error ? error.message : 'Failed to download from Google Drive.');
+      setStatusMessage('Could not import from Google Drive. Make sure you are signed in and the link is shared publicly.');
     } finally {
       setUploading(false);
     }
@@ -128,7 +134,7 @@ export default function VideoUploader({
     } catch (error) {
       console.error('Upload error:', error);
       setUploadStatus('error');
-      setStatusMessage(error instanceof Error ? error.message : 'Upload failed');
+      setStatusMessage('Upload failed. Please try again.');
     } finally {
       setUploading(false);
     }
