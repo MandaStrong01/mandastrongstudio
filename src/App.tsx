@@ -516,7 +516,7 @@ const STRIPE = {
 const G = (v, sm) => ({
   background: v==="gold" ? GOLD : "transparent",
   border: v==="gold" ? "none" : "1px solid "+LINE,
-  color: v==="gold" ? "#000" : GOLD,
+  color: v==="gold" ? "#000" : WHITE,
   borderRadius:3, fontWeight:600,
   padding: sm ? "5px 14px" : "10px 26px",
   fontSize: sm ? 11 : 13,
@@ -524,7 +524,7 @@ const G = (v, sm) => ({
   fontFamily:"'Manrope',system-ui,sans-serif",
 });
 const Sp = { minHeight:"100vh", background:BG, color:WHITE, fontFamily:"'Manrope',system-ui,sans-serif", paddingBottom:160, width:"100%", overflowX:"hidden" };
-const H1 = { fontFamily:"'Fraunces',Georgia,serif", fontWeight:300, color:GOLD, letterSpacing:-0.2, textTransform:"none", margin:0, fontSize:"clamp(16px,3vw,32px)" };
+const H1 = { fontFamily:"'Fraunces',Georgia,serif", fontWeight:300, color:WHITE, letterSpacing:-0.2, textTransform:"none", margin:0, fontSize:"clamp(16px,3vw,32px)" };
 const Card = (x) => ({ background:"#0E0F12", border:"1px solid "+LINE, borderRadius:3, padding:18, ...(x||{}) });
 
 const STOCK_VOICES = [
@@ -686,10 +686,10 @@ function ProjectHistoryModal({ onClose, onResume, initialTab }) {
       <div style={{width:"min(620px,95vw)",background:"#07080A",border:"2px solid "+SIGNAL,maxHeight:"85vh",display:"flex",flexDirection:"column"}}>
         <div style={{background:"#0E0F12",borderBottom:"1px solid "+LINE+"",padding:"16px 22px",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
           <div>
-            <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:GOLD,fontSize:17,fontWeight:600,letterSpacing:0.4}}>Your projects</div>
+            <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:17,fontWeight:600,letterSpacing:0.4}}>Your projects</div>
             <div style={{color:WHITE,fontSize:10,letterSpacing:0.2,marginTop:3}}>Open a work in progress or revisit a finished film</div>
           </div>
-          <button onClick={onClose} style={{background:"none",border:"1px solid "+LINE,color:GOLD,width:30,height:30,cursor:"pointer",fontSize:15}}>✕</button>
+          <button onClick={onClose} style={{background:"none",border:"1px solid "+LINE,color:WHITE,width:30,height:30,cursor:"pointer",fontSize:15}}>✕</button>
         </div>
         <div style={{display:"flex",borderBottom:"1px solid "+LINE,flexShrink:0}}>
           <button onClick={()=>setTab("in_progress")} style={{flex:1,background:tab==="in_progress"?"#15171B":"transparent",border:"none",borderBottom:tab==="in_progress"?"2px solid "+SIGNAL:"none",color:tab==="in_progress"?GOLD:DIM,padding:"12px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>⟳ open project ({inProgressCount})</button>
@@ -697,7 +697,7 @@ function ProjectHistoryModal({ onClose, onResume, initialTab }) {
         </div>
         <div style={{padding:"12px 18px 0",flexShrink:0}}>
           <button onClick={findWork} disabled={finding} style={{width:"100%",background:GOLD,border:"none",color:"#000",padding:"13px",cursor:finding?"wait":"pointer",fontSize:13,fontWeight:600,letterSpacing:0.3,fontFamily:"'Manrope',system-ui,sans-serif"}}>{finding?"FINDING YOUR WORK…":"FIND MY WORK"}</button>
-          {findMsg&&<div style={{color:GOLD,fontSize:12,marginTop:8,lineHeight:1.5}}>{findMsg}</div>}
+          {findMsg&&<div style={{color:WHITE,fontSize:12,marginTop:8,lineHeight:1.5}}>{findMsg}</div>}
         </div>
         <div style={{flex:1,overflowY:"auto",padding:18}}>
           {filtered.length===0?(
@@ -712,7 +712,7 @@ function ProjectHistoryModal({ onClose, onResume, initialTab }) {
               <div key={i} style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"12px 16px",marginBottom:10,display:"flex",alignItems:"center",gap:12}}>
                 <div style={{flex:1}}>
                   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
-                    <div style={{color:GOLD,fontWeight:600,fontSize:13,letterSpacing:0.2}}>{h.name||"Untitled Session"}</div>
+                    <div style={{color:WHITE,fontWeight:600,fontSize:13,letterSpacing:0.2}}>{h.name||"Untitled Session"}</div>
                     <span style={{background:tab==="completed"?"#0a2010":"#20180a",color:tab==="completed"?"#D4AF6A":GOLD,fontSize:9,letterSpacing:0.2,padding:"2px 8px",fontWeight:600}}>{tab==="completed"?"COMPLETED":"IN PROGRESS"}</span>
                   </div>
                   <div style={{color:DIM,fontSize:10,letterSpacing:0}}>{h.date} · Page {h.page} · {h.assetCount} asset{h.assetCount!==1?"s":""}</div>
@@ -744,20 +744,20 @@ function SaveSessionModal({ onClose, onSave, currentPage, assetCount }) {
   return (
     <div style={{position:"fixed",inset:0,zIndex:1200,background:"rgba(0,0,0,0.92)",display:"flex",alignItems:"center",justifyContent:"center"}}>
       <div style={{width:"min(440px,92vw)",background:"#07080A",border:"2px solid "+SIGNAL,padding:22}}>
-        <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:GOLD,fontSize:15,fontWeight:600,letterSpacing:0.2,marginBottom:4}}>Save session</div>
+        <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:15,fontWeight:600,letterSpacing:0.2,marginBottom:4}}>Save session</div>
         <div style={{color:DIM,fontSize:10,marginBottom:14}}>Page {currentPage} · {assetCount} assets in library</div>
-        <div style={{color:GOLD,fontSize:10,letterSpacing:0.2,marginBottom:5}}>Project name</div>
+        <div style={{color:WHITE,fontSize:10,letterSpacing:0.2,marginBottom:5}}>Project name</div>
         <input value={name} onChange={e=>setName(e.target.value)} style={{...inp2,marginBottom:10}}/>
-        <div style={{color:GOLD,fontSize:10,letterSpacing:0.2,marginBottom:5}}>Note (optional)</div>
+        <div style={{color:WHITE,fontSize:10,letterSpacing:0.2,marginBottom:5}}>Note (optional)</div>
         <input value={note} onChange={e=>setNote(e.target.value)} placeholder="e.g. Done chapters 1-5, continuing from 6..." style={{...inp2,marginBottom:12}}/>
-        <div style={{color:GOLD,fontSize:10,letterSpacing:0.2,marginBottom:5}}>Status</div>
+        <div style={{color:WHITE,fontSize:10,letterSpacing:0.2,marginBottom:5}}>Status</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:16}}>
           <button onClick={()=>setStatus("in_progress")} style={{background:status==="in_progress"?GOLD:"#0E0F12",border:"1px solid "+(status==="in_progress"?"#000":GOLDDIM),color:status==="in_progress"?"#000":WHITE,padding:"9px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>⟳ in progress</button>
           <button onClick={()=>setStatus("completed")} style={{background:status==="completed"?GOLD:"#0E0F12",border:"1px solid "+(status==="completed"?"#000":GOLDDIM),color:status==="completed"?"#000":WHITE,padding:"9px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>Completed</button>
         </div>
         <div style={{color:DIM,fontSize:10,marginBottom:12,lineHeight:1.5}}>{status==="in_progress"?"Will appear in OPEN PROJECT (still working on it)":"Will appear in MY PROJECTS (finished films)"}</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-          <button onClick={onClose} style={{background:"transparent",border:"1px solid "+LINE,color:GOLD,padding:"11px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>Cancel</button>
+          <button onClick={onClose} style={{background:"transparent",border:"1px solid "+LINE,color:WHITE,padding:"11px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>Cancel</button>
           <button onClick={()=>onSave(name,note,status)} style={{background:GOLD,border:"none",color:"#000",padding:"11px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>Save</button>
         </div>
       </div>
@@ -770,15 +770,15 @@ function QAMenu({ go, onClose, user }) {
     <div style={{position:"fixed",inset:0,zIndex:1000,display:"flex"}}>
       <div style={{width:256,background:"#07080A",borderRight:"1px solid "+LINE+"",height:"100vh",overflowY:"auto",padding:18}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-          <span style={{fontFamily:"'Manrope',system-ui,sans-serif",color:GOLD,fontSize:13,fontWeight:600,letterSpacing:0.2}}>Quick access</span>
-          <button onClick={onClose} style={{background:"none",border:"none",color:GOLD,fontSize:20,cursor:"pointer"}}>✕</button>
+          <span style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:13,fontWeight:600,letterSpacing:0.2}}>Quick access</span>
+          <button onClick={onClose} style={{background:"none",border:"none",color:WHITE,fontSize:20,cursor:"pointer"}}>✕</button>
         </div>
         <div style={{background:GOLD,padding:"9px 12px",marginBottom:10,textAlign:"center"}}>
           <div style={{color:"#000",fontWeight:600,fontSize:10,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>INFUTURE MOVIE STUDIOS</div>
         </div>
         <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"7px 10px",marginBottom:14,textAlign:"center"}}>
           <div style={{color:DIM,fontSize:9,letterSpacing:0.2}}>Plan</div>
-          <div style={{color:GOLD,fontWeight:600,fontSize:14,fontFamily:"'Manrope',system-ui,sans-serif"}}>Studio</div>
+          <div style={{color:WHITE,fontWeight:600,fontSize:14,fontFamily:"'Manrope',system-ui,sans-serif"}}>Studio</div>
         </div>
         {NAV.map(i=>(
           <button key={i.p} onClick={()=>{go(i.p);onClose();}}
@@ -806,7 +806,7 @@ function SideNav({ page, go }) {
   return (
     <nav style={{position:"fixed",top:0,left:0,bottom:0,width:236,zIndex:600,background:"#090A0C",borderRight:"1px solid rgba(237,234,227,0.08)",overflowY:"auto",paddingBottom:140}}>
       <div onClick={()=>go(1)} style={{display:"flex",alignItems:"center",gap:12,padding:"22px 22px 6px",cursor:"pointer"}}>
-        <div style={{width:30,height:30,border:"1px solid "+GOLD,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:GOLD,letterSpacing:1}}>IF</div>
+        <div style={{width:30,height:30,border:"1px solid "+GOLD,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:WHITE,letterSpacing:1}}>IF</div>
         <div style={{lineHeight:1.15}}>
           <div style={{fontSize:12,fontWeight:600,letterSpacing:2,color:WHITE}}>INFUTURE</div>
           <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:9.5,letterSpacing:2.4,color:DIM}}>MOVIE STUDIOS</div>
@@ -830,18 +830,18 @@ function SideNav({ page, go }) {
 function Header({ go, setMenu, wide }) {
   return (
     <header style={{position:"sticky",top:0,zIndex:500,background:"#0E0F12",borderBottom:"1px solid "+LINE+"",padding:"0 16px",height:52,display:"flex",alignItems:"center",gap:12}}>
-      {!wide&&<button onClick={()=>setMenu(true)} style={{background:"none",border:"1px solid "+LINE,color:GOLD,width:34,height:34,cursor:"pointer",fontSize:16,flexShrink:0}}>☰</button>}
+      {!wide&&<button onClick={()=>setMenu(true)} style={{background:"none",border:"1px solid "+LINE,color:WHITE,width:34,height:34,cursor:"pointer",fontSize:16,flexShrink:0}}>☰</button>}
       <div onClick={()=>go(1)} style={{cursor:"pointer",flexShrink:0}}>
-        <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:GOLD,fontSize:13,fontWeight:600,letterSpacing:0.2,lineHeight:1,textShadow:"none"}}>INFUTURE</div>
+        <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:13,fontWeight:600,letterSpacing:0.2,lineHeight:1,textShadow:"none"}}>INFUTURE</div>
         <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:GOLDDIM,fontSize:9,letterSpacing:0.4}}>Movie Studios</div>
       </div>
       <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}>
-        <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontWeight:500}}>
+        <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",fontWeight:500}}>
           Cinema intelligence platform &nbsp;·&nbsp; 200+ AI tools &nbsp;·&nbsp; 8K export &nbsp;·&nbsp; films up to 3 hours
         </div>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
-        <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:500}}>System online</div>
+        <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:500}}>System online</div>
         <div onClick={()=>go(21)} style={{width:36,height:36,background:GOLD,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif",fontSize:14,fontWeight:600,color:"#000",boxShadow:"none"}}>G</div>
       </div>
     </header>
@@ -852,16 +852,16 @@ function Footer({ page, go, onSave, onHistory }) {
   return (
     <footer style={{position:"fixed",bottom:0,left:0,right:0,zIndex:400,background:"#0E0F12",borderTop:"1px solid "+LINE+"",padding:"6px 20px 8px",display:"flex",flexDirection:"column",gap:4}}>
       <div style={{textAlign:"center"}}>
-        <span style={{color:GOLD,fontSize:11,letterSpacing:0,fontWeight:500}}>INFUTURE MOVIE STUDIOS · PROFESSIONAL CINEMA SYNTHESIS · MandaStrong1.Etsy.com</span>
-        {page===1&&<span style={{color:GOLD,fontSize:11,letterSpacing:0,fontWeight:500,opacity:0.75}}> · created 2025</span>}
+        <span style={{color:WHITE,fontSize:11,letterSpacing:0,fontWeight:500}}>INFUTURE MOVIE STUDIOS · PROFESSIONAL CINEMA SYNTHESIS · MandaStrong1.Etsy.com</span>
+        {page===1&&<span style={{color:WHITE,fontSize:11,letterSpacing:0,fontWeight:500,opacity:0.75}}> · created 2025</span>}
       </div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:10,flexWrap:"wrap"}}>
         <button onClick={()=>go(Math.max(1,page-1))} disabled={page===1} style={{...G("out",true),opacity:page===1?0.3:1}}>Back</button>
-        <span style={{color:GOLD,fontSize:11,fontWeight:600,fontFamily:"'Manrope',system-ui,sans-serif",letterSpacing:0.2}}>Page {page} / {TOTAL}</span>
+        <span style={{color:WHITE,fontSize:11,fontWeight:600,fontFamily:"'Manrope',system-ui,sans-serif",letterSpacing:0.2}}>Page {page} / {TOTAL}</span>
         <button onClick={()=>go(Math.min(TOTAL,page+1))} disabled={page===TOTAL} style={{...G("gold",true),opacity:page===TOTAL?0.3:1}}>Next</button>
         <button onClick={onSave} style={{...G("out",true),fontSize:11,letterSpacing:0.2}}>Save project</button>
-        <button onClick={onHistory} style={{background:"#0E0F12",border:"1px solid "+LINE,color:GOLD,padding:"5px 14px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>My projects</button>
-        <span style={{color:GOLD,fontSize:11,fontWeight:500}}>Autosave on</span>
+        <button onClick={onHistory} style={{background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"5px 14px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>My projects</button>
+        <span style={{color:WHITE,fontSize:11,fontWeight:500}}>Autosave on</span>
       </div>
     </footer>
   );
@@ -959,7 +959,7 @@ function ToolPanel({ tool, onClose, onSave }) {
       <div style={{width:"min(600px,95vw)",background:"#07080A",border:"1px solid "+LINE,padding:26,maxHeight:"92vh",overflowY:"auto"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
           <h2 style={{...H1,fontSize:16,margin:0,letterSpacing:0.4}}>{tool}</h2>
-          <button onClick={onClose} style={{background:"none",border:"none",color:GOLD,fontSize:20,cursor:"pointer"}}>✕</button>
+          <button onClick={onClose} style={{background:"none",border:"none",color:WHITE,fontSize:20,cursor:"pointer"}}>✕</button>
         </div>
         <div style={{display:"grid",gridTemplateColumns:isVoice?"1fr 1fr 1fr 1fr":"1fr 1fr 1fr",gap:8,marginBottom:18}}>
           {isVoice&&<button onClick={()=>setMode("voice")} style={{...G(mode==="voice"?"gold":"out",true),fontSize:11}}>Voice</button>}
@@ -969,7 +969,7 @@ function ToolPanel({ tool, onClose, onSave }) {
         </div>
         {mode==="voice"&&isVoice&&(
           <div>
-            <div style={{color:GOLD,fontSize:12,letterSpacing:0.2,fontWeight:600,marginBottom:10}}>Select voice</div>
+            <div style={{color:WHITE,fontSize:12,letterSpacing:0.2,fontWeight:600,marginBottom:10}}>Select voice</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
               {STOCK_VOICES.map(v=>(
                 <div key={v.id} onClick={()=>setSelVoice(v.id)}
@@ -977,11 +977,11 @@ function ToolPanel({ tool, onClose, onSave }) {
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
                     <span style={{color:selVoice===v.id?GOLD:WHITE,fontSize:14,fontWeight:600}}>{v.name}</span>
                     <button onClick={e=>{e.stopPropagation();speak(v.id,"Hi I am "+v.name+". "+v.desc+". Ready to narrate.");}}
-                      style={{background:"none",border:"1px solid "+LINE,color:GOLD,padding:"2px 8px",cursor:"pointer",fontSize:10,fontWeight:600}}>
+                      style={{background:"none",border:"1px solid "+LINE,color:WHITE,padding:"2px 8px",cursor:"pointer",fontSize:10,fontWeight:600}}>
                       {playing===v.id?"⏹":"▶"}
                     </button>
                   </div>
-                  <div style={{color:GOLD,fontSize:11}}>{v.desc}</div>
+                  <div style={{color:WHITE,fontSize:11}}>{v.desc}</div>
                   <div style={{color:WHITE,fontSize:10,marginTop:2}}>{v.style} · {v.accent}</div>
                 </div>
               ))}
@@ -1012,7 +1012,7 @@ function ToolPanel({ tool, onClose, onSave }) {
           <div style={{marginBottom:14}}>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:4}}>
               <button onClick={()=>photoRef.current&&photoRef.current.click()}
-                style={{background:"#0E0F12",border:"2px solid "+SIGNAL,color:GOLD,padding:"20px 8px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0,fontFamily:"'Manrope',system-ui,sans-serif"}}>
+                style={{background:"#0E0F12",border:"2px solid "+SIGNAL,color:WHITE,padding:"20px 8px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0,fontFamily:"'Manrope',system-ui,sans-serif"}}>
                 Upload photo
               </button>
               <button onClick={()=>fileRef.current&&fileRef.current.click()}
@@ -1036,22 +1036,22 @@ function ToolPanel({ tool, onClose, onSave }) {
         )}
         {mode==="paste"&&(
           <div style={{marginBottom:14}}>
-            <div style={{color:GOLD,fontSize:12,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Add URL</div>
+            <div style={{color:WHITE,fontSize:12,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Add URL</div>
             <input value={url} onChange={e=>setUrl(e.target.value)} placeholder="Paste a URL..." style={{...inp,marginBottom:10}}/>
-            <div style={{color:GOLD,fontSize:12,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Or paste text</div>
+            <div style={{color:WHITE,fontSize:12,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Or paste text</div>
             <textarea value={describe} onChange={e=>setDescribe(e.target.value)} placeholder="Paste your content here..." style={{...inp,height:100,resize:"none",lineHeight:1.6}}/>
             <button onClick={saveAsset} style={{...G("gold",false),marginTop:8,width:"100%",padding:"12px"}}>Save to media library</button>
           </div>
         )}
         {mode==="ai"&&tool==="Script to Movie"&&(
           <div style={{marginBottom:14}}>
-            <div style={{color:GOLD,fontSize:12,letterSpacing:0.2,fontWeight:600,marginBottom:2}}>Script to movie</div>
+            <div style={{color:WHITE,fontSize:12,letterSpacing:0.2,fontWeight:600,marginBottom:2}}>Script to movie</div>
             <div style={{color:GOLDDIM,fontSize:11,lineHeight:1.6,marginBottom:12}}>Fill the three boxes, then WIRE INTO RENDER — the video generator on Page 8 uses them to drive every scene.</div>
-            <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:3}}>Producer</div>
+            <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:3}}>Producer</div>
             <textarea value={s2mProducer} onChange={e=>setS2mProducer(e.target.value)} placeholder="Producer's directions — vision, mood, casting, overall intent..." style={{...inp,height:80,resize:"vertical",lineHeight:1.6,marginBottom:10}}/>
-            <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:3}}>Describe</div>
+            <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:3}}>Describe</div>
             <textarea value={describe} onChange={e=>setDescribe(e.target.value)} placeholder="Describe your film — scene by scene, what happens on screen..." style={{...inp,height:80,resize:"vertical",lineHeight:1.6,marginBottom:10}}/>
-            <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:3}}>Production notes</div>
+            <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:3}}>Production notes</div>
             <textarea value={s2mProduction} onChange={e=>setS2mProduction(e.target.value)} placeholder="Production notes — shots, camera moves, lighting, locations, timing..." style={{...inp,height:80,resize:"vertical",lineHeight:1.6,marginBottom:10}}/>
             <button onClick={runAI} disabled={loading||!describe.trim()} style={{...G("gold",false),width:"100%",padding:"13px",opacity:loading||!describe.trim()?0.5:1,fontSize:13,letterSpacing:0.2,marginBottom:8}}>{loading?"⟳ CREATING...":"Write script"}</button>
             <button onClick={()=>{
@@ -1073,7 +1073,7 @@ function ToolPanel({ tool, onClose, onSave }) {
         )}
         {mode==="ai"&&tool!=="Script to Movie"&&(
           <div style={{marginBottom:14}}>
-            <div style={{color:GOLD,fontSize:12,letterSpacing:0.2,fontWeight:600,marginBottom:4}}>
+            <div style={{color:WHITE,fontSize:12,letterSpacing:0.2,fontWeight:600,marginBottom:4}}>
               {isVideoTool?"DESCRIBE YOUR SCENE OR FILM IDEA":isImageTool?"DESCRIBE YOUR IMAGE":isWritingTool?"DESCRIBE YOUR STORY OR SCRIPT":"DESCRIBE WHAT YOU WANT"}
             </div>
             <textarea value={describe} onChange={e=>setDescribe(e.target.value)}
@@ -1149,15 +1149,15 @@ function WritingBoxes({ onSave }) {
   const ta={width:"100%",background:"#0E0F12",border:"1px solid "+LINE,padding:"12px 14px",color:WHITE,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"'Manrope',system-ui,sans-serif",lineHeight:1.8,height:150,resize:"vertical"};
   return (
     <div style={{padding:"0 12px 16px"}}>
-      <div style={{color:GOLD,fontSize:13,letterSpacing:0.2,fontWeight:600,margin:"6px 2px 4px"}}>Script to movie</div>
+      <div style={{color:WHITE,fontSize:13,letterSpacing:0.2,fontWeight:600,margin:"6px 2px 4px"}}>Script to movie</div>
       <div style={{color:GOLDDIM,fontSize:11,letterSpacing:0,margin:"0 2px 12px"}}>Fill the three boxes, then WIRE INTO RENDER — the video generator on Page 8 uses them to drive every scene. Each box also saves to your Media Library &amp; timeline.</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:12}}>
         {BOXES.map(b=>(
           <div key={b.key} style={{background:"#07080A",border:"2px solid "+SIGNAL,padding:"14px 16px",display:"flex",flexDirection:"column"}}>
-            <div style={{color:GOLD,fontWeight:600,fontSize:13,letterSpacing:0.2,marginBottom:3}}>{b.icon} {b.title}</div>
+            <div style={{color:WHITE,fontWeight:600,fontSize:13,letterSpacing:0.2,marginBottom:3}}>{b.icon} {b.title}</div>
             <div style={{color:GOLDDIM,fontSize:11,lineHeight:1.6,marginBottom:8}}>{b.hint}</div>
             <textarea value={docs[b.key]||""} onChange={e=>set(b.key,e.target.value)} placeholder={b.ph} style={ta}/>
-            <button onClick={()=>saveBox(b)} style={{marginTop:10,background:"transparent",border:"1px solid "+LINE,color:GOLD,padding:"9px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>Save to media library</button>
+            <button onClick={()=>saveBox(b)} style={{marginTop:10,background:"transparent",border:"1px solid "+LINE,color:WHITE,padding:"9px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>Save to media library</button>
             {saved===b.key&&<div style={{color:"#D4AF6A",fontSize:11,fontWeight:600,letterSpacing:0,marginTop:8,textAlign:"center"}}>Saved</div>}
           </div>
         ))}
@@ -1176,15 +1176,15 @@ function ToolPage({ title, subtitle, tools, onSave }) {
     <div style={{...Sp}}>
       <div style={{padding:"14px 18px 12px",borderBottom:"1px solid "+LINE+"",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
         <div>
-          <div style={{fontSize:12,color:GOLD,letterSpacing:0.4,fontWeight:500}}>{subtitle}</div>
+          <div style={{fontSize:12,color:WHITE,letterSpacing:0.4,fontWeight:500}}>{subtitle}</div>
           <h1 style={{...H1,fontSize:24,margin:0}}>{title}</h1>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <div style={{position:"relative"}}>
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={"Search "+tools.length+" tools..."}
               style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"7px 12px 7px 28px",color:WHITE,fontSize:13,outline:"none",width:200}}/>
-            <span style={{position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",color:GOLD}}></span>
-            {search&&<button onClick={()=>setSearch("")} style={{position:"absolute",right:7,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:GOLD,cursor:"pointer",padding:0}}>✕</button>}
+            <span style={{position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",color:WHITE}}></span>
+            {search&&<button onClick={()=>setSearch("")} style={{position:"absolute",right:7,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:WHITE,cursor:"pointer",padding:0}}>✕</button>}
           </div>
           <span style={{color:WHITE,fontSize:12,fontWeight:500,letterSpacing:0}}>{filtered.length} Tools</span>
         </div>
@@ -1197,7 +1197,7 @@ function ToolPage({ title, subtitle, tools, onSave }) {
         <div style={{padding:"0 12px 12px"}}>
           <div style={{background:"#07080A",border:"2px solid "+SIGNAL,padding:"16px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
             <div>
-              <div style={{color:GOLD,fontWeight:600,fontSize:13,letterSpacing:0.2}}>Your projects</div>
+              <div style={{color:WHITE,fontWeight:600,fontSize:13,letterSpacing:0.2}}>Your projects</div>
               <div style={{color:WHITE,fontSize:12,marginTop:3}}>Save and reload your work at any time</div>
             </div>
             <div style={{display:"flex",gap:10}}>
@@ -1880,7 +1880,7 @@ llł
   ];
 
   const inp = {width:"100%",background:"#0E0F12",border:"1px solid "+LINE,padding:"9px 12px",color:WHITE,fontSize:13,outline:"none",fontFamily:"'Manrope',system-ui,sans-serif",boxSizing:"border-box"};
-  const label = (txt) => <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:6,marginTop:12}}>{txt}</div>;
+  const label = (txt) => <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:6,marginTop:12}}>{txt}</div>;
 
   const sel = (k,arr) => (
     <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:4}}>
@@ -1913,10 +1913,10 @@ llł
         {/* Header */}
         <div style={{background:"#0E0F12",borderBottom:"1px solid "+LINE+"",padding:"14px 22px",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
           <div>
-            <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:GOLD,fontSize:18,fontWeight:600,letterSpacing:0.4}}>Music video studio</div>
+            <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:18,fontWeight:600,letterSpacing:0.4}}>Music video studio</div>
             <div style={{color:WHITE,fontSize:10,letterSpacing:0.2,marginTop:2}}>Professional music video production · AI powered · self-contained</div>
           </div>
-          <button onClick={onClose} style={{background:"none",border:"1px solid "+LINE,color:GOLD,width:32,height:32,cursor:"pointer",fontSize:16}}>✕</button>
+          <button onClick={onClose} style={{background:"none",border:"1px solid "+LINE,color:WHITE,width:32,height:32,cursor:"pointer",fontSize:16}}>✕</button>
         </div>
 
         {/* Step tabs */}
@@ -2004,7 +2004,7 @@ llł
                 <div style={{padding:"12px 14px",border:"1px solid "+LINE,background:"#0E0F12",marginBottom:8}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                     <span style={{color:GOLDDIM,fontSize:11,fontWeight:600,letterSpacing:0.2}}>Film length</span>
-                    <span style={{color:GOLD,fontSize:13,fontWeight:600}}>{config.durationMin>0?(config.durationMin+" min"):"AUTO — match song"}</span>
+                    <span style={{color:WHITE,fontSize:13,fontWeight:600}}>{config.durationMin>0?(config.durationMin+" min"):"AUTO — match song"}</span>
                   </div>
                   <input type="range" min={0} max={180} step={1} value={config.durationMin||0}
                     onChange={e=>set("durationMin",+e.target.value)}
@@ -2023,7 +2023,7 @@ llł
 
             {step===4&&(
               <div>
-                <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:GOLD,fontSize:16,fontWeight:600,marginBottom:10,letterSpacing:0.2}}>Ready to create</div>
+                <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:16,fontWeight:600,marginBottom:10,letterSpacing:0.2}}>Ready to create</div>
 
                 {/* Drag-drop audio upload — moved here from Step 1 */}
                 {label("Upload your audio track")}
@@ -2058,7 +2058,7 @@ llł
                 {config.refMedia?(
                   <div style={{position:"relative",marginBottom:10}}>
                     <img src={config.refMedia} alt="ref" style={{width:"100%",height:70,objectFit:"cover",border:"1px solid "+LINE}}/>
-                    <button onClick={()=>set("refMedia",null)} style={{position:"absolute",top:4,right:4,background:"#0E0F12",border:"1px solid "+LINE,color:GOLD,padding:"1px 7px",cursor:"pointer",fontSize:10,fontWeight:600}}>✕</button>
+                    <button onClick={()=>set("refMedia",null)} style={{position:"absolute",top:4,right:4,background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"1px 7px",cursor:"pointer",fontSize:10,fontWeight:600}}>✕</button>
                     <div style={{color:"#D4AF6A",fontSize:9,fontWeight:600,letterSpacing:0.2,marginTop:3}}>Reference loaded</div>
                   </div>
                 ):(
@@ -2076,12 +2076,12 @@ llł
                       }}
                       onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*,video/*";inp.onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)setRefFromFile(f);};inp.click();}}
                       style={{background:"#0E0F12",border:"2px dashed "+LINE,padding:"18px 10px",textAlign:"center",cursor:"pointer",marginBottom:6,transition:"all .2s"}}>
-                      <div style={{color:GOLD,fontSize:14,fontWeight:600,letterSpacing:0.2,marginBottom:4}}>Drag & drop here</div>
+                      <div style={{color:WHITE,fontSize:14,fontWeight:600,letterSpacing:0.2,marginBottom:4}}>Drag & drop here</div>
                       <div style={{color:GOLDDIM,fontSize:10,letterSpacing:0.2}}>or click to browse — JPG · PNG · MP4</div>
                     </div>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:10}}>
                       <button onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.heic,.heif";inp.onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)setRefFromFile(f);};inp.click();}}
-                        style={{background:"#0E0F12",border:"2px solid "+SIGNAL,color:GOLD,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0,fontFamily:"'Manrope',system-ui,sans-serif"}}>
+                        style={{background:"#0E0F12",border:"2px solid "+SIGNAL,color:WHITE,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0,fontFamily:"'Manrope',system-ui,sans-serif"}}>
                         Upload photo
                       </button>
                       <button onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*,video/*";inp.onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)setRefFromFile(f);};inp.click();}}
@@ -2094,7 +2094,7 @@ llł
 
                 {/* Summary */}
                 <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:14,marginBottom:14}}>
-                  <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,marginBottom:8,fontWeight:600}}>Your music video</div>
+                  <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,marginBottom:8,fontWeight:600}}>Your music video</div>
                   {[["TITLE",config.title||"—"],["ARTIST",config.artist||"—"],["GENRE",config.genre||"—"],["MOOD",config.mood||"—"],["STYLE",config.videoStyle||"—"],["GRADE",config.colorGrade||"—"],["DURATION",config.durationMin>0?(config.durationMin+" min"):"Auto — match song"],["AUDIO",audioName||"No audio uploaded"]].map(([k,v])=>(
                     <div key={k} style={{display:"flex",justifyContent:"space-between",fontSize:12,padding:"3px 0",borderBottom:"1px solid #0a0800"}}>
                       <span style={{color:GOLDDIM,letterSpacing:0.2}}>{k}</span>
@@ -2114,7 +2114,7 @@ llł
 
                 {/* Autosave indicator */}
                 <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
-                  <span style={{color:GOLD,fontSize:11,fontWeight:500}}>Autosave on</span>
+                  <span style={{color:WHITE,fontSize:11,fontWeight:500}}>Autosave on</span>
                   <span style={{color:GOLDDIM,fontSize:10}}>Your settings are saved as you work</span>
                 </div>
 
@@ -2200,7 +2200,7 @@ llł
 
               {/* Export panel */}
               <div style={{flex:1,overflowY:"auto",padding:"12px 14px"}}>
-                <div style={{color:GOLD,fontSize:11,fontWeight:600,letterSpacing:0.2,marginBottom:10}}>Export your music video</div>
+                <div style={{color:WHITE,fontSize:11,fontWeight:600,letterSpacing:0.2,marginBottom:10}}>Export your music video</div>
 
                 {/* Download */}
                 <button onClick={()=>{
@@ -2224,12 +2224,12 @@ llł
                     onSave({id:"mv_"+Date.now(),name:fn,type:"video/webm",url:videoUrl,file:new File([videoBlob],fn,{type:"video/webm"})});
                     addLog("Saved to media library");
                   }
-                }} style={{width:"100%",background:"transparent",border:"1px solid "+LINE,color:GOLD,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif",marginBottom:14}}>
+                }} style={{width:"100%",background:"transparent",border:"1px solid "+LINE,color:WHITE,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif",marginBottom:14}}>
                   Save to media library
                 </button>
 
                 {/* Share to social */}
-                <div style={{color:GOLD,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:8}}>Share to</div>
+                <div style={{color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:8}}>Share to</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:5,marginBottom:12}}>
                   {SOCIAL.map(([name,color,url])=>(
                     <button key={name} onClick={()=>window.open(url,"_blank")}
@@ -2257,7 +2257,7 @@ llł
         {/* Bottom nav */}
         {!videoUrl&&(
           <div style={{borderTop:"1px solid "+LINE+"",padding:"10px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
-            <button onClick={()=>setStep(s=>Math.max(1,s-1))} disabled={step===1} style={{background:"transparent",border:"1px solid "+LINE,color:GOLD,padding:"6px 16px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif",opacity:step===1?0.3:1}}>Back</button>
+            <button onClick={()=>setStep(s=>Math.max(1,s-1))} disabled={step===1} style={{background:"transparent",border:"1px solid "+LINE,color:WHITE,padding:"6px 16px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif",opacity:step===1?0.3:1}}>Back</button>
             <span style={{color:GOLDDIM,fontSize:10,letterSpacing:0.2}}>Step {step} OF 4</span>
             {step<4
               ?<button onClick={()=>setStep(s=>Math.min(4,s+1))} style={{background:GOLD,border:"none",color:"#000",padding:"6px 16px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>Next</button>
@@ -2704,13 +2704,13 @@ function P6Voice({ onSave, setMediaLib }) {
     <div style={{...Sp}}>
       {showMVS&&<MusicVideoStudio onClose={()=>setShowMVS(false)} onSave={onSave}/>}
       <div style={{padding:"12px 18px",borderBottom:"1px solid "+LINE+"",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
-        <div><div style={{fontSize:11,color:GOLD,letterSpacing:0.4,fontWeight:500}}>AI workstation 02 — cinema voice engine</div><h1 style={{...H1,fontSize:24,margin:0}}>Text to lifelike speech</h1></div>
+        <div><div style={{fontSize:11,color:WHITE,letterSpacing:0.4,fontWeight:500}}>AI workstation 02 — cinema voice engine</div><h1 style={{...H1,fontSize:24,margin:0}}>Text to lifelike speech</h1></div>
         <button onClick={()=>setShowMVS(true)} style={{background:GOLD,border:"none",color:"#000",padding:"10px 20px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>Music video studio</button>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"290px 1fr",minHeight:"calc(100vh - 120px)"}}>
         <div style={{borderRight:"1px solid "+LINE+"",background:"#030303",display:"flex",flexDirection:"column"}}>
           <div style={{padding:"10px 10px 6px"}}>
-            <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:8}}>Voice library — {filtered.length} / {VOICE_CHARACTERS.length}</div>
+            <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:8}}>Voice library — {filtered.length} / {VOICE_CHARACTERS.length}</div>
             <div style={{marginBottom:5}}><div style={{color:GOLDDIM,fontSize:9,letterSpacing:0.2,marginBottom:3}}>Gender</div><div style={{display:"flex",gap:4}}>{GENDERS.map(g=><button key={g} onClick={()=>setFilterGender(g)} style={{flex:1,background:filterGender===g?GOLD:"#0E0F12",border:"1px solid "+(filterGender===g?"#000":GOLDDIM),color:filterGender===g?"#000":WHITE,padding:"3px 0",cursor:"pointer",fontSize:10,fontWeight:600}}>{g}</button>)}</div></div>
             <div style={{marginBottom:5}}><div style={{color:GOLDDIM,fontSize:9,letterSpacing:0.2,marginBottom:3}}>Age</div><div style={{display:"flex",flexWrap:"wrap",gap:3}}>{AGES.map(a=><button key={a} onClick={()=>setFilterAge(a)} style={{background:filterAge===a?GOLD:"#0E0F12",border:"1px solid "+(filterAge===a?"#000":GOLDDIM),color:filterAge===a?"#000":WHITE,padding:"2px 8px",cursor:"pointer",fontSize:9,fontWeight:600}}>{a}</button>)}</div></div>
             <div style={{marginBottom:6}}><div style={{color:GOLDDIM,fontSize:9,letterSpacing:0.2,marginBottom:3}}>Origin</div><select value={filterOrigin} onChange={e=>setFilterOrigin(e.target.value)} style={{width:"100%",background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"4px 8px",fontSize:11,outline:"none"}}>{ORIGINS.map(o=><option key={o} value={o}>{o}</option>)}</select></div>
@@ -2727,22 +2727,22 @@ function P6Voice({ onSave, setMediaLib }) {
             ):(
               <button onClick={startMyRecording} style={{width:"100%",background:"#0E0F12",border:"none",color:"#fff",padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif",marginBottom:6}}>Record my voice now</button>
             )}
-            <button onClick={()=>myVoiceInputRef.current&&myVoiceInputRef.current.click()} style={{width:"100%",background:"#0E0F12",border:"2px solid "+SIGNAL,color:GOLD,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif",marginBottom:6}}>＋ add your own voice (file)</button>
+            <button onClick={()=>myVoiceInputRef.current&&myVoiceInputRef.current.click()} style={{width:"100%",background:"#0E0F12",border:"2px solid "+SIGNAL,color:WHITE,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif",marginBottom:6}}>＋ add your own voice (file)</button>
             {(<>
               <div style={{color:GOLDDIM,fontSize:10,lineHeight:1.5,marginBottom:6,letterSpacing:0}}>Record just the FIRST PARAGRAPH in your own voice — the engine clones your voice and reads the rest of the narration to the end in YOUR voice, wired into the generator and render.</div>
-              <div style={{color:GOLD,fontSize:10,letterSpacing:0.2,fontWeight:600,marginBottom:4}}>Allow engine to clone voice?</div>
+              <div style={{color:WHITE,fontSize:10,letterSpacing:0.2,fontWeight:600,marginBottom:4}}>Allow engine to clone voice?</div>
               <div style={{display:"flex",gap:6,marginBottom:8}}>
                 <button onClick={()=>setCloneOk("yes")} style={{flex:1,background:cloneConsent==="yes"?GOLD:"#000",border:"2px solid "+SIGNAL,color:cloneConsent==="yes"?"#000":GOLD,padding:"7px",cursor:"pointer",fontSize:10,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>Yes</button>
                 <button onClick={()=>setCloneOk("no")} style={{flex:1,background:cloneConsent==="no"?"#2A1B16":"#000",border:"2px solid #2A1B16",color:cloneConsent==="no"?"#fff":"#C98A7A",padding:"7px",cursor:"pointer",fontSize:10,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>NO</button>
               </div>
-              <div style={{color:GOLD,fontSize:10,letterSpacing:0.2,fontWeight:600,marginBottom:4}}>Use my voice as narrator?</div>
+              <div style={{color:WHITE,fontSize:10,letterSpacing:0.2,fontWeight:600,marginBottom:4}}>Use my voice as narrator?</div>
               <div style={{display:"flex",gap:6,marginBottom:8}}>
                 <button onClick={()=>setConsent("yes")} style={{flex:1,background:narrConsent==="yes"?GOLD:"#000",border:"2px solid "+SIGNAL,color:narrConsent==="yes"?"#000":GOLD,padding:"7px",cursor:"pointer",fontSize:10,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>Yes</button>
                 <button onClick={()=>setConsent("no")} style={{flex:1,background:narrConsent==="no"?"#2A1B16":"#000",border:"2px solid #2A1B16",color:narrConsent==="no"?"#fff":"#C98A7A",padding:"7px",cursor:"pointer",fontSize:10,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>NO</button>
               </div>
               {(<>
                 <button onClick={saveMyVoiceAsNarration} style={{width:"100%",background:GOLD,border:"none",color:"#000",padding:"11px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif",marginBottom:6}}>Use my voice as narration</button>
-                <button onClick={engineCompleteNarration} disabled={narrBusy} style={{width:"100%",background:narrBusy?"#15171B":"#0E0F12",border:"2px solid "+SIGNAL,color:GOLD,padding:"11px",cursor:narrBusy?"wait":"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif",marginBottom:6}}>{narrBusy?("⟳ "+(narrStep||"CLONING & COMPLETING…")):"Use engine to complete full narration"}</button>
+                <button onClick={engineCompleteNarration} disabled={narrBusy} style={{width:"100%",background:narrBusy?"#15171B":"#0E0F12",border:"2px solid "+SIGNAL,color:WHITE,padding:"11px",cursor:narrBusy?"wait":"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif",marginBottom:6}}>{narrBusy?("⟳ "+(narrStep||"CLONING & COMPLETING…")):"Use engine to complete full narration"}</button>
               </>)}
             </>)}
             {myVoices.map(v=>(
@@ -2765,15 +2765,15 @@ function P6Voice({ onSave, setMediaLib }) {
                     }} style={{background:GOLD,border:"none",color:"#000",padding:"3px 8px",cursor:"pointer",fontSize:9,fontWeight:600}}>⬇</button>}
                     {/* Hidden clone trigger: double-click the emoji of a selected own-voice to clone it. */}
                     <span style={{fontSize:18,cursor:selVoice===v.id?"pointer":"inherit"}} title="" onDoubleClick={e=>{e.stopPropagation();if(selVoice===v.id&&!cloning){setSelVoice(v.id);cloneMyVoice();}}}>{v.emoji}</span>
-                    <div><div style={{color:selVoice===v.id?GOLD:WHITE,fontSize:13,fontWeight:600}}>{v.name}{v.clonedVoiceId&&<span style={{color:GOLD,fontSize:10,marginLeft:6}}>Cloned</span>}</div><div style={{color:GOLDDIM,fontSize:10}}>{v.clonedVoiceId?"Your cloned voice — engine narrates in your voice":"Your uploaded voice"}</div></div>
+                    <div><div style={{color:selVoice===v.id?GOLD:WHITE,fontSize:13,fontWeight:600}}>{v.name}{v.clonedVoiceId&&<span style={{color:WHITE,fontSize:10,marginLeft:6}}>Cloned</span>}</div><div style={{color:GOLDDIM,fontSize:10}}>{v.clonedVoiceId?"Your cloned voice — engine narrates in your voice":"Your uploaded voice"}</div></div>
                   </div>
                   <div style={{display:"flex",gap:4,flexShrink:0}}>
                     {v.url&&<button onClick={e=>{e.stopPropagation();const a=new Audio(v.url);a.play().catch(()=>{});}} style={{background:GOLDDIM,border:"none",color:"#000",padding:"3px 8px",cursor:"pointer",fontSize:9,fontWeight:600}}>▶</button>}
                     
-                    <button onClick={e=>{e.stopPropagation();delMyVoice(v.id);}} style={{background:"#0E0F12",border:"1px solid "+LINE,color:GOLD,padding:"3px 8px",cursor:"pointer",fontSize:9,fontWeight:600}}>✕</button>
+                    <button onClick={e=>{e.stopPropagation();delMyVoice(v.id);}} style={{background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"3px 8px",cursor:"pointer",fontSize:9,fontWeight:600}}>✕</button>
                   </div>
                 </div>
-                {selVoice===v.id&&<div style={{color:GOLD,fontSize:9,letterSpacing:0.2,marginTop:4,fontWeight:600}}>{cloning?"Cloning your voice…":"Selected"}</div>}
+                {selVoice===v.id&&<div style={{color:WHITE,fontSize:9,letterSpacing:0.2,marginTop:4,fontWeight:600}}>{cloning?"Cloning your voice…":"Selected"}</div>}
               </div>
             ))}
             {filtered.map(v=>(
@@ -2787,7 +2787,7 @@ function P6Voice({ onSave, setMediaLib }) {
                     style={{background:GOLDDIM,border:"none",color:"#000",padding:"3px 10px",cursor:"pointer",fontSize:9,fontWeight:600,letterSpacing:0,fontFamily:"'Manrope',system-ui,sans-serif",whiteSpace:"nowrap",flexShrink:0}}>Test</button>
                 </div>
                 <div style={{color:DIM,fontSize:10,lineHeight:1.5}}>{v.style}</div>
-                {selVoice===v.id&&<div style={{color:GOLD,fontSize:9,letterSpacing:0.2,marginTop:4,fontWeight:600}}>Selected</div>}
+                {selVoice===v.id&&<div style={{color:WHITE,fontSize:9,letterSpacing:0.2,marginTop:4,fontWeight:600}}>Selected</div>}
               </div>
             ))}
           </div>
@@ -2799,7 +2799,7 @@ function P6Voice({ onSave, setMediaLib }) {
             <div style={{color:DIM,fontSize:11,marginTop:2,fontStyle:"italic"}}>{selected.desc}</div>
           </div>
           <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"12px 14px",marginBottom:14}}>
-            <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:10}}>Voice settings</div>
+            <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:10}}>Voice settings</div>
             <div style={{marginBottom:10}}><div style={{color:GOLDDIM,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:4}}>Mood</div>
               <select value={mood} onChange={e=>setMood(e.target.value)} style={{width:"100%",background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"8px 12px",fontSize:13,fontFamily:"'Manrope',system-ui,sans-serif",outline:"none"}}>
                 {["Neutral","Happy","Sad","Angry","Excited","Calm","Dramatic","Mysterious","Romantic","Sarcastic","Melancholic","Authoritative","Warm"].map(m=><option key={m} value={m} style={{background:"#0E0F12"}}>{m}</option>)}
@@ -2807,25 +2807,25 @@ function P6Voice({ onSave, setMediaLib }) {
             </div>
             {[["SPEED",speed,0.3,1.5,0.01,v=>setSpeed(v),speed.toFixed(2)+"x"],["PITCH",pitchV,0.3,2.0,0.01,v=>setPitchV(v),pitchV.toFixed(2)],["PAUSE (ms)",pauseLen,200,2000,50,v=>setPauseLen(v),pauseLen+"ms"],["VOLUME",volume,0.1,1.0,0.05,v=>setVolume(v),Math.round(volume*100)+"%"]].map(([label,val,mn,mx,st,setter,display])=>(
               <div key={label} style={{marginBottom:10}}>
-                <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{color:GOLDDIM,fontSize:10,fontWeight:600,letterSpacing:0.2}}>{label}</span><span style={{color:GOLD,fontSize:11,fontWeight:600}}>{display}</span></div>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{color:GOLDDIM,fontSize:10,fontWeight:600,letterSpacing:0.2}}>{label}</span><span style={{color:WHITE,fontSize:11,fontWeight:600}}>{display}</span></div>
                 <input type="range" min={mn} max={mx} step={st} value={val} onChange={e=>setter(+e.target.value)} style={{width:"100%",accentColor:GOLD}}/>
               </div>
             ))}
           </div>
-          <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Your narration script</div>
+          <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Your narration script</div>
           <textarea value={text} onChange={e=>setText(e.target.value)} placeholder="Paste your narration script here..."
             style={{...inp,height:160,resize:"vertical",marginBottom:14}}/>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
             <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"12px 14px"}}>
-              <div style={{color:GOLD,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Test script</div>
+              <div style={{color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Test script</div>
               <div style={{color:WHITE,fontSize:11,lineHeight:1.7,marginBottom:10}}>Hear your script with current voice and settings.</div>
-              <button onClick={()=>speaking?stop():speakNow(text)} disabled={!text.trim()} style={{background:"transparent",border:"1px solid "+LINE,color:GOLD,width:"100%",padding:"9px",fontSize:11,fontWeight:600,letterSpacing:0.2,cursor:!text.trim()?"not-allowed":"pointer",fontFamily:"'Manrope',system-ui,sans-serif",opacity:!text.trim()?0.5:1}}>{speaking?"Stop":"Test script"}</button>
+              <button onClick={()=>speaking?stop():speakNow(text)} disabled={!text.trim()} style={{background:"transparent",border:"1px solid "+LINE,color:WHITE,width:"100%",padding:"9px",fontSize:11,fontWeight:600,letterSpacing:0.2,cursor:!text.trim()?"not-allowed":"pointer",fontFamily:"'Manrope',system-ui,sans-serif",opacity:!text.trim()?0.5:1}}>{speaking?"Stop":"Test script"}</button>
               <button onClick={downloadNarration} disabled={!text.trim()||dlBusy} style={{background:dlBusy?"#15171B":GOLD,border:"none",color:"#000",width:"100%",padding:"11px",fontSize:11,fontWeight:600,letterSpacing:0.2,marginTop:8,cursor:(!text.trim()||dlBusy)?"wait":"pointer",fontFamily:"'Manrope',system-ui,sans-serif",opacity:!text.trim()?0.5:1}}>{dlBusy?"⟳ Rendering narration…":"⬇ Download narration"}</button>
             </div>
             <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"12px 14px"}}>
-              <div style={{color:GOLD,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Reset</div>
+              <div style={{color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Reset</div>
               <div style={{color:WHITE,fontSize:11,lineHeight:1.7,marginBottom:10}}>Clear script and reset all settings.</div>
-              <button onClick={()=>{stop();setText("");setSavedToLib(false);setSpeed(0.62);setPitchV(0.86);setPauseLen(1600);setVolume(1.0);setMood("Neutral");}} style={{background:"transparent",border:"1px solid "+LINE,color:GOLD,width:"100%",padding:"9px",fontSize:11,fontWeight:600,letterSpacing:0.2,cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>Reset all</button>
+              <button onClick={()=>{stop();setText("");setSavedToLib(false);setSpeed(0.62);setPitchV(0.86);setPauseLen(1600);setVolume(1.0);setMood("Neutral");}} style={{background:"transparent",border:"1px solid "+LINE,color:WHITE,width:"100%",padding:"9px",fontSize:11,fontWeight:600,letterSpacing:0.2,cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>Reset all</button>
             </div>
           </div>
           <button onClick={()=>{
@@ -2854,7 +2854,7 @@ function P6Voice({ onSave, setMediaLib }) {
             if(setMediaLib)setMediaLib(p=>[...p,asset]);
             setSavedToLib(true);
             setTimeout(()=>setSavedToLib(false),3000);
-          }} disabled={!text.trim()} style={{background:"transparent",border:"1px solid "+LINE,color:GOLD,width:"100%",padding:"14px",fontSize:13,fontWeight:600,letterSpacing:0.2,cursor:!text.trim()?"not-allowed":"pointer",fontFamily:"'Manrope',system-ui,sans-serif",opacity:!text.trim()?0.5:1,marginBottom:8}}>
+          }} disabled={!text.trim()} style={{background:"transparent",border:"1px solid "+LINE,color:WHITE,width:"100%",padding:"14px",fontSize:13,fontWeight:600,letterSpacing:0.2,cursor:!text.trim()?"not-allowed":"pointer",fontFamily:"'Manrope',system-ui,sans-serif",opacity:!text.trim()?0.5:1,marginBottom:8}}>
             Save to media library
           </button>
           {savedToLib&&<div style={{background:"#14110B",border:"1px solid #D4AF6A",padding:"10px 14px",textAlign:"center",marginBottom:8}}><span style={{color:"#D4AF6A",fontWeight:600,fontSize:12,letterSpacing:0.2}}>Narration saved to media library — auto-added to timeline</span></div>}
@@ -2900,12 +2900,12 @@ function MSUserCounter(){
         </div>
         <div style={{display:"flex",alignItems:"flex-end",justifyContent:"center",gap:34}}>
           <div>
-            <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:GOLD,fontSize:42,fontWeight:600,lineHeight:1,textShadow:"none"}}>{live}</div>
+            <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:42,fontWeight:600,lineHeight:1,textShadow:"none"}}>{live}</div>
             <div style={{color:"#D4AF6A",fontSize:9,letterSpacing:0.2,marginTop:4}}>On now</div>
           </div>
           <div style={{width:1,alignSelf:"stretch",background:GOLD+"55"}}/>
           <div>
-            <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:GOLD,fontSize:42,fontWeight:600,lineHeight:1,textShadow:"none"}}>{total}</div>
+            <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:42,fontWeight:600,lineHeight:1,textShadow:"none"}}>{total}</div>
             <div style={{color:GOLDDIM,fontSize:9,letterSpacing:0.2,marginTop:4}}>Total users</div>
           </div>
         </div>
@@ -3524,20 +3524,20 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
     <div style={{marginTop:10,padding:10,border:"1px solid "+LINE,borderRadius:3,background:"#0E0F12"}}>
       <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
         <button onClick={mmmTogglePlay} style={{flex:"0 0 92px",padding:"10px 0",background:GOLD,color:"#000",border:"none",borderRadius:3,fontWeight:600,fontSize:14,cursor:"pointer"}}>{mmmPlaying?"PAUSE":"PLAY"}</button>
-        <button onClick={mmmRestart} style={{flex:"0 0 92px",padding:"10px 0",background:"#0E0F12",color:GOLD,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:13,cursor:"pointer"}}>RESTART</button>
+        <button onClick={mmmRestart} style={{flex:"0 0 92px",padding:"10px 0",background:"#0E0F12",color:WHITE,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:13,cursor:"pointer"}}>RESTART</button>
         <div style={{flex:1,textAlign:"right",color:"#fff",fontSize:12}}>Scene {Math.min(mmmSceneNo,Math.max(1,mmmListNow().length))} of {Math.max(1,mmmListNow().length)} · {mmmFmtClock(mmmClock)}</div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:8}}>
         <div>
-          <div style={{color:GOLD,fontSize:11,fontWeight:600,marginBottom:3}}>Voice {Math.round(mmmVolume*100)}%</div>
+          <div style={{color:WHITE,fontSize:11,fontWeight:600,marginBottom:3}}>Voice {Math.round(mmmVolume*100)}%</div>
           <input type="range" min={0} max={1} step={0.05} value={mmmVolume} onChange={e=>{const x=Number(e.target.value);setMmmVolume(x);try{if(mmmNarrRef.current)mmmNarrRef.current.volume=x;}catch(_){}}} style={{width:"100%",accentColor:GOLD}}/>
         </div>
         <div style={{opacity:mmmBgSound?1:0.4}}>
-          <div style={{color:GOLD,fontSize:11,fontWeight:600,marginBottom:3}}>Music {Math.round(mmmBgVolume*100)}%</div>
+          <div style={{color:WHITE,fontSize:11,fontWeight:600,marginBottom:3}}>Music {Math.round(mmmBgVolume*100)}%</div>
           <input type="range" min={0} max={1} step={0.05} value={mmmBgVolume} disabled={!mmmBgSound} onChange={e=>setMmmBgVolume(Number(e.target.value))} style={{width:"100%",accentColor:GOLD}}/>
         </div>
       </div>
-      <div style={{color:GOLD,fontSize:11,fontWeight:600,marginBottom:4}}>Screen ratio</div>
+      <div style={{color:WHITE,fontSize:11,fontWeight:600,marginBottom:4}}>Screen ratio</div>
       <div style={{display:"flex",gap:6,marginBottom:8}}>
         {["16:9","9:16","1:1","21:9"].map(r=>(
           <button key={r} onClick={()=>setMmmRatio(r)} style={{flex:1,padding:"8px 0",background:mmmRatio===r?GOLD:"#0E0F12",color:mmmRatio===r?"#000":GOLD,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>{r}</button>
@@ -3556,10 +3556,10 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
         {mmmExp.url&&<a href={mmmExp.url} download={mmmExp.name} style={{display:"block",marginTop:8,padding:12,background:GOLD,color:"#000",borderRadius:3,fontWeight:600,fontSize:14,textAlign:"center",textDecoration:"none"}}>DOWNLOAD FINAL FILM</a>}
       </div>
       <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:10}}>
-        <button onClick={()=>{try{const e=mmmVideoRef.current;(e.requestFullscreen||e.webkitEnterFullscreen||e.webkitRequestFullscreen).call(e);}catch(_){}}} style={{flex:"1 1 45%",padding:10,background:"#0E0F12",color:GOLD,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>FULL SCREEN</button>
-        <button onClick={()=>{try{navigator.share?navigator.share({title:"My Movie",url:mmmFilmUrl}):window.open(mmmFilmUrl,"_blank");}catch(e){window.open(mmmFilmUrl,"_blank");}}} style={{flex:"1 1 45%",padding:10,background:"#0E0F12",color:GOLD,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>SHARE</button>
+        <button onClick={()=>{try{const e=mmmVideoRef.current;(e.requestFullscreen||e.webkitEnterFullscreen||e.webkitRequestFullscreen).call(e);}catch(_){}}} style={{flex:"1 1 45%",padding:10,background:"#0E0F12",color:WHITE,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>FULL SCREEN</button>
+        <button onClick={()=>{try{navigator.share?navigator.share({title:"My Movie",url:mmmFilmUrl}):window.open(mmmFilmUrl,"_blank");}catch(e){window.open(mmmFilmUrl,"_blank");}}} style={{flex:"1 1 45%",padding:10,background:"#0E0F12",color:WHITE,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>SHARE</button>
         {go&&<button onClick={()=>go(16)} style={{flex:"1 1 45%",padding:10,background:GOLD,color:"#000",border:"none",borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>RENDER FINAL FILM →</button>}
-        {go&&<button onClick={()=>go(18)} style={{flex:"1 1 45%",padding:10,background:"#0E0F12",color:GOLD,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>EXPORT PAGE →</button>}
+        {go&&<button onClick={()=>go(18)} style={{flex:"1 1 45%",padding:10,background:"#0E0F12",color:WHITE,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>EXPORT PAGE →</button>}
       </div>
     </div>
   ):null;
@@ -4034,10 +4034,10 @@ Write the drawFrame body now.`}]
       {gapPrompt&&(
         <div style={{position:"fixed",inset:0,zIndex:2000,background:"rgba(0,0,0,0.94)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
           <div style={{width:"min(460px,95vw)",background:"#07080A",border:"2px solid "+SIGNAL,padding:"24px 22px"}}>
-            <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:GOLD,fontSize:16,fontWeight:600,letterSpacing:0.2,marginBottom:14,textAlign:"center"}}>Fill the gap?</div>
+            <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:16,fontWeight:600,letterSpacing:0.2,marginBottom:14,textAlign:"center"}}>Fill the gap?</div>
             <p style={{color:WHITE,fontSize:14,lineHeight:1.7,margin:"0 0 18px",textAlign:"center"}}>
-              You have <b style={{color:GOLD}}>{fmtMin(gapPrompt.have)}</b> of your <b style={{color:GOLD}}>{fmtMin(gapPrompt.target)}</b> selection.
-              Would you like AI to create fill-in scenes to fill the remaining <b style={{color:GOLD}}>{fmtMin(gapPrompt.gap)}</b>?
+              You have <b style={{color:WHITE}}>{fmtMin(gapPrompt.have)}</b> of your <b style={{color:WHITE}}>{fmtMin(gapPrompt.target)}</b> selection.
+              Would you like AI to create fill-in scenes to fill the remaining <b style={{color:WHITE}}>{fmtMin(gapPrompt.gap)}</b>?
             </p>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
               <button disabled={gapBusy} onClick={()=>{
@@ -4051,7 +4051,7 @@ Write the drawFrame body now.`}]
                 Yes, fill it
               </button>
               <button onClick={()=>setGapPrompt(null)}
-                style={{background:"transparent",border:"1px solid "+LINE,color:GOLD,padding:"14px",fontSize:13,fontWeight:600,letterSpacing:0.2,cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>
+                style={{background:"transparent",border:"1px solid "+LINE,color:WHITE,padding:"14px",fontSize:13,fontWeight:600,letterSpacing:0.2,cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>
                 NO, I'M DONE
               </button>
             </div>
@@ -4061,17 +4061,17 @@ Write the drawFrame body now.`}]
       <canvas ref={canvasRef} style={{position:"fixed",right:8,bottom:8,width:160,height:90,opacity:1,pointerEvents:"none",zIndex:9999,border:"1px solid #E6C98E",background:"#0E0F12"}}/>
       <div style={{padding:"12px 20px",borderBottom:"1px solid "+LINE+"",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
         <div>
-          <div style={{fontSize:11,color:GOLD,letterSpacing:0.4,fontWeight:500}}>MANDASTRONG ENGINE v2 · CINEMA-GRADE RENDERER</div>
-          <h1 style={{fontFamily:"'Manrope',system-ui,sans-serif",color:GOLD,letterSpacing:0.4,margin:0,fontSize:24,textTransform:"none"}}>Video generator</h1>
+          <div style={{fontSize:11,color:WHITE,letterSpacing:0.4,fontWeight:500}}>MANDASTRONG ENGINE v2 · CINEMA-GRADE RENDERER</div>
+          <h1 style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,letterSpacing:0.4,margin:0,fontSize:24,textTransform:"none"}}>Video generator</h1>
         </div>
-        <div style={{color:GOLD,fontSize:11,fontWeight:500,letterSpacing:0.2}}>MandaStrong engine · any prompt · any subject</div>
+        <div style={{color:WHITE,fontSize:11,fontWeight:500,letterSpacing:0.2}}>MandaStrong engine · any prompt · any subject</div>
       </div>
       {mmmStudio&&(
         <div style={{position:"fixed",inset:0,zIndex:900,background:"#0E0F12",overflowY:"auto",padding:"18px 16px 60px"}}>
           <div style={{maxWidth:760,margin:"0 auto"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-              <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:GOLD,letterSpacing:0.2,fontSize:20,textTransform:"none"}}>Make My Movie Studio</div>
-              <button onClick={()=>setMmmStudio(false)} style={{background:"none",border:"1px solid "+LINE,color:GOLD,padding:"6px 14px",borderRadius:3,cursor:"pointer",fontSize:12,letterSpacing:0}}>Close</button>
+              <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,letterSpacing:0.2,fontSize:20,textTransform:"none"}}>Make My Movie Studio</div>
+              <button onClick={()=>setMmmStudio(false)} style={{background:"none",border:"1px solid "+LINE,color:WHITE,padding:"6px 14px",borderRadius:3,cursor:"pointer",fontSize:12,letterSpacing:0}}>Close</button>
             </div>
 
             <textarea value={mmmText} onChange={e=>setMmmText(e.target.value)} rows={5}
@@ -4085,21 +4085,21 @@ Write the drawFrame body now.`}]
               <input id="mmmStudioFileInput" type="file" multiple accept="image/*,text/*,.txt,.md,.fdx,.fountain,.heic,.heif" style={{display:"none"}}
                 onChange={e=>{const fl=Array.from(e.target.files||[]);e.target.value="";mmmAddFiles(fl);}}/>
             </label>
-            {mmmAddMsg&&<div style={{color:GOLD,fontSize:11,textAlign:"center",marginBottom:8}}>{mmmAddMsg}{mmmImages.length>0?" · "+mmmImages.length+" photo"+(mmmImages.length>1?"s":"")+" ready":""}</div>}
+            {mmmAddMsg&&<div style={{color:WHITE,fontSize:11,textAlign:"center",marginBottom:8}}>{mmmAddMsg}{mmmImages.length>0?" · "+mmmImages.length+" photo"+(mmmImages.length>1?"s":"")+" ready":""}</div>}
             {mmmImages.length>0&&(
               <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:12}}>
                 {mmmImages.map((im,i)=>(
                   <div key={i} style={{position:"relative"}}>
                     <img src={im.dataUrl} style={{width:54,height:54,objectFit:"cover",border:"1px solid "+LINE,borderRadius:3}}/>
                     <button onClick={()=>setMmmImages(p=>p.filter((_,x)=>x!==i))}
-                      style={{position:"absolute",top:-6,right:-6,width:18,height:18,borderRadius:3,background:"#0E0F12",color:GOLD,border:"1px solid "+LINE,fontSize:11,cursor:"pointer",lineHeight:"16px",padding:0}}>x</button>
+                      style={{position:"absolute",top:-6,right:-6,width:18,height:18,borderRadius:3,background:"#0E0F12",color:WHITE,border:"1px solid "+LINE,fontSize:11,cursor:"pointer",lineHeight:"16px",padding:0}}>x</button>
                   </div>
                 ))}
               </div>
             )}
 
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
-              <span style={{color:GOLD,fontSize:12,letterSpacing:0.2,fontWeight:600}}>Movie length</span>
+              <span style={{color:WHITE,fontSize:12,letterSpacing:0.2,fontWeight:600}}>Movie length</span>
               <span style={{color:"#fff",fontSize:12,fontWeight:500}}>{mmmTargetMin} Min</span>
             </div>
             <input type="range" min={1} max={180} value={mmmTargetMin}
@@ -4109,37 +4109,37 @@ Write the drawFrame body now.`}]
 
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
               <div>
-                <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Style</div>
+                <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Style</div>
                 <select value={mmmStyle} onChange={e=>setMmmStyle(e.target.value)}
-                  style={{width:"100%",background:"#0E0F12",border:"1px solid "+LINE,color:GOLD,padding:"9px 12px",fontSize:12,fontFamily:"'Manrope',system-ui,sans-serif",cursor:"pointer"}}>
+                  style={{width:"100%",background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"9px 12px",fontSize:12,fontFamily:"'Manrope',system-ui,sans-serif",cursor:"pointer"}}>
                   {RENDER_STYLES.map(s=><option key={s.id} value={s.id} style={{background:"#0E0F12"}}>{s.label}</option>)}
                 </select>
               </div>
               <div>
-                <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Genre</div>
+                <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Genre</div>
                 <select value={mmmGenre} onChange={e=>setMmmGenre(e.target.value)}
                   style={{width:"100%",background:"#0E0F12",border:"1px solid "+LINE,color:mmmGenre?GOLD:LINE,padding:"9px 12px",fontSize:12,fontFamily:"'Manrope',system-ui,sans-serif",cursor:"pointer"}}>
                   {FILM_GENRES.map(g=><option key={g.id} value={g.id} style={{background:"#0E0F12"}}>{g.label}</option>)}
                 </select>
               </div>
               <div>
-                <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Colour grade</div>
+                <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Colour grade</div>
                 <select value={mmmGrade} onChange={e=>setMmmGrade(e.target.value)}
-                  style={{width:"100%",background:"#0E0F12",border:"1px solid "+LINE,color:GOLD,padding:"9px 12px",fontSize:12,fontFamily:"'Manrope',system-ui,sans-serif",cursor:"pointer"}}>
+                  style={{width:"100%",background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"9px 12px",fontSize:12,fontFamily:"'Manrope',system-ui,sans-serif",cursor:"pointer"}}>
                   {MMM_GRADES.map(g=><option key={g.id} value={g.id} style={{background:"#0E0F12"}}>{g.label}</option>)}
                 </select>
               </div>
               <div>
-                <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Narration voice</div>
+                <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Narration voice</div>
                 <select value={mmmVoiceId} onChange={e=>setMmmVoiceId(e.target.value)}
-                  style={{width:"100%",background:"#0E0F12",border:"1px solid "+LINE,color:GOLD,padding:"9px 12px",fontSize:12,fontFamily:"'Manrope',system-ui,sans-serif",cursor:"pointer"}}>
+                  style={{width:"100%",background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"9px 12px",fontSize:12,fontFamily:"'Manrope',system-ui,sans-serif",cursor:"pointer"}}>
                   {VOICE_CHARACTERS.map(v=><option key={v.id} value={v.id} style={{background:"#0E0F12"}}>{v.name}</option>)}
                 </select>
               </div>
             </div>
 
             <div style={{marginBottom:12}}>
-              <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Screen ratio</div>
+              <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Screen ratio</div>
               <div style={{display:"flex",gap:6}}>
                 {["16:9","9:16","1:1","21:9"].map(r=>(
                   <button key={r} onClick={()=>setMmmRatio(r)} style={{flex:1,padding:"9px 0",background:mmmRatio===r?GOLD:"#0E0F12",color:mmmRatio===r?"#000":GOLD,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>{r}</button>
@@ -4154,11 +4154,11 @@ Write the drawFrame body now.`}]
             </div>
 
             <div style={{marginBottom:6}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600}}>Narration volume</span><span style={{color:"#fff",fontSize:11}}>{Math.round(mmmVolume*100)}%</span></div>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600}}>Narration volume</span><span style={{color:"#fff",fontSize:11}}>{Math.round(mmmVolume*100)}%</span></div>
               <input type="range" min={0} max={1} step={0.05} value={mmmVolume} onChange={e=>setMmmVolume(Number(e.target.value))} style={{width:"100%",accentColor:GOLD}}/>
             </div>
             <div style={{marginBottom:14,opacity:mmmBgSound?1:0.4}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600}}>Music volume</span><span style={{color:"#fff",fontSize:11}}>{Math.round(mmmBgVolume*100)}%</span></div>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600}}>Music volume</span><span style={{color:"#fff",fontSize:11}}>{Math.round(mmmBgVolume*100)}%</span></div>
               <input type="range" min={0} max={1} step={0.05} value={mmmBgVolume} onChange={e=>setMmmBgVolume(Number(e.target.value))} disabled={!mmmBgSound} style={{width:"100%",accentColor:GOLD}}/>
             </div>
 
@@ -4169,7 +4169,7 @@ Write the drawFrame body now.`}]
 
             {mmmLipSync&&(
               <div style={{marginTop:12,padding:12,border:"1px solid "+LINE,borderRadius:3,background:"#0E0F12"}}>
-                <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Lip sync - talking scene</div>
+                <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Lip sync - talking scene</div>
                 <div style={{color:DIM,fontSize:11,marginBottom:8}}>Uses your first uploaded face photo and speaks the pasted text in the chosen voice.</div>
                 <button onClick={mmmRunLipSync} disabled={mmmLsBusy}
                   style={{width:"100%",padding:12,background:mmmLsBusy?"#333":GOLD,color:mmmLsBusy?"#888":"#000",border:"none",fontWeight:600,fontSize:14,letterSpacing:0.2,borderRadius:3,cursor:mmmLsBusy?"default":"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>
@@ -4185,7 +4185,7 @@ Write the drawFrame body now.`}]
 
             {mmmBusy&&(
               <div style={{marginTop:12}}>
-                <div style={{color:GOLD,fontSize:12,letterSpacing:0,marginBottom:6}}>{mmmStage}</div>
+                <div style={{color:WHITE,fontSize:12,letterSpacing:0,marginBottom:6}}>{mmmStage}</div>
                 <div style={{background:"#0E0F12",height:10,border:"1px solid "+LINE,borderRadius:3,overflow:"hidden"}}>
                   <div style={{background:GOLD,height:"100%",width:mmmPct+"%",transition:"width .3s"}}/>
                 </div>
@@ -4205,7 +4205,7 @@ Write the drawFrame body now.`}]
 
             {(mmmDone||mmmFilmUrl)&&(
               <div style={{marginTop:16}}>
-                <div style={{color:GOLD,fontSize:13,letterSpacing:0.2,fontWeight:600,marginBottom:8,textAlign:"center"}}>{mmmDone?"Preview":"Live preview — scenes appear as they render"}</div>
+                <div style={{color:WHITE,fontSize:13,letterSpacing:0.2,fontWeight:600,marginBottom:8,textAlign:"center"}}>{mmmDone?"Preview":"Live preview — scenes appear as they render"}</div>
                 <MsVideo ref={mmmVideoRef} src={mmmFilmUrl} controls autoPlay playsInline
                   style={{width:"100%",borderRadius:3,border:"1px solid "+LINE,background:"#0E0F12",aspectRatio:mmmAR,objectFit:"contain"}}/>
                 {mmmTransport}
@@ -4215,7 +4215,7 @@ Write the drawFrame body now.`}]
                     DOWNLOAD
                   </button>
                   <button onClick={()=>{try{navigator.share?navigator.share({title:"My Movie",url:mmmFilmUrl}):window.open(mmmFilmUrl,"_blank");}catch(e){window.open(mmmFilmUrl,"_blank");}}}
-                    style={{flex:1,padding:14,background:"#0E0F12",color:GOLD,border:"1px solid "+LINE,fontWeight:600,fontSize:15,letterSpacing:0.2,borderRadius:3,cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>
+                    style={{flex:1,padding:14,background:"#0E0F12",color:WHITE,border:"1px solid "+LINE,fontWeight:600,fontSize:15,letterSpacing:0.2,borderRadius:3,cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>
                     EXPORT
                   </button>
                 </div>)}
@@ -4228,7 +4228,7 @@ Write the drawFrame body now.`}]
       {/* ════ MAKE MY MOVIE — one-shot, everything on this page ════ */}
       <div style={{margin:"14px 20px",background:"#0E0F12",border:"2px solid "+SIGNAL,borderRadius:3,padding:16,boxShadow:"none"}}>
         <div style={{textAlign:"center",marginBottom:12}}>
-          <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:GOLD,letterSpacing:0.4,fontSize:22,textTransform:"none"}}>Make my movie</div>
+          <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,letterSpacing:0.4,fontSize:22,textTransform:"none"}}>Make my movie</div>
           <div style={{color:DIM,fontSize:11,letterSpacing:0.2,marginTop:3}}>Drop everything in · set the length · press go — it does the rest</div>
         </div>
 
@@ -4244,21 +4244,21 @@ Write the drawFrame body now.`}]
           <input id="mmmFileInput" type="file" multiple accept="image/*,text/*,.txt,.md,.fdx,.fountain,.heic,.heif" style={{display:"none"}}
             onChange={e=>{const fl=Array.from(e.target.files||[]);e.target.value="";mmmAddFiles(fl);}}/>
         </label>
-        {mmmAddMsg&&<div style={{color:GOLD,fontSize:11,textAlign:"center",marginBottom:8}}>{mmmAddMsg}{mmmImages.length>0?" · "+mmmImages.length+" photo"+(mmmImages.length>1?"s":"")+" ready":""}</div>}
+        {mmmAddMsg&&<div style={{color:WHITE,fontSize:11,textAlign:"center",marginBottom:8}}>{mmmAddMsg}{mmmImages.length>0?" · "+mmmImages.length+" photo"+(mmmImages.length>1?"s":"")+" ready":""}</div>}
         {mmmImages.length>0&&(
           <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:10}}>
             {mmmImages.map((im,i)=>(
               <div key={i} style={{position:"relative"}}>
                 <img src={im.dataUrl} style={{width:54,height:54,objectFit:"cover",border:"1px solid "+LINE,borderRadius:3}}/>
                 <button onClick={()=>setMmmImages(p=>p.filter((_,x)=>x!==i))}
-                  style={{position:"absolute",top:-6,right:-6,width:18,height:18,borderRadius:3,background:"#0E0F12",color:GOLD,border:"1px solid "+LINE,fontSize:11,cursor:"pointer",lineHeight:"16px",padding:0}}>×</button>
+                  style={{position:"absolute",top:-6,right:-6,width:18,height:18,borderRadius:3,background:"#0E0F12",color:WHITE,border:"1px solid "+LINE,fontSize:11,cursor:"pointer",lineHeight:"16px",padding:0}}>×</button>
               </div>
             ))}
           </div>
         )}
 
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
-          <span style={{color:GOLD,fontSize:12,letterSpacing:0.2,fontWeight:600}}>Movie length</span>
+          <span style={{color:WHITE,fontSize:12,letterSpacing:0.2,fontWeight:600}}>Movie length</span>
           <span style={{color:"#fff",fontSize:12,fontWeight:500}}>{mmmTargetMin} Min · ~{Math.max(1,Math.round(mmmTargetMin))} Scenes</span>
         </div>
         <input type="range" min={1} max={180} value={mmmTargetMin}
@@ -4267,22 +4267,22 @@ Write the drawFrame body now.`}]
         <div style={{display:"flex",justifyContent:"space-between",color:DIM,fontSize:10,marginBottom:12}}><span>1 min</span><span>3 hours</span></div>
 
         <div style={{padding:10,border:"1px solid "+LINE,borderRadius:3,marginBottom:10}}>
-          <div style={{color:GOLD,fontSize:12,fontWeight:600,marginBottom:6}}>Narration</div>
+          <div style={{color:WHITE,fontSize:12,fontWeight:600,marginBottom:6}}>Narration</div>
           {mmmOwn.url&&!mmmOwnOff?(
-            <div style={{color:"#fff",fontSize:12,marginBottom:8}}>Using your own recording: <span style={{color:GOLD}}>{mmmOwn.name}</span></div>
+            <div style={{color:"#fff",fontSize:12,marginBottom:8}}>Using your own recording: <span style={{color:WHITE}}>{mmmOwn.name}</span></div>
           ):(
             <div style={{color:DIM,fontSize:12,marginBottom:8}}>{mmmOwn.url?"The voice engine will read your script.":"No recording yet. The voice engine will read your script."}</div>
           )}
           <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
             <button onClick={()=>{const i=document.getElementById("mmmOwnInput");if(i)i.click();}} style={{flex:"1 1 45%",padding:9,background:GOLD,color:"#000",border:"none",borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>{mmmOwn.url?"CHANGE MY RECORDING":"ADD MY RECORDING"}</button>
-            {mmmOwn.url&&<button onClick={()=>setMmmOwnOff(v=>!v)} style={{flex:"1 1 45%",padding:9,background:"#0E0F12",color:GOLD,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>{mmmOwnOff?"USE MY RECORDING":"USE VOICE ENGINE"}</button>}
+            {mmmOwn.url&&<button onClick={()=>setMmmOwnOff(v=>!v)} style={{flex:"1 1 45%",padding:9,background:"#0E0F12",color:WHITE,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>{mmmOwnOff?"USE MY RECORDING":"USE VOICE ENGINE"}</button>}
           </div>
           <input id="mmmOwnInput" type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.mp4" style={{display:"none"}} onChange={e=>{const f=e.target.files&&e.target.files[0];if(f)mmmPickOwn(f);e.target.value="";}}/>
         </div>
 
         <div style={{padding:10,border:"1px solid "+LINE,borderRadius:3,marginBottom:10}}>
-          <div style={{color:GOLD,fontSize:12,fontWeight:600,marginBottom:6}}>Finishing touches</div>
-          <div style={{color:GOLD,fontSize:11,marginBottom:4}}>Screen ratio</div>
+          <div style={{color:WHITE,fontSize:12,fontWeight:600,marginBottom:6}}>Finishing touches</div>
+          <div style={{color:WHITE,fontSize:11,marginBottom:4}}>Screen ratio</div>
           <div style={{display:"flex",gap:6,marginBottom:8}}>
             {["16:9","9:16","1:1","21:9"].map(r=>(
               <button key={r} onClick={()=>setMmmRatio(r)} style={{flex:1,padding:"8px 0",background:mmmRatio===r?GOLD:"#0E0F12",color:mmmRatio===r?"#000":GOLD,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>{r}</button>
@@ -4290,11 +4290,11 @@ Write the drawFrame body now.`}]
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:8}}>
             <div>
-              <div style={{color:GOLD,fontSize:11,fontWeight:600,marginBottom:3}}>Voice {Math.round(mmmVolume*100)}%</div>
+              <div style={{color:WHITE,fontSize:11,fontWeight:600,marginBottom:3}}>Voice {Math.round(mmmVolume*100)}%</div>
               <input type="range" min={0} max={1} step={0.05} value={mmmVolume} onChange={e=>setMmmVolume(Number(e.target.value))} style={{width:"100%",accentColor:GOLD}}/>
             </div>
             <div style={{opacity:mmmBgSound?1:0.4}}>
-              <div style={{color:GOLD,fontSize:11,fontWeight:600,marginBottom:3}}>Music {Math.round(mmmBgVolume*100)}%</div>
+              <div style={{color:WHITE,fontSize:11,fontWeight:600,marginBottom:3}}>Music {Math.round(mmmBgVolume*100)}%</div>
               <input type="range" min={0} max={1} step={0.05} value={mmmBgVolume} disabled={!mmmBgSound} onChange={e=>setMmmBgVolume(Number(e.target.value))} style={{width:"100%",accentColor:GOLD}}/>
             </div>
           </div>
@@ -4314,7 +4314,7 @@ Write the drawFrame body now.`}]
 
         {mmmBusy&&(
           <div style={{marginTop:12}}>
-            <div style={{color:GOLD,fontSize:12,letterSpacing:0,marginBottom:6}}>{mmmStage}</div>
+            <div style={{color:WHITE,fontSize:12,letterSpacing:0,marginBottom:6}}>{mmmStage}</div>
             <div style={{background:"#0E0F12",height:10,border:"1px solid "+LINE,borderRadius:3,overflow:"hidden"}}>
               <div style={{background:GOLD,height:"100%",width:mmmPct+"%",transition:"width .3s"}}/>
             </div>
@@ -4340,7 +4340,7 @@ Write the drawFrame body now.`}]
 
         {(mmmDone||mmmFilmUrl)&&(
           <div style={{marginTop:14}}>
-            {!mmmDone&&<div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:6,textAlign:"center"}}>Live preview — scenes appear as they render</div>}
+            {!mmmDone&&<div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:6,textAlign:"center"}}>Live preview — scenes appear as they render</div>}
             <MsVideo ref={mmmVideoRef} src={mmmFilmUrl} controls autoPlay playsInline
               style={{width:"100%",borderRadius:3,border:"1px solid "+LINE,background:"#0E0F12",aspectRatio:mmmAR,objectFit:"contain",maxHeight:mmmRatio==="9:16"?560:undefined}}/>
             {mmmTransport}
@@ -4363,14 +4363,14 @@ Write the drawFrame body now.`}]
         <div style={{padding:20,overflowY:"auto"}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
             <div>
-              <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Render style</div>
+              <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Render style</div>
               <select value={renderStyle} onChange={e=>setRenderStyle(e.target.value)}
-                style={{width:"100%",background:"#0E0F12",border:"1px solid "+LINE,color:GOLD,padding:"9px 12px",fontSize:12,outline:"none",fontFamily:"'Manrope',system-ui,sans-serif",cursor:"pointer"}}>
+                style={{width:"100%",background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"9px 12px",fontSize:12,outline:"none",fontFamily:"'Manrope',system-ui,sans-serif",cursor:"pointer"}}>
                 {RENDER_STYLES.map(s=><option key={s.id} value={s.id} style={{background:"#0E0F12"}}>{s.label}</option>)}
               </select>
             </div>
             <div>
-              <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Genre</div>
+              <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Genre</div>
               <select value={genre} onChange={e=>setGenre(e.target.value)}
                 style={{width:"100%",background:"#0E0F12",border:"1px solid "+LINE,color:genre?GOLD:LINE,padding:"9px 12px",fontSize:12,outline:"none",fontFamily:"'Manrope',system-ui,sans-serif",cursor:"pointer"}}>
                 {FILM_GENRES.map(g=><option key={g.id} value={g.id} style={{background:"#0E0F12"}}>{g.label}</option>)}
@@ -4380,7 +4380,7 @@ Write the drawFrame body now.`}]
           <div style={{background:"#0E0F12",border:"2px solid "+SIGNAL,padding:14,marginBottom:12,boxShadow:"none"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
               <div>
-                <div style={{color:GOLD,fontSize:12,letterSpacing:0.2,fontWeight:600}}>Reality engine — upload your photos</div>
+                <div style={{color:WHITE,fontSize:12,letterSpacing:0.2,fontWeight:600}}>Reality engine — upload your photos</div>
                 <div style={{color:DIM,fontSize:10,marginTop:2}}>Upload 1-6 real photos or videos. Drag & drop or click. Guaranteed photorealistic — no cartoons.</div>
               </div>
             </div>
@@ -4392,8 +4392,8 @@ Write the drawFrame body now.`}]
                       ?<video src={ri.url} style={{width:"100%",height:50,objectFit:"cover",border:"1px solid "+LINE}} muted/>
                       :<img src={ri.url} alt={ri.name||"ref"} style={{width:"100%",height:50,objectFit:"cover",border:"1px solid "+LINE}}/>
                     }
-                    <button onClick={()=>setRefImages(p=>p.filter((_,j)=>j!==i))} style={{position:"absolute",top:1,right:1,background:"#0E0F12",border:"1px solid "+LINE,color:GOLD,padding:"0 4px",cursor:"pointer",fontSize:9,fontWeight:600,lineHeight:1.2}}>✕</button>
-                    <div style={{color:GOLD,fontSize:8,letterSpacing:0,marginTop:1,textAlign:"center",fontWeight:600}}>{i===0?"BG":"L"+i}</div>
+                    <button onClick={()=>setRefImages(p=>p.filter((_,j)=>j!==i))} style={{position:"absolute",top:1,right:1,background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"0 4px",cursor:"pointer",fontSize:9,fontWeight:600,lineHeight:1.2}}>✕</button>
+                    <div style={{color:WHITE,fontSize:8,letterSpacing:0,marginTop:1,textAlign:"center",fontWeight:600}}>{i===0?"BG":"L"+i}</div>
                   </div>
                 ))}
               </div>
@@ -4413,7 +4413,7 @@ Write the drawFrame body now.`}]
                 setRefImages(p=>[...p,...files.map(f=>({url:URL.createObjectURL(f),name:f.name,isVideo:f.type.startsWith("video/")}))]);
               }}
               style={{border:"2px dashed "+LINE,padding:"16px 8px",textAlign:"center",marginBottom:6,transition:"border 0.15s, background 0.15s, box-shadow 0.15s",cursor:"copy",background:"transparent"}}>
-              <div style={{color:GOLD,fontSize:11,fontWeight:600,letterSpacing:0.2,pointerEvents:"none"}}>Drag & drop photos or videos here</div>
+              <div style={{color:WHITE,fontSize:11,fontWeight:600,letterSpacing:0.2,pointerEvents:"none"}}>Drag & drop photos or videos here</div>
               <div style={{color:GOLDDIM,fontSize:9,marginTop:3,pointerEvents:"none"}}>JPG · PNG · MP4 · MOV · up to 6 files · drop zone lights up gold when ready</div>
             </div>
             <input ref={realityPhotoRef} type="file" accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.heic,.heif" multiple style={{display:"none"}} onChange={e=>{
@@ -4431,11 +4431,11 @@ Write the drawFrame body now.`}]
             <div style={{color:GOLDDIM,fontSize:9,marginTop:5,letterSpacing:0,textAlign:"center"}}>1st photo = BACKGROUND · others = foreground layers · guarantees photorealistic output</div>
           </div>
           <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:12,marginBottom:12}}>
-            <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Upload reference image (optional)</div>
+            <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Upload reference image (optional)</div>
             {refMedia?(
               <div style={{position:"relative"}}>
                 <img src={refMedia} alt="ref" style={{width:"100%",height:72,objectFit:"cover",border:"1px solid "+LINE}}/>
-                <button onClick={()=>{setRefMedia(null);setRefDataUrl(null);}} style={{position:"absolute",top:3,right:3,background:"#0E0F12",border:"1px solid "+LINE,color:GOLD,padding:"1px 6px",cursor:"pointer",fontSize:10,fontWeight:600}}>✕</button>
+                <button onClick={()=>{setRefMedia(null);setRefDataUrl(null);}} style={{position:"absolute",top:3,right:3,background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"1px 6px",cursor:"pointer",fontSize:10,fontWeight:600}}>✕</button>
                 <div style={{color:"#D4AF6A",fontSize:9,fontWeight:600,letterSpacing:0.2,marginTop:3}}>Reference loaded</div>
               </div>
             ):(
@@ -4454,13 +4454,13 @@ Write the drawFrame body now.`}]
                 }}
                 onClick={()=>refMediaRef.current&&refMediaRef.current.click()}
                 style={{border:"2px dashed "+LINE,padding:"14px 8px",textAlign:"center",cursor:"pointer",transition:"all .2s"}}>
-                <div style={{color:GOLD,fontSize:12,fontWeight:600,letterSpacing:0.2}}>DRAG & DROP or CLICK</div>
+                <div style={{color:WHITE,fontSize:12,fontWeight:600,letterSpacing:0.2}}>DRAG & DROP or CLICK</div>
                 <div style={{color:GOLDDIM,fontSize:10,marginTop:3,letterSpacing:0}}>Jpg · png · MP4</div>
               </div>
             )}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:6}}>
               <button onClick={()=>{const i=document.createElement("input");i.type="file";i.accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.heic,.heif";i.onchange=e=>{const f=e.target.files&&e.target.files[0];if(!f)return;setRefMedia(URL.createObjectURL(f));setRefMediaType(f.type.startsWith("video")?"video":"image");const reader=new FileReader();reader.onload=ev=>setRefDataUrl(ev.target.result);reader.readAsDataURL(f);};i.click();}}
-                style={{background:"#0E0F12",border:"2px solid "+SIGNAL,color:GOLD,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0,fontFamily:"'Manrope',system-ui,sans-serif"}}>
+                style={{background:"#0E0F12",border:"2px solid "+SIGNAL,color:WHITE,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0,fontFamily:"'Manrope',system-ui,sans-serif"}}>
                 Upload photo
               </button>
               <button onClick={()=>{const i=document.createElement("input");i.type="file";i.accept="image/*,video/*";i.onchange=e=>{const f=e.target.files&&e.target.files[0];if(!f)return;setRefMedia(URL.createObjectURL(f));setRefMediaType(f.type.startsWith("video")?"video":"image");const reader=new FileReader();reader.onload=ev=>setRefDataUrl(ev.target.result);reader.readAsDataURL(f);};i.click();}}
@@ -4470,18 +4470,18 @@ Write the drawFrame body now.`}]
             </div>
             <input ref={refMediaRef} type="file" accept="image/*,video/*" style={{display:"none"}} onChange={handleRefUpload}/>
           </div>
-          <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Scene title</div>
+          <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Scene title</div>
           <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. AI For Humanity — Chapter 1"
             style={{width:"100%",background:"#0E0F12",border:"1px solid "+LINE,padding:"10px 14px",color:WHITE,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"'Manrope',system-ui,sans-serif",marginBottom:14}}/>
           <div style={{marginBottom:14}}>
-            <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Describe your scene</div>
+            <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Describe your scene</div>
             <div style={{color:DIM,fontSize:11,marginBottom:8,lineHeight:1.7}}>Describe anything in plain English. MandaStrong Engine reads your prompt and renders a real cinematic scene.</div>
             <textarea value={prompt} onChange={e=>setPrompt(e.target.value)}
               placeholder="e.g. A woman in a heavy coat places a folded paper into a wooden ballot box. Morning light from a window on the left."
               style={{width:"100%",background:"#0E0F12",border:"1px solid "+LINE,padding:"12px 14px",color:WHITE,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"'Manrope',system-ui,sans-serif",lineHeight:1.9,height:140,resize:"none"}}/>
           </div>
           <div style={{marginBottom:14}}>
-            <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:8}}>Quick examples — click to try</div>
+            <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:8}}>Quick examples — click to try</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
               {EXAMPLES.map((ex,i)=>(
                 <div key={i} onClick={()=>setPrompt(ex)}
@@ -4493,7 +4493,7 @@ Write the drawFrame body now.`}]
           </div>
           <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:14,marginBottom:14}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
-              <span style={{color:GOLD,fontSize:11,fontWeight:600,letterSpacing:0.2}}>Target film length</span>
+              <span style={{color:WHITE,fontSize:11,fontWeight:600,letterSpacing:0.2}}>Target film length</span>
               <span style={{color:WHITE,fontSize:11,fontWeight:600}}>{targetMin>0?targetMin+" MIN":"OFF"}</span>
             </div>
             <input type="range" min={0} max={180} value={targetMin} onChange={e=>setTargetMin(+e.target.value)} style={{width:"100%",accentColor:GOLD}}/>
@@ -4505,7 +4505,7 @@ Write the drawFrame body now.`}]
           </div>
           <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:14,marginBottom:14}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
-              <span style={{color:GOLD,fontSize:11,fontWeight:600,letterSpacing:0.2}}>Duration</span>
+              <span style={{color:WHITE,fontSize:11,fontWeight:600,letterSpacing:0.2}}>Duration</span>
               <span style={{color:WHITE,fontSize:11,fontWeight:600}}>{duration>60?(duration/60).toFixed(duration%60?1:0)+" MIN":duration+" SECONDS"}</span>
             </div>
             <input type="range" min={5} max={300} value={duration} onChange={e=>setDuration(+e.target.value)} style={{width:"100%",accentColor:GOLD}}/>
@@ -4513,7 +4513,7 @@ Write the drawFrame body now.`}]
           {/* ── ADD BACKGROUND MUSIC? ─────────────────────────────── */}
           <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:14,marginBottom:14}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span style={{color:GOLD,fontSize:11,fontWeight:600,letterSpacing:0.2}}>Add background music?</span>
+              <span style={{color:WHITE,fontSize:11,fontWeight:600,letterSpacing:0.2}}>Add background music?</span>
               <div style={{display:"flex",gap:6}}>
                 <button onClick={()=>setAddMusic(true)}
                   style={{background:addMusic?GOLD:"#0E0F12",border:"1px solid "+(addMusic?"#000":GOLDDIM),color:addMusic?"#000":WHITE,padding:"5px 16px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0}}>Y</button>
@@ -4540,7 +4540,7 @@ Write the drawFrame body now.`}]
           </div>
           {/* ── ASPECT RATIO ──────────────────────────────────────── */}
           <div style={{marginBottom:14}}>
-            <div style={{color:GOLD,fontSize:11,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Aspect ratio</div>
+            <div style={{color:WHITE,fontSize:11,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Aspect ratio</div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:5}}>
               {[["16/9","16:9","Cinema"],["9/16","9:16","Reels"],["1/1","1:1","Square"],["4/3","4:3","Classic"],["21/9","21:9","Scope"]].map(a=>(
                 <button key={a[0]} onClick={()=>setAspect(a[0])}
@@ -4553,7 +4553,7 @@ Write the drawFrame body now.`}]
           </div>
           {/* ── EXPORT QUALITY ────────────────────────────────────── */}
           <div style={{marginBottom:14}}>
-            <div style={{color:GOLD,fontSize:11,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Export quality</div>
+            <div style={{color:WHITE,fontSize:11,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Export quality</div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:5}}>
               {[["sd","SD","720"],["hd","HD","1280"],["fhd","Full HD","1920"],["uhd","4K","3840"]].map(q=>(
                 <button key={q[0]} onClick={()=>setExpQ(q[0])}
@@ -4587,7 +4587,7 @@ Write the drawFrame body now.`}]
               <MsVideo ref={videoRef} src={videoUrl} controls autoPlay loop playsInline style={{width:"100%",height:"100%",objectFit:"contain"}}/>
             ):(
               <div style={{textAlign:"center",padding:20}}>
-                <div style={{color:GOLD,fontSize:11,fontWeight:600,letterSpacing:0.2,marginBottom:8}}>MANDASTRONG ENGINE v2</div>
+                <div style={{color:WHITE,fontSize:11,fontWeight:600,letterSpacing:0.2,marginBottom:8}}>MANDASTRONG ENGINE v2</div>
                 <div style={{color:DIM,fontSize:10,lineHeight:2}}>Type any scene description.<br/>Hit Generate.<br/>Real cinematic output.</div>
               </div>
             )}
@@ -4597,14 +4597,14 @@ Write the drawFrame body now.`}]
               <div style={{height:5,background:"#0E0F12",marginBottom:4}}>
                 <div style={{width:progress+"%",height:"100%",background:"#0E0F12",transition:"width .4s"}}/>
               </div>
-              <div style={{color:GOLD,fontSize:10,textAlign:"center",letterSpacing:0.2}}>{progress}%</div>
+              <div style={{color:WHITE,fontSize:10,textAlign:"center",letterSpacing:0.2}}>{progress}%</div>
             </div>
           )}
           {videoUrl&&!generating&&(
             <div style={{padding:"10px 14px",borderBottom:"1px solid "+LINE+"",display:"flex",flexDirection:"column",gap:6}}>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
                 <button onClick={()=>msDownload(videoUrl,(title||"scene")+"_"+duration+"s.mp4")}
-                  style={{background:"transparent",border:"1px solid "+LINE,color:GOLD,padding:"8px",fontSize:10,cursor:"pointer",textAlign:"center",letterSpacing:0,fontWeight:600,fontFamily:"'Manrope',system-ui,sans-serif",display:"block"}}>Download</button>
+                  style={{background:"transparent",border:"1px solid "+LINE,color:WHITE,padding:"8px",fontSize:10,cursor:"pointer",textAlign:"center",letterSpacing:0,fontWeight:600,fontFamily:"'Manrope',system-ui,sans-serif",display:"block"}}>Download</button>
                 <button onClick={saveToLibrary}
                   style={{background:saved?"#0E0F12":"transparent",border:"1px solid "+LINE,color:saved?"#000":GOLD,padding:"8px",fontSize:10,cursor:"pointer",fontWeight:600,letterSpacing:0,fontFamily:"'Manrope',system-ui,sans-serif"}}>
                   {saved?"Saved":"Library"}
@@ -4619,7 +4619,7 @@ Write the drawFrame body now.`}]
           <div style={{flex:1,overflowY:"auto",padding:14}}>
             {log.length>0?(
               <div>
-                <div style={{color:GOLD,fontSize:10,letterSpacing:0.2,fontWeight:600,marginBottom:10}}>Production log</div>
+                <div style={{color:WHITE,fontSize:10,letterSpacing:0.2,fontWeight:600,marginBottom:10}}>Production log</div>
                 {log.map((l,i)=>(
                   <div key={i} style={{color:i===log.length-1?"#D4AF6A":DIM,fontSize:11,lineHeight:2,letterSpacing:0}}>
                     {i===log.length-1?"▶ ":"  "}{l}
@@ -4628,7 +4628,7 @@ Write the drawFrame body now.`}]
               </div>
             ):(
               <div style={{padding:"16px 0",color:GOLDDIM,fontSize:10,lineHeight:2.2,letterSpacing:0}}>
-                <div style={{color:GOLD,fontWeight:600,fontSize:11,marginBottom:8}}>MANDASTRONG ENGINE v2</div>
+                <div style={{color:WHITE,fontWeight:600,fontSize:11,marginBottom:8}}>MANDASTRONG ENGINE v2</div>
                 8 rendering layers per frame<br/>
                 Multi-layer parallax depth<br/>
                 Volumetric candle flickering<br/>
@@ -4730,8 +4730,8 @@ function ExampleReel({ go, title }) {
     <div style={{padding:"26px 24px 30px",borderTop:"1px solid "+LINE}}>
       <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:10,marginBottom:12,flexWrap:"wrap"}}>
         <div>
-          <div style={{fontSize:10,color:GOLD,letterSpacing:0.4,fontWeight:500,marginBottom:4}}>Example output</div>
-          <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:GOLD,fontSize:20,fontWeight:600,letterSpacing:0.2}}>{title||"What you can make"}</div>
+          <div style={{fontSize:10,color:WHITE,letterSpacing:0.4,fontWeight:500,marginBottom:4}}>Example output</div>
+          <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:20,fontWeight:600,letterSpacing:0.2}}>{title||"What you can make"}</div>
         </div>
         {go&&<button onClick={()=>go(5)} style={{background:"transparent",border:"1px solid "+SIGNAL,color:SIGNAL,padding:"8px 16px",fontSize:12,fontWeight:500,cursor:"pointer",borderRadius:3,fontFamily:"'Manrope',system-ui,sans-serif"}}>Make one</button>}
       </div>
@@ -4752,8 +4752,8 @@ function P1({ go }) {
         <style>{"@keyframes ifrot{to{transform:rotate(360deg)}}@keyframes ifrotr{to{transform:rotate(-360deg)}}@keyframes ifbr{0%,100%{opacity:.55}50%{opacity:1}}.ifrot{animation:ifrot 90s linear infinite;transform-box:fill-box;transform-origin:center}.ifrotr{animation:ifrotr 140s linear infinite;transform-box:fill-box;transform-origin:center}.ifbr{animation:ifbr 3.4s ease-in-out infinite}@media (prefers-reduced-motion: reduce){.ifrot,.ifrotr,.ifbr{animation:none}}"}</style>
         <div style={{maxWidth:1100,margin:"0 auto",display:"flex",flexWrap:"wrap",alignItems:"center",gap:32}}>
           <div style={{flex:"1.1 1 380px",minWidth:0,display:"flex",flexDirection:"column",gap:24}}>
-            <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10.5,letterSpacing:"0.26em",color:GOLD}}>THE CINEMA INTELLIGENCE PLATFORM</div>
-            <div style={{fontFamily:"'Fraunces',Georgia,serif",fontWeight:300,fontSize:"clamp(40px,6vw,64px)",lineHeight:1.02,letterSpacing:"-0.025em",color:WHITE}}>Your film.<br/><span style={{color:GOLD}}>Made of light.</span></div>
+            <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10.5,letterSpacing:"0.26em",color:WHITE}}>THE CINEMA INTELLIGENCE PLATFORM</div>
+            <div style={{fontFamily:"'Fraunces',Georgia,serif",fontWeight:300,fontSize:"clamp(40px,6vw,64px)",lineHeight:1.02,letterSpacing:"-0.025em",color:WHITE}}>Your film.<br/><span style={{color:WHITE}}>Made of light.</span></div>
             <div style={{maxWidth:470,fontSize:16,lineHeight:1.65,color:DIM}}>Write it. Voice it. Shoot it. Cut it. Render it in 4K. One studio, from the first word to the last frame.</div>
             <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
               <button onClick={()=>go(4)} style={{...G("gold",false),fontSize:13,padding:"12px 24px",letterSpacing:0.4,borderRadius:2}}>Start creating</button>
@@ -4840,11 +4840,11 @@ function P2({ go }) {
   return(
     <div style={{...Sp,padding:"0 0 40px"}}>
       <div style={{padding:"20px 24px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
-        <div><div style={{fontSize:10,color:GOLD,letterSpacing:0.4,fontWeight:500,marginBottom:4}}>InFuture Movie Studios · cinema intelligence platform</div><h1 style={{fontFamily:"'Manrope',system-ui,sans-serif",color:GOLD,fontSize:"clamp(22px,4vw,40px)",fontWeight:600,letterSpacing:0.4,margin:0}}>Studio dashboard</h1></div>
+        <div><div style={{fontSize:10,color:WHITE,letterSpacing:0.4,fontWeight:500,marginBottom:4}}>InFuture Movie Studios · cinema intelligence platform</div><h1 style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:"clamp(22px,4vw,40px)",fontWeight:600,letterSpacing:0.4,margin:0}}>Studio dashboard</h1></div>
         <button onClick={()=>go(5)} style={{background:GOLD,border:"none",color:"#000",padding:"11px 28px",fontSize:13,fontWeight:600,letterSpacing:0.2,cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>+ new project</button>
       </div>
       <div style={{padding:"0 24px 20px"}}>
-        <div style={{fontSize:10,color:GOLD,letterSpacing:0.4,fontWeight:500,marginBottom:12}}>Production pipeline</div>
+        <div style={{fontSize:10,color:WHITE,letterSpacing:0.4,fontWeight:500,marginBottom:12}}>Production pipeline</div>
         <div style={{display:"flex",gap:0,overflowX:"auto"}}>
           {pipeline.map((step,i)=>(
             <div key={step.n} style={{display:"flex",alignItems:"center",flexShrink:0}}>
@@ -4852,7 +4852,7 @@ function P2({ go }) {
                 onMouseEnter={e=>{e.currentTarget.style.borderColor=GOLD;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=LINE;}}>
                 <div style={{color:GOLDDIM,fontSize:9,letterSpacing:0.2,marginBottom:4}}>Step {step.n}</div>
                 <div style={{fontSize:20,marginBottom:4}}>{step.ic}</div>
-                <div style={{color:GOLD,fontWeight:600,fontSize:12,letterSpacing:0.2,marginBottom:2}}>{step.t}</div>
+                <div style={{color:WHITE,fontWeight:600,fontSize:12,letterSpacing:0.2,marginBottom:2}}>{step.t}</div>
                 <div style={{color:WHITE,fontSize:10,lineHeight:1.3}}>{step.d}</div>
               </div>
               {i<pipeline.length-1&&<div style={{color:GOLDDIM,fontSize:14,padding:"0 3px",flexShrink:0}}>›</div>}
@@ -4861,13 +4861,13 @@ function P2({ go }) {
         </div>
       </div>
       <div style={{padding:"0 24px"}}>
-        <div style={{fontSize:10,color:GOLD,letterSpacing:0.4,fontWeight:500,marginBottom:12}}>Quick start templates</div>
+        <div style={{fontSize:10,color:WHITE,letterSpacing:0.4,fontWeight:500,marginBottom:12}}>Quick start templates</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
           {templates.map(tmpl=>(
             <div key={tmpl.t} style={{background:tmpl.bg,border:"1px solid "+LINE,padding:"16px 18px",cursor:"pointer"}}
               onMouseEnter={e=>{e.currentTarget.style.borderColor=GOLD;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=LINE+"33";}}>
               <div style={{marginBottom:10}}><Frame seed={tmpl.seed} local={tmpl.local} vid={tmpl.vid} localVid={tmpl.localVid} dur={tmpl.dur} h={104}/></div>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><span style={{color:GOLD,fontWeight:600,fontSize:13,letterSpacing:0.2}}>{tmpl.t}</span></div>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><span style={{color:WHITE,fontWeight:600,fontSize:13,letterSpacing:0.2}}>{tmpl.t}</span></div>
               <div style={{color:WHITE,fontSize:12,lineHeight:1.6,marginBottom:10}}>{tmpl.d}</div>
               <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
                 {tmpl.pages.map(p=>(
@@ -4937,7 +4937,7 @@ function P3() {
   return (
     <div style={{...Sp,padding:40}}>
       <div style={{maxWidth:1100,margin:"0 auto"}}>
-        <div style={{fontSize:12,color:GOLD,letterSpacing:0.4,marginBottom:8,fontWeight:500}}>Showcase</div>
+        <div style={{fontSize:12,color:WHITE,letterSpacing:0.4,marginBottom:8,fontWeight:500}}>Showcase</div>
         <h1 style={{...H1,fontSize:30,marginBottom:6}}>Proof of concept</h1>
         <div style={{color:GOLDDIM,fontSize:13,marginBottom:10,letterSpacing:0}}>Upload up to 3 films, trailers, or demo reels created with InFuture Movie Studios.</div>
         <div style={{color:"#D4AF6A",fontSize:11,marginBottom:24,letterSpacing:0.2,fontWeight:600}}>Saved permanently — your films stay until you replace or remove them</div>
@@ -4945,7 +4945,7 @@ function P3() {
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:20}}>
           {[0,1,2].map(i=>(
             <div key={i} style={{...Card(),padding:16}}>
-              <div style={{color:GOLD,fontSize:10,letterSpacing:0.2,fontWeight:600,marginBottom:10}}>Film {i+1}</div>
+              <div style={{color:WHITE,fontSize:10,letterSpacing:0.2,fontWeight:600,marginBottom:10}}>Film {i+1}</div>
 
               {/* Video/Image preview area */}
               <div style={{background:"#0E0F12",aspectRatio:"16/9",marginBottom:10,border:"1px solid "+(uploads[i]?GOLD:LINE),overflow:"hidden",position:"relative",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}
@@ -4959,13 +4959,13 @@ function P3() {
                 ):(
                   <div style={{textAlign:"center",padding:16}}>
                     <div style={{color:GOLDDIM,fontSize:28,marginBottom:8}}></div>
-                    <div style={{color:GOLD,fontSize:10,fontWeight:600,letterSpacing:0.2}}>Click to upload</div>
+                    <div style={{color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2}}>Click to upload</div>
                     <div style={{color:GOLDDIM,fontSize:9,marginTop:4}}>MP4 · webm · mov · jpg · png</div>
                   </div>
                 )}
                 {uploads[i]&&(
                   <button onClick={e=>{e.stopPropagation();removeUpload(i);}}
-                    style={{position:"absolute",top:6,right:6,background:"rgba(0,0,0,0.8)",border:"1px solid "+LINE,color:GOLD,width:22,height:22,cursor:"pointer",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    style={{position:"absolute",top:6,right:6,background:"rgba(0,0,0,0.8)",border:"1px solid "+LINE,color:WHITE,width:22,height:22,cursor:"pointer",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center"}}>
                     ✕
                   </button>
                 )}
@@ -4974,12 +4974,12 @@ function P3() {
               <input ref={refs[i]} type="file" accept="video/*,image/*" style={{display:"none"}} onChange={e=>handleFile(i,e)}/>
 
               {/* Title */}
-              <div style={{color:GOLD,fontSize:9,letterSpacing:0.2,fontWeight:600,marginBottom:4}}>Film title</div>
+              <div style={{color:WHITE,fontSize:9,letterSpacing:0.2,fontWeight:600,marginBottom:4}}>Film title</div>
               <input value={titles[i]} onChange={e=>setTitles(p=>{const n=[...p];n[i]=e.target.value;saveTitles(n);return n;})}
                 placeholder="Enter film title..." style={{...inp,marginBottom:8}}/>
 
               {/* Description */}
-              <div style={{color:GOLD,fontSize:9,letterSpacing:0.2,fontWeight:600,marginBottom:4}}>Description</div>
+              <div style={{color:WHITE,fontSize:9,letterSpacing:0.2,fontWeight:600,marginBottom:4}}>Description</div>
               <textarea value={descs[i]} onChange={e=>setDescs(p=>{const n=[...p];n[i]=e.target.value;saveDescs(n);return n;})}
                 placeholder="Describe this film..." style={{...inp,height:60,resize:"none",lineHeight:1.6,marginBottom:10}}/>
 
@@ -4987,7 +4987,7 @@ function P3() {
               {!uploads[i]?(
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
                   <button onClick={()=>{const inp2=document.createElement("input");inp2.type="file";inp2.accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.heic,.heif";inp2.onchange=e=>handleFile(i,e);inp2.click();}}
-                    style={{background:"#0E0F12",border:"2px solid "+SIGNAL,color:GOLD,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0,fontFamily:"'Manrope',system-ui,sans-serif"}}>
+                    style={{background:"#0E0F12",border:"2px solid "+SIGNAL,color:WHITE,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0,fontFamily:"'Manrope',system-ui,sans-serif"}}>
                     Photo
                   </button>
                   <button onClick={()=>refs[i].current&&refs[i].current.click()}
@@ -5077,7 +5077,7 @@ function P4({ go, setUser }) {
         <MSUserCounter/>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:18,marginBottom:36}}>
           <div style={{...Card()}}>
-            <div style={{fontSize:11,color:GOLD,letterSpacing:0.2,marginBottom:8,fontWeight:500}}>Existing user</div>
+            <div style={{fontSize:11,color:WHITE,letterSpacing:0.2,marginBottom:8,fontWeight:500}}>Existing user</div>
             <h2 style={{...H1,fontSize:18,marginBottom:18}}>Sign in</h2>
             <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email address" style={inp}/>
             <input value={pass} onChange={e=>setPass(e.target.value)} type="password" placeholder="Password" style={{...inp,marginBottom:16}}/>
@@ -5088,7 +5088,7 @@ function P4({ go, setUser }) {
           </div>
           <div style={{...Card(),border:"2px solid #D4AF6A",position:"relative"}}>
             <div style={{position:"absolute",top:-11,left:"50%",transform:"translateX(-50%)",background:"#D4AF6A",color:"#000",padding:"3px 14px",fontSize:11,fontWeight:600,whiteSpace:"nowrap"}}>7-day free trial</div>
-            <div style={{fontSize:11,color:GOLD,letterSpacing:0.2,marginBottom:8,marginTop:10,fontWeight:500}}>New creator</div>
+            <div style={{fontSize:11,color:WHITE,letterSpacing:0.2,marginBottom:8,marginTop:10,fontWeight:500}}>New creator</div>
             <h2 style={{...H1,fontSize:18,marginBottom:18}}>Create account</h2>
             <input value={name} onChange={e=>setName(e.target.value)} placeholder="Your Name" style={inp}/>
             <input value={re} onChange={e=>setRe(e.target.value)} placeholder="Email address" style={inp}/>
@@ -5118,7 +5118,7 @@ function P4({ go, setUser }) {
               {plan.pop&&<div style={{position:"absolute",top:-11,left:"50%",transform:"translateX(-50%)",background:GOLD,color:"#000",padding:"2px 12px",fontSize:11,fontWeight:600,whiteSpace:"nowrap"}}>Most popular</div>}
               {plan.trial&&<div style={{position:"absolute",top:-11,right:12,background:"#D4AF6A",color:"#000",padding:"2px 10px",fontSize:11,fontWeight:600}}>Free trial</div>}
               <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:500}}>{plan.t}</div>
-              <div style={{color:GOLD,fontFamily:"'Manrope',system-ui,sans-serif",fontSize:34,fontWeight:600,margin:"8px 0"}}>{plan.p}<span style={{fontSize:12,color:WHITE}}>/mo</span></div>
+              <div style={{color:WHITE,fontFamily:"'Manrope',system-ui,sans-serif",fontSize:34,fontWeight:600,margin:"8px 0"}}>{plan.p}<span style={{fontSize:12,color:WHITE}}>/mo</span></div>
               <div style={{margin:"12px 0"}}>{plan.f.map(f=><div key={f} style={{color:WHITE,fontSize:12,padding:"3px 0",borderBottom:"1px solid #0a0a0a"}}>✓ {f}</div>)}</div>
               <button onClick={()=>window.open(plan.link,"_blank")} style={{...G(plan.trial?"out":"gold",false),width:"100%"}}>{plan.trial?"START FREE TRIAL":"SUBSCRIBE NOW"}</button>
             </div>
@@ -5127,7 +5127,7 @@ function P4({ go, setUser }) {
 
         {/* ── PURCHASE USAGE CREDITS ── one-time top-up at the bottom of the page ── */}
         <div style={{marginTop:40,padding:"28px 24px",background:"#07080A",border:"2px solid "+SIGNAL,textAlign:"center",boxShadow:"none"}}>
-          <div style={{fontSize:11,color:GOLD,letterSpacing:0.4,fontWeight:600,marginBottom:6}}>Need more usage?</div>
+          <div style={{fontSize:11,color:WHITE,letterSpacing:0.4,fontWeight:600,marginBottom:6}}>Need more usage?</div>
           <h3 style={{...H1,fontSize:20,marginBottom:8}}>Purchase usage credits</h3>
           <p style={{color:WHITE,fontSize:13,lineHeight:1.7,maxWidth:520,margin:"0 auto 18px"}}>You've already had your usage replaced once. To top up again, purchase extra usage credits here — pay once, use them for renders and generations whenever you're ready, and they never expire. Proceeds from MandaStrong1.Etsy.com are donated to humanitarian causes.</p>
           <button onClick={()=>window.open(STRIPE.studio,"_blank")} style={{...G("gold",false),padding:"14px 44px",fontSize:14}}>Purchase usage credits</button>
@@ -5280,7 +5280,7 @@ function MergeVideos({ onSave }) {
       </button>
       {clips.length>0&&(
         <div style={{marginBottom:10}}>
-          <div style={{color:GOLD,fontSize:10,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Drag to reorder — top = first in film</div>
+          <div style={{color:WHITE,fontSize:10,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Drag to reorder — top = first in film</div>
           {clips.map((c,i)=>(
             <div key={c.id}
               draggable
@@ -5288,12 +5288,12 @@ function MergeVideos({ onSave }) {
               onDragOver={e=>e.preventDefault()}
               onDrop={e=>{e.preventDefault();const from=Number(e.dataTransfer.getData("mergeIdx"));if(from!==i)move(from,i);}}
               style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"8px 12px",marginBottom:4,display:"flex",alignItems:"center",gap:10,cursor:"grab"}}>
-              <span style={{color:GOLD,fontWeight:600,fontSize:13}}>⣿</span>
-              <span style={{color:GOLD,fontWeight:600,fontSize:11,minWidth:20}}>{i+1}.</span>
+              <span style={{color:WHITE,fontWeight:600,fontSize:13}}>⣿</span>
+              <span style={{color:WHITE,fontWeight:600,fontSize:11,minWidth:20}}>{i+1}.</span>
               <span style={{color:WHITE,fontSize:11,flex:1}}>{c.name.slice(0,50)}</span>
               <div style={{display:"flex",gap:4}}>
-                {i>0&&<button onClick={()=>move(i,i-1)} style={{background:"none",border:"1px solid "+LINE,color:GOLD,padding:"2px 7px",cursor:"pointer",fontSize:10,fontWeight:600}}>▲</button>}
-                {i<clips.length-1&&<button onClick={()=>move(i,i+1)} style={{background:"none",border:"1px solid "+LINE,color:GOLD,padding:"2px 7px",cursor:"pointer",fontSize:10,fontWeight:600}}>▼</button>}
+                {i>0&&<button onClick={()=>move(i,i-1)} style={{background:"none",border:"1px solid "+LINE,color:WHITE,padding:"2px 7px",cursor:"pointer",fontSize:10,fontWeight:600}}>▲</button>}
+                {i<clips.length-1&&<button onClick={()=>move(i,i+1)} style={{background:"none",border:"1px solid "+LINE,color:WHITE,padding:"2px 7px",cursor:"pointer",fontSize:10,fontWeight:600}}>▼</button>}
                 <button onClick={()=>setClips(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"1px solid #C98A7A",color:"#C98A7A",padding:"2px 7px",cursor:"pointer",fontSize:10,fontWeight:600}}>✕</button>
               </div>
             </div>
@@ -5324,7 +5324,7 @@ function MergeVideos({ onSave }) {
         <div style={{background:"#14110B",border:"1px solid #D4AF6A",padding:"10px 14px"}}>
           <div style={{color:"#D4AF6A",fontWeight:600,fontSize:11,letterSpacing:0.2,marginBottom:6}}>Merged film saved to media library — ready for timeline</div>
           <button onClick={()=>msDownload(mergedUrl,"InFuture_Merged.mp4")}
-            style={{background:"transparent",border:"none",color:GOLD,fontSize:10,fontWeight:600,letterSpacing:0.2,cursor:"pointer",padding:0,textDecoration:"underline",fontFamily:"'Manrope',system-ui,sans-serif"}}>Download merged film</button>
+            style={{background:"transparent",border:"none",color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2,cursor:"pointer",padding:0,textDecoration:"underline",fontFamily:"'Manrope',system-ui,sans-serif"}}>Download merged film</button>
         </div>
       )}
     </div>
@@ -5353,7 +5353,7 @@ function P11({ mediaLib, setMediaLib }) {
   return (
     <div style={{...Sp,padding:40}}>
       <div style={{maxWidth:800,margin:"0 auto"}}>
-        <div style={{fontSize:12,color:GOLD,letterSpacing:0.4,marginBottom:4,fontWeight:500}}>Asset ingestion</div>
+        <div style={{fontSize:12,color:WHITE,letterSpacing:0.4,marginBottom:4,fontWeight:500}}>Asset ingestion</div>
         <h1 style={{...H1,fontSize:28,marginBottom:4}}>Upload media</h1>
         <div style={{color:WHITE,fontSize:14,marginBottom:20,fontWeight:500,letterSpacing:0}}>{mediaLib.length} Assets in library</div>
         <div onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor=GOLD;}}
@@ -5364,7 +5364,7 @@ function P11({ mediaLib, setMediaLib }) {
           <div style={{color:WHITE,fontWeight:600,fontSize:16,letterSpacing:0.2,marginBottom:16}}>Drag & drop your media here</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,maxWidth:360,margin:"0 auto"}}>
             <button onClick={()=>fileRef.current&&fileRef.current.click()}
-              style={{background:"#0E0F12",border:"2px solid "+SIGNAL,color:GOLD,padding:"14px",cursor:"pointer",fontSize:13,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>
+              style={{background:"#0E0F12",border:"2px solid "+SIGNAL,color:WHITE,padding:"14px",cursor:"pointer",fontSize:13,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>
               Upload photos
             </button>
             <button onClick={()=>fileRef.current&&fileRef.current.click()}
@@ -5375,7 +5375,7 @@ function P11({ mediaLib, setMediaLib }) {
         </div>
         {mediaLib.length>0&&(
           <div>
-            <h3 style={{color:GOLD,fontWeight:600,fontSize:13,letterSpacing:0.2,marginBottom:10}}>Media library ({mediaLib.length})</h3>
+            <h3 style={{color:WHITE,fontWeight:600,fontSize:13,letterSpacing:0.2,marginBottom:10}}>Media library ({mediaLib.length})</h3>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8}}>
               {mediaLib.map(a=>(
                 <div key={a.id} style={{...Card(),padding:8,position:"relative"}}>
@@ -5394,7 +5394,7 @@ function P11({ mediaLib, setMediaLib }) {
       </div>
       <div style={{marginTop:20}}>
         <div style={{background:"#0E0F12",border:"2px solid "+SIGNAL,padding:16,marginBottom:12}}>
-          <div style={{color:GOLD,fontSize:12,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Merge videos — combine & order before timeline</div>
+          <div style={{color:WHITE,fontSize:12,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Merge videos — combine & order before timeline</div>
           <div style={{color:DIM,fontSize:11,marginBottom:12,lineHeight:1.7}}>Upload 2 or more videos. Drag to reorder. Hit MERGE IN SEQUENCE to combine them into one film ready for the timeline.</div>
           <MergeVideos onSave={a=>{setMediaLib(p=>[...p,a]);}}/>
         </div>
@@ -5415,7 +5415,7 @@ function P12({ go, mediaLib }) {
   return (
     <div style={{...Sp,padding:30}}>
       <div style={{maxWidth:1100,margin:"0 auto"}}>
-        <div style={{fontSize:11,color:GOLD,letterSpacing:0.4,marginBottom:4,fontWeight:500}}>Production hub</div>
+        <div style={{fontSize:11,color:WHITE,letterSpacing:0.4,marginBottom:4,fontWeight:500}}>Production hub</div>
         <h1 style={{...H1,fontSize:44,marginBottom:6}}>Editor suite</h1>
         <div style={{color:WHITE,fontSize:15,marginBottom:28,lineHeight:1.6}}>Your complete post-production workspace.</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:20}}>
@@ -5425,7 +5425,7 @@ function P12({ go, mediaLib }) {
               onMouseEnter={e=>{e.currentTarget.style.borderColor=GOLD;}}
               onMouseLeave={e=>{e.currentTarget.style.borderColor=LINE;}}>
               <div style={{fontSize:34,marginBottom:24}}>{b.ic}</div>
-              <div style={{fontSize:15,color:GOLD,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>{b.t}</div>
+              <div style={{fontSize:15,color:WHITE,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>{b.t}</div>
               <div style={{fontSize:13,color:WHITE,opacity:0.75}}>{b.d}</div>
             </button>
           ))}
@@ -5442,10 +5442,10 @@ function P13({ go, mediaLib, timeline, setTimeline, user, filmDuration, setFilmD
     <div style={{...Sp,padding:20}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:10}}>
         <div>
-          <div style={{fontSize:11,color:GOLD,letterSpacing:0.4,fontWeight:500}}>Editing workspace</div>
+          <div style={{fontSize:11,color:WHITE,letterSpacing:0.4,fontWeight:500}}>Editing workspace</div>
           <h1 style={{...H1,fontSize:24,margin:0}}>Timeline editor</h1>
           <div style={{display:"flex",alignItems:"center",gap:8,marginTop:4}}>
-            <span style={{color:GOLD,fontSize:10,fontWeight:600,letterSpacing:0.2}}>Film: {filmDuration||60} Min</span>
+            <span style={{color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2}}>Film: {filmDuration||60} Min</span>
             <input type="range" min={1} max={180} step={1} value={filmDuration||60} onChange={e=>setFilmDuration(+e.target.value)} style={{width:160,accentColor:GOLD}}/>
             <div style={{display:"flex",gap:4}}>
               {[60,90,180].map(m=><button key={m} onClick={()=>setFilmDuration(m)} style={{background:filmDuration===m?GOLD:"#0E0F12",border:"1px solid "+(filmDuration===m?"#000":GOLDDIM),color:filmDuration===m?"#000":WHITE,padding:"2px 8px",cursor:"pointer",fontSize:10,fontWeight:600,fontFamily:"'Manrope',system-ui,sans-serif"}}>{m}m</button>)}
@@ -5521,7 +5521,7 @@ function P13({ go, mediaLib, timeline, setTimeline, user, filmDuration, setFilmD
       </div>
       {tracks.map((tr,idx)=>(
         <div key={idx} style={{marginBottom:8}}>
-          <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,marginBottom:4,fontWeight:600}}>{tr}</div>
+          <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,marginBottom:4,fontWeight:600}}>{tr}</div>
           <div onDragOver={e=>{e.preventDefault();e.currentTarget.style.border="1px dashed "+GOLD;}}
             onDragLeave={e=>{e.currentTarget.style.border="1px dashed "+LINE;}}
             onDrop={e=>{e.preventDefault();e.currentTarget.style.border="1px dashed "+LINE;
@@ -5574,11 +5574,11 @@ function P13({ go, mediaLib, timeline, setTimeline, user, filmDuration, setFilmD
       ))}
       {mediaLib.length>0&&(
         <div style={{marginTop:12}}>
-          <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,marginBottom:6,fontWeight:600}}>Drag to timeline:</div>
+          <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,marginBottom:6,fontWeight:600}}>Drag to timeline:</div>
           <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
             {mediaLib.map(a=>(
               <div key={a.id} draggable onDragStart={e=>e.dataTransfer.setData("assetId",String(a.id))}
-                style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"4px 10px",cursor:"grab",color:GOLD,fontSize:12,fontWeight:500}}>
+                style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"4px 10px",cursor:"grab",color:WHITE,fontSize:12,fontWeight:500}}>
                 📎 {a.name.slice(0,14)}
               </div>
             ))}
@@ -5609,13 +5609,13 @@ function P14() {
         ))}
       </div>
       <div style={{flex:1,padding:28}}>
-        <div style={{fontSize:11,color:GOLD,letterSpacing:0.4,marginBottom:4,fontWeight:500}}>Enhancement studio</div>
+        <div style={{fontSize:11,color:WHITE,letterSpacing:0.4,marginBottom:4,fontWeight:500}}>Enhancement studio</div>
         <h2 style={{...H1,fontSize:22,marginBottom:6}}>{active.toUpperCase()}</h2>
         {Object.entries(vals).map(([k,v])=>(
           <div key={k} style={{marginBottom:16}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
               <span style={{color:WHITE,fontSize:13,fontWeight:500}}>{k}</span>
-              <span style={{color:GOLD,fontSize:13,fontWeight:600}}>{v}%</span>
+              <span style={{color:WHITE,fontSize:13,fontWeight:600}}>{v}%</span>
             </div>
             <input type="range" min={0} max={100} value={v} onChange={e=>setVals(p=>({...p,[k]:+e.target.value}))} style={{width:"100%",accentColor:GOLD}}/>
           </div>
@@ -5634,13 +5634,13 @@ function P15() {
   return (
     <div style={{...Sp,padding:40}}>
       <div style={{maxWidth:680,margin:"0 auto"}}>
-        <div style={{fontSize:11,color:GOLD,letterSpacing:0.4,marginBottom:4,fontWeight:500}}>Mixing console</div>
+        <div style={{fontSize:11,color:WHITE,letterSpacing:0.4,marginBottom:4,fontWeight:500}}>Mixing console</div>
         <h1 style={{...H1,fontSize:28,marginBottom:24}}>Audio mixer</h1>
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
           {Object.entries(lvl).map(([ch,val])=>(
             <div key={ch} style={{...Card(),textAlign:"center",padding:18}}>
-              <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,marginBottom:8,fontWeight:600}}>{ch}</div>
-              <div style={{color:GOLD,fontFamily:"'Manrope',system-ui,sans-serif",fontSize:30,fontWeight:600,marginBottom:12}}>{val}</div>
+              <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,marginBottom:8,fontWeight:600}}>{ch}</div>
+              <div style={{color:WHITE,fontFamily:"'Manrope',system-ui,sans-serif",fontSize:30,fontWeight:600,marginBottom:12}}>{val}</div>
               <input type="range" min={0} max={100} value={val} onChange={e=>setLvl(p=>({...p,[ch]:+e.target.value}))} style={{width:"100%",height:100,accentColor:GOLD}}/>
               <div style={{height:3,background:"#0E0F12",marginTop:10}}>
                 <div style={{width:val+"%",height:"100%",background:SIGNAL}}/>
@@ -6586,10 +6586,10 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
       <canvas ref={canvasRef} style={{position:"fixed",right:8,bottom:8,width:160,height:90,opacity:1,pointerEvents:"none",zIndex:9999,border:"1px solid #E6C98E",background:"#0E0F12"}}/>
       <div style={{padding:"12px 24px",borderBottom:"1px solid "+LINE+"",background:"#020200",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
         <div>
-          <div style={{fontSize:10,color:GOLD,letterSpacing:0.4,fontWeight:500}}>Production engine — stage 6</div>
+          <div style={{fontSize:10,color:WHITE,letterSpacing:0.4,fontWeight:500}}>Production engine — stage 6</div>
           <h1 style={{...H1,fontSize:22,margin:0}}>Render film</h1>
           <div style={{display:"flex",alignItems:"center",gap:8,marginTop:4}}>
-            <span style={{color:GOLD,fontSize:10,fontWeight:600,letterSpacing:0.2}}>Film: {filmDuration||60} Min</span>
+            <span style={{color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2}}>Film: {filmDuration||60} Min</span>
             <input type="range" min={1} max={180} step={1} value={filmDuration||60} onChange={e=>setFilmDuration(+e.target.value)} style={{width:160,accentColor:GOLD}}/>
             <div style={{display:"flex",gap:4}}>
               {[60,90,180].map(m=><button key={m} onClick={()=>setFilmDuration(m)} style={{background:filmDuration===m?GOLD:"#0E0F12",border:"1px solid "+(filmDuration===m?"#000":GOLDDIM),color:filmDuration===m?"#000":WHITE,padding:"2px 8px",cursor:"pointer",fontSize:10,fontWeight:600,fontFamily:"'Manrope',system-ui,sans-serif"}}>{m}m</button>)}
@@ -6602,17 +6602,17 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
         <div style={{padding:20,overflowY:"auto"}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
             <div style={{background:clips.length>0?"#14110B":"#0E0F12",border:"1px solid "+(clips.length>0?"#D4AF6A":GOLDDIM),padding:"14px 16px"}}>
-              <div style={{color:GOLD,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Video clips</div>
+              <div style={{color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Video clips</div>
               <div style={{color:clips.length>0?"#D4AF6A":WHITE,fontSize:14,fontWeight:600}}>{clips.length>0?"✓ "+clips.length+" clip"+(clips.length>1?"s":"")+" ready":"No clips — generate on page 8"}</div>
             </div>
             <div style={{background:audio?"#14110B":"#0E0F12",border:"1px solid "+(audio?"#D4AF6A":GOLDDIM),padding:"14px 16px"}}>
-              <div style={{color:GOLD,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Audio track</div>
+              <div style={{color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Audio track</div>
               <div style={{color:audio?"#D4AF6A":"#D4AF6A",fontSize:14,fontWeight:600}}>{audio?"Audio ready":"No audio — record on page 6"}</div>
             </div>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
             <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"14px 16px"}}>
-              <div style={{color:GOLD,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:10}}>Output quality</div>
+              <div style={{color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:10}}>Output quality</div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
                 {QUALITIES.map(q=>(
                   <button key={q.id} onClick={()=>setQuality(q.id)} style={{background:quality===q.id?"#0E0F12":"#000",border:"1px solid "+(quality===q.id?GOLD:LINE),padding:"8px 6px",cursor:"pointer",textAlign:"center"}}>
@@ -6623,7 +6623,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
               </div>
             </div>
             <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"14px 16px"}}>
-              <div style={{color:GOLD,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:10}}>Settings</div>
+              <div style={{color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:10}}>Settings</div>
               <div style={{marginBottom:10}}>
                 <div style={{color:DIM,fontSize:10,marginBottom:5}}>Frame rate</div>
                 <div style={{display:"flex",gap:5}}>
@@ -6641,8 +6641,8 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
           {rendering&&(
             <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"14px 16px",marginBottom:16}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
-                <div style={{color:GOLD,fontSize:11,fontWeight:600}}>Rendering</div>
-                <div style={{color:GOLD,fontSize:13,fontWeight:600}}>{progress}%</div>
+                <div style={{color:WHITE,fontSize:11,fontWeight:600}}>Rendering</div>
+                <div style={{color:WHITE,fontSize:13,fontWeight:600}}>{progress}%</div>
               </div>
               <div style={{height:8,background:"#0E0F12",overflow:"hidden"}}>
                 <div style={{width:progress+"%",height:"100%",background:SIGNAL,transition:"width .3s"}}/>
@@ -6651,7 +6651,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
           )}
           {renderLog.length>0&&(
             <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"14px 16px",marginBottom:16,maxHeight:180,overflowY:"auto"}}>
-              <div style={{color:GOLD,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:8}}>Render log</div>
+              <div style={{color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:8}}>Render log</div>
               {renderLog.map((l,i)=>(
                 <div key={i} style={{color:i===renderLog.length-1?"#D4AF6A":"#666",fontSize:10,lineHeight:1.7,fontFamily:"monospace"}}>{i===renderLog.length-1?"► ":"  "}{l}</div>
               ))}
@@ -6677,10 +6677,10 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
           )}
           {/* ── NARRATION LANGUAGE ─────────────────────────────────── */}
           <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"14px 16px",marginBottom:16}}>
-            <div style={{color:GOLD,fontSize:11,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Narration language</div>
+            <div style={{color:WHITE,fontSize:11,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Narration language</div>
             <div style={{color:GOLDDIM,fontSize:10,marginBottom:10,lineHeight:1.6}}>Pick the language for this film, clip or music video. The narration is translated and spoken in that language at render. English leaves it unchanged.</div>
             <select value={renderLanguage} onChange={e=>setRenderLanguage(e.target.value)}
-              style={{width:"100%",background:"#07080A",border:"1px solid "+LINE,color:GOLD,padding:"10px 12px",fontSize:13,outline:"none",fontFamily:"'Manrope',system-ui,sans-serif",cursor:"pointer"}}>
+              style={{width:"100%",background:"#07080A",border:"1px solid "+LINE,color:WHITE,padding:"10px 12px",fontSize:13,outline:"none",fontFamily:"'Manrope',system-ui,sans-serif",cursor:"pointer"}}>
               {LANGUAGES.map(l=><option key={l.code} value={l.code} style={{background:"#07080A"}}>{l.label}</option>)}
             </select>
           </div>
@@ -6688,7 +6688,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
           <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"14px 16px",marginBottom:16}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <div>
-                <div style={{color:GOLD,fontSize:11,fontWeight:600,letterSpacing:0.2}}>Fill in the gaps with extra scenes?</div>
+                <div style={{color:WHITE,fontSize:11,fontWeight:600,letterSpacing:0.2}}>Fill in the gaps with extra scenes?</div>
                 <div style={{color:GOLDDIM,fontSize:10,marginTop:4,lineHeight:1.6}}>If your clips are shorter than {filmDuration||60} min, choose Y to generate extra scenes so the film reaches full length. Choose N to stretch the clips you have.</div>
               </div>
               <div style={{display:"flex",gap:6,flexShrink:0,marginLeft:12}}>
@@ -6718,13 +6718,13 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
               <MsVideo src={renderUrl} controls autoPlay playsInline onLoadedMetadata={e=>msFixDuration(e.currentTarget,()=>{})} style={{width:"100%",height:"100%",objectFit:"contain"}}/>
             ):(
               <div style={{textAlign:"center",padding:20}}>
-                <div style={{color:GOLD,fontSize:28,marginBottom:8}}>Render</div>
+                <div style={{color:WHITE,fontSize:28,marginBottom:8}}>Render</div>
                 <div style={{color:DIM,fontSize:10,lineHeight:1.8}}>{quality} · {fps}fps<br/>{clips.length} clip{clips.length!==1?"s":""} queued</div>
               </div>
             )}
           </div>
           <div style={{flex:1,overflowY:"auto",padding:14}}>
-            <div style={{color:GOLD,fontSize:9,letterSpacing:0.2,fontWeight:600,marginBottom:10}}>Render queue</div>
+            <div style={{color:WHITE,fontSize:9,letterSpacing:0.2,fontWeight:600,marginBottom:10}}>Render queue</div>
             {clips.length===0?(
               <div style={{color:GOLDDIM,fontSize:10,textAlign:"center",padding:"20px 0",lineHeight:1.8}}>No clips.<br/>Generate on page 8.</div>
             ):clips.map((clip,i)=>(
@@ -6890,9 +6890,9 @@ function P18({ rendered, mediaLib, onExported }) {
   return (
     <div style={{...Sp,padding:40}}>
       <div style={{maxWidth:780,margin:"0 auto"}}>
-        <div style={{fontSize:11,color:GOLD,letterSpacing:0.4,marginBottom:4,fontWeight:500}}>Distribution</div>
+        <div style={{fontSize:11,color:WHITE,letterSpacing:0.4,marginBottom:4,fontWeight:500}}>Distribution</div>
         <h1 style={{...H1,fontSize:28,marginBottom:14}}>Export & distribute</h1>
-        {clearMsg&&<div style={{color:GOLD,fontSize:12,marginBottom:14,lineHeight:1.5}}>{clearMsg}</div>}
+        {clearMsg&&<div style={{color:WHITE,fontSize:12,marginBottom:14,lineHeight:1.5}}>{clearMsg}</div>}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:20}}>
           {[["","DOWNLOAD TO DEVICE",dl],["","SAVE PROJECT FILE",()=>{}],["","SHARE TO COMMUNITY",()=>{}]].map(([ic,lb,fn])=>(
             <button key={lb} onClick={fn} style={{...Card(),cursor:"pointer",textAlign:"center",padding:16,display:"block"}}>
@@ -6901,7 +6901,7 @@ function P18({ rendered, mediaLib, onExported }) {
             </button>
           ))}
         </div>
-        <div style={{color:GOLD,fontWeight:600,fontSize:11,letterSpacing:0.2,marginBottom:10}}>Share to social media</div>
+        <div style={{color:WHITE,fontWeight:600,fontSize:11,letterSpacing:0.2,marginBottom:10}}>Share to social media</div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           {[["YouTube","#C98A7A","https://www.youtube.com/upload"],["Instagram","#E1306C","https://www.instagram.com"],["TikTok","#69C9D0","https://www.tiktok.com/upload"],["X / Twitter","#1DA1F2","https://twitter.com/intent/tweet?text=Check+out+my+film+made+with+InFuture+Studio"],["Facebook","#1877F2","https://www.facebook.com/sharer/sharer.php?u=https://mandastrong1.etsy.com"],["LinkedIn","#0A66C2","https://www.linkedin.com/sharing/share-offsite/?url=https://mandastrong1.etsy.com"],["Vimeo","#1AB7EA","https://vimeo.com/upload"],["WhatsApp","#25D366","https://api.whatsapp.com/send?text=Check+out+my+film+from+InFuture+Studio"]].map(([s,c,link])=>(
             <button key={s} onClick={()=>window.open(link,"_blank")}
@@ -7102,7 +7102,7 @@ function P19({ go }) {
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:10,padding:"0 16px",flexShrink:0}}>
                   {isGen?(
-                    <span style={{color:GOLD,fontSize:10,fontWeight:600,letterSpacing:0.2}}>Generating...</span>
+                    <span style={{color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2}}>Generating...</span>
                   ):(
                     <button onClick={e=>{
                       e.stopPropagation();
@@ -7128,7 +7128,7 @@ function P19({ go }) {
                   {isGen?(
                     <div style={{aspectRatio:"16/9",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,background:"#0E0F12"}}>
                       <div style={{width:60,height:60,border:"2px solid "+SIGNAL,borderTop:"2px solid transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
-                      <div style={{color:GOLD,fontSize:13,fontWeight:600,letterSpacing:0.2}}>Claude is writing your tutorial</div>
+                      <div style={{color:WHITE,fontSize:13,fontWeight:600,letterSpacing:0.2}}>Claude is writing your tutorial</div>
                       <style>{"@keyframes spin{to{transform:rotate(360deg)}}"}</style>
                     </div>
                   ):hasFn?(
@@ -7140,24 +7140,24 @@ function P19({ go }) {
                         <span style={{color:"#000",fontSize:30,fontWeight:600,marginLeft:4}}>▶</span>
                       </div>
                       <div style={{textAlign:"center"}}>
-                        <div style={{color:GOLD,fontWeight:600,fontSize:15,letterSpacing:0.4,marginBottom:6}}>Generate to watch</div>
+                        <div style={{color:WHITE,fontWeight:600,fontSize:15,letterSpacing:0.4,marginBottom:6}}>Generate to watch</div>
                         <div style={{color:GOLDDIM,fontSize:10,letterSpacing:0.2}}>Lesson {t.n} · {t.dur} · {t.l.toUpperCase()}</div>
                       </div>
                     </div>
                   )}
                   <div style={{padding:"20px 26px"}}>
                     <p style={{color:WHITE,fontSize:14,lineHeight:1.95,marginBottom:18}}>{t.d}</p>
-                    <div style={{color:GOLD,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:10}}>Pro tips</div>
+                    <div style={{color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:10}}>Pro tips</div>
                     {t.tips.map((tip,i)=>(
                       <div key={i} style={{display:"flex",gap:12,marginBottom:9,alignItems:"flex-start"}}>
-                        <span style={{color:GOLD,fontWeight:600,flexShrink:0}}></span>
+                        <span style={{color:WHITE,fontWeight:600,flexShrink:0}}></span>
                         <span style={{color:WHITE,fontSize:13,lineHeight:1.75}}>{tip}</span>
                       </div>
                     ))}
                     <div style={{marginTop:18,display:"flex",gap:10,flexWrap:"wrap"}}>
                       {!hasFn&&!isGen&&<button onClick={()=>generate(idx)} style={{background:GOLD,border:"none",color:"#000",padding:"11px 28px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>Generate to watch</button>}
                       {hasFn&&!isGen&&<button onClick={()=>generate(idx)} style={{background:GOLD,border:"none",color:"#000",padding:"11px 28px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>Regenerate</button>}
-                      <button onClick={()=>go(t.page)} style={{background:"transparent",border:"1px solid "+LINE,color:GOLD,padding:"11px 20px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>Open page {t.page} ▶</button>
+                      <button onClick={()=>go(t.page)} style={{background:"transparent",border:"1px solid "+LINE,color:WHITE,padding:"11px 20px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>Open page {t.page} ▶</button>
                     </div>
                   </div>
                 </div>
@@ -7174,7 +7174,7 @@ function P20() {
   const [tab,setTab]=useState("tos");
   const sec=(title,body)=>(
     <div style={{marginBottom:16}}>
-      <h3 style={{color:GOLD,fontWeight:600,fontSize:13,marginBottom:8,letterSpacing:0.2,borderBottom:"1px solid "+LINE+"",paddingBottom:6}}>{title}</h3>
+      <h3 style={{color:WHITE,fontWeight:600,fontSize:13,marginBottom:8,letterSpacing:0.2,borderBottom:"1px solid "+LINE+"",paddingBottom:6}}>{title}</h3>
       {body}
     </div>
   );
@@ -7184,8 +7184,8 @@ function P20() {
   return (
     <div style={{...Sp,padding:40}}>
       <div style={{maxWidth:860,margin:"0 auto"}}>
-        <div style={{fontSize:11,color:GOLD,letterSpacing:0.4,marginBottom:4,fontWeight:500}}>Legal</div>
-        <h1 style={{fontFamily:"'Manrope',system-ui,sans-serif",color:GOLD,fontSize:28,fontWeight:600,letterSpacing:0.4,marginBottom:4}}>Terms & disclaimer</h1>
+        <div style={{fontSize:11,color:WHITE,letterSpacing:0.4,marginBottom:4,fontWeight:500}}>Legal</div>
+        <h1 style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:28,fontWeight:600,letterSpacing:0.4,marginBottom:4}}>Terms & disclaimer</h1>
         <div style={{color:WHITE,fontSize:11,marginBottom:20,letterSpacing:0.2}}>Effective march 2026 · mandastrong studio</div>
 
         {/* Tab selector */}
@@ -7201,7 +7201,7 @@ function P20() {
         {tab==="tos"&&(
           <div>
             <div style={{background:"#07080A",border:"2px solid "+SIGNAL,padding:"14px 20px",marginBottom:20,textAlign:"center"}}>
-              <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600}}>InFuture Movie Studios · professional cinema intelligence platform</div>
+              <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600}}>InFuture Movie Studios · professional cinema intelligence platform</div>
               <div style={{color:WHITE,fontSize:12,marginTop:4}}>By using this platform you agree to be legally bound by these Terms.</div>
             </div>
 
@@ -7225,7 +7225,7 @@ function P20() {
         {tab==="disc"&&(
           <div>
             <div style={{background:"#07080A",border:"2px solid "+SIGNAL,padding:"14px 20px",marginBottom:20,textAlign:"center"}}>
-              <div style={{color:GOLD,fontSize:11,letterSpacing:0.2,fontWeight:600}}>Important — please read before using this platform</div>
+              <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600}}>Important — please read before using this platform</div>
               <div style={{color:WHITE,fontSize:12,marginTop:4}}>This disclaimer governs your use of all AI-generated content and platform services.</div>
             </div>
 
@@ -7275,16 +7275,16 @@ function P21() {
             <div style={{position:"absolute",bottom:-2,right:-2,width:11,height:11,background:"#D4AF6A",border:"2px solid #000",borderRadius:"50%"}}/>
           </div>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:GOLD,fontSize:"clamp(18px,2.5vw,28px)",fontWeight:600,letterSpacing:0.4,lineHeight:1}}>Agent grok</div>
+            <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:"clamp(18px,2.5vw,28px)",fontWeight:600,letterSpacing:0.4,lineHeight:1}}>Agent grok</div>
             <div style={{display:"flex",alignItems:"center",gap:10,marginTop:3}}>
               <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:7,height:7,borderRadius:"50%",background:"#D4AF6A",boxShadow:"none"}}/><span style={{color:"#D4AF6A",fontSize:10,fontWeight:600,letterSpacing:0.2}}>Online 24/7</span></div>
-              <span style={{color:GOLD,fontSize:10,letterSpacing:0.2,fontWeight:500}}>Your AI production consultant</span>
+              <span style={{color:WHITE,fontSize:10,letterSpacing:0.2,fontWeight:500}}>Your AI production consultant</span>
             </div>
           </div>
           <div style={{display:"flex",gap:5,flexShrink:0}}>
             {[["23","PAGES"],["200+","TOOLS"],["54","VOICES"],["4K","RENDER"]].map(([v,l])=>(
               <div key={l} style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"5px 8px",textAlign:"center",minWidth:40}}>
-                <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:GOLD,fontSize:12,fontWeight:600}}>{v}</div>
+                <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:12,fontWeight:600}}>{v}</div>
                 <div style={{color:"#D4AF6A",fontSize:8,letterSpacing:0,marginTop:1,fontWeight:500}}>{l}</div>
               </div>
             ))}
@@ -7295,14 +7295,14 @@ function P21() {
             <div key={i} style={{display:"flex",gap:10,flexDirection:m.role==="user"?"row-reverse":"row"}}>
               <div style={{width:32,height:32,flexShrink:0,background:m.role==="user"?"#15171B":GOLD,border:"1px solid "+LINE,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:600,color:m.role==="user"?GOLD:"#000",fontFamily:"'Manrope',system-ui,sans-serif"}}>{m.role==="user"?"Y":"G"}</div>
               <div style={{flex:1,maxWidth:"82%"}}>
-                <div style={{color:GOLD,fontSize:9,fontWeight:600,letterSpacing:0.2,marginBottom:3,textAlign:m.role==="user"?"right":"left"}}>{m.role==="user"?"YOU":"AGENT GROK"}</div>
+                <div style={{color:WHITE,fontSize:9,fontWeight:600,letterSpacing:0.2,marginBottom:3,textAlign:m.role==="user"?"right":"left"}}>{m.role==="user"?"YOU":"AGENT GROK"}</div>
                 <div style={{background:m.role==="user"?"#100800":"#0a0900",border:"1px solid "+LINE,padding:"9px 13px"}}>
                   <div style={{color:WHITE,fontSize:13,lineHeight:1.8,whiteSpace:"pre-wrap"}}>{m.content}</div>
                 </div>
               </div>
             </div>
           ))}
-          {loading&&<div style={{display:"flex",gap:10}}><div style={{width:32,height:32,flexShrink:0,background:GOLD,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:600,color:"#000",fontFamily:"'Manrope',system-ui,sans-serif"}}>G</div><div style={{background:"#0a0900",border:"1px solid "+LINE,padding:"9px 13px"}}><span style={{color:GOLD,fontSize:12}}>Thinking...</span></div></div>}
+          {loading&&<div style={{display:"flex",gap:10}}><div style={{width:32,height:32,flexShrink:0,background:GOLD,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:600,color:"#000",fontFamily:"'Manrope',system-ui,sans-serif"}}>G</div><div style={{background:"#0a0900",border:"1px solid "+LINE,padding:"9px 13px"}}><span style={{color:WHITE,fontSize:12}}>Thinking...</span></div></div>}
           <div ref={bot}/>
         </div>
         <div style={{borderTop:"1px solid "+LINE,padding:"8px 16px",display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",gap:4,flexShrink:0,background:"#040200"}}>
@@ -7336,7 +7336,7 @@ function P22() {
   return (
     <div style={{...Sp,padding:40}}>
       <div style={{maxWidth:780,margin:"0 auto"}}>
-        <div style={{fontSize:11,color:GOLD,letterSpacing:0.4,marginBottom:4,fontWeight:500}}>Creator network</div>
+        <div style={{fontSize:11,color:WHITE,letterSpacing:0.4,marginBottom:4,fontWeight:500}}>Creator network</div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <h1 style={{...H1,fontSize:28,margin:0}}>Community hub</h1>
           <button style={{...G("gold",false)}}>Upload your movie</button>
@@ -7346,7 +7346,7 @@ function P22() {
             <div style={{display:"flex",alignItems:"center",gap:12}}>
               <span style={{fontSize:24}}>{p.icon}</span>
               <div>
-                <div style={{color:GOLD,fontWeight:600,fontSize:14}}>{p.title}</div>
+                <div style={{color:WHITE,fontWeight:600,fontSize:14}}>{p.title}</div>
                 <div style={{color:WHITE,fontSize:12}}>by {p.user}</div>
               </div>
             </div>
@@ -7413,14 +7413,14 @@ function HowToGuide() {
   ];
   return(
     <div style={{padding:"20px 32px 40px",maxWidth:860,margin:"0 auto"}}>
-      <div style={{color:GOLD,fontWeight:600,fontSize:12,letterSpacing:0.4,marginBottom:12,textAlign:"center"}}>How to use InFuture Movie Studios — click any section</div>
+      <div style={{color:WHITE,fontWeight:600,fontSize:12,letterSpacing:0.4,marginBottom:12,textAlign:"center"}}>How to use InFuture Movie Studios — click any section</div>
       {SECTIONS.map((g,i)=>{
         const isOpen=open===i;
         return(
           <div key={i} style={{marginBottom:4}}>
             <button onClick={()=>setOpen(isOpen?null:i)} style={{width:"100%",background:isOpen?GOLD+"14":"#07080A",border:"1px solid "+(isOpen?GOLD:LINE+"55"),padding:"13px 18px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>
               <span style={{color:isOpen?GOLD:WHITE,fontWeight:600,fontSize:13,letterSpacing:0.2}}>{g.t}</span>
-              <span style={{color:GOLD,fontSize:16,fontWeight:600}}>{isOpen?"▲":"▼"}</span>
+              <span style={{color:WHITE,fontSize:16,fontWeight:600}}>{isOpen?"▲":"▼"}</span>
             </button>
             {isOpen&&<div style={{background:"#040300",border:"1px solid "+LINE,borderTop:"none",padding:"16px 20px",color:WHITE,fontSize:13,lineHeight:1.95}}>{g.c}</div>}
           </div>
@@ -7573,7 +7573,7 @@ function P24CharacterStudio({ onSave, go }) {
   };
 
   const inp={width:"100%",background:"#0E0F12",border:"1px solid "+LINE,padding:"10px 12px",color:WHITE,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"'Manrope',system-ui,sans-serif"};
-  const lbl=(t)=><div style={{color:GOLD,fontSize:10,letterSpacing:0.2,fontWeight:600,marginBottom:5,marginTop:10}}>{t}</div>;
+  const lbl=(t)=><div style={{color:WHITE,fontSize:10,letterSpacing:0.2,fontWeight:600,marginBottom:5,marginTop:10}}>{t}</div>;
   const optBtn=(val,cur,setter,opts)=>(
     <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:4}}>
       {opts.map(o=><button key={o} onClick={()=>setter(o)} style={{background:cur===o?GOLD:"#0E0F12",border:"1px solid "+(cur===o?"#000":GOLDDIM),color:cur===o?"#000":WHITE,padding:"3px 10px",cursor:"pointer",fontSize:11,fontWeight:600}}>{o}</button>)}
@@ -7583,14 +7583,14 @@ function P24CharacterStudio({ onSave, go }) {
   return (
     <div style={{...Sp,padding:30}}>
       <div style={{maxWidth:1100,margin:"0 auto"}}>
-        <div style={{fontSize:11,color:GOLD,letterSpacing:0.4,fontWeight:500,marginBottom:4}}>Consistency engine</div>
+        <div style={{fontSize:11,color:WHITE,letterSpacing:0.4,fontWeight:500,marginBottom:4}}>Consistency engine</div>
         <h1 style={{...H1,fontSize:26,marginBottom:6}}>Character studio</h1>
         <div style={{color:WHITE,fontSize:13,marginBottom:24,lineHeight:1.7}}>Create reusable characters with full physical and costume details. Send a character's reference image to your Media Library, then upload on Page 8 to keep the same face across every scene. Hit COPY SCENE PROMPT to get a ready-to-paste prompt for any scene.</div>
 
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
           {/* Create / Edit panel */}
           <div style={{...Card(),border:"2px solid "+SIGNAL,maxHeight:"80vh",overflowY:"auto"}}>
-            <div style={{color:GOLD,fontSize:12,letterSpacing:0.2,fontWeight:600,marginBottom:14}}>{editId?"Edit character":"Create a character"}</div>
+            <div style={{color:WHITE,fontSize:12,letterSpacing:0.2,fontWeight:600,marginBottom:14}}>{editId?"Edit character":"Create a character"}</div>
 
             {lbl("CHARACTER NAME")}
             <input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Doxy, Ethan, Lily..." style={{...inp,marginBottom:4}}/>
@@ -7632,7 +7632,7 @@ function P24CharacterStudio({ onSave, go }) {
             {photo?(
               <div style={{position:"relative",marginBottom:12}}>
                 <img src={photo} alt="ref" style={{width:"100%",height:160,objectFit:"cover",border:"1px solid "+LINE}}/>
-                <button onClick={()=>{setPhoto(null);setPhotoName("");}} style={{position:"absolute",top:5,right:5,background:"#0E0F12",border:"1px solid "+LINE,color:GOLD,padding:"2px 8px",cursor:"pointer",fontSize:11,fontWeight:600}}>✕</button>
+                <button onClick={()=>{setPhoto(null);setPhotoName("");}} style={{position:"absolute",top:5,right:5,background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"2px 8px",cursor:"pointer",fontSize:11,fontWeight:600}}>✕</button>
               </div>
             ):(
               <div
@@ -7645,7 +7645,7 @@ function P24CharacterStudio({ onSave, go }) {
                   if(f&&f.type.startsWith("image/")){const r=new FileReader();r.onload=ev=>{setPhoto(ev.target.result);setPhotoName(f.name);};r.readAsDataURL(f);}
                   else if(f){alert("Please drop an image file.");}
                 }}
-                style={{width:"100%",background:"#0E0F12",border:"2px dashed "+GOLD,color:GOLD,padding:"18px 14px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif",marginBottom:12,textAlign:"center"}}>
+                style={{width:"100%",background:"#0E0F12",border:"2px dashed "+GOLD,color:WHITE,padding:"18px 14px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif",marginBottom:12,textAlign:"center"}}>
                 <div>Drag & drop a photo here</div>
                 <div style={{color:GOLDDIM,fontSize:9,marginTop:4,fontWeight:500}}>or tap to choose from your photos</div>
               </div>
@@ -7663,17 +7663,17 @@ function P24CharacterStudio({ onSave, go }) {
             </div>
             {/* ════════ REAL LIP-SYNC — MAKE THIS AVATAR SPEAK ════════ */}
             <div style={{marginTop:16,border:"2px solid "+SIGNAL,background:"#0E0F12",padding:16,boxShadow:"none"}}>
-              <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:GOLD,letterSpacing:0.2,fontSize:16,textTransform:"none",marginBottom:4}}>Make This Avatar Speak</div>
+              <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,letterSpacing:0.2,fontSize:16,textTransform:"none",marginBottom:4}}>Make This Avatar Speak</div>
               <div style={{color:DIM,fontSize:11,marginBottom:12}}>Photoreal lip-sync. Uses the character photo above. Record or upload the voice, then generate.</div>
               <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap"}}>
                 <button onClick={lsRecord} style={{flex:1,minWidth:140,background:lsRecording?"#c0392b":"#0E0F12",border:"1px solid "+(lsRecording?"#000":GOLDDIM),color:lsRecording?"#fff":WHITE,padding:"11px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0,fontFamily:"'Manrope',system-ui,sans-serif"}}>{lsRecording?"Stop recording":"Record voice"}</button>
                 <button onClick={()=>{const i=document.getElementById("lsAudioInput");if(i)i.click();}} style={{flex:1,minWidth:140,background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"11px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0,fontFamily:"'Manrope',system-ui,sans-serif"}}>⤴ upload voice</button>
                 <input id="lsAudioInput" type="file" accept="audio/*,.mp3,.m4a,.wav,.aac,.mp4" style={{display:"none"}} onChange={lsPickAudio}/>
               </div>
-              {lsAudioName&&<div style={{color:GOLD,fontSize:11,marginBottom:10}}>Voice ready: {lsAudioName}</div>}
+              {lsAudioName&&<div style={{color:WHITE,fontSize:11,marginBottom:10}}>Voice ready: {lsAudioName}</div>}
               <button onClick={makeAvatarSpeak} disabled={lsBusy} style={{width:"100%",padding:15,background:lsBusy?"#333":GOLD,color:lsBusy?"#888":"#000",border:"none",fontWeight:600,fontSize:15,letterSpacing:0.2,cursor:lsBusy?"default":"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>{lsBusy?"GENERATING…":"Make avatar speak"}</button>
               {lsError&&<div style={{marginTop:10,color:"#D9A79A",fontSize:12}}>{lsError}</div>}
-              {lsBusy&&<div style={{marginTop:10,color:GOLD,fontSize:12,letterSpacing:0}}>{lsStage}</div>}
+              {lsBusy&&<div style={{marginTop:10,color:WHITE,fontSize:12,letterSpacing:0}}>{lsStage}</div>}
               {lsVideo&&(
                 <div style={{marginTop:12}}>
                   <MsVideo src={lsVideo} controls autoPlay playsInline style={{width:"100%",border:"1px solid "+LINE,background:"#0E0F12"}}/>
@@ -7686,7 +7686,7 @@ function P24CharacterStudio({ onSave, go }) {
 
           {/* Library panel */}
           <div>
-            <div style={{color:GOLD,fontSize:12,letterSpacing:0.2,fontWeight:600,marginBottom:14}}>Your characters — {chars.length}</div>
+            <div style={{color:WHITE,fontSize:12,letterSpacing:0.2,fontWeight:600,marginBottom:14}}>Your characters — {chars.length}</div>
             {chars.length===0?(
               <div style={{...Card(),textAlign:"center",padding:"40px 20px",color:GOLDDIM}}>
                 <div style={{fontSize:34,marginBottom:10}}></div>
@@ -7700,7 +7700,7 @@ function P24CharacterStudio({ onSave, go }) {
                     <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
                       {c.photo?<img src={c.photo} alt={c.name} style={{width:80,height:80,objectFit:"cover",border:"2px solid "+SIGNAL,flexShrink:0}}/>:<div style={{width:80,height:80,background:"#0E0F12",border:"1px solid "+LINE,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,flexShrink:0}}></div>}
                       <div style={{flex:1,minWidth:0}}>
-                        <div style={{color:GOLD,fontWeight:600,fontSize:15,letterSpacing:0}}>{c.name}</div>
+                        <div style={{color:WHITE,fontWeight:600,fontSize:15,letterSpacing:0}}>{c.name}</div>
                         {c.role&&<div style={{color:GOLDDIM,fontSize:10,letterSpacing:0.2,marginTop:2}}>{c.role}</div>}
                         <div style={{color:WHITE,fontSize:11,marginTop:4,display:"flex",flexWrap:"wrap",gap:6}}>
                           {c.gender&&<span style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"1px 6px",fontSize:10}}>{c.gender}</span>}
@@ -7717,7 +7717,7 @@ function P24CharacterStudio({ onSave, go }) {
                     </div>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:5,marginTop:10}}>
                       <button onClick={()=>useInScene(c)} style={{background:GOLD,border:"none",color:"#000",padding:"7px 4px",cursor:"pointer",fontSize:10,fontWeight:600,letterSpacing:0,fontFamily:"'Manrope',system-ui,sans-serif"}}>Use in scene</button>
-                      <button onClick={()=>generatePrompt(c)} style={{background:"transparent",border:"1px solid "+LINE,color:GOLD,padding:"7px 4px",cursor:"pointer",fontSize:10,fontWeight:600,fontFamily:"'Manrope',system-ui,sans-serif"}}>Copy prompt</button>
+                      <button onClick={()=>generatePrompt(c)} style={{background:"transparent",border:"1px solid "+LINE,color:WHITE,padding:"7px 4px",cursor:"pointer",fontSize:10,fontWeight:600,fontFamily:"'Manrope',system-ui,sans-serif"}}>Copy prompt</button>
                       <button onClick={()=>editChar(c)} style={{background:"transparent",border:"1px solid "+LINE,color:WHITE,padding:"7px 4px",cursor:"pointer",fontSize:10,fontWeight:600,fontFamily:"'Manrope',system-ui,sans-serif"}}>Edit</button>
                       <button onClick={()=>removeChar(c.id)} style={{background:"none",border:"1px solid #C98A7A",color:"#C98A7A",padding:"7px 4px",cursor:"pointer",fontSize:10,fontWeight:600,fontFamily:"'Manrope',system-ui,sans-serif"}}>Delete</button>
                     </div>
@@ -7786,7 +7786,7 @@ function P23({ go }) {
           <div style={{width:"100%",maxHeight:"34vh",overflow:"hidden",position:"relative",display:"flex",alignItems:"center",justifyContent:"center",background:"#0E0F12",border:"1px solid "+LINE,marginBottom:26}}>
             {vidDead?(
               <div style={{width:"100%",height:"34vh",minHeight:180,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"radial-gradient(ellipse at center, #15171B 0%, #0A0800 100%)"}}>
-                <div style={{fontSize:"clamp(28px,6vw,54px)",fontWeight:600,color:GOLD,letterSpacing:1,fontFamily:"'Manrope',system-ui,sans-serif"}}>THAT'S ALL FOLKS</div>
+                <div style={{fontSize:"clamp(28px,6vw,54px)",fontWeight:600,color:WHITE,letterSpacing:1,fontFamily:"'Manrope',system-ui,sans-serif"}}>THAT'S ALL FOLKS</div>
                 <div style={{marginTop:10,fontSize:11,letterSpacing:2,color:GOLDDIM,fontWeight:600}}>INFUTURE MOVIE STUDIOS</div>
               </div>
             ):(
@@ -7804,20 +7804,20 @@ function P23({ go }) {
             </video>
             )}
           </div>
-          <div style={{fontSize:10,color:GOLD,letterSpacing:0.4,marginBottom:8,fontWeight:500}}>InFuture Movie Studios · cinema intelligence platform</div>
-          <h1 style={{fontFamily:"'Manrope',system-ui,sans-serif",color:GOLD,fontSize:"clamp(32px,5vw,52px)",fontWeight:600,letterSpacing:0.4,textShadow:"none",marginBottom:28}}>That's all folks</h1>
+          <div style={{fontSize:10,color:WHITE,letterSpacing:0.4,marginBottom:8,fontWeight:500}}>InFuture Movie Studios · cinema intelligence platform</div>
+          <h1 style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:"clamp(32px,5vw,52px)",fontWeight:600,letterSpacing:0.4,textShadow:"none",marginBottom:28}}>That's all folks</h1>
           <div style={{height:1,background:GOLDDIM,marginBottom:28}}/>
           <div style={{...Card(),textAlign:"left",marginBottom:28,background:"#050500ee",border:"2px solid "+SIGNAL}}>
-            <div style={{color:GOLD,fontWeight:600,fontSize:14,letterSpacing:0.2,marginBottom:16,textAlign:"center"}}>A special thank you</div>
+            <div style={{color:WHITE,fontWeight:600,fontSize:14,letterSpacing:0.2,marginBottom:16,textAlign:"center"}}>A special thank you</div>
             <p style={{color:WHITE,fontSize:14,lineHeight:2,margin:"0 0 12px",fontStyle:"italic"}}>To all current and future creators, dreamers, and storytellers...</p>
             <p style={{color:WHITE,fontSize:14,lineHeight:2,margin:"0 0 12px"}}>Your creativity and passion inspire positive change in the world. Through your films and stories, you have the power to educate, inspire, and bring awareness to critical issues like bullying prevention, social skills development, and humanity's collective growth.</p>
             <p style={{color:WHITE,fontSize:14,lineHeight:2,margin:"0 0 12px"}}>Every piece of content you create has the potential to touch hearts, change minds, and make our world a better place. Thank you for being part of this mission to combine creative expression with meaningful impact.</p>
-            <p style={{color:WHITE,fontSize:14,lineHeight:2,margin:0}}>Together, we are building a community of creators who use their talents to spread kindness, understanding, and hope. — <strong style={{color:GOLD}}>Amanda</strong></p>
+            <p style={{color:WHITE,fontSize:14,lineHeight:2,margin:0}}>Together, we are building a community of creators who use their talents to spread kindness, understanding, and hope. — <strong style={{color:WHITE}}>Amanda</strong></p>
           </div>
           <div style={{...Card(),textAlign:"left",marginBottom:28,background:"#030300ee",border:"1px solid "+LINE}}>
-            <div style={{color:GOLD,fontWeight:600,fontSize:13,letterSpacing:0.2,marginBottom:12,textAlign:"center"}}>Our mission</div>
-            <p style={{color:WHITE,fontSize:13,lineHeight:1.9,margin:"0 0 10px"}}>InFuture Movie Studios was built on one belief: <strong style={{color:GOLD}}>every person deserves the tools to tell their story.</strong> Not just the wealthy. Not just the technically gifted. Everyone.</p>
-            <p style={{color:WHITE,fontSize:13,lineHeight:1.9,margin:0}}>All proceeds from <strong style={{color:GOLD}}>MandaStrong1.Etsy.com</strong> are donated directly to humanitarian causes — veterans mental health, anti-bullying programmes in schools, and children in need.</p>
+            <div style={{color:WHITE,fontWeight:600,fontSize:13,letterSpacing:0.2,marginBottom:12,textAlign:"center"}}>Our mission</div>
+            <p style={{color:WHITE,fontSize:13,lineHeight:1.9,margin:"0 0 10px"}}>InFuture Movie Studios was built on one belief: <strong style={{color:WHITE}}>every person deserves the tools to tell their story.</strong> Not just the wealthy. Not just the technically gifted. Everyone.</p>
+            <p style={{color:WHITE,fontSize:13,lineHeight:1.9,margin:0}}>All proceeds from <strong style={{color:WHITE}}>MandaStrong1.Etsy.com</strong> are donated directly to humanitarian causes — veterans mental health, anti-bullying programmes in schools, and children in need.</p>
           </div>
           <button onClick={()=>setHowOpen(o=>!o)} style={{width:"100%",background:howOpen?GOLD:"#050500ee",border:"2px solid "+SIGNAL,color:howOpen?"#000":GOLD,padding:"18px 24px",cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif",fontSize:15,fontWeight:600,letterSpacing:0.4,marginBottom:howOpen?0:28,display:"flex",justifyContent:"space-between",alignItems:"center",boxShadow:"none"}}>
             <span>INFUTURE MOVIE STUDIOS — THE COMPLETE GUIDE &amp; AI HANDBOOK</span>
@@ -7983,7 +7983,7 @@ function IntroDoors({ onEnter }){
         transition:"height 0.9s ease-out, width 0.9s ease-out, opacity 2s ease 0.6s",zIndex:5}}/>
       <div style={{position:"absolute",left:0,right:0,bottom:"6%",display:"flex",flexDirection:"column",alignItems:"center",
         zIndex:6,opacity:opening?0:1,transition:"opacity 0.6s",pointerEvents:opening?"none":"auto"}}>
-        <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:GOLD,fontSize:"clamp(22px,5.5vw,50px)",fontWeight:600,letterSpacing:0.4,textShadow:"none"}}>INFUTURE</div>
+        <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:"clamp(22px,5.5vw,50px)",fontWeight:600,letterSpacing:0.4,textShadow:"none"}}>INFUTURE</div>
         <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:"clamp(11px,2vw,18px)",letterSpacing:0.4,marginTop:4}}>Studio</div>
         <div style={{color:GOLDDIM,fontSize:"clamp(8px,1.4vw,11px)",letterSpacing:0.2,marginTop:12,textAlign:"center",padding:"0 16px"}}>Cinema intelligence platform · 200+ AI tools · up to 3-hour films</div>
         <button onClick={enter}
