@@ -4748,31 +4748,45 @@ function ExampleReel({ go, title }) {
 function P1({ go }) {
   return (
     <div style={{...Sp}}>
-      <div style={{background:"#0E0F12",padding:"56px 40px 36px",textAlign:"center",position:"relative",overflow:"hidden"}}>
-        <div style={{position:"absolute",inset:0,pointerEvents:"none"}}>
-          {[...Array(55)].map((_,i)=>(
-            <div key={i} style={{position:"absolute",width:i%4===0?2:1,height:i%4===0?2:1,background:GOLD,borderRadius:"50%",opacity:.1+i%4*.15,left:(i*17+3)%100+"%",top:(i*11+7)%100+"%",animation:"tw "+1.8+i%3*.8+"s ease-in-out "+i%5*.35+"s infinite"}}/>
-          ))}
-        </div>
-        <style>{"@keyframes tw{0%,100%{opacity:.05}50%{opacity:.85}}"}</style>
-        <div style={{position:"relative",zIndex:1}}>
-          <div style={{fontSize:11,color:DIM,letterSpacing:0.4,marginBottom:12}}>Cinema intelligence platform — est. 2025</div>
-          <div style={{fontFamily:"'Fraunces',Georgia,serif",fontSize:"clamp(38px,6.5vw,66px)",fontWeight:300,color:WHITE,letterSpacing:-1.2,lineHeight:1.02,textShadow:"none"}}>InFuture</div>
-          <div style={{fontFamily:"'Fraunces',Georgia,serif",fontSize:"clamp(38px,6.5vw,66px)",fontWeight:300,color:GOLD,letterSpacing:-1.2,lineHeight:1.02,textShadow:"none",marginBottom:18}}>Movie Studios</div>
-          <div style={{color:WHITE,fontSize:12,letterSpacing:0.4,marginBottom:28,fontWeight:600}}>200+ AI tools · 8K export · up to 3-hour films</div>
-          <div style={{display:"flex",gap:14,justifyContent:"center",flexWrap:"wrap"}}>
-            <button onClick={()=>go(4)} style={{...G("gold",false),fontSize:14,padding:"14px 38px",letterSpacing:0.2}}>Start creating</button>
-            <button onClick={()=>go(4)} style={{...G("out",false),fontSize:14,padding:"14px 38px",letterSpacing:0.2}}>Login / register</button>
+      <div style={{background:"#0A0B0D",padding:"56px 40px 40px",position:"relative",overflow:"hidden"}}>
+        <style>{"@keyframes ifrot{to{transform:rotate(360deg)}}@keyframes ifrotr{to{transform:rotate(-360deg)}}@keyframes ifbr{0%,100%{opacity:.55}50%{opacity:1}}.ifrot{animation:ifrot 90s linear infinite;transform-box:fill-box;transform-origin:center}.ifrotr{animation:ifrotr 140s linear infinite;transform-box:fill-box;transform-origin:center}.ifbr{animation:ifbr 3.4s ease-in-out infinite}@media (prefers-reduced-motion: reduce){.ifrot,.ifrotr,.ifbr{animation:none}}"}</style>
+        <div style={{maxWidth:1100,margin:"0 auto",display:"flex",flexWrap:"wrap",alignItems:"center",gap:32}}>
+          <div style={{flex:"1.1 1 380px",minWidth:0,display:"flex",flexDirection:"column",gap:24}}>
+            <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10.5,letterSpacing:"0.26em",color:GOLD}}>THE CINEMA INTELLIGENCE PLATFORM</div>
+            <div style={{fontFamily:"'Fraunces',Georgia,serif",fontWeight:300,fontSize:"clamp(40px,6vw,64px)",lineHeight:1.02,letterSpacing:"-0.025em",color:WHITE}}>Your film.<br/><span style={{color:GOLD}}>Made of light.</span></div>
+            <div style={{maxWidth:470,fontSize:16,lineHeight:1.65,color:DIM}}>Write it. Voice it. Shoot it. Cut it. Render it in 4K. One studio, from the first word to the last frame.</div>
+            <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+              <button onClick={()=>go(4)} style={{...G("gold",false),fontSize:13,padding:"12px 24px",letterSpacing:0.4,borderRadius:2}}>Start creating</button>
+              <button onClick={()=>go(4)} style={{...G("out",false),fontSize:13,padding:"12px 22px",letterSpacing:0.4,borderRadius:2,color:WHITE,border:"1px solid rgba(237,234,227,0.22)"}}>Login / register</button>
+            </div>
+            <div style={{display:"flex",gap:36,flexWrap:"wrap",paddingTop:8}}>
+              {[["200+","AI TOOLS"],["8K","EXPORT"],["3 hrs","FILMS"],["1 TB","STORAGE"]].map(([v,l])=>(
+                <div key={l}>
+                  <div style={{fontFamily:"'Fraunces',Georgia,serif",fontWeight:300,fontSize:30,color:WHITE}}>{v}</div>
+                  <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10,letterSpacing:"0.18em",color:DIM}}>{l}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{flex:"0.9 1 300px",minWidth:0,display:"flex",justifyContent:"center"}}>
+            <svg viewBox="0 0 420 420" style={{width:"100%",maxWidth:430,height:"auto"}} role="img" aria-label="Camera lens drawn in fine gold lines">
+              <defs>
+                <radialGradient id="iflg" cx="50%" cy="50%" r="50%"><stop offset="0" stopColor="#F6E7C6" stopOpacity=".95"/><stop offset=".12" stopColor="#D4AF6A" stopOpacity=".5"/><stop offset=".45" stopColor="#D4AF6A" stopOpacity=".07"/><stop offset="1" stopColor="#000" stopOpacity="0"/></radialGradient>
+                <radialGradient id="ifgl" cx="38%" cy="32%" r="75%"><stop offset="0" stopColor="#1B1914"/><stop offset=".6" stopColor="#0B0B0C"/><stop offset="1" stopColor="#050505"/></radialGradient>
+              </defs>
+              <circle cx="210" cy="210" r="204" fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="1"/>
+              <g className="ifrot"><circle cx="210" cy="210" r="192" fill="none" stroke="#D4AF6A" strokeOpacity=".5" strokeWidth="1" strokeDasharray="1 7"/></g>
+              <circle cx="210" cy="210" r="168" fill="url(#ifgl)" stroke="rgba(255,255,255,.22)" strokeWidth="1"/>
+              <g className="ifrotr"><circle cx="210" cy="210" r="140" fill="none" stroke="#D4AF6A" strokeOpacity=".55" strokeWidth="1" strokeDasharray="46 10"/></g>
+              <circle cx="210" cy="210" r="112" fill="none" stroke="rgba(255,255,255,.14)" strokeWidth="1"/>
+              <circle cx="210" cy="210" r="86" fill="none" stroke="rgba(255,255,255,.14)" strokeWidth="1"/>
+              <line x1="270.0" y1="210.0" x2="286.5" y2="274.4" stroke="#D4AF6A" strokeOpacity=".38" strokeWidth="1"/><line x1="256.0" y1="248.6" x2="227.2" y2="308.5" stroke="#D4AF6A" strokeOpacity=".38" strokeWidth="1"/><line x1="220.4" y1="269.1" x2="159.8" y2="296.5" stroke="#D4AF6A" strokeOpacity=".38" strokeWidth="1"/><line x1="180.0" y1="262.0" x2="116.0" y2="244.0" stroke="#D4AF6A" strokeOpacity=".38" strokeWidth="1"/><line x1="153.6" y1="230.5" x2="116.1" y2="175.6" stroke="#D4AF6A" strokeOpacity=".38" strokeWidth="1"/><line x1="153.6" y1="189.5" x2="160.2" y2="123.3" stroke="#D4AF6A" strokeOpacity=".38" strokeWidth="1"/><line x1="180.0" y1="158.0" x2="227.5" y2="111.6" stroke="#D4AF6A" strokeOpacity=".38" strokeWidth="1"/><line x1="220.4" y1="150.9" x2="286.7" y2="145.9" stroke="#D4AF6A" strokeOpacity=".38" strokeWidth="1"/><line x1="256.0" y1="171.4" x2="310.0" y2="210.2" stroke="#D4AF6A" strokeOpacity=".38" strokeWidth="1"/>
+              <circle cx="210" cy="210" r="70" fill="url(#iflg)" className="ifbr"/>
+              <ellipse cx="152" cy="140" rx="34" ry="14" transform="rotate(-38 152 140)" fill="rgba(255,255,255,.07)"/>
+              <line x1="406.0" y1="210.0" x2="414.0" y2="210.0" stroke="rgba(255,255,255,.3)" strokeWidth="1"/><line x1="379.7" y1="308.0" x2="386.7" y2="312.0" stroke="rgba(255,255,255,.3)" strokeWidth="1"/><line x1="308.0" y1="379.7" x2="312.0" y2="386.7" stroke="rgba(255,255,255,.3)" strokeWidth="1"/><line x1="210.0" y1="406.0" x2="210.0" y2="414.0" stroke="rgba(255,255,255,.3)" strokeWidth="1"/><line x1="112.0" y1="379.7" x2="108.0" y2="386.7" stroke="rgba(255,255,255,.3)" strokeWidth="1"/><line x1="40.3" y1="308.0" x2="33.3" y2="312.0" stroke="rgba(255,255,255,.3)" strokeWidth="1"/><line x1="14.0" y1="210.0" x2="6.0" y2="210.0" stroke="rgba(255,255,255,.3)" strokeWidth="1"/><line x1="40.3" y1="112.0" x2="33.3" y2="108.0" stroke="rgba(255,255,255,.3)" strokeWidth="1"/><line x1="112.0" y1="40.3" x2="108.0" y2="33.3" stroke="rgba(255,255,255,.3)" strokeWidth="1"/><line x1="210.0" y1="14.0" x2="210.0" y2="6.0" stroke="rgba(255,255,255,.3)" strokeWidth="1"/><line x1="308.0" y1="40.3" x2="312.0" y2="33.3" stroke="rgba(255,255,255,.3)" strokeWidth="1"/><line x1="379.7" y1="112.0" x2="386.7" y2="108.0" stroke="rgba(255,255,255,.3)" strokeWidth="1"/>
+            </svg>
           </div>
         </div>
-      </div>
-      <div style={{borderTop:"1px solid "+LINE+"",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,padding:"16px 24px",maxWidth:800,margin:"0 auto"}}>
-        {[["200+","AI TOOLS"],["8K","EXPORT"],["3 HRS","DURATION"],["1TB","STORAGE"]].map(([v,l])=>(
-          <div key={v} style={{...Card(),textAlign:"center",padding:12}}>
-            <div style={{color:GOLD,fontFamily:"'Manrope',system-ui,sans-serif",fontSize:22,fontWeight:600}}>{v}</div>
-            <div style={{color:WHITE,fontSize:11,marginTop:3,fontWeight:500,letterSpacing:0.2}}>{l}</div>
-          </div>
-        ))}
       </div>
       <ExampleReel go={go} title="What InFuture Movie Studios makes"/>
       <div style={{textAlign:"center",paddingBottom:24,paddingTop:16}}>
