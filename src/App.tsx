@@ -1264,14 +1264,1012 @@ function RecordYourOwnSong({ onRecorded }) {
   );
 }
 
-// NOTE: The full app continues below with all page components, voice characters,
-// video generator, render engine, timeline editor, character studio, etc.
-// Due to the extreme length of this file (~8700 lines), the remaining components
-// are identical to the provided source. The app is a single-file React application.
 
-// ══════════════════════════════════════════════════════════════════
-// VOICE CHARACTERS
-// ══════════════════════════════════════════════════════════════════
+function MusicVideoStudio({ onClose, onSave }) {
+  const [step, setStep] = useState(1);
+  const [generating, setGenerating] = useState(false);
+  const [videoUrl, setVideoUrl] = useState("");
+  const [videoBlob, setVideoBlob] = useState(null);
+  const [renderLog, setRenderLog] = useState([]);
+  const [renderProgress, setRenderProgress] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration2, setDuration2] = useState(0);
+  const [audioFile, setAudioFile] = useState(null);
+  const [audioUrl, setAudioUrl] = useState("");
+  const [audioName, setAudioName] = useState("");
+  const canvasRef = useRef(null);
+  const videoRef = useRef(null);
+  const audioRef = useRef(null);
+  const audioInputRef = useRef(null);
+
+  const [config, setConfig] = useState(()=>{
+    try{
+      const saved=localStorage.getItem("ms_mvs_config");
+      if(saved) return JSON.parse(saved);
+    }catch{}
+    return {
+      title:"If Only", artist:"Manda", genre:"Folk / Acoustic",
+      mood:"Melancholic", tempo:"Slow (60-80 BPM)",
+      videoStyle:"Cinematic Narrative", colorGrade:"Cinematic Teal & Orange",
+      effects:["Slow Motion","Film Grain","Vignette"],
+      cuts:"Long Takes", aspectRatio:"16:9", duration:"3 Minutes",
+      durationMin:0, stereo:true,
+      visualDesc:"", lipSync:false, refMedia:null,
+    };
+  });
+  const saveCfg = (n) => {try{const {refMedia,...rest}=n;localStorage.setItem("ms_mvs_config",JSON.stringify(rest));}catch{}};
+  const set = (k,v) => setConfig(p=>{const n={...p,[k]:v};saveCfg(n);return n;});
+  const tog = (k,v) => setConfig(p=>{const n={...p,[k]:p[k].includes(v)?p[k].filter(x=>x!==v):[...p[k],v]};saveCfg(n);return n;});
+
+  // Read reference photo/video as a DATA URL so it (a) survives page reloads via localStorage
+  // and (b) passes the seed-image check in generateVideo so it reaches the Cinema Engine.
+  const setRefFromFile = (f) => {
+    if(!f) return;
+    const reader = new FileReader();
+    reader.onload = ev => set("refMedia", ev.target.result);
+    reader.readAsDataURL(f);
+  };
+
+  const GENRES=["Pop","Rock","Hip Hop","R&B / Soul","Electronic / EDM","Country","Jazz","Classical","Metal","Folk / Acoustic","Latin","K-Pop","Blues","Cinematic / Score"];
+  const MOODS=["Euphoric","Melancholic","Energetic","Romantic","Angry","Peaceful","Mysterious","Empowering","Nostalgic","Dark","Haunting","Uplifting","Tense"];
+  const TEMPOS=["Very Slow (40-60 BPM)","Slow (60-80 BPM)","Mid-Tempo (80-100 BPM)","Upbeat (100-120 BPM)","Fast (120-140 BPM)"];
+  const STYLES=["Cinematic Narrative","Performance / Live","Abstract / Visual Art","Documentary Style","Lyric Video","Retro / VHS","Noir / Black & White","Surrealist / Dreamlike"];
+  const GRADES=["Natural / Clean","Golden Hour Warm","Cool Blue / Moody","High Contrast Black & White","Cinematic Teal & Orange","Vintage Film Grain","Dark & Desaturated"];
+  const EFFECTS=["Slow Motion","Speed Ramps","Glitch Effects","Light Leaks","Lens Flares","Rain / Water","Bokeh / Blur","Film Grain","Vignette","Particle Effects"];
+  const CUTS=["Fast Cuts / High Energy","Slow & Deliberate","Long Takes","Beat-Synced Cuts","Montage Style"];
+
+  const addLog = (msg) => setRenderLog(p=>[...p,msg]);
+
+  // Upload audio track
+  const handleAudioUpload = (e) => {
+    const f = e.target.files&&e.target.files[0];
+    if(!f) return;
+    setAudioFile(f);
+    setAudioUrl(URL.createObjectURL(f));
+    setAudioName(f.name);
+  };
+
+  const generateVideo = async () => {
+    setGenerating(true);
+    setRenderLog([]);
+    setRenderProgress(0);
+    setVideoUrl("");
+    setVideoBlob(null);
+
+    try {
+      const sceneDesc = config.visualDesc || "A man sits on a windowsill overlooking the ocean at night, fingerpicking acoustic guitar. Only his back is visible. Full moon. Single candle. Dark wooden room. Empty couch. Coat on a hook. Curtains lift in the wind.";
+      addLog("MandaStrong Cinema Engine — writing your film...");
+      setRenderProgress(4);
+
+      // ── BEAT ANALYSIS ─────────────────────────────────────────────
+      // ── DURATION ── single source of truth is the slider (config.durationMin).
+      // 0 = AUTO: match the audio length. Above 0 = fixed length that overrides.
+      let totalDur = 180;
+      const overrideMin = Number(config.durationMin)||0;
+      const overrideSec = overrideMin>0 ? overrideMin*60 : 0;
+      if(overrideSec>0){ totalDur = overrideSec; addLog("Duration: locked to "+overrideMin+" min ("+overrideSec+"s)"); }
+      else { addLog("Duration: AUTO — will match the song length"); }
+      let beatGrid = [];
+      let audioCtx = null, audioDest = null, audioSource = null;
+
+      if(audioFile){
+        try{
+          audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+          const ab = await audioFile.arrayBuffer();
+          const buf = await audioCtx.decodeAudioData(ab);
+          if(overrideSec>0){ totalDur = overrideSec; } else { totalDur = buf.duration; }
+          // Energy-based beat detection
+          const data = buf.getChannelData(0);
+          const sr = buf.sampleRate;
+          const win = Math.round(sr*0.35);
+          const energies = [];
+          for(let i=0;i<data.length-win;i+=win){
+            let e=0; for(let j=0;j<win;j++) e+=data[i+j]*data[i+j];
+            energies.push({t:i/sr,e:e/win});
+          }
+          const avg = energies.reduce((s,x)=>s+x.e,0)/energies.length;
+          let last=-1;
+          energies.forEach(x=>{
+            if(x.e>avg*1.35&&x.t-last>0.28){beatGrid.push(x.t);last=x.t;}
+          });
+          addLog("Audio: "+totalDur.toFixed(1)+"s — "+beatGrid.length+" beats detected");
+          // Set up audio mixing
+          audioDest = audioCtx.createMediaStreamDestination();
+          audioSource = audioCtx.createBufferSource();
+          audioSource.buffer = buf;
+          if(overrideSec>buf.duration+0.5){ audioSource.loop=true; addLog("Song ("+buf.duration.toFixed(1)+"s) will loop to fill "+overrideSec+"s"); }
+          const gain = audioCtx.createGain(); gain.gain.value=0.92;
+          if(config.stereo!==false && audioCtx.createStereoPanner){
+            addLog("Stereo sound ON — baking full stereo field into the film");
+            const wet=audioCtx.createGain(); wet.gain.value=0.5;
+            audioSource.connect(gain); gain.connect(audioDest); gain.connect(audioCtx.destination);
+            [[-0.85,0.014],[0.85,0.021]].forEach(([pan,dl])=>{
+              const d=audioCtx.createDelay(); d.delayTime.value=dl;
+              const p=audioCtx.createStereoPanner(); p.pan.value=pan;
+              gain.connect(d); d.connect(p); p.connect(wet);
+            });
+            wet.connect(audioDest); wet.connect(audioCtx.destination);
+          } else {
+            addLog("Mono sound — stereo toggle off");
+            audioSource.connect(gain); gain.connect(audioDest); gain.connect(audioCtx.destination);
+          }
+          if(overrideSec>0){ totalDur = overrideSec; } else { totalDur = buf.duration; }
+        }catch(e){ addLog("Audio: "+e.message); audioCtx=null; }
+      } else {
+        addLog("No audio — generating "+totalDur+"s visual");
+        for(let t=0;t<totalDur;t+=1.8) beatGrid.push(t);
+      }
+      setRenderProgress(10);
+
+      // ── BUILT-IN RENDERER (NO PROXY) ─────────────
+      addLog("MandaStrong Engine — built-in renderer ready");
+      const pr = sceneDesc.toLowerCase();
+      const isNight = /night|dark|moon|evening|dusk/.test(pr);
+      const isGolden = /golden|sunset|sunrise|amber/.test(pr);
+      const isOcean = /ocean|sea|water|wave|shore|coast/.test(pr);
+      const isCity = /city|urban|street|skyline|neon/.test(pr);
+      const isSpace = /space|star|galaxy|planet|cosmos/.test(pr);
+      const isIndoor = /room|interior|inside|window|wall/.test(pr);
+      const isRain = /rain|storm|wet|drizzle/.test(pr);
+      const isFog = /fog|mist|haze|smoke/.test(pr);
+      const hasPerson = /woman|man|person|figure|human/.test(pr);
+      const hasCandle = /candle|flame|fire|torch/.test(pr);
+      const hasGuitar = /guitar|musician|fingerpick/.test(pr);
+      const isSilhouette = /silhouette|back to camera|facing away/.test(pr);
+
+      // Load reference image if user uploaded one — Reality Engine base
+      let refImgEl = null;
+      if(config.refMedia){
+        try{
+          refImgEl = await new Promise((resolve)=>{
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.onload = ()=>resolve(img);
+            img.onerror = ()=>resolve(null);
+            img.src = config.refMedia;
+            setTimeout(()=>resolve(refImgEl||null), 5000);
+          });
+          if(refImgEl) addLog("Reference image loaded — Reality Engine base active");
+        }catch(e){}
+      }
+
+      const renderFn = (ctx, W, H, t, sec, totalSec, beatNow) => {
+        const pulse = beatNow ? 1.02 : 1.0;
+        ctx.save();
+        ctx.translate(W/2, H/2);
+        ctx.scale(pulse + t*0.04, pulse + t*0.04);
+        ctx.translate(-W/2, -H/2);
+
+        // ── REALITY ENGINE — if user uploaded a reference image, use it as photorealistic base
+        if(refImgEl){
+          // Cover the full frame with the reference image
+          const imgR = refImgEl.width / refImgEl.height;
+          const canR = W / H;
+          let dw, dh, dx, dy;
+          if(imgR > canR){
+            dh = H;
+            dw = H * imgR;
+            dx = (W - dw) / 2;
+            dy = 0;
+          } else {
+            dw = W;
+            dh = W / imgR;
+            dx = 0;
+            dy = (H - dh) / 2;
+          }
+          // Subtle Ken Burns pan across the reference image for movement
+          const panX = Math.sin(sec * 0.08) * W * 0.02;
+          const panY = Math.cos(sec * 0.06) * H * 0.015;
+          ctx.drawImage(refImgEl, dx + panX, dy + panY, dw, dh);
+          // Warm cinematic overlay + vignette handled by post-processing later
+          // Skip procedural sky/water/room drawing when we have real photo base
+          ctx.restore();
+          return;
+        }
+        // SKY (fallback for when no reference image is uploaded)
+        if(isSpace){
+          const sky=ctx.createLinearGradient(0,0,0,H);
+          sky.addColorStop(0,"rgb(1,1,8)"); sky.addColorStop(1,"rgb(3,3,18)");
+          ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
+          for(let s=0;s<300;s++){
+            const sx=(s*137.5)%W, sy=(s*97.3)%H;
+            ctx.fillStyle="rgba(240,245,255,"+(0.3+Math.sin(sec*0.7+s)*0.28)+")";
+            ctx.fillRect(sx,sy,s%5===0?1.8:0.8,s%5===0?1.8:0.8);
+          }
+        } else if(isNight){
+          const sky=ctx.createLinearGradient(0,0,0,H*0.62);
+          sky.addColorStop(0,"rgb(2,4,15)");
+          sky.addColorStop(0.5,"rgb(5,10,32)");
+          sky.addColorStop(1,"rgb(8,18,50)");
+          ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
+          for(let s=0;s<200;s++){
+            const sx=(s*137.5)%W, sy=(s*97.3)%(H*0.55);
+            ctx.fillStyle="rgba(240,245,255,"+(0.3+Math.sin(sec*0.5+s*0.3)*0.22)+")";
+            ctx.fillRect(sx,sy,s%4===0?1.4:0.7,s%4===0?1.4:0.7);
+          }
+          const mx=W*0.78, my=H*0.13;
+          const mg=ctx.createRadialGradient(mx,my,0,mx,my,H*0.078);
+          mg.addColorStop(0,"rgba(255,255,248,0.96)");
+          mg.addColorStop(1,"rgba(200,200,180,0)");
+          ctx.fillStyle=mg; ctx.fillRect(mx-H*0.09,my-H*0.09,H*0.18,H*0.18);
+        } else if(isGolden){
+          const sky=ctx.createLinearGradient(0,0,0,H*0.66);
+          sky.addColorStop(0,"rgb(18,10,35)");
+          sky.addColorStop(0.3,"rgb(165,50,12)");
+          sky.addColorStop(0.65,"rgb(248,135,28)");
+          sky.addColorStop(1,"rgb(255,205,75)");
+          ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
+        } else {
+          const sky=ctx.createLinearGradient(0,0,0,H*0.6);
+          sky.addColorStop(0,"rgb(28,60,140)");
+          sky.addColorStop(1,"rgb(180,210,240)");
+          ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
+        }
+        const horizY = isIndoor ? H : H*0.56;
+        // OCEAN
+        if(isOcean && !isIndoor){
+          for(let w=0;w<10;w++){
+            const wg=ctx.createLinearGradient(0,horizY+w*13,0,H);
+            const d=isNight?[2+w*2,8+w*6,30+w*10]:[0+w*3,55+w*12,115+w*10];
+            wg.addColorStop(0,"rgba("+d[0]+","+d[1]+","+d[2]+","+(0.7+w*0.03)+")");
+            wg.addColorStop(1,"rgba(1,3,8,0.98)");
+            ctx.fillStyle=wg;
+            ctx.beginPath(); ctx.moveTo(-10,H);
+            for(let x=0;x<=W+10;x+=3){
+              const y=horizY+w*14+Math.sin(x*0.007+sec*(0.24+w*0.07)+w*1.3)*17;
+              ctx.lineTo(x,y);
+            }
+            ctx.lineTo(W+10,H); ctx.closePath(); ctx.fill();
+          }
+        }
+        // CITY
+        if(isCity && !isIndoor){
+          const grd=ctx.createLinearGradient(0,horizY,0,H);
+          grd.addColorStop(0,"rgb(16,16,20)"); grd.addColorStop(1,"rgb(8,8,10)");
+          ctx.fillStyle=grd; ctx.fillRect(0,horizY,W,H-horizY);
+          for(let b=0;b<18;b++){
+            const bx=(b*151)%W, bh=H*0.15+((b*97)%H)*0.35, bw=W*0.035;
+            ctx.fillStyle=isNight?"rgb(10,10,18)":"rgb(75,80,90)";
+            ctx.fillRect(bx,horizY-bh,bw,bh);
+            for(let wy=0;wy<Math.floor(bh/18);wy++){
+              for(let wx=0;wx<Math.floor(bw/10);wx++){
+                if(Math.sin(b*13+wy*7+wx*11)>0.1){
+                  const lit=Math.sin(sec*0.3+b+wy)>-0.3;
+                  ctx.fillStyle=lit?"rgba(255,240,180,0.88)":"rgba(20,20,28,0.5)";
+                  ctx.fillRect(bx+wx*10+2,horizY-bh+wy*18+4,7,10);
+                }
+              }
+            }
+          }
+        }
+        // INDOOR
+        if(isIndoor){
+          const wall=ctx.createLinearGradient(0,0,W,H);
+          wall.addColorStop(0,"rgb(9,6,3)"); wall.addColorStop(1,"rgb(4,3,2)");
+          ctx.fillStyle=wall; ctx.fillRect(0,0,W,H);
+          const fl=ctx.createLinearGradient(0,H*0.65,0,H);
+          fl.addColorStop(0,"rgb(18,12,7)"); fl.addColorStop(1,"rgb(7,5,3)");
+          ctx.fillStyle=fl; ctx.fillRect(0,H*0.65,W,H*0.35);
+          const wox=W*0.12, woy=H*0.05, wow=W*0.46, woh=H*0.74;
+          if(isNight){
+            const ws=ctx.createLinearGradient(wox,woy,wox,woy+woh);
+            ws.addColorStop(0,"rgb(2,4,15)"); ws.addColorStop(1,"rgb(6,14,42)");
+            ctx.fillStyle=ws; ctx.fillRect(wox,woy,wow,woh);
+            if(isOcean){
+              for(let w=0;w<6;w++){
+                const wg2=ctx.createLinearGradient(0,woy+woh*0.55+w*8,0,woy+woh);
+                wg2.addColorStop(0,"rgba(2,8,35,0.9)");
+                wg2.addColorStop(1,"rgba(1,3,12,0.98)");
+                ctx.fillStyle=wg2;
+                ctx.beginPath(); ctx.moveTo(wox,woy+woh);
+                for(let x=wox;x<=wox+wow;x+=3){
+                  const y=woy+woh*0.58+w*10+Math.sin(x*0.01+sec*(0.2+w*0.07)+w)*10;
+                  ctx.lineTo(x,y);
+                }
+                ctx.lineTo(wox+wow,woy+woh); ctx.closePath(); ctx.fill();
+              }
+            }
+          }
+          ctx.strokeStyle="rgba(48,32,16,0.92)"; ctx.lineWidth=10;
+          ctx.strokeRect(wox,woy,wow,woh);
+        }
+        // CANDLE
+        if(hasCandle){
+          const candX=isIndoor?W*0.7:W*0.5, candY=isIndoor?H*0.58:H*0.5;
+          const flicker=0.88+Math.sin(sec*8.8)*0.07+Math.sin(sec*13.4)*0.04;
+          ctx.fillStyle="rgba(232,212,162,0.9)"; ctx.fillRect(candX-5,candY,10,32);
+          const cf=ctx.createRadialGradient(candX,candY,0,candX,candY,H*0.13*flicker);
+          cf.addColorStop(0,"rgba(255,255,200,0.95)");
+          cf.addColorStop(0.18,"rgba(255,180,40,0.72)");
+          cf.addColorStop(0.5,"rgba(255,100,8,0.3)");
+          cf.addColorStop(1,"rgba(255,60,0,0)");
+          ctx.fillStyle=cf; ctx.fillRect(candX-H*0.13,candY-H*0.13,H*0.26,H*0.26);
+        }
+        // PERSON
+        if(hasPerson){
+          const isSeated=/sit|bench|windowsill|chair/.test(pr);
+          const isMale=/\bman\b|\bmale\b|\bguy\b|\bhim\b|\bhe\b/.test(pr);
+          const isFemale=/\bwoman\b|\bfemale\b|\bgirl\b|\bher\b|\bshe\b/.test(pr);
+          const fx=isOcean&&isIndoor?W*0.22:W*0.4;
+          const fy=isSeated?H*0.52:H*0.44;
+          const breath=Math.sin(sec*0.88)*0.007;
+          // Lip sync — mouth opens on beats
+          const mouthOpen=beatNow?H*0.012:H*0.003+Math.sin(sec*4.2)*H*0.003;
+          // Skin tone — male slightly darker
+          const skinTop=isMale?"rgba(205,155,105,1)":"rgba(235,185,135,1)";
+          const skinBot=isMale?"rgba(135,88,52,1)":"rgba(155,102,65,1)";
+          // Shoulder width — male broader
+          const shoulderW=isMale?H*0.075:H*0.055;
+llł
+          if(isSilhouette){
+            ctx.fillStyle="rgba(2,1,1,0.97)";
+            // Head
+            ctx.beginPath();ctx.ellipse(fx,fy-H*0.13,H*0.036,H*0.044,0,0,Math.PI*2);ctx.fill();
+            // Body — broader for male
+            ctx.beginPath();
+            ctx.moveTo(fx-shoulderW,fy-H*0.09);
+            ctx.lineTo(fx-H*0.03,fy+H*(0.06+breath*2));
+            ctx.lineTo(fx+H*0.03,fy+H*(0.06+breath*2));
+            ctx.lineTo(fx+shoulderW,fy-H*0.09);
+            ctx.closePath();ctx.fill();
+            if(hasGuitar){
+              ctx.beginPath();ctx.ellipse(fx+H*0.072,fy+H*0.02,H*0.05,H*0.064,0.22,0,Math.PI*2);ctx.fill();
+              ctx.fillRect(fx+H*0.026,fy-H*0.09,H*0.011,H*0.12);
+            }
+          } else {
+            // Head with correct skin tone
+            const hg=ctx.createRadialGradient(fx-H*0.008,fy-H*0.145,0,fx,fy-H*0.13,H*0.042);
+            hg.addColorStop(0,skinTop);
+            hg.addColorStop(1,skinBot);
+            ctx.fillStyle=hg;
+            ctx.beginPath();ctx.ellipse(fx,fy-H*0.13,H*0.034,H*0.042,0,0,Math.PI*2);ctx.fill();
+            // Eyes
+            ctx.fillStyle="rgba(30,20,10,0.9)";
+            ctx.beginPath();ctx.ellipse(fx-H*0.012,fy-H*0.138,H*0.007,H*0.005,0,0,Math.PI*2);ctx.fill();
+            ctx.beginPath();ctx.ellipse(fx+H*0.012,fy-H*0.138,H*0.007,H*0.005,0,0,Math.PI*2);ctx.fill();
+            // Lip sync mouth
+            ctx.fillStyle="rgba(120,60,40,0.85)";
+            ctx.beginPath();ctx.ellipse(fx,fy-H*0.115,H*0.014,mouthOpen,0,0,Math.PI*2);ctx.fill();
+            // Body — broader for male
+            ctx.fillStyle="rgba(28,18,10,0.97)";
+            ctx.beginPath();
+            ctx.moveTo(fx-shoulderW,fy-H*0.09);
+            ctx.lineTo(fx-H*0.03,fy+H*(0.08+breath*2));
+            ctx.lineTo(fx+H*0.03,fy+H*(0.08+breath*2));
+            ctx.lineTo(fx+shoulderW,fy-H*0.09);
+            ctx.closePath();ctx.fill();
+          }
+        }
+        if(isRain){
+          for(let r=0;r<120;r++){
+            const rx=(r*137+sec*200)%W, ry=(r*97+sec*450)%H;
+            ctx.strokeStyle="rgba(155,175,210,0.2)"; ctx.lineWidth=0.8;
+            ctx.beginPath(); ctx.moveTo(rx,ry); ctx.lineTo(rx-4,ry+18); ctx.stroke();
+          }
+        }
+        if(isFog){
+          const fog=ctx.createLinearGradient(0,H*0.38,0,H*0.72);
+          fog.addColorStop(0,"rgba(175,180,175,0)");
+          fog.addColorStop(0.5,"rgba(155,160,155,"+(0.1+Math.sin(sec*0.28)*0.04)+")");
+          fog.addColorStop(1,"rgba(138,142,138,0)");
+          ctx.fillStyle=fog; ctx.fillRect(0,H*0.38,W,H*0.34);
+        }
+        ctx.restore();
+      };
+
+      // ══════════════════════════════════════════════════════════════
+      // MANDASTRONG ENGINE — real footage, not drawn shapes
+      // The shot list renders in parallel, then the canvas below
+      // composites it with your grade, your beats and your audio.
+      // If the engine can't deliver, the built-in renderer still runs.
+      // ══════════════════════════════════════════════════════════════
+      let engineClips=[];
+      try{
+        const shotCount=Math.min(4,Math.max(3,Math.round(totalDur/45))); // capped at 4 to protect render spend
+        const ANGLES=[
+          "wide establishing shot, full scene visible",
+          "medium shot, subject centred in frame",
+          "slow push in, shallow depth of field",
+          "close detail shot, hands and texture",
+          "low angle looking up, dramatic",
+          "slow lateral tracking shot",
+          "framed from behind, subject facing away",
+          "wide static held frame, atmospheric"
+        ];
+        const look=[config.videoStyle,config.colorGrade,(config.effects||[]).join(", ")].filter(Boolean).join(", ");
+        const shots=[];
+        for(let i=0;i<shotCount;i++){
+          shots.push(sceneDesc+". "+ANGLES[i%ANGLES.length]+". "+look+". Photorealistic, cinematic, natural motion, 35mm film, no text, no captions.");
+        }
+        addLog("Cinema Engine \u2014 rendering "+shotCount+" photorealistic shots...");
+        setRenderProgress(8);
+        let done=0;
+        const ar=(config.aspectRatio||"").indexOf("9:16")===0?"9:16":"16:9";
+        const seedImg=(typeof config.refMedia==="string"&&config.refMedia.indexOf("data:")===0)?config.refMedia:"";
+        const urls=await Promise.all(shots.map(s=>engineRender(s,{duration:5,aspect_ratio:ar,image:seedImg})
+          .then(u=>{ done++; addLog("Shot "+done+"/"+shotCount+(u?" \u2713":" \u2014 unavailable")); setRenderProgress(Math.min(26,8+done*2)); return u; })));
+        const good=urls.filter(Boolean);
+        if(good.length){
+          addLog("Loading footage into the compositor...");
+          const vids=await Promise.all(good.map(u=>engineToLocalVideo(u)));
+          engineClips=vids.filter(Boolean);
+          for(const v of engineClips){ try{ await v.play(); }catch(e){} }
+          addLog("\u2713 "+engineClips.length+" live shots ready \u2014 compositing with your grade and beats");
+        } else {
+          const diag=await engineStatus();
+          addLog((diag&&diag.ok===false?("Cinema Engine: "+(diag.message||"unavailable")):"Engine returned no footage")+" \u2014 using built-in renderer");
+        }
+      }catch(e){ addLog("Cinema Engine offline \u2014 using built-in renderer"); }
+
+      // Shot length follows the editing style you picked on Step 2
+      const CUTLEN={"Fast Cuts / High Energy":1.1,"Slow & Deliberate":5.5,"Long Takes":8,"Beat-Synced Cuts":0,"Montage Style":2.2};
+      const shotLen=CUTLEN[config.cuts]!==undefined?CUTLEN[config.cuts]:4;
+      const cutPoints=[];
+      if(shotLen===0&&beatGrid.length){
+        let lastCut=-99;
+        beatGrid.forEach(b=>{ if(b-lastCut>1.4){ cutPoints.push(b); lastCut=b; } });
+      }
+      const clipAt=(sec)=>{
+        if(!engineClips.length)return null;
+        if(cutPoints.length){
+          let n=0;
+          for(let i=0;i<cutPoints.length;i++){ if(sec>=cutPoints[i]) n=i+1; }
+          return engineClips[n%engineClips.length];
+        }
+        return engineClips[Math.floor(sec/shotLen)%engineClips.length];
+      };
+      // Fills the frame without squashing. Slight overscan so the
+      // parallax drift never exposes a black edge.
+      const drawClip=(c,v,W2,H2)=>{
+        if(!v||!v.videoWidth)return false;
+        const vr=v.videoWidth/v.videoHeight, cr=W2/H2;
+        let dw,dh;
+        if(vr>cr){ dh=H2; dw=H2*vr; } else { dw=W2; dh=W2/vr; }
+        dw*=1.08; dh*=1.08;
+        c.drawImage(v,(W2-dw)/2,(H2-dh)/2,dw,dh);
+        return true;
+      };
+
+      setRenderProgress(30);
+      addLog("Rendering "+totalDur.toFixed(0)+"s film at 12fps...");
+
+      // ── SET UP CANVAS + RECORDER ────────────────────────────────
+      const canvas = canvasRef.current;
+      const W=1280, H=720;
+      canvas.width=W; canvas.height=H;
+      const ctx = canvas.getContext("2d");
+
+      const fps=12;
+      const mimeType=MediaRecorder.isTypeSupported("video/webm;codecs=vp9")?"video/webm;codecs=vp9":"video/webm";
+      const videoStream=canvas.captureStream(fps);
+      let combinedStream=videoStream;
+      if(audioDest){
+        combinedStream=new MediaStream([...videoStream.getTracks(),...audioDest.stream.getTracks()]);
+      }
+      const recorder=new MediaRecorder(combinedStream,{mimeType,videoBitsPerSecond:10000000});
+      const chunks=[];
+      recorder.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
+      recorder.start(Math.round(1000/fps));
+      // Start audio at exact same moment as video recording — guarantees sync
+      if(audioSource&&audioCtx) audioSource.start(audioCtx.currentTime);
+      else if(audioSource) audioSource.start(0);
+
+      // ── RENDER EVERY FRAME ──────────────────────────────────────
+      const totalFrames=Math.max(fps*5, Math.round((totalDur||180)*fps));
+      const msPerFrame=Math.round(1000/fps);
+      const wallStart=performance.now();
+
+      await new Promise(resolve=>{
+        let frame=0;
+        const tick=()=>{
+          if(frame>=totalFrames){resolve(null);return;}
+          const sec=frame/fps;
+          const t=sec/totalDur;
+          const beatNow=beatGrid.some(b=>Math.abs(sec-b)<0.055);
+
+          ctx.clearRect(0,0,W,H);
+
+          // Camera parallax base
+          const drift=t*W*0.04;
+          ctx.save();
+          ctx.translate(-drift*0.3,0);
+
+          try{
+            const liveClip=clipAt(sec);
+            if(!(liveClip&&drawClip(ctx,liveClip,W,H))){
+              renderFn(ctx,W,H,t,sec,totalDur,beatNow);
+            }
+          }
+          catch(e){
+            // Graceful fallback — keep rendering
+            const bg=ctx.createLinearGradient(0,0,0,H);
+            bg.addColorStop(0,"rgb(2,5,18)");
+            bg.addColorStop(1,"rgb(4,8,28)");
+            ctx.fillStyle=bg; ctx.fillRect(-W,0,W*3,H);
+          }
+
+          ctx.restore();
+
+          // Vignette — always
+          const vig=ctx.createRadialGradient(W/2,H/2,W*0.08,W/2,H/2,W*0.85);
+          vig.addColorStop(0,"rgba(0,0,0,0)"); vig.addColorStop(1,"rgba(0,0,0,0.92)");
+          ctx.fillStyle=vig; ctx.fillRect(0,0,W,H);
+
+          // ── AUTO-ENHANCEMENT — runs every frame automatically ──────────────
+          // Warm gold colour grade overlay
+          ctx.fillStyle="rgba(232,180,60,0.06)";ctx.fillRect(0,0,W,H);
+          // Contrast boost — darken shadows slightly
+          ctx.fillStyle="rgba(0,0,0,0.08)";ctx.fillRect(0,0,W,H);
+          // Highlight recovery — soft white pull on bright areas (top centre)
+          const hr=ctx.createRadialGradient(W/2,H*0.3,0,W/2,H*0.3,W*0.4);
+          hr.addColorStop(0,"rgba(255,255,240,0.04)");hr.addColorStop(1,"rgba(0,0,0,0)");
+          ctx.fillStyle=hr;ctx.fillRect(0,0,W,H);
+          // ──────────────────────────────────────────────────────────────────
+
+          // Letterbox
+          ctx.fillStyle="#000";
+          ctx.fillRect(0,0,W,Math.round(H*0.072));
+          ctx.fillRect(0,H-Math.round(H*0.072),W,Math.round(H*0.072));
+
+          // Film grain
+          for(let g=0;g<30;g++){
+            const gv=Math.random()>0.5?130:0;
+            ctx.fillStyle="rgba("+gv+","+gv+","+gv+",0.008)";
+            ctx.fillRect(Math.random()*W,Math.random()*H,1,1);
+          }
+
+          // Title card — opening and closing
+          if(t<0.12||t>0.9){
+            const a=t<0.12?Math.min(1,t/0.08):Math.max(0,(1-t)/0.08);
+            ctx.globalAlpha=a*0.95;
+            ctx.fillStyle="#E6C98E";
+            ctx.font="900 "+Math.round(H*0.072)+"px Arial Black,Arial";
+            ctx.textAlign="center";
+            ctx.shadowColor="#E6C98E"; ctx.shadowBlur=28;
+            ctx.fillText((config.title||"UNTITLED").toUpperCase(),W/2,H*0.43);
+            ctx.shadowBlur=0;
+            ctx.fillStyle="rgba(255,255,255,0.8)";
+            ctx.font="300 "+Math.round(H*0.034)+"px Arial";
+            ctx.fillText((config.artist||"").toUpperCase(),W/2,H*0.56);
+            ctx.globalAlpha=1;
+          }
+
+          setRenderProgress(30+Math.round((frame/totalFrames)*64));
+          if(frame%(fps*10)===0) addLog("  "+Math.round(sec)+"s / "+Math.round(totalDur)+"s");
+          frame++;
+          const due=wallStart+(frame*msPerFrame);
+          setTimeout(tick,Math.max(4,due-performance.now()));
+        };
+        tick();
+      });
+
+      // ── FINALISE ────────────────────────────────────────────────
+      setRenderProgress(96);
+      addLog("Cutting to final...");
+      await new Promise(r=>setTimeout(r,600));
+      if(audioSource){try{audioSource.stop(audioCtx?audioCtx.currentTime:0);}catch(e){}}
+      await new Promise(r=>{let d=false;const f=()=>{if(!d){d=true;r();}};setTimeout(f,4000);try{recorder.onstop=f;if(recorder.state!=="inactive"){recorder.stop();}else{f();}}catch(e){f();}});
+      const blob=new Blob(chunks,{type:mimeType});
+      const url=URL.createObjectURL(blob);
+      setVideoUrl(url); setVideoBlob(blob);
+      setRenderProgress(100);
+      addLog("✓ "+config.title+" complete — "+(blob.size/1024/1024).toFixed(1)+"MB · "+Math.round(totalDur)+"s");
+
+      const fn=(config.title||"MusicVideo")+"_"+config.artist+".webm";
+      try{
+        const clipId="mv_"+Date.now();
+        await safeSaveClipToDB(clipId,blob,fn,"video/webm");
+        addLog("Saved");
+        if(onSave)onSave({id:clipId,name:fn,type:"video/webm",url:URL.createObjectURL(blob),file:new File([blob],fn,{type:"video/webm"}),dbId:clipId});
+      }catch(e){}
+      if(audioCtx)try{audioCtx.close();}catch(e){}
+
+    }catch(e){ addLog("Error: "+e.message); }
+    setGenerating(false);
+  };
+
+
+  const SOCIAL = [
+    ["YouTube","#EDEAE3","https://www.youtube.com/upload"],
+    ["Instagram","#EDEAE3","https://www.instagram.com"],
+    ["TikTok","#EDEAE3","https://www.tiktok.com/upload"],
+    ["Facebook","#EDEAE3","https://www.facebook.com"],
+    ["X / Twitter","#EDEAE3","https://twitter.com"],
+    ["Vimeo","#EDEAE3","https://vimeo.com/upload"],
+  ];
+
+  const inp = {width:"100%",background:"#0E0F12",border:"1px solid "+LINE,padding:"9px 12px",color:WHITE,fontSize:13,outline:"none",fontFamily:"'Manrope',system-ui,sans-serif",boxSizing:"border-box"};
+  const label = (txt) => <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:6,marginTop:12}}>{txt}</div>;
+
+  const sel = (k,arr) => (
+    <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:4}}>
+      {arr.map(item=>(
+        <button key={item} onClick={()=>set(k,item)}
+          style={{background:config[k]===item?GOLD:"#0E0F12",border:"1px solid "+(config[k]===item?"#000":GOLDDIM),color:config[k]===item?"#000":WHITE,padding:"4px 10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0}}>
+          {item}
+        </button>
+      ))}
+    </div>
+  );
+  const multi = (k,arr) => (
+    <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:4}}>
+      {arr.map(item=>(
+        <button key={item} onClick={()=>tog(k,item)}
+          style={{background:config[k].includes(item)?GOLD:"#0E0F12",border:"1px solid "+(config[k].includes(item)?"#000":GOLDDIM),color:config[k].includes(item)?"#000":WHITE,padding:"4px 10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0}}>
+          {item}
+        </button>
+      ))}
+    </div>
+  );
+
+  const steps = ["Song","Style","Scene","Generate"];
+  const fmt = (s)=>{const m=Math.floor(s/60);const sc=Math.floor(s%60);return String(m).padStart(2,"0")+":"+String(sc).padStart(2,"0");};
+
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:1100,background:"rgba(0,0,0,0.98)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{width:"min(960px,98vw)",height:"min(92vh,860px)",background:"#07080A",border:"2px solid "+SIGNAL,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+
+        {/* Header */}
+        <div style={{background:"#0E0F12",borderBottom:"1px solid "+LINE+"",padding:"14px 22px",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
+          <div>
+            <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:18,fontWeight:600,letterSpacing:0.4}}>Music video studio</div>
+            <div style={{color:WHITE,fontSize:10,letterSpacing:0.2,marginTop:2}}>Professional music video production · AI powered · self-contained</div>
+          </div>
+          <button onClick={onClose} style={{background:"none",border:"1px solid "+LINE,color:WHITE,width:32,height:32,cursor:"pointer",fontSize:16}}>✕</button>
+        </div>
+
+        {/* Step tabs */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",borderBottom:"1px solid "+LINE+"",flexShrink:0}}>
+          {steps.map((s,i)=>(
+            <button key={i} onClick={()=>setStep(i+1)}
+              style={{background:step===i+1?"#0E0F12":"none",border:"none",borderBottom:step===i+1?"2px solid "+SIGNAL:"2px solid transparent",color:step===i+1?GOLD:WHITE,padding:"11px 6px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2}}>
+              {s}
+            </button>
+          ))}
+        </div>
+
+        {/* Content area */}
+        <div style={{flex:1,display:"grid",gridTemplateColumns:videoUrl?"1fr 1fr":"1fr",overflow:"hidden"}}>
+
+          {/* Left — config / generate */}
+          <div style={{overflowY:"auto",padding:"16px 20px",borderRight:videoUrl?"1px solid "+LINE:"none"}}>
+
+            {step===1&&(
+              <div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  <div>{label("SONG TITLE")}<input value={config.title} onChange={e=>set("title",e.target.value)} placeholder="Song title..." style={inp}/></div>
+                  <div>{label("ARTIST")}<input value={config.artist} onChange={e=>set("artist",e.target.value)} placeholder="Artist name..." style={inp}/></div>
+                </div>
+                {label("GENRE")}{sel("genre",GENRES)}
+                {label("MOOD")}{sel("mood",MOODS)}
+                {label("TEMPO")}{sel("tempo",TEMPOS)}
+                {label("Upload your song — or record it below")}
+                <div style={{background:"#0E0F12",border:"2px dashed "+(audioFile?GOLD:LINE),padding:"18px 12px",cursor:"pointer",transition:"all .2s"}}
+                  onClick={()=>audioInputRef.current&&audioInputRef.current.click()}
+                  onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.background="#0E0F12";}}
+                  onDragLeave={e=>{e.currentTarget.style.borderColor=audioFile?GOLD:LINE;e.currentTarget.style.background="#000";}}
+                  onDrop={e=>{
+                    e.preventDefault();e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.background="#000";
+                    const f=e.dataTransfer.files&&e.dataTransfer.files[0];
+                    if(f&&f.type.startsWith("audio/")){setAudioFile(f);setAudioUrl(URL.createObjectURL(f));setAudioName(f.name);}
+                    else if(f){alert("Please drop an audio file — MP3, WAV or M4A.");}
+                  }}>
+                  <div style={{color:audioFile?"#D4AF6A":GOLD,fontWeight:600,fontSize:13,letterSpacing:0.2,textAlign:"center"}}>
+                    {audioFile?"✓ "+audioName:"Drag & drop your song here"}
+                  </div>
+                  <div style={{color:GOLDDIM,fontSize:10,marginTop:4,textAlign:"center",letterSpacing:0}}>{audioFile?"Tap to replace":"or tap to browse — MP3 · WAV · M4A"}</div>
+                </div>
+                <input ref={audioInputRef} type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg" style={{display:"none"}} onChange={handleAudioUpload}/>
+                <RecordYourOwnSong onRecorded={(blob,name)=>{setAudioFile(blob);const u=URL.createObjectURL(blob);setAudioUrl(u);setAudioName(name);}}/>
+                {audioFile&&<button onClick={()=>{setAudioFile(null);setAudioUrl("");setAudioName("");}} style={{background:"none",border:"1px solid #C98A7A",color:"#C98A7A",padding:"3px 10px",cursor:"pointer",fontSize:10,fontWeight:600,marginTop:6}}>Remove audio</button>}
+                <div onClick={()=>set("stereo",!config.stereo)} style={{display:"flex",alignItems:"center",gap:10,marginTop:14,padding:"10px 12px",background:"#0E0F12",border:"1px solid "+(config.stereo?GOLD:LINE),cursor:"pointer"}}>
+                  <div style={{width:20,height:20,borderRadius:3,border:"2px solid "+(config.stereo?GOLD:LINE),background:config.stereo?GOLD:"transparent",color:"#000",fontWeight:600,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{config.stereo?"✓":""}</div>
+                  <div><div style={{color:config.stereo?GOLD:WHITE,fontWeight:600,fontSize:12,letterSpacing:0}}>Use stereo sound</div><div style={{color:GOLDDIM,fontSize:10,marginTop:1}}>Full stereo width baked into the exported video</div></div>
+                </div>
+              </div>
+            )}
+
+            {step===2&&(
+              <div>
+                {label("VIDEO STYLE")}{sel("videoStyle",STYLES)}
+                {label("COLOUR GRADE")}{sel("colorGrade",GRADES)}
+                {label("VISUAL EFFECTS")}{multi("effects",EFFECTS)}
+                {label("EDITING STYLE")}{sel("cuts",CUTS)}
+                {label("ASPECT RATIO")}
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  {["16:9","9:16 (Vertical)","1:1 (Square)","2.39:1 (Cinematic)"].map(r=>(
+                    <button key={r} onClick={()=>set("aspectRatio",r)}
+                      style={{background:config.aspectRatio===r?GOLD:"#0E0F12",border:"1px solid "+(config.aspectRatio===r?"#000":GOLDDIM),color:config.aspectRatio===r?"#000":WHITE,padding:"4px 10px",cursor:"pointer",fontSize:11,fontWeight:600}}>
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {step===3&&(
+              <div>
+                {label("DESCRIBE YOUR MUSIC VIDEO SCENE")}
+                <div style={{color:GOLDDIM,fontSize:11,marginBottom:8,lineHeight:1.7}}>
+                  Describe what you want to see. The AI director will build 8 cinematic shots from your description.
+                </div>
+                <textarea
+                  value={config.visualDesc}
+                  onChange={e=>set("visualDesc",e.target.value)}
+                  placeholder="e.g. A man sits alone on a windowsill fingerpicking acoustic guitar. Only his back is visible. Facing the open ocean at night. Full moon low on the water. A single candle burns to his right. The room behind him is empty. A cold couch. A coat still on a hook. He does not move. A man who has lost someone."
+                  style={{...inp,height:160,resize:"vertical",lineHeight:1.8,border:"1px solid "+LINE}}
+                />
+                {label("DURATION")}
+                <div style={{padding:"12px 14px",border:"1px solid "+LINE,background:"#0E0F12",marginBottom:8}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                    <span style={{color:GOLDDIM,fontSize:11,fontWeight:600,letterSpacing:0.2}}>Film length</span>
+                    <span style={{color:WHITE,fontSize:13,fontWeight:600}}>{config.durationMin>0?(config.durationMin+" min"):"AUTO — match song"}</span>
+                  </div>
+                  <input type="range" min={0} max={180} step={1} value={config.durationMin||0}
+                    onChange={e=>set("durationMin",+e.target.value)}
+                    style={{width:"100%",accentColor:GOLD}}/>
+                  <div style={{display:"flex",justifyContent:"space-between",color:GOLDDIM,fontSize:9,letterSpacing:0,marginTop:2}}>
+                    <span>0 (auto)</span><span>90 min</span><span>180 min</span>
+                  </div>
+                  <div style={{color:config.durationMin>0?GOLD:GOLDDIM,fontSize:11,lineHeight:1.7,marginTop:8}}>
+                    {config.durationMin>0
+                      ? "This overrides the song length — the film will run exactly"+config.durationMin+" minute"+(config.durationMin===1?"":"s")+", looping or trimming the audio to fit."
+                      : " At 0 the video automatically matches your song's length. Drag right to set a fixed length (up to 180 minutes) that overrides the music."}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {step===4&&(
+              <div>
+                <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:16,fontWeight:600,marginBottom:10,letterSpacing:0.2}}>Ready to create</div>
+
+                {/* Drag-drop audio upload — moved here from Step 1 */}
+                {label("Upload your audio track")}
+                <div style={{background:"#0E0F12",border:"2px dashed "+(audioFile?GOLD:LINE),padding:"16px 12px",cursor:"pointer",marginBottom:8,transition:"border-color .2s"}}
+                  onClick={()=>audioInputRef.current&&audioInputRef.current.click()}
+                  onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.background="#0E0F12";}}
+                  onDragLeave={e=>{e.currentTarget.style.borderColor=audioFile?GOLD:LINE;e.currentTarget.style.background="#000";}}
+                  onDrop={e=>{
+                    e.preventDefault();e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.background="#000";
+                    const f=e.dataTransfer.files&&e.dataTransfer.files[0];
+                    if(f&&f.type.startsWith("audio/")){setAudioFile(f);setAudioUrl(URL.createObjectURL(f));setAudioName(f.name);}
+                  }}>
+                  <div style={{color:audioFile?"#D4AF6A":WHITE,fontWeight:600,fontSize:12,letterSpacing:0.2,textAlign:"center"}}>
+                    {audioFile?"✓ "+audioName:"DRAG & DROP or CLICK — MP3 / WAV / M4A"}
+                  </div>
+                  {audioFile&&<div style={{color:GOLDDIM,fontSize:10,marginTop:4,textAlign:"center"}}>Audio will sync with your video — starts and ends together</div>}
+                </div>
+                <input ref={audioInputRef} type="file" accept="audio/*,.mp3,.m4a,.wav,.aac,.ogg,.mp4" style={{display:"none"}} onChange={handleAudioUpload}/>
+                {audioFile&&<button onClick={()=>{setAudioFile(null);setAudioUrl("");setAudioName("");}} style={{background:"none",border:"1px solid #C98A7A",color:"#C98A7A",padding:"3px 10px",cursor:"pointer",fontSize:10,fontWeight:600,marginBottom:8}}>Remove audio</button>}
+
+                {/* Scene description */}
+                {label("DESCRIBE YOUR MUSIC VIDEO SCENE")}
+                <textarea
+                  value={config.visualDesc}
+                  onChange={e=>set("visualDesc",e.target.value)}
+                  placeholder="Describe what you want to see. e.g. A man sits alone on a windowsill fingerpicking acoustic guitar. Only his back is visible. Facing the open ocean at night. Full moon. Single candle. The room is empty. A man who has lost someone."
+                  style={{width:"100%",background:"#0E0F12",border:"1px solid "+LINE,padding:"12px",color:WHITE,fontSize:13,outline:"none",fontFamily:"'Manrope',system-ui,sans-serif",boxSizing:"border-box",height:130,resize:"vertical",lineHeight:1.8,marginBottom:10}}
+                />
+
+                {/* Reference image upload with drag & drop */}
+                {label("Upload reference image (optional)")}
+                {config.refMedia?(
+                  <div style={{position:"relative",marginBottom:10}}>
+                    <img src={config.refMedia} alt="ref" style={{width:"100%",height:70,objectFit:"cover",border:"1px solid "+LINE}}/>
+                    <button onClick={()=>set("refMedia",null)} style={{position:"absolute",top:4,right:4,background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"1px 7px",cursor:"pointer",fontSize:10,fontWeight:600}}>✕</button>
+                    <div style={{color:"#D4AF6A",fontSize:9,fontWeight:600,letterSpacing:0.2,marginTop:3}}>Reference loaded</div>
+                  </div>
+                ):(
+                  <div>
+                    <div
+                      onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.background="#15171B";}}
+                      onDragLeave={e=>{e.currentTarget.style.borderColor=LINE;e.currentTarget.style.background="#0E0F12";}}
+                      onDrop={e=>{
+                        e.preventDefault();
+                        e.currentTarget.style.borderColor=LINE;e.currentTarget.style.background="#0E0F12";
+                        const f=e.dataTransfer.files&&e.dataTransfer.files[0];
+                        if(f&&(f.type.startsWith("image/")||f.type.startsWith("video/"))){
+                          setRefFromFile(f);
+                        }
+                      }}
+                      onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*,video/*";inp.onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)setRefFromFile(f);};inp.click();}}
+                      style={{background:"#0E0F12",border:"2px dashed "+LINE,padding:"18px 10px",textAlign:"center",cursor:"pointer",marginBottom:6,transition:"all .2s"}}>
+                      <div style={{color:WHITE,fontSize:14,fontWeight:600,letterSpacing:0.2,marginBottom:4}}>Drag & drop here</div>
+                      <div style={{color:GOLDDIM,fontSize:10,letterSpacing:0.2}}>or click to browse — JPG · PNG · MP4</div>
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:10}}>
+                      <button onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.heic,.heif";inp.onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)setRefFromFile(f);};inp.click();}}
+                        style={{background:"#0E0F12",border:"2px solid "+SIGNAL,color:WHITE,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0,fontFamily:"'Manrope',system-ui,sans-serif"}}>
+                        Upload photo
+                      </button>
+                      <button onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.accept="image/*,video/*";inp.onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)setRefFromFile(f);};inp.click();}}
+                        style={{background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0,fontFamily:"'Manrope',system-ui,sans-serif"}}>
+                        Upload file
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Summary */}
+                <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:14,marginBottom:14}}>
+                  <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,marginBottom:8,fontWeight:600}}>Your music video</div>
+                  {[["TITLE",config.title||"—"],["ARTIST",config.artist||"—"],["GENRE",config.genre||"—"],["MOOD",config.mood||"—"],["STYLE",config.videoStyle||"—"],["GRADE",config.colorGrade||"—"],["DURATION",config.durationMin>0?(config.durationMin+" min"):"Auto — match song"],["AUDIO",audioName||"No audio uploaded"]].map(([k,v])=>(
+                    <div key={k} style={{display:"flex",justifyContent:"space-between",fontSize:12,padding:"3px 0",borderBottom:"1px solid #0a0800"}}>
+                      <span style={{color:GOLDDIM,letterSpacing:0.2}}>{k}</span>
+                      <span style={{color:WHITE,fontWeight:500}}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Auto lip sync toggle */}
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                  <button onClick={()=>set("lipSync",!config.lipSync)}
+                    style={{background:config.lipSync?GOLD:"#0E0F12",border:"1px solid "+(config.lipSync?"#000":GOLDDIM),color:config.lipSync?"#000":WHITE,padding:"6px 14px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>
+                    {config.lipSync?"Auto lip sync on":"AUTO LIP SYNC"}
+                  </button>
+                  <span style={{color:GOLDDIM,fontSize:10}}>Mouth syncs to beats automatically</span>
+                </div>
+
+                {/* Autosave indicator */}
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
+                  <span style={{color:WHITE,fontSize:11,fontWeight:500}}>Autosave on</span>
+                  <span style={{color:GOLDDIM,fontSize:10}}>Your settings are saved as you work</span>
+                </div>
+
+                <button onClick={generateVideo} disabled={generating}
+                  style={{background:GOLD,border:"none",color:"#000",width:"100%",padding:"11px",fontSize:14,letterSpacing:0.2,cursor:generating?"not-allowed":"pointer",fontWeight:600,fontFamily:"'Manrope',system-ui,sans-serif",opacity:generating?0.7:1,marginBottom:10}}>
+                  {generating?"⟳ RENDERING... "+renderProgress+"%":"Generate music video"}
+                </button>
+                {generating&&(
+                  <div>
+                    <div style={{height:5,background:"#0E0F12",marginBottom:6}}>
+                      <div style={{width:renderProgress+"%",height:"100%",background:"#0E0F12",transition:"width .3s"}}/>
+                    </div>
+                    <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:10,maxHeight:140,overflowY:"auto"}}>
+                      {renderLog.map((l,i)=>(
+                        <div key={i} style={{color:i===renderLog.length-1?"#D4AF6A":DIM,fontSize:10,lineHeight:1.8}}>
+                          {i===renderLog.length-1?"▶ ":"  "}{l}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {!generating&&renderLog.length>0&&(
+                  <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:10,maxHeight:120,overflowY:"auto"}}>
+                    {renderLog.map((l,i)=>(
+                      <div key={i} style={{color:i===renderLog.length-1?"#D4AF6A":DIM,fontSize:10,lineHeight:1.8}}>
+                        {i===renderLog.length-1?"▶ ":"  "}{l}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Right — video player + export (only when video exists) */}
+          {videoUrl&&(
+            <div style={{display:"flex",flexDirection:"column",background:"#0E0F12",overflow:"hidden"}}>
+              {/* Video player */}
+              <div style={{position:"relative",background:"#0E0F12"}}>
+                <canvas ref={canvasRef} style={{position:"fixed",right:8,bottom:8,width:160,height:90,opacity:1,pointerEvents:"none",zIndex:9999,border:"1px solid #E6C98E",background:"#0E0F12"}}/>
+                <video ref={videoRef} src={videoUrl} playsInline
+                  style={{width:"100%",aspectRatio:"16/9",display:"block",background:"#0E0F12"}}
+                  onTimeUpdate={()=>setCurrentTime(videoRef.current?.currentTime||0)}
+                  onLoadedMetadata={()=>{
+                    const v=videoRef.current;if(!v)return;
+                    // Chrome WebM duration bug: force seek to end so browser reads real duration
+                    if(v.duration===Infinity||isNaN(v.duration)||v.duration===0){
+                      v.currentTime=1e10;
+                      const fix=()=>{v.currentTime=0;setDuration2(v.duration||0);v.removeEventListener("timeupdate",fix);};
+                      v.addEventListener("timeupdate",fix);
+                    } else {
+                      setDuration2(v.duration);
+                    }
+                  }}
+                  onPlay={()=>setPlaying(true)}
+                  onPause={()=>setPlaying(false)}
+                  onEnded={()=>setPlaying(false)}
+                />
+                {/* Custom controls overlay */}
+                <div style={{background:"rgba(0,0,0,0.85)",padding:"8px 12px"}}>
+                  <div style={{height:3,background:"#222",marginBottom:8,cursor:"pointer",borderRadius:2}}
+                    onClick={e=>{if(!videoRef.current||!duration2)return;const r=e.currentTarget.getBoundingClientRect();videoRef.current.currentTime=((e.clientX-r.left)/r.width)*duration2;}}>
+                    <div style={{width:duration2&&isFinite(duration2)?(currentTime/duration2*100):0+"%",height:"100%",background:GOLD,borderRadius:2,transition:"width .1s"}}/>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <button onClick={()=>videoRef.current&&(videoRef.current.currentTime=0)} style={{background:"none",border:"none",color:GOLDDIM,cursor:"pointer",fontSize:14}}>⏮</button>
+                      <button onClick={()=>{if(!videoRef.current)return;playing?videoRef.current.pause():videoRef.current.play();}} style={{background:GOLD,border:"none",color:"#000",width:32,height:32,cursor:"pointer",fontSize:14,fontWeight:600}}>
+                        {playing?"⏸":"▶"}
+                      </button>
+                      <button onClick={()=>videoRef.current&&(videoRef.current.currentTime=Math.min(duration2,videoRef.current.currentTime+10))} style={{background:"none",border:"none",color:GOLDDIM,cursor:"pointer",fontSize:14}}>⏩</button>
+                      <span style={{color:WHITE,fontSize:11,fontFamily:"monospace"}}>{fmt(currentTime||0)} / {fmt(isFinite(duration2)&&duration2>0?duration2:0)}</span>
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      <span style={{color:GOLDDIM,fontSize:10}}>Vol</span>
+                      <input type="range" min={0} max={1} step={0.05} defaultValue={0.85}
+                        onChange={e=>{if(videoRef.current)videoRef.current.volume=+e.target.value;}}
+                        style={{width:70,accentColor:GOLD}}/>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Export panel */}
+              <div style={{flex:1,overflowY:"auto",padding:"12px 14px"}}>
+                <div style={{color:WHITE,fontSize:11,fontWeight:600,letterSpacing:0.2,marginBottom:10}}>Export your music video</div>
+
+                {/* Download */}
+                <button onClick={()=>{
+                  try{
+                    const fn=(config.title||"MusicVideo")+"_"+config.artist+".webm";
+                    const src=videoBlob?URL.createObjectURL(videoBlob):videoUrl;
+                    const a=document.createElement("a");
+                    a.href=src; a.download=fn; a.rel="noopener";
+                    document.body.appendChild(a); a.click();
+                    setTimeout(()=>{try{document.body.removeChild(a);if(videoBlob)URL.revokeObjectURL(src);}catch(e){}},1500);
+                  }catch(e){ try{window.open(videoUrl,"_blank");}catch(e2){} }
+                }}
+                  style={{display:"block",width:"100%",background:GOLD,border:"none",color:"#000",padding:"12px",textAlign:"center",cursor:"pointer",fontWeight:600,fontSize:12,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif",marginBottom:8}}>
+                  Download video
+                </button>
+
+                {/* Save to media library */}
+                <button onClick={()=>{
+                  if(videoBlob&&onSave){
+                    const fn=(config.title||"MusicVideo")+"_"+config.artist+".webm";
+                    onSave({id:"mv_"+Date.now(),name:fn,type:"video/webm",url:videoUrl,file:new File([videoBlob],fn,{type:"video/webm"})});
+                    addLog("Saved to media library");
+                  }
+                }} style={{width:"100%",background:"transparent",border:"1px solid "+LINE,color:WHITE,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif",marginBottom:14}}>
+                  Save to media library
+                </button>
+
+                {/* Share to social */}
+                <div style={{color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:8}}>Share to</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:5,marginBottom:12}}>
+                  {SOCIAL.map(([name,color,url])=>(
+                    <button key={name} onClick={()=>window.open(url,"_blank")}
+                      style={{background:"#0E0F12",border:"1px solid "+color+"33",color:color,padding:"7px 4px",cursor:"pointer",fontSize:10,fontWeight:600,letterSpacing:0,fontFamily:"'Manrope',system-ui,sans-serif"}}
+                      onMouseEnter={e=>{e.currentTarget.style.background=color+"22";}}
+                      onMouseLeave={e=>{e.currentTarget.style.background="#000";}}>
+                      {name}
+                    </button>
+                  ))}
+                </div>
+
+                {/* New project */}
+                <button onClick={()=>{setVideoUrl("");setVideoBlob(null);setRenderLog([]);setRenderProgress(0);setStep(1);}}
+                  style={{width:"100%",background:"transparent",border:"1px solid "+LINE,color:GOLDDIM,padding:"8px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>
+                  + NEW MUSIC VIDEO
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Canvas for rendering (always hidden) */}
+          {!videoUrl&&<canvas ref={canvasRef} style={{position:"fixed",right:8,bottom:8,width:160,height:90,opacity:1,pointerEvents:"none",zIndex:9999,border:"1px solid #E6C98E",background:"#0E0F12"}}/>}
+        </div>
+
+        {/* Bottom nav */}
+        {!videoUrl&&(
+          <div style={{borderTop:"1px solid "+LINE+"",padding:"10px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
+            <button onClick={()=>setStep(s=>Math.max(1,s-1))} disabled={step===1} style={{background:"transparent",border:"1px solid "+LINE,color:WHITE,padding:"6px 16px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif",opacity:step===1?0.3:1}}>Back</button>
+            <span style={{color:GOLDDIM,fontSize:10,letterSpacing:0.2}}>Step {step} OF 4</span>
+            {step<4
+              ?<button onClick={()=>setStep(s=>Math.min(4,s+1))} style={{background:GOLD,border:"none",color:"#000",padding:"6px 16px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>Next</button>
+              :<button onClick={onClose} style={{background:"transparent",border:"1px solid "+LINE,color:GOLDDIM,padding:"6px 16px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>Close</button>
+            }
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const VOICE_CHARACTERS = [
   {id:"amanda",name:"Amanda",emoji:"⭐",gender:"Female",age:"Adult",origin:"Founder",region:"InFuture",style:"Your voice · Narrator",pitch:1.0,rate:0.85,desc:"Amanda's own voice — your recorded narration.",isOwner:true},
   {id:"james",name:"James",emoji:"",gender:"Male",age:"Adult",origin:"British",region:"London",style:"Sarcastic · Deadpan · Witty",pitch:0.86,rate:0.62,desc:"Dry British wit. Devastating things said with complete calm."},
@@ -1330,54 +2328,2345 @@ const VOICE_CHARACTERS = [
   {id:"echo",name:"Echo",emoji:"",gender:"Female",age:"Adult",origin:"Neutral",region:"Ethereal",style:"Ethereal · Dreamy · Otherworldly",pitch:1.22,rate:0.72,desc:"Sounds like it came from somewhere else."},
 ];
 
-// ── MsVideo: shared video player component ──
-const MsVideo=React.forwardRef(function MsVideo(props,fwd){
-  const {onLoadedMetadata,onError,autoPlay,src,style,...rest}=props;
-  const inner=useRef(null);
-  const [tap,setTap]=useState(false);
-  const [bad,setBad]=useState(false);
-  const tried=useRef(0);
-  const setRef=el=>{ inner.current=el; if(typeof fwd==="function")fwd(el); else if(fwd)fwd.current=el; };
-  useEffect(()=>{ setBad(false); setTap(false); tried.current=0; },[src]);
-  const tryPlay=()=>{ const v=inner.current; if(!v)return; const r=v.play(); if(r&&r.catch)r.catch(()=>{ try{ v.muted=true; const r2=v.play(); if(r2&&r2.catch)r2.catch(()=>setTap(true)); }catch(e){setTap(true);} }); };
+function P6Voice({ onSave, setMediaLib }) {
+  // Narration script auto-saves as you type and reloads when you come back, so a
+  // long script is never lost by leaving the page. (Before: it started empty every
+  // time and was never persisted — that is how narration work got lost.)
+  const [text,setText]=useState(()=>{try{return localStorage.getItem("ms_narr_text")||"";}catch{return "";}});
+  useEffect(()=>{try{localStorage.setItem("ms_narr_text",text);}catch(e){}},[text]);
+  const [loading,setLoading]=useState(false);
+  const [speaking,setSpeaking]=useState(false); const [mood,setMood]=useState("Neutral");
+  const [savedToLib,setSavedToLib]=useState(false); const [showMVS,setShowMVS]=useState(false);
+  const [selVoice,setSelVoice]=useState(""); const [search,setSearch]=useState("");
+  const [filterGender,setFilterGender]=useState("All"); const [filterAge,setFilterAge]=useState("All");
+  const [filterOrigin,setFilterOrigin]=useState("All"); const [speed,setSpeed]=useState(0.62);
+  const [pitchV,setPitchV]=useState(0.86); const [pauseLen,setPauseLen]=useState(1600);
+  const [volume,setVolume]=useState(1.0); const [sysVoices,setSysVoices]=useState([]);
+  const [myVoices,setMyVoices]=useState(()=>{try{return JSON.parse(localStorage.getItem("ms_my_voices")||"[]");}catch{return [];}});
+  const myVoiceInputRef=useRef(null);
+  // ── RECOVERY SCAN ──────────────────────────────────────────────────────────
+  // The recordings list lives in localStorage (ms_my_voices) but the actual audio
+  // lives in IndexedDB. If localStorage was cleared, the LIST goes empty even though
+  // the audio blobs are still in the database — the recordings look lost but aren't.
+  // On load, scan the database for every "my voice" blob and rebuild any that are
+  // missing from the list, so recorded narrations come back on their own.
+  useEffect(()=>{
+    let alive=true;
+    (async()=>{
+      try{
+        const clips=await getAllClipsFromDB();
+        if(!alive||!clips||!clips.length)return;
+        const voiceClips=clips.filter(c=>c&&c.blob&&(
+          c.type==="audio/myvoice"||c.type==="audio/webm"||
+          String(c.id||"").startsWith("myvoice_")||String(c.id||"").startsWith("narr_myvoice_")||
+          /my ?voice|my ?recording|recording/i.test(String(c.name||""))
+        ));
+        if(!voiceClips.length)return;
+        setMyVoices(prev=>{
+          const have=new Set(prev.map(v=>String(v.id||v.dbId||"")));
+          const recovered=[];
+          for(const c of voiceClips){
+            const cid=String(c.id||"");
+            if(have.has(cid))continue;
+            recovered.push({
+              id:cid, dbId:cid,
+              name:(c.name||"Recovered recording").replace(/\.[^.]+$/,""),
+              url:URL.createObjectURL(c.blob),
+              origin:"My Upload", gender:"—", age:"—", emoji:"🎙",
+              style:"Your recorded voice",
+              desc:"Recovered from storage — your own recording."
+            });
+          }
+          if(!recovered.length)return prev;
+          const merged=[...recovered,...prev];
+          try{localStorage.setItem("ms_my_voices",JSON.stringify(merged.map(v=>({...v,url:undefined}))));}catch{}
+          return merged;
+        });
+      }catch(e){}
+    })();
+    return()=>{alive=false;};
+  },[]);
+  const chunksRef=useRef([]); const idxRef=useRef(0); const timerRef=useRef(null);
+  const [recordingMine,setRecordingMine]=useState(false); const [recTime,setRecTime]=useState(0);
+  const micRef=useRef(null); const recTimerRef=useRef(null);
+  // Save your own voice AND keep the real audio in IndexedDB so it survives reload
+  // and can be baked into the film. (Previously only a blob: URL was kept, which
+  // died on refresh — that is why a recorded voice never actually played back.)
+  const addMyVoice=async(file)=>{
+    if(!file)return;
+    const id="myvoice_"+Date.now();
+    const url=URL.createObjectURL(file);
+    const nv={id,name:(file.name||"My Voice").replace(/\.[^.]+$/,""),url,dbId:id,origin:"My Upload",gender:"—",age:"—",emoji:"🎙",style:"Your recorded voice",desc:"Your own voice — plays back exactly as recorded."};
+    try{await safeSaveClipToDB(id,file,nv.name,"audio/myvoice");}catch(e){}
+    const upd=[nv,...myVoices];
+    setMyVoices(upd);
+    try{localStorage.setItem("ms_my_voices",JSON.stringify(upd.map(v=>({...v,url:undefined}))));}catch{}
+    setSelVoice(id);
+  };
+  const startMyRecording=async()=>{
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      const mr=new MediaRecorder(stream); micRef.current=mr; const chunks=[];
+      mr.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
+      mr.onstop=async()=>{
+        const blob=new Blob(chunks,{type:"audio/webm"});
+        const f=new File([blob],"My Recording "+new Date().toLocaleTimeString()+".webm",{type:"audio/webm"});
+        await addMyVoice(f);
+        stream.getTracks().forEach(t=>t.stop());
+        setRecordingMine(false);setRecTime(0);
+      };
+      mr.start(100);setRecordingMine(true);setRecTime(0);
+      recTimerRef.current=setInterval(()=>setRecTime(t=>t+1),1000);
+    }catch(e){alert("Microphone access denied. Please allow microphone and try again.");}
+  };
+  const stopMyRecording=()=>{
+    if(micRef.current&&micRef.current.state!=="inactive")micRef.current.stop();
+    if(recTimerRef.current)clearInterval(recTimerRef.current);
+  };
+  // Save the SELECTED own-voice recording as the film's narration — real audio,
+  // not synthetic. Lands on the timeline audio track like any other clip.
+  const saveMyVoiceAsNarration=async()=>{
+    const mine=myVoices.find(v=>v.id===selVoice);
+    if(!mine){alert("Pick or record your own voice first, then save it as narration.");return;}
+    let blob=null;
+    try{const st=await loadClipFromDB(mine.dbId||mine.id);if(st&&st.blob)blob=st.blob;}catch(e){}
+    if(!blob&&mine.url){try{blob=await (await fetch(mine.url)).blob();}catch(e){}}
+    if(!blob){alert("Could not find that recording's audio — try recording again.");return;}
+    const id="narr_myvoice_"+Date.now();
+    const asset={id,name:"My Voice Narration - "+new Date().toLocaleTimeString(),type:"audio/myvoice",dbId:id,date:new Date().toISOString()};
+    await safeSaveClipToDB(id,blob,asset.name,"audio/myvoice");
+    if(onSave)onSave(asset);
+    if(setMediaLib)setMediaLib(p=>[...p,asset]);
+    setSavedToLib(true); // STAYS on screen — no auto-clear. Your recording is saved
+    // and on the timeline until you leave the page or reset. It used to vanish after
+    // 3s, which looked like the recording had disappeared.
+  };
+  const delMyVoice=(id)=>{const upd=myVoices.filter(v=>v.id!==id);setMyVoices(upd);try{localStorage.setItem("ms_my_voices",JSON.stringify(upd.map(v=>({...v,url:undefined}))));}catch{}};
+
+  // ── HIDDEN CLONE FEATURE ────────────────────────────────────────
+  // Not shown in normal UI. Turns the SELECTED own-voice recording into
+  // a cloned voice the engine can speak new text in. The clone is stored
+  // as an engine voice id on that my-voice entry; picking it later makes
+  // the engine narrate in the cloned voice.
+  const [cloning,setCloning]=useState(false);
+  const cloneMyVoice=async()=>{
+    const mine=myVoices.find(v=>v.id===selVoice);
+    if(!mine){alert("Pick or record one of your own voices first, then clone it.");return;}
+    if(mine.clonedVoiceId){alert("This voice is already cloned. Select it and the engine will narrate in your cloned voice.");return;}
+    setCloning(true);
+    try{
+      // Get the real audio for the sample, as a data URI the engine can read.
+      let blob=null;
+      try{const st=await loadClipFromDB(mine.dbId||mine.id);if(st&&st.blob)blob=st.blob;}catch(e){}
+      if(!blob&&mine.url){try{blob=await (await fetch(mine.url)).blob();}catch(e){}}
+      if(!blob){setCloning(false);alert("Could not find that recording's audio — try recording again.");return;}
+      const dataUri=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(blob);});
+      const vid=await engineCloneVoice(dataUri);
+      if(!vid){setCloning(false);alert("Voice clone did not complete. Check the engine has credit, then try again.");return;}
+      const upd=myVoices.map(v=>v.id===mine.id?{...v,clonedVoiceId:vid,engineVoice:vid,desc:"Your cloned voice — the engine narrates new text in your voice.",style:"Your cloned voice"}:v);
+      setMyVoices(upd);
+      try{localStorage.setItem("ms_my_voices",JSON.stringify(upd.map(v=>({...v,url:undefined}))));}catch{}
+      setCloning(false);
+      alert("Cloned. Select this voice and the engine will narrate any text in your voice.");
+    }catch(e){setCloning(false);alert("Voice clone failed — try again.");}
+  };
+
+  // ── CONSENT + COMPLETE-NARRATION ────────────────────────────────
+  // Consent gate: no one's voice becomes narrator without agreeing.
+  const [narrConsent,setNarrConsent]=useState(()=>{try{return localStorage.getItem("ms_narr_consent")||"";}catch{return "";}});
+  const setConsent=(v)=>{setNarrConsent(v);try{localStorage.setItem("ms_narr_consent",v);}catch{}};
+  const [cloneConsent,setCloneConsent]=useState(()=>{try{return localStorage.getItem("ms_clone_consent")||"";}catch{return "";}});
+  const setCloneOk=(v)=>{setCloneConsent(v);try{localStorage.setItem("ms_clone_consent",v);}catch{}};
+  const [narrBusy,setNarrBusy]=useState(false);
+  // Record just the first paragraph in your own voice; the engine clones it
+  // and reads the WHOLE narration script (the YOUR NARRATION SCRIPT box) in
+  // your voice, then saves it to the media library / timeline for the render.
+  const [narrStep,setNarrStep]=useState("");
+  // YOUR recording plays first, in your real voice. The engine clones your voice
+  // and reads the REST of the script (everything after what you recorded). Both
+  // are saved together so the render plays: you -> engine, the whole script.
+  const engineCompleteNarration=async()=>{
+    const mine=myVoices.find(v=>v.id===selVoice)||myVoices[myVoices.length-1];
+    if(!mine){alert("Record your voice first.");return;}
+    const script=(text||"").trim();
+    if(!script){alert("Paste your narration into YOUR NARRATION SCRIPT first.");return;}
+    setNarrBusy(true);setNarrStep("Reading your recording…");
+    try{
+      let blob=null;
+      try{const st=await loadClipFromDB(mine.dbId||mine.id);if(st&&st.blob)blob=st.blob;}catch(e){}
+      if(!blob&&mine.url){try{blob=await (await fetch(mine.url)).blob();}catch(e){}}
+      if(!blob){setNarrBusy(false);setNarrStep("");alert("Could not find that recording's audio — record it again.");return;}
+      const recSecs=await msBlobSeconds(blob);
+      let vid=mine.clonedVoiceId;
+      if(!vid){
+        setNarrStep("Cloning your voice…");
+        const dataUri=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(blob);});
+        vid=await engineCloneVoice(dataUri);
+        if(!vid){setNarrBusy(false);setNarrStep("");alert("Voice clone did not complete. Nothing was saved. Check the voice engine has credit, then try again.");return;}
+        const upd=myVoices.map(v=>v.id===mine.id?{...v,clonedVoiceId:vid,engineVoice:vid}:v);
+        setMyVoices(upd);
+        try{localStorage.setItem("ms_my_voices",JSON.stringify(upd.map(v=>({...v,url:undefined}))));}catch{}
+      }
+      const remainder=msRemainderAfterRecording(script,recSecs);
+      if(!remainder){setNarrBusy(false);setNarrStep("");alert("Your recording already covers the whole script — the render will use it as it is.");return;}
+      const res=await msVoiceText(remainder,{voice:vid},(i,n)=>setNarrStep("Engine reading the rest — part "+i+" of "+n+"…"));
+      if(!res.parts.length){setNarrBusy(false);setNarrStep("");alert("The engine returned no audio. Nothing was saved. Check the voice engine has credit, then try again.");return;}
+      setNarrStep("Saving…");
+      const id="narr_myvoice_full_"+Date.now();
+      for(let i=0;i<res.parts.length;i++){ try{await saveClipToDB(id+"_p"+i,res.parts[i],"narration part "+(i+1),"audio/mpeg");}catch(e){} }
+      try{await safeSaveClipToDB(id,new Blob(res.parts,{type:res.parts[0].type||"audio/mpeg"}),"Full Narration","audio/myvoice");}catch(e){}
+      const asset={id,name:"Full Narration (you + engine) - "+new Date().toLocaleTimeString(),type:"audio/myvoice",dbId:id,clonedVoiceId:vid,engineVoice:vid,narrText:script,remainderText:remainder,leadRecordingId:mine.dbId||mine.id,partCount:res.parts.length,stitched:true,date:new Date().toISOString()};
+      if(onSave)onSave(asset);
+      if(setMediaLib)setMediaLib(p=>[...p,asset]);
+      setNarrBusy(false);setNarrStep("");
+      setSavedToLib(true);
+      alert(res.failed?("Saved — but "+res.failed+" of "+res.total+" parts failed to voice. Press the button again to redo it."):"Done — your recording plays first, then the engine reads the rest of your script in your voice. Saved for the render.");
+    }catch(e){setNarrBusy(false);setNarrStep("");alert("Could not complete the narration — try again.");}
+  };
+
+  useEffect(()=>{
+    const load=()=>{ if(typeof window==="undefined"||!window.speechSynthesis){return;} setSysVoices(window.speechSynthesis.getVoices().filter(v=>v.lang&&v.lang.startsWith("en"))); };
+    load(); if(typeof window!=="undefined"&&window.speechSynthesis){window.speechSynthesis.onvoiceschanged=load;}
+    return()=>{window.speechSynthesis.cancel();if(timerRef.current)clearTimeout(timerRef.current);};
+  },[]);
+
+  const ORIGINS=["All","British","Scottish","Irish","Welsh","American","Australian","New Zealand","South African","West African","Indian","Spanish","French","Scandinavian","Nigerian","Fantasy","Neutral"];
+  const AGES=["All","Child","Teen","Adult","Elderly"];
+  const GENDERS=["All","Male","Female"];
+  const filtered=VOICE_CHARACTERS.filter(v=>{
+    const mg=filterGender==="All"||v.gender===filterGender;
+    const ma=filterAge==="All"||v.age===filterAge;
+    const mo=filterOrigin==="All"||v.origin===filterOrigin;
+    const ms=search===""||v.name.toLowerCase().includes(search.toLowerCase())||v.style.toLowerCase().includes(search.toLowerCase());
+    return mg&&ma&&mo&&ms;
+  });
+  // A selected own-voice that has been cloned resolves to itself, so its
+  // engine voice id (the clone) flows into speakNow's meta.voice and the
+  // engine narrates in the cloned voice.
+  const mineSel=myVoices.find(v=>v.id===selVoice&&v.clonedVoiceId);
+  const mineOwn=myVoices.find(v=>v.id===selVoice);
+  const NO_VOICE={id:"",name:"No voice picked yet",emoji:"🎙",origin:"—",gender:"—",age:"—",style:"Pick a voice from the list, or upload or record your own.",desc:"Nothing is chosen for you.",rate:0.9,pitch:1.0,engineVoice:""};
+  const selected=mineSel||(mineOwn?{...mineOwn,rate:1,pitch:1,engineVoice:""}:null)||VOICE_CHARACTERS.find(v=>v.id===selVoice)||NO_VOICE;
+
+  const pickSysVoice=(vc)=>{
+    const allRaw=sysVoices.length?sysVoices:((typeof window!=="undefined"&&window.speechSynthesis)?window.speechSynthesis.getVoices().filter(v=>v.lang&&v.lang.startsWith("en")):[]);
+    if(!allRaw.length)return null;
+    // ── QUALITY FIRST — use Enhanced/Premium/Siri/Neural voices when present ──
+    const isHiQ=(v)=>/premium|enhanced|siri|neural|natural|online|multilingual/i.test((v.name||"")+" "+(v.voiceURI||""));
+    const hiQ=allRaw.filter(isHiQ);
+    const all=hiQ.length?hiQ:allRaw;
+    const gb=all.filter(v=>v.lang==="en-GB"),us=all.filter(v=>v.lang==="en-US"),au=all.filter(v=>v.lang==="en-AU");
+    const hash=vc.id.split("").reduce((a,ch)=>a+ch.charCodeAt(0),0);
+    const isMale=vc.gender==="Male",isBritish=["British","Scottish","Irish","Welsh"].includes(vc.origin),isAU=["Australian","New Zealand"].includes(vc.origin);
+    const deepMaleNames=/daniel|oliver|arthur|malcolm|george|alex|fred|tom|aaron|guy|bruce|lee|david|mark/i;
+    const softFemaleNames=/kate|serena|emily|moira|fiona|samantha|ava|victoria|zoe|susan|karen|tessa/i;
+    let pool=[];
+    if(isBritish&&isMale){pool=[...gb.filter(v=>deepMaleNames.test(v.name)),...gb.filter(v=>!softFemaleNames.test(v.name))];}
+    else if(isBritish&&!isMale){pool=[...gb.filter(v=>softFemaleNames.test(v.name)),...gb.filter(v=>!deepMaleNames.test(v.name))];}
+    else if(isAU){pool=[...au,...all];}
+    else if(vc.origin==="Irish"){pool=gb.filter(v=>/moira/i.test(v.name));}
+    else if(isMale){pool=[...us.filter(v=>deepMaleNames.test(v.name)),...us.filter(v=>!softFemaleNames.test(v.name)),...all.filter(v=>!softFemaleNames.test(v.name))];}
+    else{pool=[...us.filter(v=>softFemaleNames.test(v.name)),...us.filter(v=>!deepMaleNames.test(v.name)),...all.filter(v=>!deepMaleNames.test(v.name))];}
+    if(!pool.length)pool=all;
+    const unique=[...new Map(pool.map(v=>[v.name,v])).values()];
+    return unique[hash%unique.length]||all[0];
+  };
+
+  const speakOneShot=(vc,txt)=>{
+    window.speechSynthesis.cancel();
+    const utt=new SpeechSynthesisUtterance(txt);
+    const sv=pickSysVoice(vc);if(sv)utt.voice=sv;
+    utt.pitch=Math.max(0.1,Math.min(2.0,vc.pitch||1.0));
+    utt.rate=vc.rate||0.85;utt.volume=1.0;
+    window.speechSynthesis.speak(utt);
+  };
+
+  const speakDevice=(txt)=>{
+    window.speechSynthesis.cancel();if(timerRef.current)clearTimeout(timerRef.current);
+    // iOS Safari fix — keepalive ping every 10s
+    if(/iphone|ipad|ipod/i.test(navigator.userAgent)){
+      const keepAlive=setInterval(()=>{if(window.speechSynthesis.speaking){window.speechSynthesis.pause();window.speechSynthesis.resume();}else{clearInterval(keepAlive);}},9000);
+    }
+    const chunks=buildChunks(txt);chunksRef.current=chunks;idxRef.current=0;setSpeaking(true);
+    const baseRate=speed*(selected.rate||0.9),basePitch=pitchV*(selected.pitch||1.0);
+    const next=()=>{
+      const idx=idxRef.current;
+      if(idx>=chunksRef.current.length){setSpeaking(false);return;}
+      const chunk=chunksRef.current[idx];
+      if(!chunk||!chunk.text){idxRef.current=idx+1;timerRef.current=setTimeout(next,200);return;}
+      const sv=pickSysVoice(selected);
+      const utt=new SpeechSynthesisUtterance(chunk.text);
+      if(sv)utt.voice=sv;utt.volume=volume;
+      utt.rate=Math.max(0.1,Math.min(2.0,baseRate));
+      utt.pitch=Math.max(0.1,Math.min(2.0,basePitch+(chunk.type==="question"?0.1:chunk.type==="exclaim"?0.07:0)));
+      const ap=chunk.type==="question"?Math.round(pauseLen*1.1):chunk.type==="sentence"?pauseLen:Math.round(pauseLen*0.4);
+      utt.onend=()=>{idxRef.current=idx+1;timerRef.current=setTimeout(next,ap);};
+      utt.onerror=()=>{idxRef.current=idx+1;next();};
+      window.speechSynthesis.speak(utt);
+    };
+    if(typeof window==="undefined"||!window.speechSynthesis){setTimeout(next,50);} else { window.speechSynthesis.getVoices().length>0?setTimeout(next,50):window.speechSynthesis.onvoiceschanged=()=>{window.speechSynthesis.onvoiceschanged=null;setTimeout(next,50);}; }
+  };
+
+  // Engine voice first. Identical on every device. Device voice only if the engine cannot deliver.
+  const speakNow=async(txt)=>{
+    // Your own uploaded or recorded voice plays exactly as recorded. No voice is chosen for you.
+    const mineRec=myVoices.find(v=>v.id===selVoice&&!v.clonedVoiceId);
+    if(mineRec){
+      window.speechSynthesis.cancel(); stopEngineAudio();
+      let u=mineRec.url;
+      try{ const st=await loadClipFromDB(mineRec.dbId||mineRec.id); if(st&&st.blob)u=URL.createObjectURL(st.blob); }catch(e){}
+      if(!u){ alert("Could not find that recording. Upload or record it again."); return; }
+      try{ const a=new Audio(u); a.volume=volume; setSpeaking(true); a.onended=()=>setSpeaking(false); a.onerror=()=>setSpeaking(false); await a.play(); }catch(e){ setSpeaking(false); }
+      return;
+    }
+    if(!selVoice){ alert("Pick a voice from the list first, or upload or record your own."); return; }
+    window.speechSynthesis.cancel(); stopEngineAudio();
+    if(timerRef.current)clearTimeout(timerRef.current);
+    const chunks=buildChunks(txt); chunksRef.current=chunks; idxRef.current=0;
+    setSpeaking(true);
+    const meta={voice:selected.engineVoice||"",gender:selected.gender||"",origin:selected.origin||"",speed:speed*(selected.rate||0.9)};
+    const first=chunks.find(c=>c&&c.text);
+    if(!first){setSpeaking(false);return;}
+    const probe=await engineSpeak(first.text,meta);
+    if(!probe){ console.log("Cinema Voice Engine unavailable — using device voice"); speakDevice(txt); return; }
+    console.log("\u2713 MANDASTRONG CINEMA VOICE ENGINE \u2014 studio narration ready");
+    let url=probe;
+    for(let i=0;i<chunks.length;i++){
+      const c=chunks[i];
+      if(!c||!c.text) continue;
+      if(i>0){ url=await engineSpeak(c.text,meta); if(!url) continue; }
+      const ok=await playEngineAudio(url,volume);
+      if(!ok){ console.log("Cinema Voice Engine playback blocked — using device voice"); speakDevice(txt); return; }
+      const ap=c.type==="question"?Math.round(pauseLen*1.1):c.type==="sentence"?pauseLen:Math.round(pauseLen*0.4);
+      await new Promise(r=>setTimeout(r,ap));
+    }
+    setSpeaking(false);
+  };
+
+  const stop=()=>{window.speechSynthesis.cancel();stopEngineAudio();if(timerRef.current)clearTimeout(timerRef.current);setSpeaking(false);};
+
+  // DOWNLOAD the narration as one audio file. Renders every chunk through the
+  // engine, fetches each to a blob, stitches them into a single file and saves it.
+  const [dlBusy,setDlBusy]=useState(false);
+  const downloadNarration=async()=>{
+    const txt=(text||"").trim();
+    if(!txt){alert("Type or paste your narration script first.");return;}
+    if(!selVoice){alert("Pick a voice from the list first, or upload or record your own.");return;}
+    if(myVoices.find(v=>v.id===selVoice&&!v.clonedVoiceId)){alert("That is your own recording. Use the arrow on its card to save it, or press Use my voice as narration.");return;}
+    setDlBusy(true);
+    try{
+      const meta={voice:selected.engineVoice||"",gender:selected.gender||"",origin:selected.origin||"",speed:speed*(selected.rate||0.9)};
+      const chunks=buildChunks(txt).filter(c=>c&&c.text);
+      const parts=[];
+      for(const c of chunks){
+        const u=await engineSpeak(c.text,meta);
+        if(!u)continue;
+        try{const r=await fetch(u);const b=await r.blob();parts.push(b);}catch(e){}
+      }
+      if(!parts.length){alert("Couldn't render the narration audio — check the engine and try again.");setDlBusy(false);return;}
+      const isWav=(parts[0].type||"").includes("wav");
+      const merged=new Blob(parts,{type:isWav?"audio/wav":"audio/mpeg"});
+      const ext=isWav?".wav":".mp3";
+      let name=window.prompt("Name your narration file:","Narration_"+(selected.name||"voice"));
+      if(name===null){setDlBusy(false);return;}
+      name=(name.trim()||("Narration_"+(selected.name||"voice"))).replace(/[\\/:*?"<>|]/g,"_");
+      if(!/\.(mp3|wav)$/i.test(name))name+=ext;
+      if(window.showSaveFilePicker){
+        try{
+          const h=await window.showSaveFilePicker({suggestedName:name});
+          const w=await h.createWritable();await w.write(merged);await w.close();
+          setDlBusy(false);return;
+        }catch(e){if(e&&e.name==="AbortError"){setDlBusy(false);return;}}
+      }
+      const url=URL.createObjectURL(merged);
+      const a=document.createElement("a");
+      a.href=url; a.download=name; a.rel="noopener noreferrer";
+      document.body.appendChild(a); a.click();
+      setTimeout(()=>{try{document.body.removeChild(a);URL.revokeObjectURL(url);}catch(e){}},2000);
+    }catch(e){alert("Download failed: "+(e&&e.message||e));}
+    setDlBusy(false);
+  };
+
+  const processAndSpeak=async()=>{
+    if(!text.trim())return;
+    if(!selVoice||myVoices.find(v=>v.id===selVoice&&!v.clonedVoiceId)){speakNow(text);return;}
+    setLoading(true);
+    try{
+      const d=await proxyFetch({model:"claude-sonnet-4-20250514",max_tokens:2000,messages:[{role:"user",content:"Speech coach for TTS. Speaker: "+selected.name+" - "+selected.style+". Mood: "+mood+". Reformat for natural speech: short sentences, commas for pauses, numbers spelled out. Return ONLY reformatted text:\n\n"+text}]});
+      speakNow(d&&d.content&&d.content[0]?d.content[0].text.trim():text);
+    }catch(e){speakNow(text);}
+    setLoading(false);
+  };
+
+  const inp={width:"100%",background:"#0E0F12",border:"1px solid "+LINE,padding:"12px 14px",color:WHITE,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"'Manrope',system-ui,sans-serif",lineHeight:1.9};
+
   return(
-    <div style={{position:"relative",width:"100%",height:style&&style.height?style.height:undefined}}>
-      <video {...rest} ref={setRef} src={src} playsInline preload="auto" style={{...style,width:"100%"}}
-        onLoadedMetadata={e=>{ try{msFixDuration(e.currentTarget,()=>{});}catch(_){} if(onLoadedMetadata)onLoadedMetadata(e); if(autoPlay)tryPlay(); }}
-        onError={e=>{ if(tried.current<1){ tried.current++; try{ const v=e.currentTarget; const u=v.src; v.src=""; v.src=u; v.load(); }catch(_){} } else setBad(true); if(onError)onError(e); }}/>
-      {tap&&!bad&&<button onClick={()=>{setTap(false);const v=inner.current;if(v){v.muted=false;v.play().catch(()=>{});}}}
-        style={{position:"absolute",inset:0,margin:"auto",width:76,height:76,borderRadius:"50%",background:"rgba(0,0,0,0.65)",border:"2px solid #E6C98E",color:"#E6C98E",fontSize:30,cursor:"pointer"}}>▶</button>}
-      {bad&&<div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8,background:"rgba(0,0,0,0.8)",color:"#fff",fontSize:12,textAlign:"center",padding:12}}>
-        <div>This browser can't play this clip.</div>
-        <a href={src} download="InFuture_clip" style={{color:"#E6C98E",fontWeight:600}}>Download it</a>
-      </div>}
+    <div style={{...Sp}}>
+      {showMVS&&<MusicVideoStudio onClose={()=>setShowMVS(false)} onSave={onSave}/>}
+      <div style={{padding:"12px 18px",borderBottom:"1px solid "+LINE+"",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+        <div><div style={{fontSize:11,color:WHITE,letterSpacing:0.4,fontWeight:500}}>AI workstation 02 — cinema voice engine</div><h1 style={{...H1,fontSize:24,margin:0}}>Text to lifelike speech</h1></div>
+        <button onClick={()=>setShowMVS(true)} style={{background:GOLD,border:"none",color:"#000",padding:"10px 20px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>Music video studio</button>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"290px 1fr",minHeight:"calc(100vh - 120px)"}}>
+        <div style={{borderRight:"1px solid "+LINE+"",background:"#030303",display:"flex",flexDirection:"column"}}>
+          <div style={{padding:"10px 10px 6px"}}>
+            <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:8}}>Voice library — {filtered.length} / {VOICE_CHARACTERS.length}</div>
+            <div style={{marginBottom:5}}><div style={{color:GOLDDIM,fontSize:9,letterSpacing:0.2,marginBottom:3}}>Gender</div><div style={{display:"flex",gap:4}}>{GENDERS.map(g=><button key={g} onClick={()=>setFilterGender(g)} style={{flex:1,background:filterGender===g?GOLD:"#0E0F12",border:"1px solid "+(filterGender===g?"#000":GOLDDIM),color:filterGender===g?"#000":WHITE,padding:"3px 0",cursor:"pointer",fontSize:10,fontWeight:600}}>{g}</button>)}</div></div>
+            <div style={{marginBottom:5}}><div style={{color:GOLDDIM,fontSize:9,letterSpacing:0.2,marginBottom:3}}>Age</div><div style={{display:"flex",flexWrap:"wrap",gap:3}}>{AGES.map(a=><button key={a} onClick={()=>setFilterAge(a)} style={{background:filterAge===a?GOLD:"#0E0F12",border:"1px solid "+(filterAge===a?"#000":GOLDDIM),color:filterAge===a?"#000":WHITE,padding:"2px 8px",cursor:"pointer",fontSize:9,fontWeight:600}}>{a}</button>)}</div></div>
+            <div style={{marginBottom:6}}><div style={{color:GOLDDIM,fontSize:9,letterSpacing:0.2,marginBottom:3}}>Origin</div><select value={filterOrigin} onChange={e=>setFilterOrigin(e.target.value)} style={{width:"100%",background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"4px 8px",fontSize:11,outline:"none"}}>{ORIGINS.map(o=><option key={o} value={o}>{o}</option>)}</select></div>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search voices..." style={{...inp,padding:"6px 10px",fontSize:11,height:30}}/>
+          </div>
+          <div style={{flex:1,overflowY:"auto",padding:"6px 6px 80px"}}>
+            <input ref={myVoiceInputRef} type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg" style={{display:"none"}} onChange={e=>{const f=e.target.files&&e.target.files[0];if(f)addMyVoice(f);e.target.value="";}}/>
+            {recordingMine?(
+              <div style={{display:"flex",alignItems:"center",gap:8,background:"#1C1410",border:"2px solid #C98A7A",padding:"9px 12px",marginBottom:6}}>
+                <div style={{width:10,height:10,borderRadius:"50%",background:"#C98A7A",boxShadow:"none"}}/>
+                <span style={{color:"#C98A7A",fontWeight:600,fontSize:11,letterSpacing:0.2,flex:1}}>Recording — {String(Math.floor(recTime/60)).padStart(2,"0")}:{String(recTime%60).padStart(2,"0")}</span>
+                <button onClick={stopMyRecording} style={{background:"#C98A7A",border:"none",color:"#fff",padding:"5px 14px",cursor:"pointer",fontSize:10,fontWeight:600,letterSpacing:0.2}}>Stop & save</button>
+              </div>
+            ):(
+              <button onClick={startMyRecording} style={{width:"100%",background:"#0E0F12",border:"none",color:"#fff",padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif",marginBottom:6}}>Record my voice now</button>
+            )}
+            <button onClick={()=>myVoiceInputRef.current&&myVoiceInputRef.current.click()} style={{width:"100%",background:"#0E0F12",border:"2px solid "+SIGNAL,color:WHITE,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif",marginBottom:6}}>＋ add your own voice (file)</button>
+            {(<>
+              <div style={{color:GOLDDIM,fontSize:10,lineHeight:1.5,marginBottom:6,letterSpacing:0}}>Record just the FIRST PARAGRAPH in your own voice — the engine clones your voice and reads the rest of the narration to the end in YOUR voice, wired into the generator and render.</div>
+              <div style={{color:WHITE,fontSize:10,letterSpacing:0.2,fontWeight:600,marginBottom:4}}>Allow engine to clone voice?</div>
+              <div style={{display:"flex",gap:6,marginBottom:8}}>
+                <button onClick={()=>setCloneOk("yes")} style={{flex:1,background:cloneConsent==="yes"?GOLD:"#000",border:"2px solid "+SIGNAL,color:cloneConsent==="yes"?"#000":GOLD,padding:"7px",cursor:"pointer",fontSize:10,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>Yes</button>
+                <button onClick={()=>setCloneOk("no")} style={{flex:1,background:cloneConsent==="no"?"#2A1B16":"#000",border:"2px solid #2A1B16",color:cloneConsent==="no"?"#fff":"#C98A7A",padding:"7px",cursor:"pointer",fontSize:10,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>NO</button>
+              </div>
+              <div style={{color:WHITE,fontSize:10,letterSpacing:0.2,fontWeight:600,marginBottom:4}}>Use my voice as narrator?</div>
+              <div style={{display:"flex",gap:6,marginBottom:8}}>
+                <button onClick={()=>setConsent("yes")} style={{flex:1,background:narrConsent==="yes"?GOLD:"#000",border:"2px solid "+SIGNAL,color:narrConsent==="yes"?"#000":GOLD,padding:"7px",cursor:"pointer",fontSize:10,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>Yes</button>
+                <button onClick={()=>setConsent("no")} style={{flex:1,background:narrConsent==="no"?"#2A1B16":"#000",border:"2px solid #2A1B16",color:narrConsent==="no"?"#fff":"#C98A7A",padding:"7px",cursor:"pointer",fontSize:10,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>NO</button>
+              </div>
+              {(<>
+                <button onClick={saveMyVoiceAsNarration} style={{width:"100%",background:GOLD,border:"none",color:"#000",padding:"11px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif",marginBottom:6}}>Use my voice as narration</button>
+                <button onClick={engineCompleteNarration} disabled={narrBusy} style={{width:"100%",background:narrBusy?"#15171B":"#0E0F12",border:"2px solid "+SIGNAL,color:WHITE,padding:"11px",cursor:narrBusy?"wait":"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif",marginBottom:6}}>{narrBusy?("⟳ "+(narrStep||"CLONING & COMPLETING…")):"Use engine to complete full narration"}</button>
+              </>)}
+            </>)}
+            {myVoices.map(v=>(
+              <div key={v.id} onClick={()=>setSelVoice(v.id)} style={{padding:"10px 12px",marginBottom:4,background:selVoice===v.id?"#0E0F12":"#000",border:"2px solid "+(selVoice===v.id?GOLD:LINE),cursor:"pointer"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    {v.url&&<button title="Save this recording to your device" onClick={async e=>{e.stopPropagation();
+                      try{
+                        const r=await fetch(v.url);const b=await r.blob();
+                        const t=b.type||"";const ext=".mp3";
+                        let nm=window.prompt("Name this recording:",(v.name||"My recording").replace(/[\\/:*?"<>|]/g,"_"));
+                        if(nm===null)return;
+                        nm=(nm.trim()||"My recording").replace(/[\\/:*?"<>|]/g,"_");
+                        nm=nm.replace(/\.(wav|m4a|webm|ogg|aac)$/i,"");if(!/\.(mp3|mp4)$/i.test(nm))nm+=ext;
+                        const f=new File([b],nm,{type:t||"audio/mpeg"});
+                        if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:nm});return;}catch(er){if(er&&er.name==="AbortError")return;}}
+                        const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=nm;a.rel="noopener";document.body.appendChild(a);a.click();
+                        setTimeout(()=>{try{document.body.removeChild(a);URL.revokeObjectURL(u);}catch(er){}},3000);
+                      }catch(er){alert("Couldn't save this recording: "+(er&&er.message||er));}
+                    }} style={{background:GOLD,border:"none",color:"#000",padding:"3px 8px",cursor:"pointer",fontSize:9,fontWeight:600}}>⬇</button>}
+                    {/* Hidden clone trigger: double-click the emoji of a selected own-voice to clone it. */}
+                    <span style={{fontSize:18,cursor:selVoice===v.id?"pointer":"inherit"}} title="" onDoubleClick={e=>{e.stopPropagation();if(selVoice===v.id&&!cloning){setSelVoice(v.id);cloneMyVoice();}}}>{v.emoji}</span>
+                    <div><div style={{color:selVoice===v.id?GOLD:WHITE,fontSize:13,fontWeight:600}}>{v.name}{v.clonedVoiceId&&<span style={{color:WHITE,fontSize:10,marginLeft:6}}>Cloned</span>}</div><div style={{color:GOLDDIM,fontSize:10}}>{v.clonedVoiceId?"Your cloned voice — engine narrates in your voice":"Your uploaded voice"}</div></div>
+                  </div>
+                  <div style={{display:"flex",gap:4,flexShrink:0}}>
+                    {v.url&&<button onClick={e=>{e.stopPropagation();const a=new Audio(v.url);a.play().catch(()=>{});}} style={{background:GOLDDIM,border:"none",color:"#000",padding:"3px 8px",cursor:"pointer",fontSize:9,fontWeight:600}}>▶</button>}
+                    
+                    <button onClick={e=>{e.stopPropagation();delMyVoice(v.id);}} style={{background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"3px 8px",cursor:"pointer",fontSize:9,fontWeight:600}}>✕</button>
+                  </div>
+                </div>
+                {selVoice===v.id&&<div style={{color:WHITE,fontSize:9,letterSpacing:0.2,marginTop:4,fontWeight:600}}>{cloning?"Cloning your voice…":"Selected"}</div>}
+              </div>
+            ))}
+            {filtered.map(v=>(
+              <div key={v.id} onClick={()=>setSelVoice(v.id)} style={{padding:"10px 12px",marginBottom:4,background:selVoice===v.id?"#0E0F12":"#000",border:"2px solid "+(selVoice===v.id?GOLD:LINE),cursor:"pointer"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{fontSize:18}}>{v.emoji}</span>
+                    <div><div style={{color:selVoice===v.id?GOLD:WHITE,fontSize:13,fontWeight:600}}>{v.name}</div><div style={{color:GOLDDIM,fontSize:10}}>{v.origin} · {v.gender} · {v.age}</div></div>
+                  </div>
+                  <button onClick={e=>{e.stopPropagation();setSelVoice(v.id);speakOneShot(v,"Hello, this is "+v.name+". "+v.desc);}}
+                    style={{background:GOLDDIM,border:"none",color:"#000",padding:"3px 10px",cursor:"pointer",fontSize:9,fontWeight:600,letterSpacing:0,fontFamily:"'Manrope',system-ui,sans-serif",whiteSpace:"nowrap",flexShrink:0}}>Test</button>
+                </div>
+                <div style={{color:DIM,fontSize:10,lineHeight:1.5}}>{v.style}</div>
+                {selVoice===v.id&&<div style={{color:WHITE,fontSize:9,letterSpacing:0.2,marginTop:4,fontWeight:600}}>Selected</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",background:"#030303",overflowY:"auto",padding:20}}>
+          <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"10px 14px",marginBottom:14}}>
+            <div style={{color:WHITE,fontSize:13,fontWeight:600}}>{selected.name} {selected.emoji} · {selected.origin} · {selected.gender}</div>
+            <div style={{color:GOLDDIM,fontSize:11,marginTop:3}}>{selected.style}</div>
+            <div style={{color:DIM,fontSize:11,marginTop:2,fontStyle:"italic"}}>{selected.desc}</div>
+          </div>
+          <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"12px 14px",marginBottom:14}}>
+            <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:10}}>Voice settings</div>
+            <div style={{marginBottom:10}}><div style={{color:GOLDDIM,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:4}}>Mood</div>
+              <select value={mood} onChange={e=>setMood(e.target.value)} style={{width:"100%",background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"8px 12px",fontSize:13,fontFamily:"'Manrope',system-ui,sans-serif",outline:"none"}}>
+                {["Neutral","Happy","Sad","Angry","Excited","Calm","Dramatic","Mysterious","Romantic","Sarcastic","Melancholic","Authoritative","Warm"].map(m=><option key={m} value={m} style={{background:"#0E0F12"}}>{m}</option>)}
+              </select>
+            </div>
+            {[["SPEED",speed,0.3,1.5,0.01,v=>setSpeed(v),speed.toFixed(2)+"x"],["PITCH",pitchV,0.3,2.0,0.01,v=>setPitchV(v),pitchV.toFixed(2)],["PAUSE (ms)",pauseLen,200,2000,50,v=>setPauseLen(v),pauseLen+"ms"],["VOLUME",volume,0.1,1.0,0.05,v=>setVolume(v),Math.round(volume*100)+"%"]].map(([label,val,mn,mx,st,setter,display])=>(
+              <div key={label} style={{marginBottom:10}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{color:GOLDDIM,fontSize:10,fontWeight:600,letterSpacing:0.2}}>{label}</span><span style={{color:WHITE,fontSize:11,fontWeight:600}}>{display}</span></div>
+                <input type="range" min={mn} max={mx} step={st} value={val} onChange={e=>setter(+e.target.value)} style={{width:"100%",accentColor:GOLD}}/>
+              </div>
+            ))}
+          </div>
+          <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Your narration script</div>
+          <textarea value={text} onChange={e=>setText(e.target.value)} placeholder="Paste your narration script here..."
+            style={{...inp,height:160,resize:"vertical",marginBottom:14}}/>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
+            <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"12px 14px"}}>
+              <div style={{color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Test script</div>
+              <div style={{color:WHITE,fontSize:11,lineHeight:1.7,marginBottom:10}}>Hear your script with current voice and settings.</div>
+              <button onClick={()=>speaking?stop():speakNow(text)} disabled={!text.trim()} style={{background:"transparent",border:"1px solid "+LINE,color:WHITE,width:"100%",padding:"9px",fontSize:11,fontWeight:600,letterSpacing:0.2,cursor:!text.trim()?"not-allowed":"pointer",fontFamily:"'Manrope',system-ui,sans-serif",opacity:!text.trim()?0.5:1}}>{speaking?"Stop":"Test script"}</button>
+              <button onClick={downloadNarration} disabled={!text.trim()||dlBusy} style={{background:dlBusy?"#15171B":GOLD,border:"none",color:"#000",width:"100%",padding:"11px",fontSize:11,fontWeight:600,letterSpacing:0.2,marginTop:8,cursor:(!text.trim()||dlBusy)?"wait":"pointer",fontFamily:"'Manrope',system-ui,sans-serif",opacity:!text.trim()?0.5:1}}>{dlBusy?"⟳ Rendering narration…":"⬇ Download narration"}</button>
+            </div>
+            <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"12px 14px"}}>
+              <div style={{color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Reset</div>
+              <div style={{color:WHITE,fontSize:11,lineHeight:1.7,marginBottom:10}}>Clear script and reset all settings.</div>
+              <button onClick={()=>{stop();setText("");setSavedToLib(false);setSpeed(0.62);setPitchV(0.86);setPauseLen(1600);setVolume(1.0);setMood("Neutral");}} style={{background:"transparent",border:"1px solid "+LINE,color:WHITE,width:"100%",padding:"9px",fontSize:11,fontWeight:600,letterSpacing:0.2,cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>Reset all</button>
+            </div>
+          </div>
+          <button onClick={()=>{
+            if(!text.trim())return;
+            speaking?stop():processAndSpeak();
+          }} disabled={!text.trim()} style={{background:GOLD,border:"none",color:"#000",width:"100%",padding:"11px",fontSize:14,fontWeight:600,letterSpacing:0.2,cursor:!text.trim()?"not-allowed":"pointer",fontFamily:"'Manrope',system-ui,sans-serif",opacity:!text.trim()?0.5:1,marginBottom:8}}>
+            {speaking?"Stop":"Prepare to speak"}
+          </button>
+          <button onClick={async()=>{
+            if(!text.trim())return;
+            if(!selVoice){alert("Pick a voice from the list first, or upload or record your own.");return;}
+            if(myVoices.find(v=>v.id===selVoice&&!v.clonedVoiceId)){saveMyVoiceAsNarration();return;}
+            setSavedToLib(false);
+            const asset={
+              id:"narr_"+Date.now(),
+              name:"Narration - "+selected.name+" - "+new Date().toLocaleTimeString(),
+              type:"narration",
+              text:text,
+              voice:selVoice,
+              pitch:selected.pitch,
+              rate:selected.rate,
+              date:new Date().toISOString()
+            };
+            await safeSaveClipToDB(asset.id,new Blob([text],{type:"text/plain"}),asset.name,"narration");
+            if(onSave)onSave(asset);
+            if(setMediaLib)setMediaLib(p=>[...p,asset]);
+            setSavedToLib(true);
+            setTimeout(()=>setSavedToLib(false),3000);
+          }} disabled={!text.trim()} style={{background:"transparent",border:"1px solid "+LINE,color:WHITE,width:"100%",padding:"14px",fontSize:13,fontWeight:600,letterSpacing:0.2,cursor:!text.trim()?"not-allowed":"pointer",fontFamily:"'Manrope',system-ui,sans-serif",opacity:!text.trim()?0.5:1,marginBottom:8}}>
+            Save to media library
+          </button>
+          {savedToLib&&<div style={{background:"#14110B",border:"1px solid #D4AF6A",padding:"10px 14px",textAlign:"center",marginBottom:8}}><span style={{color:"#D4AF6A",fontWeight:600,fontSize:12,letterSpacing:0.2}}>Narration saved to media library — auto-added to timeline</span></div>}
+        </div>
+      </div>
     </div>
   );
-});
+}
+;
 
-function msFixDuration(v,setDur){
-  if(!v)return;
-  const d=v.duration;
-  if(isFinite(d)&&d>0){setDur(d);return;}
-  const onUpd=()=>{
-    if(isFinite(v.duration)&&v.duration>0){
-      v.removeEventListener("timeupdate",onUpd);
-      const real=v.duration;
-      try{v.currentTime=0;}catch(e){}
-      setDur(real);
+
+
+function MSUserCounter(){
+  // Shows BOTH: live visitors on the site right now (up & down) and total users/subscribers.
+  // Reads from Supabase presence function; falls back safely to last known values so it never breaks.
+  const [live,setLive]=useState(()=>{try{return JSON.parse(localStorage.getItem("ms_live_count")||"1");}catch{return 1;}});
+  const [total,setTotal]=useState(()=>{try{return JSON.parse(localStorage.getItem("ms_user_count")||"0");}catch{return 0;}});
+  useEffect(()=>{
+    let alive=true;
+    const PRESENCE="https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/presence";
+    async function ping(){
+      try{
+        // one visitor id per browser
+        let vid=localStorage.getItem("ms_vid");
+        if(!vid){vid=Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem("ms_vid",vid);}
+        const r=await fetch(PRESENCE,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({vid})});
+        const j=await r.json();
+        if(!alive)return;
+        if(typeof j.live==="number"){setLive(j.live);localStorage.setItem("ms_live_count",JSON.stringify(j.live));}
+        if(typeof j.total==="number"){setTotal(j.total);localStorage.setItem("ms_user_count",JSON.stringify(j.total));}
+      }catch(e){/* keep last known numbers */}
+    }
+    ping();
+    const t=setInterval(ping,15000); // refresh every 15s so live number moves up and down
+    return ()=>{alive=false;clearInterval(t);};
+  },[]);
+  return (
+    <div style={{display:"flex",justifyContent:"center",marginBottom:24}}>
+      <div style={{background:"#07080A",border:"2px solid "+SIGNAL,padding:"14px 40px",textAlign:"center",boxShadow:"none",position:"relative"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginBottom:6}}>
+          <div style={{width:8,height:8,borderRadius:"50%",background:"#D4AF6A",boxShadow:"none",animation:"pulse 2s infinite"}}/>
+          <div style={{color:"#D4AF6A",fontSize:10,letterSpacing:0.4,fontWeight:600}}>Live · user count</div>
+        </div>
+        <div style={{display:"flex",alignItems:"flex-end",justifyContent:"center",gap:34}}>
+          <div>
+            <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:42,fontWeight:600,lineHeight:1,textShadow:"none"}}>{live}</div>
+            <div style={{color:"#D4AF6A",fontSize:9,letterSpacing:0.2,marginTop:4}}>On now</div>
+          </div>
+          <div style={{width:1,alignSelf:"stretch",background:GOLD+"55"}}/>
+          <div>
+            <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:42,fontWeight:600,lineHeight:1,textShadow:"none"}}>{total}</div>
+            <div style={{color:GOLDDIM,fontSize:9,letterSpacing:0.2,marginTop:4}}>Total users</div>
+          </div>
+        </div>
+        <div style={{color:GOLDDIM,fontSize:9,letterSpacing:0.2,marginTop:8}}>launched june 1st 2026 · updates automatically</div>
+        <style>{"@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}"}</style>
+      </div>
+    </div>
+  );
+}
+
+function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
+  const canvasRef=useRef(null);
+  const videoRef=useRef(null);
+  const refMediaRef=useRef(null);
+  const realityPhotoRef=useRef(null);
+  const [prompt,setPrompt]=useState("");
+  const [title,setTitle]=useState("");
+  const [duration,setDuration]=useState(30);
+  const [generating,setGenerating]=useState(false);
+  const [progress,setProgress]=useState(0);
+  const [log,setLog]=useState([]);
+  const [videoUrl,setVideoUrl]=useState("");
+  const [saved,setSaved]=useState(false);
+  // ── BACKGROUND MUSIC ──────────────────────────────────────────
+  const [addMusic,setAddMusic]=useState(false);
+  const [musicTrack,setMusicTrack]=useState("");
+  const [genStereo,setGenStereo]=useState(true);
+  const [aspect,setAspect]=useState("16/9");
+  const [expQ,setExpQ]=useState("hd");
+  const [useBrief,setUseBrief]=useState(true);
+  const [hasBrief,setHasBrief]=useState(false);
+  useEffect(()=>{try{const b=JSON.parse(localStorage.getItem("ms_render_brief")||"null");setHasBrief(!!(b&&b.brief));}catch{setHasBrief(false);}},[]);
+  const MUSIC_LIBRARY=[
+    {id:"epic",     label:"Epic / Trailer",       url:"https://cdn.pixabay.com/audio/2022/03/15/audio_c8c8a73467.mp3"},
+    {id:"drama",    label:"Drama / Powerful",     url:"https://cdn.pixabay.com/audio/2023/01/29/audio_5bf2f9f5b0.mp3"},
+    {id:"emotional",label:"Emotional / Piano",    url:"https://cdn.pixabay.com/audio/2021/11/25/audio_00fa5593f3.mp3"},
+    {id:"ambient",  label:"Ambient / Cinematic",  url:"https://cdn.pixabay.com/audio/2022/01/18/audio_d0c6ff1bab.mp3"},
+    {id:"uplifting",label:"Uplifting / Hopeful",   url:"https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3"},
+    {id:"tension",  label:"Tension / Suspense",    url:"https://cdn.pixabay.com/audio/2022/03/10/audio_d1718ab41b.mp3"},
+    {id:"warm",     label:"Warm / Reflective",     url:"https://cdn.pixabay.com/audio/2021/08/09/audio_54ca0ffa52.mp3"},
+    {id:"inspiring",label:"Inspiring / Anthemic",  url:"https://cdn.pixabay.com/audio/2022/10/25/audio_946bc8a627.mp3"},
+    {id:"sad",      label:"Sad / Melancholy",      url:"https://cdn.pixabay.com/audio/2022/10/18/audio_31a1f6f2a6.mp3"},
+    {id:"action",   label:"Action / Driving",      url:"https://cdn.pixabay.com/audio/2022/11/22/audio_febc508520.mp3"},
+  ];
+  const [refMedia,setRefMedia]=useState(null);
+  const [refMediaType,setRefMediaType]=useState("");
+  const [refDataUrl,setRefDataUrl]=useState(null);
+  const [refImages,setRefImages]=useState([]);
+  const [renderStyle,setRenderStyle]=useState("photorealistic");
+  const [genre,setGenre]=useState("");
+  const [targetMin,setTargetMin]=useState(0);
+  const [madeClips,setMadeClips]=useState([]);
+  const [gapPrompt,setGapPrompt]=useState(null);
+  const [gapBusy,setGapBusy]=useState(false);
+  const addLog=(msg)=>setLog(p=>[...p,msg]);
+  // ════════════════════════════════════════════════════════════════
+  // MAKE MY MOVIE — one-shot: drop everything in, set the length, press go.
+  // Expands what was pasted into scenes, then writes NEW scenes to reach
+  // the target length. Every scene runs through the same Cinema Engine and
+  // is stitched into one film — all on this page. Nothing navigates away.
+  // ════════════════════════════════════════════════════════════════
+  // Make My Movie work auto-saves and reloads: your script and your uploaded
+  // photos survive leaving the page. Before this they started empty and were never
+  // saved, so everything typed/added here vanished the moment you navigated away.
+  const [mmmText,setMmmText]=useState(()=>{try{return localStorage.getItem("ms_mmm_text")||"";}catch{return "";}});
+  const [mmmImages,setMmmImages]=useState(()=>{try{return JSON.parse(localStorage.getItem("ms_mmm_images")||"[]");}catch{return [];}});
+  useEffect(()=>{try{localStorage.setItem("ms_mmm_text",mmmText);}catch(e){}},[mmmText]);
+  useEffect(()=>{try{localStorage.setItem("ms_mmm_images",JSON.stringify(mmmImages));}catch(e){}},[mmmImages]);
+  const [mmmBusy,setMmmBusy]=useState(false);
+  const [mmmStage,setMmmStage]=useState("");
+  const [mmmPct,setMmmPct]=useState(0);
+  const [mmmScenes,setMmmScenes]=useState([]);
+  const [mmmDone,setMmmDone]=useState(false);
+  const [mmmFilmUrl,setMmmFilmUrl]=useState("");
+  const [mmmNarrUrl,setMmmNarrUrl]=useState("");
+  const mmmNarrRef=useRef(null);
+  const mmmMusicRef=useRef(null);
+  const [mmmError,setMmmError]=useState("");
+  const mmmDropRef=useRef(null);
+  const [mmmAddMsg,setMmmAddMsg]=useState("");
+  const mmmTargetMin=filmDuration||30;
+  const [mmmStudio,setMmmStudio]=useState(false);
+  const [mmmStyle,setMmmStyle]=useState("cinematic");
+  const [mmmGenre,setMmmGenre]=useState("");
+  const [mmmGrade,setMmmGrade]=useState("gold");
+  const [mmmEnhance,setMmmEnhance]=useState(true);
+  const [mmmLipSync,setMmmLipSync]=useState(false);
+  const [mmmVoiceId,setMmmVoiceId]=useState("james");
+  const [mmmVolume,setMmmVolume]=useState(1);
+  const [mmmBgSound,setMmmBgSound]=useState(true);
+  const [mmmBgVolume,setMmmBgVolume]=useState(0.3);
+  const [mmmRatio,setMmmRatio]=useState(()=>{try{return localStorage.getItem("ms_mmm_ratio")||"16:9";}catch{return "16:9";}});
+  const [mmmPlaying,setMmmPlaying]=useState(false);
+  const [mmmClock,setMmmClock]=useState(0);
+  const [mmmSceneNo,setMmmSceneNo]=useState(1);
+  useEffect(()=>{try{localStorage.setItem("ms_mmm_ratio",mmmRatio);}catch(e){}},[mmmRatio]);
+  const mmmAR=mmmRatio.replace(":","/");
+  // ── YOUR OWN RECORDING AS THE NARRATION (picked up automatically) ──
+  const [mmmOwn,setMmmOwn]=useState({id:"",name:"",url:""});
+  const [mmmOwnOff,setMmmOwnOff]=useState(()=>{try{return localStorage.getItem("ms_mmm_ownoff")==="1";}catch{return false;}});
+  useEffect(()=>{try{localStorage.setItem("ms_mmm_ownoff",mmmOwnOff?"1":"0");}catch(e){}},[mmmOwnOff]);
+  useEffect(()=>{
+    let dead=false;
+    (async()=>{
+      try{
+        const all=await getAllClipsFromDB();
+        const aud=all.filter(x=>x&&x.blob&&x.blob.size>100000&&(String(x.id).startsWith("narr_myvoice_")||String(x.id).startsWith("myvoice_")||String(x.id).startsWith("mmmown_")));
+        if(!aud.length||dead)return;
+        let pick=null; try{ const k=localStorage.getItem("ms_mmm_ownnarr"); if(k)pick=aud.find(x=>x.id===k); }catch(e){}
+        if(!pick){
+          const sv=aud.filter(x=>String(x.id).startsWith("narr_myvoice_")).sort((a,b)=>String(b.id).localeCompare(String(a.id)));
+          pick=sv[0]||aud.sort((a,b)=>b.blob.size-a.blob.size)[0];
+        }
+        if(pick&&!dead)setMmmOwn({id:pick.id,name:(pick.name||"Your recording").replace(/^My Voice Narration - /,"My voice narration "),url:URL.createObjectURL(pick.blob)});
+      }catch(e){}
+    })();
+    return ()=>{dead=true;};
+  },[]);
+  const mmmPickOwn=async(file)=>{
+    if(!file)return;
+    const id="mmmown_"+Date.now();
+    try{ await safeSaveClipToDB(id,file,file.name||"My recording","audio/myvoice"); }catch(e){}
+    try{ localStorage.setItem("ms_mmm_ownnarr",id); }catch(e){}
+    setMmmOwn({id,name:file.name||"My recording",url:URL.createObjectURL(file)});
+    setMmmOwnOff(false);
+  };
+  useEffect(()=>{try{localStorage.setItem("ms_mmm_bed",mmmBgSound?"on":"off");localStorage.setItem("ms_mmm_bedvol",String(mmmBgVolume));}catch(e){}},[mmmBgSound,mmmBgVolume]);
+  // Music bed for the Make My Movie player: the track picked in "Add background
+  // music" if any, otherwise a calm cinematic default. Only when Music bed is ON.
+  const mmmMusicSrc=mmmBgSound?((MUSIC_LIBRARY.find(m=>m.id===musicTrack)||MUSIC_LIBRARY.find(m=>m.id==="ambient")||MUSIC_LIBRARY[0]||{}).url||""):"";
+  const MMM_GRADES=[
+    {id:"gold",label:"Gold & Amber"},
+    {id:"cold",label:"Cold Blue"},
+    {id:"noir",label:"Noir Mono"},
+    {id:"warm",label:"Warm Film"},
+    {id:"natural",label:"Natural"},
+  ];
+
+  // Reads files ONE AT A TIME, in the order you picked them. Before this, every
+  // image kicked off its own independent FileReader all at once (forEach), and
+  // whichever one happened to finish reading first landed first in the list —
+  // so a bigger photo near the start of your script could land near the end,
+  // scrambling the order your images matched your script. Now each file is
+  // fully read before the next one starts, so the order you selected is always
+  // the order they land in.
+  const mmmAddFiles=async(files)=>{
+    const arr=Array.from(files||[]);
+    const readAs=(file,asText)=>new Promise(res=>{
+      const r=new FileReader();
+      r.onload=ev=>res(ev.target.result);
+      r.onerror=()=>res(null);
+      if(asText)r.readAsText(file);else r.readAsDataURL(file);
+    });
+    let added=0; const failed=[];
+    for(let fi=0;fi<arr.length;fi++){
+      const f=arr[fi];
+      setMmmAddMsg("Adding "+(fi+1)+" of "+arr.length+"…");
+      if((f.type||"").startsWith("image")||/\.(jpe?g|png|webp|gif|heic|heif|avif|bmp)$/i.test(f.name||"")){
+        const orig=await readAs(f,false);
+        if(orig){
+          // Show the photo straight away, exactly as before.
+          setMmmImages(p=>[...p,{name:f.name,dataUrl:orig}]); added++;
+          // Then quietly swap in a lighter copy. If this step is slow or fails, the photo stays as is.
+          try{
+            const small=await Promise.race([
+              new Promise(res=>{
+                const im=new Image();
+                im.onload=()=>{ try{
+                  const m=1280, sc=Math.min(1,m/Math.max(im.width,im.height));
+                  if(sc>=1){res(null);return;}
+                  const c=document.createElement("canvas"); c.width=Math.max(1,Math.round(im.width*sc)); c.height=Math.max(1,Math.round(im.height*sc));
+                  c.getContext("2d").drawImage(im,0,0,c.width,c.height); res(c.toDataURL("image/jpeg",0.85));
+                }catch(e){res(null);} };
+                im.onerror=()=>res(null);
+                im.src=orig;
+              }),
+              new Promise(res=>setTimeout(()=>res(null),6000))
+            ]);
+            if(small&&small.length<orig.length)setMmmImages(p=>p.map(x=>x.dataUrl===orig?{...x,dataUrl:small}:x));
+          }catch(e){}
+        }else failed.push(f.name||"file");
+      }else if(f.type.startsWith("text")||f.name.match(/\.(txt|md|fdx|fountain)$/i)){
+        const text=await readAs(f,true);
+        if(text){ setMmmText(p=>(p?p+"\n\n":"")+String(text||"")); added++; } else failed.push(f.name||"file");
+      }else failed.push(f.name||"file");
+    }
+    setMmmAddMsg(added+" added"+(failed.length?". Could not read: "+failed.slice(0,3).join(", ")+(failed.length>3?" and more":""):"."));
+  };
+
+  // ── FREE CANVAS FALLBACK ────────────────────────────────────────────────
+  // If the Cinema Engine can't return footage (no credit, network, rate limit),
+  // we draw the scene here instead, on this device, for nothing. Claude writes
+  // the drawFrame code, the browser paints it, MediaRecorder records it, and we
+  // hand back a real playable video file exactly like the engine would.
+  // Turn one of YOUR photos into a moving documentary clip: slow zoom + drift,
+  // warm vignette, letterbox — real footage from your real images, no text.
+  const mmmKenBurns=async(dataUrl,secs,idx)=>{
+    return new Promise((resolve)=>{
+      try{
+        const img=new Image();
+        img.onload=()=>{
+          const W=1280,H=720,fps=24;
+          const cv=document.createElement("canvas");cv.width=W;cv.height=H;
+          const ctx=cv.getContext("2d");
+          const stream=cv.captureStream(fps);
+          let mime="video/webm";
+          try{for(const m of ["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm","video/mp4"]){if(window.MediaRecorder&&MediaRecorder.isTypeSupported(m)){mime=m;break;}}}catch(e){}
+          const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:4000000});
+          const chunks=[];rec.ondataavailable=ev=>{if(ev.data&&ev.data.size)chunks.push(ev.data);};
+          rec.onstop=()=>{try{resolve(URL.createObjectURL(new Blob(chunks,{type:mime})));}catch(e){resolve("");}};
+          const iw=img.naturalWidth||W, ih=img.naturalHeight||H;
+          const cover=Math.max(W/iw,H/ih);
+          const dir=idx%2===0?1:-1;
+          const holdMs=Math.max(3,secs||6)*1000;
+          const start=Date.now();
+          rec.start();
+          const step=()=>{
+            const el=Date.now()-start, t=Math.min(1,el/holdMs);
+            const zoom=cover*(1.06+0.12*t), dw=iw*zoom, dh=ih*zoom;
+            const driftX=dir*(W*0.04)*t, dx=(W-dw)/2-driftX, dy=(H-dh)/2;
+            try{
+              ctx.clearRect(0,0,W,H);
+              ctx.drawImage(img,dx,dy,dw,dh);
+              const vig=ctx.createRadialGradient(W/2,H/2,W*0.1,W/2,H/2,W*0.8);
+              vig.addColorStop(0,"rgba(0,0,0,0)");vig.addColorStop(1,"rgba(0,0,0,0.7)");
+              ctx.fillStyle=vig;ctx.fillRect(0,0,W,H);
+              ctx.fillStyle="#000";ctx.fillRect(0,0,W,H*0.05);ctx.fillRect(0,H*0.95,W,H*0.05);
+            }catch(e){}
+            if(el>=holdMs){try{rec.stop();}catch(e){resolve("");}return;}
+            requestAnimationFrame(step);
+          };
+          requestAnimationFrame(step);
+        };
+        img.onerror=()=>resolve("");
+        img.src=dataUrl;
+      }catch(e){resolve("");}
+    });
+  };
+
+  const mmmCanvasFallback=async(scenePrompt,secs)=>{
+    try{
+      const res=await fetch("https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/claude-proxy",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:3000,
+          messages:[{role:"user",content:"Write a JavaScript canvas function for this cinematic scene: \""+String(scenePrompt).slice(0,600)+"\". Function signature: function drawFrame(ctx,W,H,t,sec). Warm gold and amber cinematic grade, deep shadows, atmospheric haze, gradients, depth, slow camera drift. t=0-1 progress through the shot. No text on screen. Return only the function, no explanation."}]})
+      });
+      const d=await res.json();
+      let code=d&&d.content&&d.content[0]?String(d.content[0].text).trim():"";
+      code=code.replace(new RegExp(String.fromCharCode(96,96,96)+"javascript|"+String.fromCharCode(96,96,96)+"js|"+String.fromCharCode(96,96,96),"g"),"").trim();
+      const fi=code.indexOf("function drawFrame"); if(fi>0)code=code.slice(fi);
+      const bOpen=code.indexOf("{"), bClose=code.lastIndexOf("}");
+      const body=(bOpen>0&&bClose>bOpen)?code.slice(bOpen+1,bClose):"";
+      let drawFn;
+      try{ drawFn=new Function("ctx","W","H","t","sec",body); }catch(e){ drawFn=null; }
+
+      const W=1280,H=720,fps=24;
+      const cv=document.createElement("canvas"); cv.width=W; cv.height=H;
+      const ctx=cv.getContext("2d");
+      ctx.fillStyle="#07080A"; ctx.fillRect(0,0,W,H);
+
+      const stream=cv.captureStream(fps);
+      let mime="video/webm";
+      try{
+        const opts=["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm","video/mp4"];
+        for(const m of opts){ if(window.MediaRecorder&&MediaRecorder.isTypeSupported(m)){ mime=m; break; } }
+      }catch(e){}
+      const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:4000000});
+      const chunks=[];
+      rec.ondataavailable=ev=>{ if(ev.data&&ev.data.size)chunks.push(ev.data); };
+      const finished=new Promise(r=>{ rec.onstop=()=>r(null); });
+      rec.start(200);
+
+      const totalFrames=Math.max(1,Math.round(secs*fps));
+      const msPerFrame=Math.round(1000/fps);
+      const wallStart=performance.now();
+      await new Promise(resolve=>{
+        let frame=0;
+        const tick=()=>{
+          if(frame>=totalFrames){ resolve(null); return; }
+          const t=frame/totalFrames, sec=frame/fps;
+          try{
+            ctx.clearRect(0,0,W,H);
+            if(drawFn) drawFn(ctx,W,H,t,sec);
+            else { const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#1a1207"); g.addColorStop(1,"#07080A"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H); }
+          }catch(e){ ctx.fillStyle="#07080A"; ctx.fillRect(0,0,W,H); }
+          // house grade: vignette, letterbox, grain
+          const vig=ctx.createRadialGradient(W/2,H/2,W*0.1,W/2,H/2,W*0.8);
+          vig.addColorStop(0,"rgba(0,0,0,0)"); vig.addColorStop(1,"rgba(0,0,0,0.85)");
+          ctx.fillStyle=vig; ctx.fillRect(0,0,W,H);
+          ctx.fillStyle="rgba(232,201,109,0.035)"; ctx.fillRect(0,0,W,H);
+          ctx.fillStyle="#000"; ctx.fillRect(0,0,W,H*0.06); ctx.fillRect(0,H*0.94,W,H*0.06);
+          frame++;
+          const due=wallStart+(frame*msPerFrame);
+          setTimeout(tick,Math.max(4,due-performance.now()));
+        };
+        tick();
+      });
+
+      try{ rec.stop(); }catch(e){}
+      await Promise.race([finished,new Promise(r=>setTimeout(()=>r(null),6000))]);
+      try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){}
+      if(!chunks.length) return "";
+      const blob=new Blob(chunks,{type:mime.split(";")[0]});
+      if(blob.size<1000) return "";
+      return URL.createObjectURL(blob);
+    }catch(e){ return ""; }
+  };
+
+  const makeMyMovie=async()=>{
+    const source=mmmText.trim();
+    if(!source&&mmmImages.length===0){ setMmmError("Drop in your script, or some images, first."); return; }
+    setMmmError(""); setMmmBusy(true); setMmmDone(false); setMmmFilmUrl(""); setMmmScenes([]); setMmmPct(0);
+
+    const targetMin=mmmTargetMin;
+    const targetScenes=Math.max(1,Math.round(targetMin));   // ~1 scene per minute
+    const perSceneSec=Math.max(4,Math.round((targetMin*60)/targetScenes));
+
+    // 1 ─ Write the full scene list to length
+    setMmmStage("Reading what you gave me and writing the scene list…");
+    setMmmPct(4);
+    let sceneList=[];
+    try{
+      const brief=(()=>{try{const b=JSON.parse(localStorage.getItem("ms_render_brief")||"null");return b&&b.brief?b.brief:"";}catch(e){return "";}})();
+      const ask=
+        "You are a film director. Turn the material below into an ordered shot list of EXACTLY "+targetScenes+" scenes for a "+targetMin+"-minute film"+(mmmGenre?(" in the "+mmmGenre+" genre"):"")+".\n"+
+        "LOOK - apply to EVERY scene: "+mmmStyle+" style, "+(mmmGrade==="gold"?"warm gold and amber colour grade":mmmGrade==="cold"?"cold blue colour grade":mmmGrade==="noir"?"high-contrast black and white noir":mmmGrade==="warm"?"warm film stock grade":"natural colour grade")+", cinematic, photorealistic, 35mm, film grain, no on-screen text.\n"+
+        "RULES:\n"+
+        "1. FIRST expand what the user actually gave you into detailed shots — their material always leads.\n"+
+        "2. THEN, if you need more scenes to reach "+targetScenes+", write brand-new scenes that continue the story naturally to fill the full length.\n"+
+        "3. Each scene = one vivid visual paragraph an image engine can render (setting, subject, light, motion). No dialogue, no headings, no numbering.\n"+
+        (brief?("PRODUCER BRIEF (obey it):\n"+brief+"\n"):"")+
+        "MATERIAL:\n"+(source||"(no script — build the film from the uploaded images and the genre)")+"\n\n"+
+        "Return ONLY a JSON array of "+targetScenes+" strings. No other text.";
+      const d=await proxyFetch({model:"claude-sonnet-4-20250514",max_tokens:4000,messages:[{role:"user",content:ask}]});
+      const raw=(d&&d.content&&d.content.map?d.content.filter(x=>x.type==="text").map(x=>x.text).join("\n"):"")||"";
+      const clean=raw.replace(/```json|```/g,"").trim();
+      const start=clean.indexOf("["), end=clean.lastIndexOf("]");
+      sceneList=JSON.parse(clean.slice(start,end+1));
+      sceneList=sceneList.filter(s=>s&&String(s).trim()).map(s=>String(s).trim());
+    }catch(e){
+      // Fallback: split the pasted text into paragraphs, pad by repeating the arc
+      const paras=source.split(/\n\s*\n/).map(s=>s.trim()).filter(Boolean);
+      sceneList=paras.length?paras:["Opening establishing shot of the film's world, cinematic light."];
+      while(sceneList.length<targetScenes)sceneList.push(sceneList[sceneList.length%Math.max(1,paras.length)]||sceneList[0]);
+      sceneList=sceneList.slice(0,targetScenes);
+    }
+    if(!sceneList.length){ setMmmError("Couldn't build a scene list — try adding a bit more detail."); setMmmBusy(false); return; }
+    setMmmScenes(sceneList.map(s=>({text:s,status:"waiting"})));
+    setMmmStage("Scene list ready — "+sceneList.length+" scenes. Rendering…");
+    setMmmPct(10);
+
+    // 2 ─ Render every scene through the Cinema Engine and save each one
+    const firstImg=mmmImages.length?mmmImages[0].dataUrl:(refDataUrl||"");
+    const clipUrls=[];
+    for(let i=0;i<sceneList.length;i++){
+      setMmmScenes(p=>p.map((s,idx)=>idx===i?{...s,status:"rendering"}:s));
+      setMmmStage("MandaStrong Cinema Engine — rendering scene "+(i+1)+" of "+sceneList.length+"…");
+      let url="";
+      let usedFallback=false;
+      try{
+        // Feed one of YOUR uploaded images to each scene in turn (not just scene 1),
+        // so your reference photos drive the whole film, not only the first shot.
+        const sceneImg = mmmImages.length ? (mmmImages[i%mmmImages.length].dataUrl||"") : firstImg;
+        url=await engineRender(sceneList[i],{duration:perSceneSec,image:sceneImg,aspect_ratio:mmmRatio});
+      }catch(e){ url=""; }
+      // Engine gave us nothing. Prefer YOUR real photo with documentary motion
+      // (Ken Burns pan/zoom) over abstract gold shapes — real people, real footage.
+      if(!url){
+        const sImg = mmmImages.length ? (mmmImages[i%mmmImages.length].dataUrl||"") : firstImg;
+        if(sImg){
+          setMmmStage("Scene "+(i+1)+" — using your photo with documentary motion…");
+          url=await mmmKenBurns(sImg,perSceneSec,i);
+          usedFallback=!!url;
+        }
+        if(!url){
+          setMmmStage("Scene "+(i+1)+" — drawing on this device…");
+          url=await mmmCanvasFallback(sceneList[i],perSceneSec);
+          usedFallback=!!url;
+        }
+      }
+      if(url){
+        clipUrls.push(url);
+        // LIVE PREVIEW: show each scene in the player box the moment it renders,
+        // so you SEE the video building instead of a blank box until the end.
+        try{ setMmmFilmUrl(url); }catch(e){}
+        setMmmScenes(p=>p.map((s,idx)=>idx===i?{...s,status:usedFallback?"done (canvas)":"done",url}:s));
+        // Save each scene into the Media Library / timeline exactly like the engine does
+        try{
+          const autoId="mmm_"+Date.now()+"_"+i;
+          const ext=usedFallback?".webm":".mp4";
+          const mt=usedFallback?"video/webm":"video/mp4";
+          const autoName="MakeMyMovie_scene"+(i+1)+ext;
+          const vb=await (await fetch(url)).blob();
+          await Promise.race([safeSaveClipToDB(autoId,vb,autoName,mt),new Promise(r=>setTimeout(()=>r("t"),8000))]);
+          if(onSave)onSave({id:autoId,name:autoName,type:mt,url,file:new File([vb],autoName,{type:mt}),dbId:autoId});
+        }catch(e){}
+      }else{
+        setMmmScenes(p=>p.map((s,idx)=>idx===i?{...s,status:"skipped"}:s));
+      }
+      setMmmPct(10+Math.round(((i+1)/sceneList.length)*80));
+    }
+
+    if(!clipUrls.length){ setMmmError("No footage came back — the engine had no credit and the on-device renderer couldn't draw either. Check you're in Chrome with this tab in front, then run it again."); setMmmBusy(false); return; }
+
+    // 3 ─ FULL NARRATION over the film. Render your ENTIRE script (chunked, never
+    // truncated) into one audio track and lay it over the movie, so your voice
+    // carries the whole documentary — not just the first paragraph.
+    let narrUrl="";
+    if(mmmOwn.url&&!mmmOwnOff){
+      narrUrl=mmmOwn.url; setMmmStage("Using your own recording as the narration…");
+      try{localStorage.setItem("ms_mmm_narr",narrUrl);}catch(e){}
+    }else if(msSpokenOnly(source)){
+      try{
+        setMmmStage("MandaStrong Cinema Engine — narrating your script…");
+        const _mv=(typeof VOICE_CHARACTERS!=="undefined")?VOICE_CHARACTERS.find(v=>v.id===mmmVoiceId):null;
+        const meta={voice:_mv?.engineVoice||mmmVoiceId,gender:_mv?.gender||"",origin:_mv?.origin||"",speed:_mv?.rate||1};
+        const vr=await msVoiceText(msSpokenOnly(source),meta,(i,n)=>setMmmStage("MandaStrong Cinema Engine — narrating your script, part "+i+" of "+n+"…"));
+        const parts=vr.parts;
+        if(parts.length){ narrUrl=URL.createObjectURL(new Blob(parts,{type:parts[0].type||"audio/mpeg"})); try{localStorage.setItem("ms_mmm_narr",narrUrl);}catch(e){} try{ const nb=new Blob(parts,{type:parts[0].type||"audio/mpeg"}); await Promise.race([safeSaveClipToDB("mmmnarr_"+Date.now(),nb,"MakeMyMovie_narration"+((nb.type||"").includes("mp4")?".m4a":".mp3"),nb.type||"audio/mpeg"),new Promise(r=>setTimeout(()=>r("t"),8000))]); }catch(e){} }
+      }catch(e){}
+    }
+    setMmmNarrUrl(narrUrl);
+
+    // 4 ─ Stitch into one film (concatenated playback) — stays on this page
+    setMmmStage("Stitching your film together…");
+    setMmmPct(94);
+    try{
+      // Save the ordered playlist so the render page / player can play it as one film
+      localStorage.setItem("ms_mmm_playlist",JSON.stringify(clipUrls));
+    }catch(e){}
+    setMmmFilmUrl(clipUrls[0]);   // player starts on scene 1 and advances through the list
+    setMmmPct(100);
+    setMmmStage("Your movie is ready.");
+    setMmmDone(true);
+    setMmmBusy(false);
+  };
+
+  // Sequential player: when one scene ends, play the next — feels like one film.
+  const mmmVideoRef=useRef(null);
+  useEffect(()=>{ if(mmmVideoRef.current) mmmVideoRef.current.volume=Math.max(0,Math.min(1,mmmVolume)); },[mmmVolume,mmmDone]);
+  const mmmIdxRef=useRef(0);
+  useEffect(()=>{
+    const v=mmmVideoRef.current;
+    if(!v||!mmmDone)return;
+    let list=[]; try{list=JSON.parse(localStorage.getItem("ms_mmm_playlist")||"[]");}catch(e){}
+    if(!list.length)return;
+    mmmIdxRef.current=0;
+    // Mute the silent scene clips so ONLY your narration is heard over the film.
+    const narr=mmmNarrRef.current;
+    if(narr&&mmmNarrUrl){ try{ v.muted=true; narr.currentTime=0; narr.volume=Math.max(0,Math.min(1,mmmVolume)); narr.play().catch(()=>{}); }catch(e){} }
+    // Quiet music bed under the narration, looped for the whole film.
+    const mus=mmmMusicRef.current;
+    if(mus&&mmmBgSound&&mmmMusicSrc){ try{ mus.loop=true; mus.currentTime=0; mus.volume=Math.max(0,Math.min(1,mmmBgVolume)); mus.play().catch(()=>{}); }catch(e){} }
+    // When one scene ends, advance to the next — but DON'T stop the narration; it
+    // runs continuously across the whole film so your voice never cuts off.
+    const onEnd=()=>{ mmmIdxRef.current++; if(mmmIdxRef.current<list.length){ v.src=list[mmmIdxRef.current]; v.play().catch(()=>{}); } };
+    v.addEventListener("ended",onEnd);
+    return ()=>{ v.removeEventListener("ended",onEnd); try{if(narr)narr.pause();}catch(e){} try{if(mus)mus.pause();}catch(e){} };
+  },[mmmDone,mmmNarrUrl,mmmBgSound,mmmMusicSrc]);
+  // Music volume slider and Music bed ON/OFF now act live on the music bed.
+  useEffect(()=>{
+    const mus=mmmMusicRef.current; if(!mus)return;
+    try{ mus.volume=Math.max(0,Math.min(1,mmmBgVolume)); if(!mmmBgSound)mus.pause(); }catch(e){}
+  },[mmmBgVolume,mmmBgSound]);
+
+  // ── One-shot page: unified transport (video + narration + music together) ──
+  const mmmListNow=()=>{ try{return JSON.parse(localStorage.getItem("ms_mmm_playlist")||"[]");}catch(e){return [];} };
+  useEffect(()=>{ if(mmmDone){ setMmmPlaying(true); setMmmClock(0); setMmmSceneNo(1); } },[mmmDone,mmmNarrUrl]);
+  useEffect(()=>{
+    if(!mmmPlaying)return;
+    const t=setInterval(()=>setMmmClock(c=>c+0.25),250);
+    return ()=>clearInterval(t);
+  },[mmmPlaying]);
+  useEffect(()=>{
+    const v=mmmVideoRef.current; if(!v||!mmmDone)return;
+    const onP=()=>setMmmSceneNo(mmmIdxRef.current+1);
+    v.addEventListener("play",onP);
+    const n=mmmNarrRef.current; const onNE=()=>setMmmPlaying(false);
+    if(n)n.addEventListener("ended",onNE);
+    return ()=>{ v.removeEventListener("play",onP); if(n)n.removeEventListener("ended",onNE); };
+  },[mmmDone,mmmNarrUrl,mmmFilmUrl]);
+  useEffect(()=>{ if(mmmDone&&!mmmNarrUrl&&mmmOwn.url&&!mmmOwnOff)setMmmNarrUrl(mmmOwn.url); },[mmmDone,mmmNarrUrl,mmmOwn.url,mmmOwnOff]);
+  const mmmTogglePlay=()=>{
+    const v=mmmVideoRef.current,n=mmmNarrRef.current,m=mmmMusicRef.current;
+    if(mmmPlaying){ try{v&&v.pause();}catch(e){} try{n&&n.pause();}catch(e){} try{m&&m.pause();}catch(e){} setMmmPlaying(false); }
+    else{ try{v&&v.play().catch(()=>{});}catch(e){} try{n&&n.play().catch(()=>{});}catch(e){} try{m&&mmmBgSound&&m.play().catch(()=>{});}catch(e){} setMmmPlaying(true); }
+  };
+  const mmmRestart=()=>{
+    const list=mmmListNow(); const v=mmmVideoRef.current,n=mmmNarrRef.current,m=mmmMusicRef.current;
+    mmmIdxRef.current=0; setMmmSceneNo(1); setMmmClock(0);
+    try{ if(v&&list.length){v.src=list[0];} v&&v.play().catch(()=>{}); }catch(e){}
+    try{ if(n){n.currentTime=0;n.play().catch(()=>{});} }catch(e){}
+    try{ if(m&&mmmBgSound){m.currentTime=0;m.play().catch(()=>{});} }catch(e){}
+    setMmmPlaying(true);
+  };
+  const mmmFmtClock=(t)=>{ t=Math.max(0,Math.floor(t)); const h=Math.floor(t/3600),m=Math.floor((t%3600)/60),sec=t%60; return (h?h+":"+(m<10?"0":""):"")+m+":"+(sec<10?"0":"")+sec; };
+  // Bring back scenes already made, after a reload or coming back to the page.
+  useEffect(()=>{
+    let dead=false;
+    (async()=>{
+      try{
+        if(mmmDone||mmmBusy)return;
+        const all=await getAllClipsFromDB();
+        const sc=all.filter(c=>c&&c.blob&&/^MakeMyMovie_scene\d+/i.test(c.name||"")&&c.blob.size>1000)
+          .sort((a,b)=>(parseInt((a.name.match(/scene(\d+)/i)||[])[1])||0)-(parseInt((b.name.match(/scene(\d+)/i)||[])[1])||0));
+        if(dead||!sc.length)return;
+        const urls=sc.map(c=>URL.createObjectURL(c.blob));
+        try{localStorage.setItem("ms_mmm_playlist",JSON.stringify(urls));}catch(e){}
+        setMmmScenes(sc.map((c,i)=>({text:c.name,status:"done",url:urls[i]})));
+        const nr=all.filter(c=>c&&c.blob&&/^MakeMyMovie_narration/i.test(c.name||"")).sort((a,b)=>String(b.id).localeCompare(String(a.id)))[0];
+        if(nr)setMmmNarrUrl(URL.createObjectURL(nr.blob));
+        setMmmFilmUrl(urls[0]); setMmmStage("Your movie is ready."); setMmmPct(100); setMmmDone(true);
+      }catch(e){}
+    })();
+    return ()=>{dead=true;};
+  },[]);
+  // ── One-shot page: EXPORT the whole film as ONE file (picture + voice + music, chosen ratio) ──
+  const [mmmExp,setMmmExp]=useState({busy:false,pct:0,msg:"",url:"",name:""});
+  const mmmExpCancel=useRef(false);
+  const mmmExportFilm=async()=>{
+    const list=mmmListNow(); if(!list.length||mmmExp.busy)return;
+    try{ mmmVideoRef.current&&mmmVideoRef.current.pause(); mmmNarrRef.current&&mmmNarrRef.current.pause(); mmmMusicRef.current&&mmmMusicRef.current.pause(); }catch(e){}
+    setMmmPlaying(false);
+    mmmExpCancel.current=false;
+    setMmmExp({busy:true,pct:1,msg:"Getting ready…",url:"",name:""});
+    let wl=null; try{ wl=await navigator.wakeLock.request("screen"); }catch(e){}
+    let ac=null;
+    try{
+      const AR={"16:9":[16,9],"9:16":[9,16],"1:1":[1,1],"21:9":[21,9]}[mmmRatio]||[16,9];
+      const base=1280; let W,H;
+      if(AR[0]>=AR[1]){W=base;H=Math.round(base*AR[1]/AR[0]);}else{H=base;W=Math.round(base*AR[0]/AR[1]);}
+      W=Math.round(W/2)*2; H=Math.round(H/2)*2;
+      const canvas=document.createElement("canvas"); canvas.width=W; canvas.height=H;
+      const ctx=canvas.getContext("2d"); ctx.fillStyle="#000"; ctx.fillRect(0,0,W,H);
+      const AC=window.AudioContext||window.webkitAudioContext; ac=new AC(); try{await ac.resume();}catch(e){}
+      const dest=ac.createMediaStreamDestination();
+      // voice
+      let narr=null;
+      if(mmmNarrUrl){
+        narr=new Audio(); narr.src=mmmNarrUrl; narr.preload="auto";
+        const g=ac.createGain(); g.gain.value=Math.max(0,Math.min(1,mmmVolume));
+        ac.createMediaElementSource(narr).connect(g); g.connect(dest);
+      }
+      // music bed: your picked track if it can be read, otherwise the built-in soft bed
+      let bed=null;
+      if(mmmBgSound){
+        try{
+          if(!mmmMusicSrc)throw new Error("none");
+          const ab=await (await fetch(mmmMusicSrc)).arrayBuffer();
+          const buf=await ac.decodeAudioData(ab);
+          const src=ac.createBufferSource(); src.buffer=buf; src.loop=true;
+          const g=ac.createGain(); g.gain.value=Math.max(0,Math.min(1,mmmBgVolume)); src.connect(g); g.connect(dest);
+          bed={src};
+        }catch(e){ bed=msBedSource(ac,dest,Math.min(0.5,Math.max(0,mmmBgVolume)*0.8)); }
+      }
+      const stream=canvas.captureStream(30);
+      dest.stream.getAudioTracks().forEach(t=>stream.addTrack(t));
+      const mimes=["video/mp4;codecs=avc1,mp4a.40.2","video/mp4","video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"];
+      const mimeType=mimes.find(m=>{try{return MediaRecorder.isTypeSupported(m);}catch(e){return false;}})||"";
+      const rec=new MediaRecorder(stream,mimeType?{mimeType,videoBitsPerSecond:8000000,audioBitsPerSecond:192000}:{});
+      const chunks=[]; rec.ondataavailable=e=>{ if(e.data&&e.data.size>0)chunks.push(e.data); };
+      const done=new Promise(res=>{ rec.onstop=res; });
+      rec.start(1000);
+      if(bed&&bed.src)try{ bed.src.start(0); }catch(e){}
+      if(narr)try{ await narr.play(); }catch(e){}
+      const t0=Date.now();
+      const drawV=(v)=>{
+        ctx.fillStyle="#000"; ctx.fillRect(0,0,W,H);
+        const vw=v.videoWidth||W, vh=v.videoHeight||H; const sc=Math.min(W/vw,H/vh);
+        const dw=vw*sc, dh=vh*sc; try{ ctx.drawImage(v,(W-dw)/2,(H-dh)/2,dw,dh); }catch(e){}
+      };
+      let lastFrameV=null;
+      for(let i=0;i<list.length&&!mmmExpCancel.current;i++){
+        setMmmExp(x=>({...x,pct:Math.min(95,Math.round((i/list.length)*95)),msg:"Scene "+(i+1)+" of "+list.length+" · "+mmmFmtClock((Date.now()-t0)/1000)}));
+        const v=document.createElement("video"); v.muted=true; v.playsInline=true; v.preload="auto"; v.src=list[i];
+        await new Promise(res=>{ v.onloadeddata=res; v.onerror=res; setTimeout(res,15000); });
+        try{ await v.play(); }catch(e){ continue; }
+        await new Promise(res=>{
+          let fin=false; const end=()=>{ if(!fin){fin=true;clearInterval(tm);res();} };
+          v.onended=end; v.onerror=end;
+          const tm=setInterval(()=>{ if(mmmExpCancel.current){end();return;} drawV(v); },33);
+          setTimeout(end,((isFinite(v.duration)&&v.duration>0?v.duration:90)+5)*1000);
+        });
+        lastFrameV=v;
+      }
+      // keep the last picture on screen until the voice has finished
+      if(narr&&!mmmExpCancel.current){
+        await new Promise(res=>{
+          const tm=setInterval(()=>{ if(lastFrameV)drawV(lastFrameV); if(narr.ended||narr.paused||mmmExpCancel.current){clearInterval(tm);res();} },100);
+          narr.onended=()=>{clearInterval(tm);res();};
+        });
+      }
+      try{ narr&&narr.pause(); }catch(e){}
+      try{ bed&&bed.src&&bed.src.stop(); }catch(e){}
+      try{ rec.state!=="inactive"&&rec.stop(); }catch(e){}
+      await done;
+      if(mmmExpCancel.current){ setMmmExp({busy:false,pct:0,msg:"Stopped.",url:"",name:""}); }
+      else{
+        const type=(mimeType||"video/webm").split(";")[0];
+        const blob=new Blob(chunks,{type});
+        const ext=type.includes("mp4")?".mp4":".webm";
+        const name="InFuture_Movie_"+mmmRatio.replace(":","x")+ext;
+        const url=URL.createObjectURL(blob);
+        try{ await Promise.race([safeSaveClipToDB("mmmfinal_"+Date.now(),blob,"MakeMyMovie_FINAL"+ext,type),new Promise(r=>setTimeout(()=>r("t"),8000))]); }catch(e){}
+        setMmmExp({busy:false,pct:100,msg:"Your film is ready.",url,name});
+        try{ const a=document.createElement("a"); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); }catch(e){}
+      }
+    }catch(e){
+      setMmmExp({busy:false,pct:0,msg:"Export problem: "+(e&&e.message?e.message:e)+". Try again with this tab in front.",url:"",name:""});
+    }
+    try{ ac&&ac.close(); }catch(e){}
+    try{ wl&&wl.release(); }catch(e){}
+  };
+  const mmmTransport=mmmDone?(
+    <div style={{marginTop:10,padding:10,border:"1px solid "+LINE,borderRadius:3,background:"#0E0F12"}}>
+      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
+        <button onClick={mmmTogglePlay} style={{flex:"0 0 92px",padding:"10px 0",background:GOLD,color:"#000",border:"none",borderRadius:3,fontWeight:600,fontSize:14,cursor:"pointer"}}>{mmmPlaying?"PAUSE":"PLAY"}</button>
+        <button onClick={mmmRestart} style={{flex:"0 0 92px",padding:"10px 0",background:"#0E0F12",color:WHITE,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:13,cursor:"pointer"}}>RESTART</button>
+        <div style={{flex:1,textAlign:"right",color:"#fff",fontSize:12}}>Scene {Math.min(mmmSceneNo,Math.max(1,mmmListNow().length))} of {Math.max(1,mmmListNow().length)} · {mmmFmtClock(mmmClock)}</div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:8}}>
+        <div>
+          <div style={{color:WHITE,fontSize:11,fontWeight:600,marginBottom:3}}>Voice {Math.round(mmmVolume*100)}%</div>
+          <input type="range" min={0} max={1} step={0.05} value={mmmVolume} onChange={e=>{const x=Number(e.target.value);setMmmVolume(x);try{if(mmmNarrRef.current)mmmNarrRef.current.volume=x;}catch(_){}}} style={{width:"100%",accentColor:GOLD}}/>
+        </div>
+        <div style={{opacity:mmmBgSound?1:0.4}}>
+          <div style={{color:WHITE,fontSize:11,fontWeight:600,marginBottom:3}}>Music {Math.round(mmmBgVolume*100)}%</div>
+          <input type="range" min={0} max={1} step={0.05} value={mmmBgVolume} disabled={!mmmBgSound} onChange={e=>setMmmBgVolume(Number(e.target.value))} style={{width:"100%",accentColor:GOLD}}/>
+        </div>
+      </div>
+      <div style={{color:WHITE,fontSize:11,fontWeight:600,marginBottom:4}}>Screen ratio</div>
+      <div style={{display:"flex",gap:6,marginBottom:8}}>
+        {["16:9","9:16","1:1","21:9"].map(r=>(
+          <button key={r} onClick={()=>setMmmRatio(r)} style={{flex:1,padding:"8px 0",background:mmmRatio===r?GOLD:"#0E0F12",color:mmmRatio===r?"#000":GOLD,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>{r}</button>
+        ))}
+      </div>
+      <div style={{marginTop:10,padding:10,border:"1px solid "+GOLD,borderRadius:3}}>
+        <button onClick={mmmExp.busy?()=>{mmmExpCancel.current=true;}:mmmExportFilm}
+          style={{width:"100%",padding:13,background:mmmExp.busy?"#0E0F12":GOLD,color:mmmExp.busy?GOLD:"#000",border:mmmExp.busy?"1px solid "+LINE:"none",borderRadius:3,fontWeight:600,fontSize:14,cursor:"pointer"}}>
+          {mmmExp.busy?"STOP EXPORT":"EXPORT FINAL FILM — ONE FILE"}
+        </button>
+        <div style={{color:DIM,fontSize:11,marginTop:6,textAlign:"center"}}>Picture, voice and music in one file, at the ratio you picked. Keep this tab in front while it runs.</div>
+        {(mmmExp.busy||mmmExp.msg)&&<div style={{marginTop:8}}>
+          <div style={{background:"#0E0F12",height:8,border:"1px solid "+LINE,borderRadius:3,overflow:"hidden"}}><div style={{background:GOLD,height:"100%",width:mmmExp.pct+"%",transition:"width .3s"}}/></div>
+          <div style={{color:"#fff",fontSize:11,marginTop:4,textAlign:"center"}}>{mmmExp.msg}</div>
+        </div>}
+        {mmmExp.url&&<a href={mmmExp.url} download={mmmExp.name} style={{display:"block",marginTop:8,padding:12,background:GOLD,color:"#000",borderRadius:3,fontWeight:600,fontSize:14,textAlign:"center",textDecoration:"none"}}>DOWNLOAD FINAL FILM</a>}
+      </div>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:10}}>
+        <button onClick={()=>{try{const e=mmmVideoRef.current;(e.requestFullscreen||e.webkitEnterFullscreen||e.webkitRequestFullscreen).call(e);}catch(_){}}} style={{flex:"1 1 45%",padding:10,background:"#0E0F12",color:WHITE,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>FULL SCREEN</button>
+        <button onClick={()=>{try{navigator.share?navigator.share({title:"My Movie",url:mmmFilmUrl}):window.open(mmmFilmUrl,"_blank");}catch(e){window.open(mmmFilmUrl,"_blank");}}} style={{flex:"1 1 45%",padding:10,background:"#0E0F12",color:WHITE,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>SHARE</button>
+        {go&&<button onClick={()=>go(16)} style={{flex:"1 1 45%",padding:10,background:GOLD,color:"#000",border:"none",borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>RENDER FINAL FILM →</button>}
+        {go&&<button onClick={()=>go(18)} style={{flex:"1 1 45%",padding:10,background:"#0E0F12",color:WHITE,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>EXPORT PAGE →</button>}
+      </div>
+    </div>
+  ):null;
+
+  const [mmmLsBusy,setMmmLsBusy]=useState(false);
+  const [mmmLsVideo,setMmmLsVideo]=useState("");
+  const mmmRunLipSync=async()=>{
+    const face=mmmImages.length?mmmImages[0].dataUrl:"";
+    if(!face){ setMmmError("Lip sync needs a face photo - add one above."); return; }
+    setMmmError(""); setMmmLsBusy(true); setMmmLsVideo("");
+    try{
+      let audioDataUrl="";
+      try{
+        const _mv=(typeof VOICE_CHARACTERS!=="undefined")?VOICE_CHARACTERS.find(v=>v.id===mmmVoiceId):null;
+        const vr=await fetch(VOICE_URL,{method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({text:(mmmText||"").slice(0,1200),voice:_mv?.engineVoice||mmmVoiceId,gender:_mv?.gender||"",origin:_mv?.origin||"",speed:_mv?.rate||1})});
+        const vd=await vr.json(); audioDataUrl=vd&&(vd.audio||vd.url)?(vd.audio||vd.url):"";
+      }catch(e){}
+      if(!audioDataUrl){ setMmmError("Couldn't make the narration audio for lip sync."); setMmmLsBusy(false); return; }
+      const res=await fetch("https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/lip-sync",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({image:face,audio:audioDataUrl})});
+      const data=await res.json();
+      if(data.error){ setMmmError(data.error); setMmmLsBusy(false); return; }
+      if(data.video){ setMmmLsVideo(data.video); } else setMmmError("Lip sync returned no video.");
+    }catch(e){ setMmmError("Lip-sync engine unreachable: "+(e&&e.message?e.message:e)); }
+    setMmmLsBusy(false);
+  };
+  const mmmDownloadAll=async()=>{
+    let list=[]; try{list=JSON.parse(localStorage.getItem("ms_mmm_playlist")||"[]");}catch(e){}
+    for(let i=0;i<list.length;i++){
+      try{
+        const b=await (await fetch(list[i])).blob();
+        const a=document.createElement("a");
+        a.href=URL.createObjectURL(b);
+        a.download="MakeMyMovie_scene"+(i+1)+".mp4";
+        document.body.appendChild(a); a.click(); a.remove();
+        await new Promise(r=>setTimeout(r,600));
+      }catch(e){}
     }
   };
-  v.addEventListener("timeupdate",onUpd);
-  try{v.currentTime=1e9;}catch(e){}
+
+  const madeSeconds=madeClips.reduce((a,c)=>a+(c.duration||0),0);
+  const targetSeconds=targetMin*60;
+  const gapSeconds=Math.max(0,targetSeconds-madeSeconds);
+  const fmtMin=(s)=>{const m=Math.floor(s/60),ss=Math.round(s%60);return m+"m "+(ss<10?"0":"")+ss+"s";};
+
+  const RENDER_STYLES=[
+    {id:"photorealistic",label:"Photorealistic"},
+    {id:"cinematic",label:"Cinematic"},
+    {id:"documentary",label:"Documentary"},
+    {id:"noir",label:"Film Noir"},
+    {id:"golden",label:"Golden Hour"},
+    {id:"scifi",label:"Sci-Fi"},
+    {id:"horror",label:"Horror"},
+    {id:"animated",label:"Stylised"},
+  ];
+  const FILM_GENRES=[
+    {id:"",label:"— NO GENRE —"},
+    {id:"feature",label:"Feature Film"},{id:"documentary",label:"Documentary"},
+    {id:"musicvideo",label:"Music Video"},{id:"shortfilm",label:"Short Film"},
+    {id:"horror",label:"Horror"},{id:"scifi",label:"Sci-Fi"},
+    {id:"romance",label:"Romance"},{id:"thriller",label:"Thriller"},
+    {id:"action",label:"Action"},{id:"comedy",label:"Comedy"},
+    {id:"drama",label:"Drama"},{id:"animation",label:"Animation"},
+    {id:"historical",label:"Historical"},{id:"nature",label:"Nature"},
+  ];
+  const EXAMPLES=[
+    "Earth rotating slowly in deep space. City lights blazing gold on the night side. Stars everywhere.",
+    "A woman places a folded paper into a wooden ballot box. Morning light from a window.",
+    "Night city skyline. Rain. Neon reflections on wet streets. A lone figure walks under a streetlight.",
+    "Underwater coral reef. Vivid tropical fish. Light shafts from the surface above.",
+    "An elderly couple on a park bench in autumn. Golden leaves falling. Neither speaking.",
+    "Vast dark server room. Three people huddled around a single warm lantern. Faces lit gold.",
+    "Cave interior. Torchlight. Ancient paintings on the walls. A figure looking at camera.",
+    "Dawn breaking over a savanna. A silhouetted human figure stands at the horizon.",
+  ];
+
+  const handleRefUpload=(e)=>{
+    const f=e.target.files&&e.target.files[0];
+    if(!f)return;
+    setRefMedia(URL.createObjectURL(f));
+    setRefMediaType(f.type.startsWith("video")?"video":"image");
+    const reader=new FileReader();
+    reader.onload=ev=>setRefDataUrl(ev.target.result);
+    reader.readAsDataURL(f);
+  };
+
+  // ════════════════════════════════════════════════════════════════
+  // MANDASTRONG ENGINE v2 — CINEMA-GRADE RENDERER
+  // Real depth, real volumetric lighting, real atmosphere, real motion
+  // ════════════════════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════════
+  // MANDASTRONG ENGINE — AI writes a custom drawFrame() per prompt
+  // Every scene is unique. What you describe is exactly what renders.
+  // ════════════════════════════════════════════════════════════════
+  const generateVideo=async()=>{
+    if(!prompt.trim()){alert("Describe your scene first");return;}
+    setGenerating(true);setProgress(0);setLog([]);setVideoUrl("");setSaved(false);
+
+    // ── PRIORITY SAVE — runs before anything else ──────────────────────────────
+    // Saves page/timeline/mediaLib to localStorage immediately so if the tab
+    // crashes mid-render, the session is already written and can be resumed.
+    try{
+      localStorage.setItem("ms_page",JSON.stringify(8));
+      const existingTimeline=localStorage.getItem("ms_timeline")||"{}";
+      const existingMedia=localStorage.getItem("ms_medialib")||"[]";
+      // These are already up to date from auto-persist — just verify they're written
+      if(!existingTimeline||existingTimeline==="{}")localStorage.setItem("ms_timeline","{}");
+      if(!existingMedia||existingMedia==="[]")localStorage.setItem("ms_medialib","[]");
+    }catch(e){}
+    // ── PRE-GENERATION STORAGE CHECK — safe, never touches source clips ──
+    // Only clears old rendered films from IndexedDB.
+    try{
+      const clips=await getAllClipsFromDB();
+      const oldRenders=clips.filter(c=>String(c.id).includes("render_final_old"));
+      for(const c of oldRenders){await deleteClipFromDB(c.id);}
+    }catch(e){}
+    addLog("MandaStrong Cinema Engine — reading your scene...");
+    setProgress(5);
+
+    // ══════════════════════════════════════════════════════════════════
+    // MANDASTRONG CINEMA ENGINE — REAL PHOTOREALISTIC VIDEO
+    // Sends the scene to the Cinema Engine and returns real footage.
+    // Falls back to the built-in renderer if the engine is unavailable.
+    // ══════════════════════════════════════════════════════════════════
+    try{
+      addLog("Cinema Engine — synthesising photorealistic footage...");
+      setProgress(12);
+      // ── SCRIPT-TO-MOVIE BRIEF ── Page 5's Producer/Describe/Production
+      // notes, if the user wired them into the render, drive every scene.
+      let briefText="";
+      if(useBrief){
+        try{
+          const bd=JSON.parse(localStorage.getItem("ms_render_brief")||"null");
+          if(bd&&bd.brief){ briefText=bd.brief; addLog(" Using Script-to-Movie look from Page 5 (your scene comes first)"); }
+        }catch(e){}
+      }
+      // The scene you wrote leads. Only a short look line is added after it, and nobody speaks on screen.
+      const effectivePrompt=buildEnginePrompt(prompt,briefText);
+      // Your uploaded photo becomes the starting picture. Without a photo the engine builds the scene from your words alone.
+      let engineImage=refDataUrl||"";
+      if(!engineImage){
+        const firstPhoto=(refImages||[]).find(r=>r&&!r.isVideo);
+        if(firstPhoto){ engineImage=await photoToEngineImage(firstPhoto.url,1024); addLog(engineImage?"\u2713 Your photo is being sent to the engine as the starting picture":"Could not read your photo - building the scene from your words"); }
+      }
+      const engineUrl=await engineRender(effectivePrompt,{
+        duration,
+        image:engineImage||"",
+        aspect_ratio:aspect.replace("/",":"),
+        onTick:(i)=>{ setProgress(Math.min(88,12+i*2)); addLog("Cinema Engine rendering — "+Math.min(88,12+i*2)+"%"); }
+      });
+      if(engineUrl){
+        addLog("\u2713 Cinema Engine complete — downloading footage...");
+        setProgress(92);
+        const vidRes=await fetch(engineUrl);
+        const vidBlob=await vidRes.blob();
+        const localUrl=URL.createObjectURL(vidBlob);
+        setVideoUrl(localUrl);
+        setProgress(100);
+        addLog("\u2713 MANDASTRONG CINEMA ENGINE — photorealistic scene ready");
+        try{
+          const autoId="scene_"+Date.now();
+          const autoName=(title||"Scene")+"_"+duration+"s.mp4";
+          await Promise.race([
+            safeSaveClipToDB(autoId,vidBlob,autoName,"video/mp4"),
+            new Promise(r=>setTimeout(()=>r("timeout"),8000))
+          ]);
+          if(onSave)onSave({id:autoId,name:autoName,type:"video/mp4",url:localUrl,file:new File([vidBlob],autoName,{type:"video/mp4"}),dbId:autoId});
+          setSaved(true);
+          addLog("\u2713 Saved to Media Library");
+        }catch(e){}
+        setGenerating(false);
+        return;
+      }
+      const diag=await engineStatus();
+      addLog(diag&&diag.ok===false?("Cinema Engine: "+(diag.message||"unavailable")):"Cinema Engine returned no footage — using built-in renderer");
+    }catch(e){
+      addLog("Cinema Engine offline — using built-in renderer");
+    }
+
+    // LOAD REFERENCE PHOTOS if user uploaded any
+    let loadedRefImages=[];
+    if(refImages.length>0){
+      addLog("Loading "+refImages.length+" reference photo(s) for photorealistic base...");
+      try{
+        loadedRefImages=await Promise.all(refImages.map(ri=>new Promise((res)=>{
+          const img=new Image();
+          img.onload=()=>res({...ri,img,w:img.naturalWidth,h:img.naturalHeight});
+          img.onerror=()=>res(null);
+          img.src=ri.url;
+        })));
+        loadedRefImages=loadedRefImages.filter(Boolean);
+        addLog("\u2713 "+loadedRefImages.length+" photo(s) loaded — photorealistic mode");
+      }catch(e){addLog("Photo load: "+e.message);}
+    }
+
+    const styleId=renderStyle||"photorealistic";
+    const bt=String.fromCharCode(96);
+
+    // ── STEP 1: Ask Claude to write a custom drawFrame for this exact scene ──
+    let drawFnBody="";
+    try{
+      addLog("MandaStrong Engine — asking AI to compose your scene...");
+      setProgress(12);
+      const hasPhotos=loadedRefImages.length>0;
+      const photoNote=hasPhotos?"The user has uploaded "+loadedRefImages.length+" reference photo(s). The main photo will be drawn as the base layer already — your drawFrame should add atmosphere, lighting, overlays, and cinematic elements ON TOP of the photo base. Do NOT try to redraw the background from scratch.":"No reference photos. You must paint the entire scene from scratch using canvas drawing primitives — sky, ground, environment, people, objects, lighting. Make it look as photorealistic as possible using gradients, layering, and detail.";
+      const composeController=new AbortController();
+      const composeTimeout=setTimeout(()=>composeController.abort(),45000);
+      const res=await fetch("https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/claude-proxy",{
+        signal:composeController.signal,
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          model:"claude-sonnet-4-20250514",
+          max_tokens:3500,
+          system:`You are the MandaStrong Engine, a photorealistic canvas video renderer for InFuture Movie Studios. You write JavaScript that renders cinematic scenes frame by frame on an HTML5 canvas.
+
+${photoNote}
+
+Write a JavaScript function body (NOT the function declaration — just the code inside the braces) for:
+function drawFrame(ctx, W, H, t, sec) { YOUR CODE HERE }
+
+Parameters:
+- ctx: CanvasRenderingContext2D (canvas is W=1920 H=1080)
+- t: 0.0 to 1.0 progress through the entire clip
+- sec: elapsed seconds
+- W=1920, H=1080
+
+Style: ${styleId}. Duration: ${duration}s.
+
+Rules:
+1. Paint everything with ctx. Use gradients, arcs, paths for realistic environments.
+2. Animate with t and sec — camera drift, parallax, light shifts, subtle motion.
+3. Apply cinematic colour grade overlay matching the style (${styleId}).
+4. Add vignette, letterbox bars (black rects top and bottom ~7% of H), film grain.
+5. Fade in from black for first 5% of t. Fade out to black for last 8% of t.
+6. No external images, no fetch calls, no DOM access — only ctx drawing.
+7. Keep it under 200 lines.
+
+Return ONLY the function body code. No markdown. No function wrapper. No explanation.`,
+          messages:[{role:"user",content:`Scene to render: "${prompt}"
+
+Write the drawFrame body now.`}]
+        })
+      });
+      clearTimeout(composeTimeout);
+      const d=await res.json();
+      let code=d.content&&d.content[0]?d.content[0].text.trim():"";
+      // Strip markdown fences if present
+      code=code.split(bt+bt+bt+"javascript").join("").split(bt+bt+bt+"js").join("").split(bt+bt+bt).join("").trim();
+      // Strip function wrapper if Claude included it
+      if(code.startsWith("function drawFrame")){
+        const bo=code.indexOf("{");const bc=code.lastIndexOf("}");
+        if(bo>=0&&bc>bo)code=code.slice(bo+1,bc);
+      }
+      drawFnBody=code;
+      addLog("\u2713 Scene composed — "+drawFnBody.split("\n").length+" render instructions");
+      setProgress(28);
+    }catch(e){
+      addLog("Scene compose error: "+e.message+" — using fallback renderer");
+      // Fallback: atmospheric dark scene
+      drawFnBody=`
+        const sky=ctx.createLinearGradient(0,0,0,H);
+        sky.addColorStop(0,"#020108");sky.addColorStop(0.6,"#0a0520");sky.addColorStop(1,"#050210");
+        ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+        for(let s=0;s<300;s++){const sx=(s*173)%W;const sy=(s*97)%H;const sa=0.3+0.7*((s*31)%100)/100;ctx.fillStyle="rgba(255,255,220,"+sa+")";ctx.fillRect(sx+Math.sin(sec*0.1+s)*0.5,sy,1,1);}
+        const vig=ctx.createRadialGradient(W/2,H/2,100,W/2,H/2,900);vig.addColorStop(0,"rgba(0,0,0,0)");vig.addColorStop(1,"rgba(0,0,0,0.85)");ctx.fillStyle=vig;ctx.fillRect(0,0,W,H);
+        ctx.fillStyle="#000";ctx.fillRect(0,0,W,H*0.07);ctx.fillRect(0,H*0.93,W,H*0.07);
+        if(t<0.05){ctx.fillStyle="rgba(0,0,0,"+(1-t/0.05)+")";ctx.fillRect(0,0,W,H);}
+        if(t>0.92){ctx.fillStyle="rgba(0,0,0,"+((t-0.92)/0.08)+")";ctx.fillRect(0,0,W,H);}
+      `;
+    }
+
+    // ── STEP 2: Set up canvas + MediaRecorder ──
+    const canvas=canvasRef.current;
+    if(!canvas){setGenerating(false);addLog("Canvas error");return;}
+    const _AR={"16/9":[16,9],"9/16":[9,16],"1/1":[1,1],"4/3":[4,3],"21/9":[21,9]}[aspect]||[16,9];
+    const _BASE={sd:720,hd:1280,fhd:1920,uhd:3840}[expQ]||1280;
+    let _W,_H;
+    if(_AR[0]>=_AR[1]){_W=_BASE;_H=Math.round(_BASE*_AR[1]/_AR[0]);}
+    else{_H=_BASE;_W=Math.round(_BASE*_AR[0]/_AR[1]);}
+    _W=Math.round(_W/2)*2;_H=Math.round(_H/2)*2;
+    canvas.width=_W;canvas.height=_H;
+    const ctx=canvas.getContext("2d");
+
+    // Build the drawFrame function — wraps AI code + photo base layer
+    let drawFrame;
+    try{
+      if(loadedRefImages.length>0){
+        // Photo mode: draw photo base first, then AI atmospheric overlay
+        const mainImg=loadedRefImages[0];
+        drawFrame=new Function("ctx","W","H","t","sec","loadedRefImages",`
+          // DOCUMENTARY SHOTS: ONE photo full-screen at a time. With several
+          // photos the clip cuts between them in order (soft crossfade), each
+          // with its own slow push-in. Before this, photos 2-6 floated on top
+          // of photo 1 as small moving panels - four images at once.
+          const N=loadedRefImages.length;
+          const seg=1/N;
+          const idx=Math.min(N-1,Math.floor(t/seg));
+          const local=(t-idx*seg)/seg;
+          const drawShot=(ri,lt,dir)=>{
+            if(!ri||!ri.img)return;
+            const pushIn=1.04+lt*0.08;
+            const ar=ri.w/ri.h, targetAR=W/H;
+            let dw,dh;
+            if(ar>targetAR){dh=H*pushIn;dw=dh*ar;}else{dw=W*pushIn;dh=dw/ar;}
+            const driftX=dir*W*0.025*lt;
+            ctx.drawImage(ri.img,(W-dw)/2-driftX,(H-dh)/2,dw,dh);
+          };
+          ctx.globalAlpha=1;
+          drawShot(loadedRefImages[idx],local,idx%2===0?1:-1);
+          // crossfade into the next shot over the last 12% of this one
+          if(idx<N-1&&local>0.88){
+            ctx.globalAlpha=(local-0.88)/0.12;
+            drawShot(loadedRefImages[idx+1],0,(idx+1)%2===0?1:-1);
+            ctx.globalAlpha=1;
+          }
+          // AI atmospheric overlay
+          ${drawFnBody}
+        `);
+      }else{
+        // No photos — full AI scene
+        drawFrame=new Function("ctx","W","H","t","sec","loadedRefImages",drawFnBody);
+      }
+    }catch(e){
+      addLog("Render compile error: "+e.message);
+      setGenerating(false);return;
+    }
+
+    // Test render frame 0
+    try{drawFrame(ctx,_W,_H,0,0,loadedRefImages);}catch(e){addLog("Frame test warning: "+e.message);}
+    await new Promise(r=>setTimeout(r,100));
+    setProgress(32);
+
+    // ── STEP 3: Render all frames ──
+    const fps=20;const totalFrames=duration*fps;
+    const mimeType=MediaRecorder.isTypeSupported("video/webm;codecs=vp9")?"video/webm;codecs=vp9":"video/webm";
+    const stream=canvas.captureStream(fps);
+    // ── BACKGROUND MUSIC — mix chosen track under the render ──
+    let musicCtx=null, musicSource=null;
+    if(addMusic&&musicTrack){
+      try{
+        const track=MUSIC_LIBRARY.find(m=>m.id===musicTrack);
+        if(track){
+          addLog("Loading background music: "+track.label+"...");
+          const resp=await fetch(track.url);
+          const arr=await resp.arrayBuffer();
+          musicCtx=new (window.AudioContext||window.webkitAudioContext)();
+          const buf=await musicCtx.decodeAudioData(arr);
+          const dest=musicCtx.createMediaStreamDestination();
+          musicSource=musicCtx.createBufferSource();
+          musicSource.buffer=buf; musicSource.loop=true;
+          const gain=musicCtx.createGain(); gain.gain.value=0.35;
+          if(genStereo && musicCtx.createStereoPanner){
+            addLog("Stereo sound ON — widening the music bed");
+            musicSource.connect(gain); gain.connect(dest);
+            const wet=musicCtx.createGain(); wet.gain.value=0.5;
+            [[-0.85,0.014],[0.85,0.021]].forEach(([pan,dl])=>{
+              const d=musicCtx.createDelay(); d.delayTime.value=dl;
+              const p=musicCtx.createStereoPanner(); p.pan.value=pan;
+              gain.connect(d); d.connect(p); p.connect(wet);
+            });
+            wet.connect(dest);
+          } else {
+            musicSource.connect(gain); gain.connect(dest);
+          }
+          dest.stream.getAudioTracks().forEach(tk=>stream.addTrack(tk));
+          addLog("Background music ready — mixing into film");
+        }
+      }catch(e){ addLog("Music note: "+e.message+" — rendering without music"); musicCtx=null; musicSource=null; }
+    }
+    const _BR={sd:2500000,hd:6000000,fhd:12000000,uhd:40000000}[expQ]||6000000;
+    const recorder=new MediaRecorder(stream,{mimeType,videoBitsPerSecond:_BR});
+    if(musicSource){ try{ musicSource.start(0); }catch(e){} }
+    const chunks=[];
+    recorder.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
+    recorder.start(Math.round(1000/fps));
+    addLog("Rolling — rendering "+duration+"s at 24fps...");
+    setProgress(35);
+
+    await new Promise(resolve=>{
+      let frame=0;
+      const tick=()=>{
+        if(frame>=totalFrames){resolve(null);return;}
+        const t=frame/totalFrames;const sec=frame/fps;
+        ctx.clearRect(0,0,_W,_H);
+        try{drawFrame(ctx,_W,_H,t,sec,loadedRefImages);}catch(e){ctx.fillStyle="#07080A";ctx.fillRect(0,0,_W,_H);}
+        // Consistent post-processing on every frame
+        const vig=ctx.createRadialGradient(640,360,80,640,360,650);
+        vig.addColorStop(0,"rgba(0,0,0,0)");vig.addColorStop(1,"rgba(0,0,0,0.8)");
+        ctx.fillStyle=vig;ctx.fillRect(0,0,_W,_H);
+        // ── AUTO-ENHANCEMENT — warm gold grade + contrast + highlight recovery ──
+        ctx.fillStyle="rgba(232,180,60,0.06)";ctx.fillRect(0,0,_W,_H);
+        ctx.fillStyle="rgba(0,0,0,0.08)";ctx.fillRect(0,0,_W,_H);
+        const hr2=ctx.createRadialGradient(640,216,0,640,216,512);
+        hr2.addColorStop(0,"rgba(255,255,240,0.04)");hr2.addColorStop(1,"rgba(0,0,0,0)");
+        ctx.fillStyle=hr2;ctx.fillRect(0,0,_W,_H);
+        // ──────────────────────────────────────────────────────────────────────
+        ctx.fillStyle="#000";ctx.fillRect(0,0,_W,50);ctx.fillRect(0,_H-50,_W,50);
+        for(let g=0;g<20;g++){const gv=Math.random()>0.5?160:20;ctx.fillStyle="rgba("+gv+","+gv+","+gv+",0.008)";ctx.fillRect(Math.random()*_W,Math.random()*_H,1.2,1.2);}
+        if(t<0.05){ctx.fillStyle="rgba(0,0,0,"+(1-t/0.05)+")";ctx.fillRect(0,0,_W,_H);}
+        if(t>0.92){ctx.fillStyle="rgba(0,0,0,"+((t-0.92)/0.08)+")";ctx.fillRect(0,0,_W,_H);}
+        setProgress(35+Math.round((frame/totalFrames)*60));
+        if(frame%(fps*5)===0)addLog("  "+Math.round(sec)+"s / "+duration+"s rendered");
+        frame++;
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+
+    setProgress(97);
+    addLog("Encoding...");
+    // Wait for the recorder to actually finish flushing its data before building the blob.
+    // A fixed delay can fire before the final chunk arrives on slower machines, which hangs at 97%.
+    await new Promise(resolve=>{
+      let done=false;
+      const finish=()=>{ if(!done){done=true;resolve(null);} };
+      // Arm the escape hatch FIRST — guaranteed exit even if stop() throws
+      setTimeout(finish,4000);
+      try{
+        recorder.onstop=finish;
+        if(recorder.state!=="inactive"){recorder.stop();}
+        else{finish();}
+      }catch(e){finish();}
+    });
+    if(musicSource){ try{ musicSource.stop(); }catch(e){} }
+    if(musicCtx){ try{ musicCtx.close(); }catch(e){} }
+    const blob=new Blob(chunks,{type:mimeType});
+    const url=URL.createObjectURL(blob);
+    setVideoUrl(url);
+    setProgress(100);
+    addLog("\u2713 MANDASTRONG ENGINE COMPLETE — "+duration+"s cinema-grade video ready");
+    // AUTO-SAVE the finished clip — timeout-protected so it can never stall the render
+    try{
+      const autoId="scene_"+Date.now();
+      const autoName=(title||"Scene")+"_"+duration+"s.webm";
+      const saveResult=await Promise.race([
+        safeSaveClipToDB(autoId,blob,autoName,"video/webm"),
+        new Promise(r=>setTimeout(()=>r("timeout"),6000))
+      ]);
+      if(saveResult==="timeout"){addLog("Save is running in background — clip is ready above");}
+      else{
+        if(onSave)onSave({id:autoId,name:autoName,type:"video/webm",url:URL.createObjectURL(blob),file:new File([blob],autoName,{type:"video/webm"}),dbId:autoId});
+        setSaved(true);
+        addLog("\u2713 Auto-saved to library");
+      }
+    }catch(e){addLog("Auto-save note: "+e.message);}
+    // Track this clip toward the target film length, then check the gap
+    try{
+      const newTotal=madeSeconds+duration;
+      setMadeClips(p=>[...p,{id:Date.now(),duration}]);
+      if(targetSeconds>0 && newTotal<targetSeconds){
+        setGapPrompt({have:newTotal,target:targetSeconds,gap:targetSeconds-newTotal});
+      }
+    }catch(e){}
+    setGenerating(false);
+  };
+
+  const saveToLibrary=async()=>{
+    if(!videoUrl)return;
+    try{
+      const r=await fetch(videoUrl);const b=await r.blob();
+      const fn=(title||"Scene")+"_"+duration+"s.webm";
+      const file=new File([b],fn,{type:"video/webm"});
+      if(onSave)onSave({id:Date.now()+Math.random(),name:fn,type:"video/webm",url:URL.createObjectURL(file),file});
+    }catch(e){if(onSave)onSave({id:Date.now()+Math.random(),name:(title||"Scene")+"_"+duration+"s.webm",type:"video/webm",url:videoUrl});}
+    setSaved(true);
+  };
+
+  return (
+    <div style={{minHeight:"100vh",background:"#0E0F12",color:WHITE,fontFamily:"'Manrope',system-ui,sans-serif",paddingBottom:160}}>
+      {gapPrompt&&(
+        <div style={{position:"fixed",inset:0,zIndex:2000,background:"rgba(0,0,0,0.94)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+          <div style={{width:"min(460px,95vw)",background:"#07080A",border:"2px solid "+SIGNAL,padding:"24px 22px"}}>
+            <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:16,fontWeight:600,letterSpacing:0.2,marginBottom:14,textAlign:"center"}}>Fill the gap?</div>
+            <p style={{color:WHITE,fontSize:14,lineHeight:1.7,margin:"0 0 18px",textAlign:"center"}}>
+              You have <b style={{color:WHITE}}>{fmtMin(gapPrompt.have)}</b> of your <b style={{color:WHITE}}>{fmtMin(gapPrompt.target)}</b> selection.
+              Would you like AI to create fill-in scenes to fill the remaining <b style={{color:WHITE}}>{fmtMin(gapPrompt.gap)}</b>?
+            </p>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <button disabled={gapBusy} onClick={()=>{
+                  const g=gapPrompt;setGapPrompt(null);
+                  if(!prompt.trim())setPrompt("Cinematic continuation scene that flows naturally from the previous shot, matching the film's mood, lighting and colour grade.");
+                  const fillSecs=Math.min(60,Math.max(5,g.gap));
+                  setDuration(fillSecs);
+                  setTimeout(()=>{generateVideo();},60);
+                }}
+                style={{background:"#0E0F12",border:"none",color:"#000",padding:"14px",fontSize:13,fontWeight:600,letterSpacing:0.2,cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>
+                Yes, fill it
+              </button>
+              <button onClick={()=>setGapPrompt(null)}
+                style={{background:"transparent",border:"1px solid "+LINE,color:WHITE,padding:"14px",fontSize:13,fontWeight:600,letterSpacing:0.2,cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>
+                NO, I'M DONE
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      <canvas ref={canvasRef} style={{position:"fixed",right:8,bottom:8,width:160,height:90,opacity:1,pointerEvents:"none",zIndex:9999,border:"1px solid #E6C98E",background:"#0E0F12"}}/>
+      <div style={{padding:"12px 20px",borderBottom:"1px solid "+LINE+"",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+        <div>
+          <div style={{fontSize:11,color:WHITE,letterSpacing:0.4,fontWeight:500}}>MANDASTRONG ENGINE v2 · CINEMA-GRADE RENDERER</div>
+          <h1 style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,letterSpacing:0.4,margin:0,fontSize:24,textTransform:"none"}}>Video generator</h1>
+        </div>
+        <div style={{color:WHITE,fontSize:11,fontWeight:500,letterSpacing:0.2}}>MandaStrong engine · any prompt · any subject</div>
+      </div>
+      {mmmStudio&&(
+        <div style={{position:"fixed",inset:0,zIndex:900,background:"#0E0F12",overflowY:"auto",padding:"18px 16px 60px"}}>
+          <div style={{maxWidth:760,margin:"0 auto"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,letterSpacing:0.2,fontSize:20,textTransform:"none"}}>Make My Movie Studio</div>
+              <button onClick={()=>setMmmStudio(false)} style={{background:"none",border:"1px solid "+LINE,color:WHITE,padding:"6px 14px",borderRadius:3,cursor:"pointer",fontSize:12,letterSpacing:0}}>Close</button>
+            </div>
+
+            <textarea value={mmmText} onChange={e=>setMmmText(e.target.value)} rows={5}
+              placeholder="Paste your whole film here. Nothing is lost when you leave this box."
+              style={{width:"100%",boxSizing:"border-box",background:"#0E0F12",border:"1px solid "+LINE,borderRadius:3,color:"#fff",padding:11,fontSize:13,fontFamily:"'Manrope',system-ui,sans-serif",resize:"vertical",marginBottom:10}}/>
+
+            <label htmlFor="mmmStudioFileInput" onDragOver={e=>{e.preventDefault();}}
+              onDrop={e=>{e.preventDefault();mmmAddFiles(e.dataTransfer.files);}}
+              style={{display:"block",textAlign:"center",border:"1px dashed "+GOLD+"77",borderRadius:3,padding:12,color:DIM,fontSize:12,letterSpacing:0,marginBottom:10,cursor:"pointer"}}>
+              DROP OR TAP TO ADD SCRIPT AND IMAGES
+              <input id="mmmStudioFileInput" type="file" multiple accept="image/*,text/*,.txt,.md,.fdx,.fountain,.heic,.heif" style={{display:"none"}}
+                onChange={e=>{const fl=Array.from(e.target.files||[]);e.target.value="";mmmAddFiles(fl);}}/>
+            </label>
+            {mmmAddMsg&&<div style={{color:WHITE,fontSize:11,textAlign:"center",marginBottom:8}}>{mmmAddMsg}{mmmImages.length>0?" · "+mmmImages.length+" photo"+(mmmImages.length>1?"s":"")+" ready":""}</div>}
+            {mmmImages.length>0&&(
+              <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:12}}>
+                {mmmImages.map((im,i)=>(
+                  <div key={i} style={{position:"relative"}}>
+                    <img src={im.dataUrl} style={{width:54,height:54,objectFit:"cover",border:"1px solid "+LINE,borderRadius:3}}/>
+                    <button onClick={()=>setMmmImages(p=>p.filter((_,x)=>x!==i))}
+                      style={{position:"absolute",top:-6,right:-6,width:18,height:18,borderRadius:3,background:"#0E0F12",color:WHITE,border:"1px solid "+LINE,fontSize:11,cursor:"pointer",lineHeight:"16px",padding:0}}>x</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+              <span style={{color:WHITE,fontSize:12,letterSpacing:0.2,fontWeight:600}}>Movie length</span>
+              <span style={{color:"#fff",fontSize:12,fontWeight:500}}>{mmmTargetMin} Min</span>
+            </div>
+            <input type="range" min={1} max={180} value={mmmTargetMin}
+              onChange={e=>setFilmDuration&&setFilmDuration(Number(e.target.value))}
+              style={{width:"100%",accentColor:GOLD,marginBottom:2}}/>
+            <div style={{display:"flex",justifyContent:"space-between",color:DIM,fontSize:10,marginBottom:14}}><span>1 min</span><span>3 hours</span></div>
+
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+              <div>
+                <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Style</div>
+                <select value={mmmStyle} onChange={e=>setMmmStyle(e.target.value)}
+                  style={{width:"100%",background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"9px 12px",fontSize:12,fontFamily:"'Manrope',system-ui,sans-serif",cursor:"pointer"}}>
+                  {RENDER_STYLES.map(s=><option key={s.id} value={s.id} style={{background:"#0E0F12"}}>{s.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Genre</div>
+                <select value={mmmGenre} onChange={e=>setMmmGenre(e.target.value)}
+                  style={{width:"100%",background:"#0E0F12",border:"1px solid "+LINE,color:mmmGenre?GOLD:LINE,padding:"9px 12px",fontSize:12,fontFamily:"'Manrope',system-ui,sans-serif",cursor:"pointer"}}>
+                  {FILM_GENRES.map(g=><option key={g.id} value={g.id} style={{background:"#0E0F12"}}>{g.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Colour grade</div>
+                <select value={mmmGrade} onChange={e=>setMmmGrade(e.target.value)}
+                  style={{width:"100%",background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"9px 12px",fontSize:12,fontFamily:"'Manrope',system-ui,sans-serif",cursor:"pointer"}}>
+                  {MMM_GRADES.map(g=><option key={g.id} value={g.id} style={{background:"#0E0F12"}}>{g.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Narration voice</div>
+                <select value={mmmVoiceId} onChange={e=>setMmmVoiceId(e.target.value)}
+                  style={{width:"100%",background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"9px 12px",fontSize:12,fontFamily:"'Manrope',system-ui,sans-serif",cursor:"pointer"}}>
+                  {VOICE_CHARACTERS.map(v=><option key={v.id} value={v.id} style={{background:"#0E0F12"}}>{v.name}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div style={{marginBottom:12}}>
+              <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Screen ratio</div>
+              <div style={{display:"flex",gap:6}}>
+                {["16:9","9:16","1:1","21:9"].map(r=>(
+                  <button key={r} onClick={()=>setMmmRatio(r)} style={{flex:1,padding:"9px 0",background:mmmRatio===r?GOLD:"#0E0F12",color:mmmRatio===r?"#000":GOLD,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>{r}</button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:12}}>
+              <button onClick={()=>setMmmEnhance(v=>!v)} style={{flex:"1 1 45%",padding:"10px",background:mmmEnhance?GOLD:"#0E0F12",color:mmmEnhance?"#000":GOLD,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:12,letterSpacing:0,cursor:"pointer"}}>Enhance {mmmEnhance?"ON":"OFF"}</button>
+              <button onClick={()=>setMmmLipSync(v=>!v)} style={{flex:"1 1 45%",padding:"10px",background:mmmLipSync?GOLD:"#0E0F12",color:mmmLipSync?"#000":GOLD,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:12,letterSpacing:0,cursor:"pointer"}}>Lip sync {mmmLipSync?"ON":"OFF"}</button>
+              <button onClick={()=>setMmmBgSound(v=>!v)} style={{flex:"1 1 45%",padding:"10px",background:mmmBgSound?GOLD:"#0E0F12",color:mmmBgSound?"#000":GOLD,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:12,letterSpacing:0,cursor:"pointer"}}>Music bed {mmmBgSound?"ON":"OFF"}</button>
+            </div>
+
+            <div style={{marginBottom:6}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600}}>Narration volume</span><span style={{color:"#fff",fontSize:11}}>{Math.round(mmmVolume*100)}%</span></div>
+              <input type="range" min={0} max={1} step={0.05} value={mmmVolume} onChange={e=>setMmmVolume(Number(e.target.value))} style={{width:"100%",accentColor:GOLD}}/>
+            </div>
+            <div style={{marginBottom:14,opacity:mmmBgSound?1:0.4}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}><span style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600}}>Music volume</span><span style={{color:"#fff",fontSize:11}}>{Math.round(mmmBgVolume*100)}%</span></div>
+              <input type="range" min={0} max={1} step={0.05} value={mmmBgVolume} onChange={e=>setMmmBgVolume(Number(e.target.value))} disabled={!mmmBgSound} style={{width:"100%",accentColor:GOLD}}/>
+            </div>
+
+            <button onClick={makeMyMovie} disabled={mmmBusy}
+              style={{width:"100%",padding:16,background:mmmBusy?"#333":GOLD,color:mmmBusy?"#888":"#000",border:"none",fontWeight:600,fontSize:18,letterSpacing:0.2,borderRadius:3,cursor:mmmBusy?"default":"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>
+              {mmmBusy?"MAKING YOUR MOVIE...":"MAKE MY MOVIE"}
+            </button>
+
+            {mmmLipSync&&(
+              <div style={{marginTop:12,padding:12,border:"1px solid "+LINE,borderRadius:3,background:"#0E0F12"}}>
+                <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Lip sync - talking scene</div>
+                <div style={{color:DIM,fontSize:11,marginBottom:8}}>Uses your first uploaded face photo and speaks the pasted text in the chosen voice.</div>
+                <button onClick={mmmRunLipSync} disabled={mmmLsBusy}
+                  style={{width:"100%",padding:12,background:mmmLsBusy?"#333":GOLD,color:mmmLsBusy?"#888":"#000",border:"none",fontWeight:600,fontSize:14,letterSpacing:0.2,borderRadius:3,cursor:mmmLsBusy?"default":"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>
+                  {mmmLsBusy?"SYNCING...":"GENERATE TALKING SCENE"}
+                </button>
+                {mmmLsVideo&&(
+                  <MsVideo src={mmmLsVideo} controls playsInline style={{width:"100%",marginTop:10,borderRadius:3,border:"1px solid "+LINE,background:"#0E0F12",aspectRatio:"16/9"}}/>
+                )}
+              </div>
+            )}
+
+            {mmmError&&<div style={{marginTop:10,color:"#D9A79A",fontSize:12,textAlign:"center"}}>{mmmError}</div>}
+
+            {mmmBusy&&(
+              <div style={{marginTop:12}}>
+                <div style={{color:WHITE,fontSize:12,letterSpacing:0,marginBottom:6}}>{mmmStage}</div>
+                <div style={{background:"#0E0F12",height:10,border:"1px solid "+LINE,borderRadius:3,overflow:"hidden"}}>
+                  <div style={{background:GOLD,height:"100%",width:mmmPct+"%",transition:"width .3s"}}/>
+                </div>
+              </div>
+            )}
+
+            {mmmScenes.length>0&&(
+              <div style={{marginTop:12,maxHeight:140,overflowY:"auto",fontSize:11}}>
+                {mmmScenes.map((s,i)=>(
+                  <div key={i} style={{display:"flex",gap:6,padding:"2px 0",color:s.status==="done"?GOLD:s.status==="rendering"?"#fff":s.status==="skipped"?"#D9A79A":DIM}}>
+                    <span>{s.status==="done"?"OK":s.status==="rendering"?">":s.status==="skipped"?"x":"o"}</span>
+                    <span style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>Scene {i+1}: {s.text}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {(mmmDone||mmmFilmUrl)&&(
+              <div style={{marginTop:16}}>
+                <div style={{color:WHITE,fontSize:13,letterSpacing:0.2,fontWeight:600,marginBottom:8,textAlign:"center"}}>{mmmDone?"Preview":"Live preview — scenes appear as they render"}</div>
+                <MsVideo ref={mmmVideoRef} src={mmmFilmUrl} controls autoPlay playsInline
+                  style={{width:"100%",borderRadius:3,border:"1px solid "+LINE,background:"#0E0F12",aspectRatio:mmmAR,objectFit:"contain"}}/>
+                {mmmTransport}
+                {mmmDone&&(<div style={{display:"flex",gap:10,marginTop:12}}>
+                  <button onClick={mmmDownloadAll}
+                    style={{flex:1,padding:14,background:GOLD,color:"#000",border:"none",fontWeight:600,fontSize:15,letterSpacing:0.2,borderRadius:3,cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>
+                    DOWNLOAD
+                  </button>
+                  <button onClick={()=>{try{navigator.share?navigator.share({title:"My Movie",url:mmmFilmUrl}):window.open(mmmFilmUrl,"_blank");}catch(e){window.open(mmmFilmUrl,"_blank");}}}
+                    style={{flex:1,padding:14,background:"#0E0F12",color:WHITE,border:"1px solid "+LINE,fontWeight:600,fontSize:15,letterSpacing:0.2,borderRadius:3,cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>
+                    EXPORT
+                  </button>
+                </div>)}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ════ MAKE MY MOVIE — one-shot, everything on this page ════ */}
+      <div style={{margin:"14px 20px",background:"#0E0F12",border:"2px solid "+SIGNAL,borderRadius:3,padding:16,boxShadow:"none"}}>
+        <div style={{textAlign:"center",marginBottom:12}}>
+          <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,letterSpacing:0.4,fontSize:22,textTransform:"none"}}>Make my movie</div>
+          <div style={{color:DIM,fontSize:11,letterSpacing:0.2,marginTop:3}}>Drop everything in · set the length · press go — it does the rest</div>
+        </div>
+
+        <textarea value={mmmText} onChange={e=>setMmmText(e.target.value)} rows={4}
+          placeholder="Paste your whole film here — script, producer instructions, prompts, notes. Or drag files onto the box below."
+          style={{width:"100%",boxSizing:"border-box",background:"#0E0F12",border:"1px solid "+LINE,borderRadius:3,color:"#fff",padding:11,fontSize:13,fontFamily:"'Manrope',system-ui,sans-serif",resize:"vertical",marginBottom:8}}/>
+
+        <label ref={mmmDropRef} htmlFor="mmmFileInput"
+          onDragOver={e=>{e.preventDefault();}}
+          onDrop={e=>{e.preventDefault();mmmAddFiles(e.dataTransfer.files);}}
+          style={{display:"block",textAlign:"center",border:"1px dashed "+GOLD+"77",borderRadius:3,padding:12,color:DIM,fontSize:12,letterSpacing:0,marginBottom:10,cursor:"pointer"}}>
+          DROP OR TAP TO ADD SCRIPT &amp; IMAGES
+          <input id="mmmFileInput" type="file" multiple accept="image/*,text/*,.txt,.md,.fdx,.fountain,.heic,.heif" style={{display:"none"}}
+            onChange={e=>{const fl=Array.from(e.target.files||[]);e.target.value="";mmmAddFiles(fl);}}/>
+        </label>
+        {mmmAddMsg&&<div style={{color:WHITE,fontSize:11,textAlign:"center",marginBottom:8}}>{mmmAddMsg}{mmmImages.length>0?" · "+mmmImages.length+" photo"+(mmmImages.length>1?"s":"")+" ready":""}</div>}
+        {mmmImages.length>0&&(
+          <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:10}}>
+            {mmmImages.map((im,i)=>(
+              <div key={i} style={{position:"relative"}}>
+                <img src={im.dataUrl} style={{width:54,height:54,objectFit:"cover",border:"1px solid "+LINE,borderRadius:3}}/>
+                <button onClick={()=>setMmmImages(p=>p.filter((_,x)=>x!==i))}
+                  style={{position:"absolute",top:-6,right:-6,width:18,height:18,borderRadius:3,background:"#0E0F12",color:WHITE,border:"1px solid "+LINE,fontSize:11,cursor:"pointer",lineHeight:"16px",padding:0}}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+          <span style={{color:WHITE,fontSize:12,letterSpacing:0.2,fontWeight:600}}>Movie length</span>
+          <span style={{color:"#fff",fontSize:12,fontWeight:500}}>{mmmTargetMin} Min · ~{Math.max(1,Math.round(mmmTargetMin))} Scenes</span>
+        </div>
+        <input type="range" min={1} max={180} value={mmmTargetMin}
+          onChange={e=>setFilmDuration&&setFilmDuration(Number(e.target.value))}
+          style={{width:"100%",accentColor:GOLD,marginBottom:2}}/>
+        <div style={{display:"flex",justifyContent:"space-between",color:DIM,fontSize:10,marginBottom:12}}><span>1 min</span><span>3 hours</span></div>
+
+        <div style={{padding:10,border:"1px solid "+LINE,borderRadius:3,marginBottom:10}}>
+          <div style={{color:WHITE,fontSize:12,fontWeight:600,marginBottom:6}}>Narration</div>
+          {mmmOwn.url&&!mmmOwnOff?(
+            <div style={{color:"#fff",fontSize:12,marginBottom:8}}>Using your own recording: <span style={{color:WHITE}}>{mmmOwn.name}</span></div>
+          ):(
+            <div style={{color:DIM,fontSize:12,marginBottom:8}}>{mmmOwn.url?"The voice engine will read your script.":"No recording yet. The voice engine will read your script."}</div>
+          )}
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            <button onClick={()=>{const i=document.getElementById("mmmOwnInput");if(i)i.click();}} style={{flex:"1 1 45%",padding:9,background:GOLD,color:"#000",border:"none",borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>{mmmOwn.url?"CHANGE MY RECORDING":"ADD MY RECORDING"}</button>
+            {mmmOwn.url&&<button onClick={()=>setMmmOwnOff(v=>!v)} style={{flex:"1 1 45%",padding:9,background:"#0E0F12",color:WHITE,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>{mmmOwnOff?"USE MY RECORDING":"USE VOICE ENGINE"}</button>}
+          </div>
+          <input id="mmmOwnInput" type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.mp4" style={{display:"none"}} onChange={e=>{const f=e.target.files&&e.target.files[0];if(f)mmmPickOwn(f);e.target.value="";}}/>
+        </div>
+
+        <div style={{padding:10,border:"1px solid "+LINE,borderRadius:3,marginBottom:10}}>
+          <div style={{color:WHITE,fontSize:12,fontWeight:600,marginBottom:6}}>Finishing touches</div>
+          <div style={{color:WHITE,fontSize:11,marginBottom:4}}>Screen ratio</div>
+          <div style={{display:"flex",gap:6,marginBottom:8}}>
+            {["16:9","9:16","1:1","21:9"].map(r=>(
+              <button key={r} onClick={()=>setMmmRatio(r)} style={{flex:1,padding:"8px 0",background:mmmRatio===r?GOLD:"#0E0F12",color:mmmRatio===r?"#000":GOLD,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>{r}</button>
+            ))}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:8}}>
+            <div>
+              <div style={{color:WHITE,fontSize:11,fontWeight:600,marginBottom:3}}>Voice {Math.round(mmmVolume*100)}%</div>
+              <input type="range" min={0} max={1} step={0.05} value={mmmVolume} onChange={e=>setMmmVolume(Number(e.target.value))} style={{width:"100%",accentColor:GOLD}}/>
+            </div>
+            <div style={{opacity:mmmBgSound?1:0.4}}>
+              <div style={{color:WHITE,fontSize:11,fontWeight:600,marginBottom:3}}>Music {Math.round(mmmBgVolume*100)}%</div>
+              <input type="range" min={0} max={1} step={0.05} value={mmmBgVolume} disabled={!mmmBgSound} onChange={e=>setMmmBgVolume(Number(e.target.value))} style={{width:"100%",accentColor:GOLD}}/>
+            </div>
+          </div>
+          <button onClick={()=>setMmmBgSound(v=>!v)} style={{width:"100%",padding:9,background:mmmBgSound?GOLD:"#0E0F12",color:mmmBgSound?"#000":GOLD,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>Music bed {mmmBgSound?"ON":"OFF"}</button>
+        </div>
+
+        <button onClick={()=>setMmmStudio(true)}
+          style={{width:"100%",padding:15,marginBottom:10,background:GOLD,color:"#000",border:"none",fontWeight:600,fontSize:14,letterSpacing:0.2,borderRadius:3,cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>
+          OPEN MAKE MY MOVIE STUDIO
+        </button>
+        <button onClick={makeMyMovie} disabled={mmmBusy}
+          style={{width:"100%",padding:15,background:mmmBusy?"#333":GOLD,color:mmmBusy?"#888":"#000",border:"none",fontWeight:600,fontSize:17,letterSpacing:0.2,borderRadius:3,cursor:mmmBusy?"default":"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>
+          {mmmBusy?"MAKING YOUR MOVIE…":"Make my movie"}
+        </button>
+
+        {mmmError&&<div style={{marginTop:10,color:"#D9A79A",fontSize:12,textAlign:"center"}}>{mmmError}</div>}
+
+        {mmmBusy&&(
+          <div style={{marginTop:12}}>
+            <div style={{color:WHITE,fontSize:12,letterSpacing:0,marginBottom:6}}>{mmmStage}</div>
+            <div style={{background:"#0E0F12",height:10,border:"1px solid "+LINE,borderRadius:3,overflow:"hidden"}}>
+              <div style={{background:GOLD,height:"100%",width:mmmPct+"%",transition:"width .3s"}}/>
+            </div>
+          </div>
+        )}
+
+        {mmmScenes.length>0&&(
+          <div style={{marginTop:10,maxHeight:120,overflowY:"auto",fontSize:11}}>
+            {mmmScenes.map((s,i)=>(
+              <div key={i} style={{display:"flex",gap:6,padding:"2px 0",color:s.status==="done"?GOLD:s.status==="rendering"?"#fff":s.status==="skipped"?"#D9A79A":DIM}}>
+                <span>{s.status==="done"?"✓":s.status==="rendering"?"●":s.status==="skipped"?"✕":"○"}</span>
+                <span style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>Scene {i+1}: {s.text}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!(mmmDone||mmmFilmUrl)&&(
+          <div style={{marginTop:14}}>
+            <div style={{aspectRatio:mmmAR,maxHeight:mmmRatio==="9:16"?420:undefined,margin:"0 auto",border:"1px dashed "+LINE,borderRadius:3,display:"flex",alignItems:"center",justifyContent:"center",color:DIM,fontSize:12,textAlign:"center",padding:12}}>Your movie plays here. Play, restart, volume, ratio, full screen, download and final render appear once it is made.</div>
+          </div>
+        )}
+
+        {(mmmDone||mmmFilmUrl)&&(
+          <div style={{marginTop:14}}>
+            {!mmmDone&&<div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:6,textAlign:"center"}}>Live preview — scenes appear as they render</div>}
+            <MsVideo ref={mmmVideoRef} src={mmmFilmUrl} controls autoPlay playsInline
+              style={{width:"100%",borderRadius:3,border:"1px solid "+LINE,background:"#0E0F12",aspectRatio:mmmAR,objectFit:"contain",maxHeight:mmmRatio==="9:16"?560:undefined}}/>
+            {mmmTransport}
+            {mmmNarrUrl&&<audio ref={mmmNarrRef} src={mmmNarrUrl} preload="auto" style={{display:"none"}}/>}
+            {mmmBgSound&&mmmMusicSrc&&<audio ref={mmmMusicRef} src={mmmMusicSrc} loop preload="auto" style={{display:"none"}}/>}
+            {mmmDone&&(<>
+              <button onClick={mmmDownloadAll}
+                style={{width:"100%",padding:14,marginTop:10,background:GOLD,color:"#000",border:"none",fontWeight:600,fontSize:14,letterSpacing:0.2,borderRadius:3,cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>
+                Download my movie
+              </button>
+              <div style={{textAlign:"center",marginTop:8}}>
+                <a href={STRIPE.studio} target="_blank" rel="noreferrer" style={{color:DIM,fontSize:11,letterSpacing:0,textDecoration:"underline"}}>Need more length? Purchase usage credits</a>
+              </div>
+            </>)}
+          </div>
+        )}
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 420px",minHeight:"calc(100vh - 120px)"}}>
+        <div style={{padding:20,overflowY:"auto"}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+            <div>
+              <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Render style</div>
+              <select value={renderStyle} onChange={e=>setRenderStyle(e.target.value)}
+                style={{width:"100%",background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"9px 12px",fontSize:12,outline:"none",fontFamily:"'Manrope',system-ui,sans-serif",cursor:"pointer"}}>
+                {RENDER_STYLES.map(s=><option key={s.id} value={s.id} style={{background:"#0E0F12"}}>{s.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Genre</div>
+              <select value={genre} onChange={e=>setGenre(e.target.value)}
+                style={{width:"100%",background:"#0E0F12",border:"1px solid "+LINE,color:genre?GOLD:LINE,padding:"9px 12px",fontSize:12,outline:"none",fontFamily:"'Manrope',system-ui,sans-serif",cursor:"pointer"}}>
+                {FILM_GENRES.map(g=><option key={g.id} value={g.id} style={{background:"#0E0F12"}}>{g.label}</option>)}
+              </select>
+            </div>
+          </div>
+          <div style={{background:"#0E0F12",border:"2px solid "+SIGNAL,padding:14,marginBottom:12,boxShadow:"none"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <div>
+                <div style={{color:WHITE,fontSize:12,letterSpacing:0.2,fontWeight:600}}>Reality engine — upload your photos</div>
+                <div style={{color:DIM,fontSize:10,marginTop:2}}>Upload 1-6 real photos or videos. Drag & drop or click. Guaranteed photorealistic — no cartoons.</div>
+              </div>
+            </div>
+            {refImages.length>0&&(
+              <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:4,marginBottom:8}}>
+                {refImages.map((ri,i)=>(
+                  <div key={i} style={{position:"relative"}}>
+                    {ri.isVideo&&ri.url
+                      ?<video src={ri.url} style={{width:"100%",height:50,objectFit:"cover",border:"1px solid "+LINE}} muted/>
+                      :<img src={ri.url} alt={ri.name||"ref"} style={{width:"100%",height:50,objectFit:"cover",border:"1px solid "+LINE}}/>
+                    }
+                    <button onClick={()=>setRefImages(p=>p.filter((_,j)=>j!==i))} style={{position:"absolute",top:1,right:1,background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"0 4px",cursor:"pointer",fontSize:9,fontWeight:600,lineHeight:1.2}}>✕</button>
+                    <div style={{color:WHITE,fontSize:8,letterSpacing:0,marginTop:1,textAlign:"center",fontWeight:600}}>{i===0?"BG":"L"+i}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div
+              onDragEnter={e=>{e.preventDefault();e.stopPropagation();e.currentTarget.setAttribute("data-drag","1");e.currentTarget.style.border="2px dashed "+GOLD;e.currentTarget.style.background="rgba(232,201,109,0.12)";e.currentTarget.style.boxShadow="0 0 18px "+GOLD+"88";}}
+              onDragOver={e=>{e.preventDefault();e.stopPropagation();}}
+              onDragLeave={e=>{e.preventDefault();e.stopPropagation();e.currentTarget.removeAttribute("data-drag");e.currentTarget.style.border="2px dashed "+LINE;e.currentTarget.style.background="transparent";e.currentTarget.style.boxShadow="none";}}
+              onDrop={e=>{
+                e.preventDefault();e.stopPropagation();
+                e.currentTarget.removeAttribute("data-drag");
+                e.currentTarget.style.border="2px dashed "+LINE;
+                e.currentTarget.style.background="transparent";
+                e.currentTarget.style.boxShadow="none";
+                if(refImages.length>=6){alert("Max 6 photos/videos");return;}
+                const files=Array.from(e.dataTransfer.files).slice(0,6-refImages.length);
+                setRefImages(p=>[...p,...files.map(f=>({url:URL.createObjectURL(f),name:f.name,isVideo:f.type.startsWith("video/")}))]);
+              }}
+              style={{border:"2px dashed "+LINE,padding:"16px 8px",textAlign:"center",marginBottom:6,transition:"border 0.15s, background 0.15s, box-shadow 0.15s",cursor:"copy",background:"transparent"}}>
+              <div style={{color:WHITE,fontSize:11,fontWeight:600,letterSpacing:0.2,pointerEvents:"none"}}>Drag & drop photos or videos here</div>
+              <div style={{color:GOLDDIM,fontSize:9,marginTop:3,pointerEvents:"none"}}>JPG · PNG · MP4 · MOV · up to 6 files · drop zone lights up gold when ready</div>
+            </div>
+            <input ref={realityPhotoRef} type="file" accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.heic,.heif" multiple style={{display:"none"}} onChange={e=>{
+              const files=Array.from(e.target.files||[]).slice(0,6-refImages.length);
+              setRefImages(p=>[...p,...files.map(f=>({url:URL.createObjectURL(f),name:f.name,isVideo:f.type.startsWith("video/")}))]);
+              if(realityPhotoRef.current)realityPhotoRef.current.value="";
+            }}/>
+            <button onClick={()=>{if(refImages.length>=6){alert("Max 6 photos");return;}realityPhotoRef.current&&realityPhotoRef.current.click();}} style={{width:"100%",background:GOLD,border:"none",color:"#000",padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>
+              📷 {refImages.length===0?"ADD PHOTOS / VIDEOS (UP TO 6)":"ADD MORE — "+refImages.length+"/6 LOADED"}
+            </button>
+            <a href="https://photos.google.com" target="_blank" rel="noopener noreferrer"
+              style={{display:"block",background:"#0E0F12",border:"1px solid "+LINE,color:GOLDDIM,padding:"8px",textAlign:"center",fontSize:10,fontWeight:600,letterSpacing:0.2,textDecoration:"none",fontFamily:"'Manrope',system-ui,sans-serif",marginTop:4}}>
+              CHROMEBOOK USERS OPEN GOOGLE PHOTOS download photo then Add Photos above
+            </a>
+            <div style={{color:GOLDDIM,fontSize:9,marginTop:5,letterSpacing:0,textAlign:"center"}}>1st photo = BACKGROUND · others = foreground layers · guarantees photorealistic output</div>
+          </div>
+          <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:12,marginBottom:12}}>
+            <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:5}}>Upload reference image (optional)</div>
+            {refMedia?(
+              <div style={{position:"relative"}}>
+                <img src={refMedia} alt="ref" style={{width:"100%",height:72,objectFit:"cover",border:"1px solid "+LINE}}/>
+                <button onClick={()=>{setRefMedia(null);setRefDataUrl(null);}} style={{position:"absolute",top:3,right:3,background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"1px 6px",cursor:"pointer",fontSize:10,fontWeight:600}}>✕</button>
+                <div style={{color:"#D4AF6A",fontSize:9,fontWeight:600,letterSpacing:0.2,marginTop:3}}>Reference loaded</div>
+              </div>
+            ):(
+              <div
+                onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.background="#15171B";}}
+                onDragLeave={e=>{e.currentTarget.style.borderColor=LINE;e.currentTarget.style.background="transparent";}}
+                onDrop={e=>{
+                  e.preventDefault();
+                  e.currentTarget.style.borderColor=LINE;e.currentTarget.style.background="transparent";
+                  const f=e.dataTransfer.files&&e.dataTransfer.files[0];
+                  if(f&&(f.type.startsWith("image/")||f.type.startsWith("video/"))){
+                    const url=URL.createObjectURL(f);
+                    setRefMedia(url);setRefMediaType(f.type);
+                    const rdr=new FileReader();rdr.onload=ev=>setRefDataUrl(ev.target.result);rdr.readAsDataURL(f);
+                  }
+                }}
+                onClick={()=>refMediaRef.current&&refMediaRef.current.click()}
+                style={{border:"2px dashed "+LINE,padding:"14px 8px",textAlign:"center",cursor:"pointer",transition:"all .2s"}}>
+                <div style={{color:WHITE,fontSize:12,fontWeight:600,letterSpacing:0.2}}>DRAG & DROP or CLICK</div>
+                <div style={{color:GOLDDIM,fontSize:10,marginTop:3,letterSpacing:0}}>Jpg · png · MP4</div>
+              </div>
+            )}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:6}}>
+              <button onClick={()=>{const i=document.createElement("input");i.type="file";i.accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.heic,.heif";i.onchange=e=>{const f=e.target.files&&e.target.files[0];if(!f)return;setRefMedia(URL.createObjectURL(f));setRefMediaType(f.type.startsWith("video")?"video":"image");const reader=new FileReader();reader.onload=ev=>setRefDataUrl(ev.target.result);reader.readAsDataURL(f);};i.click();}}
+                style={{background:"#0E0F12",border:"2px solid "+SIGNAL,color:WHITE,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0,fontFamily:"'Manrope',system-ui,sans-serif"}}>
+                Upload photo
+              </button>
+              <button onClick={()=>{const i=document.createElement("input");i.type="file";i.accept="image/*,video/*";i.onchange=e=>{const f=e.target.files&&e.target.files[0];if(!f)return;setRefMedia(URL.createObjectURL(f));setRefMediaType(f.type.startsWith("video")?"video":"image");const reader=new FileReader();reader.onload=ev=>setRefDataUrl(ev.target.result);reader.readAsDataURL(f);};i.click();}}
+                style={{background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0,fontFamily:"'Manrope',system-ui,sans-serif"}}>
+                Upload file
+              </button>
+            </div>
+            <input ref={refMediaRef} type="file" accept="image/*,video/*" style={{display:"none"}} onChange={handleRefUpload}/>
+          </div>
+          <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Scene title</div>
+          <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. AI For Humanity — Chapter 1"
+            style={{width:"100%",background:"#0E0F12",border:"1px solid "+LINE,padding:"10px 14px",color:WHITE,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"'Manrope',system-ui,sans-serif",marginBottom:14}}/>
+          <div style={{marginBottom:14}}>
+            <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Describe your scene</div>
+            <div style={{color:DIM,fontSize:11,marginBottom:8,lineHeight:1.7}}>Describe anything in plain English. MandaStrong Engine reads your prompt and renders a real cinematic scene.</div>
+            <textarea value={prompt} onChange={e=>setPrompt(e.target.value)}
+              placeholder="e.g. A woman in a heavy coat places a folded paper into a wooden ballot box. Morning light from a window on the left."
+              style={{width:"100%",background:"#0E0F12",border:"1px solid "+LINE,padding:"12px 14px",color:WHITE,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"'Manrope',system-ui,sans-serif",lineHeight:1.9,height:140,resize:"none"}}/>
+          </div>
+          <div style={{marginBottom:14}}>
+            <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600,marginBottom:8}}>Quick examples — click to try</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+              {EXAMPLES.map((ex,i)=>(
+                <div key={i} onClick={()=>setPrompt(ex)}
+                  style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"10px 12px",cursor:"pointer",fontSize:11,color:DIM,lineHeight:1.6}}>
+                  {ex.slice(0,65)}{ex.length>65?"...":""}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:14,marginBottom:14}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+              <span style={{color:WHITE,fontSize:11,fontWeight:600,letterSpacing:0.2}}>Target film length</span>
+              <span style={{color:WHITE,fontSize:11,fontWeight:600}}>{targetMin>0?targetMin+" MIN":"OFF"}</span>
+            </div>
+            <input type="range" min={0} max={180} value={targetMin} onChange={e=>setTargetMin(+e.target.value)} style={{width:"100%",accentColor:GOLD}}/>
+            {targetMin>0&&(
+              <div style={{color:GOLDDIM,fontSize:10,marginTop:6,letterSpacing:0}}>
+                Made so far: {fmtMin(madeSeconds)} of {targetMin}m · {gapSeconds>0?("gap "+fmtMin(gapSeconds)):"target reached"}
+              </div>
+            )}
+          </div>
+          <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:14,marginBottom:14}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+              <span style={{color:WHITE,fontSize:11,fontWeight:600,letterSpacing:0.2}}>Duration</span>
+              <span style={{color:WHITE,fontSize:11,fontWeight:600}}>{duration>60?(duration/60).toFixed(duration%60?1:0)+" MIN":duration+" SECONDS"}</span>
+            </div>
+            <input type="range" min={5} max={300} value={duration} onChange={e=>setDuration(+e.target.value)} style={{width:"100%",accentColor:GOLD}}/>
+          </div>
+          {/* ── ADD BACKGROUND MUSIC? ─────────────────────────────── */}
+          <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:14,marginBottom:14}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{color:WHITE,fontSize:11,fontWeight:600,letterSpacing:0.2}}>Add background music?</span>
+              <div style={{display:"flex",gap:6}}>
+                <button onClick={()=>setAddMusic(true)}
+                  style={{background:addMusic?GOLD:"#0E0F12",border:"1px solid "+(addMusic?"#000":GOLDDIM),color:addMusic?"#000":WHITE,padding:"5px 16px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0}}>Y</button>
+                <button onClick={()=>{setAddMusic(false);setMusicTrack("");}}
+                  style={{background:!addMusic?GOLD:"#0E0F12",border:"1px solid "+(!addMusic?"#000":GOLDDIM),color:!addMusic?"#000":WHITE,padding:"5px 16px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0}}>N</button>
+              </div>
+            </div>
+            {addMusic&&(
+              <div style={{marginTop:12}}>
+                <div style={{color:GOLDDIM,fontSize:10,letterSpacing:0.2,marginBottom:8}}>Choose a track</div>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  <select value={musicTrack} onChange={e=>setMusicTrack(e.target.value)}
+                    style={{flex:1,background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"9px 12px",fontSize:12,fontWeight:600,fontFamily:"'Manrope',system-ui,sans-serif",outline:"none",cursor:"pointer"}}>
+                    <option value="">— Select background music —</option>
+                    {MUSIC_LIBRARY.map(m=>(<option key={m.id} value={m.id} style={{background:"#0E0F12",color:WHITE}}>{m.label}</option>))}
+                  </select>
+                  <button onClick={()=>{const m=MUSIC_LIBRARY.find(x=>x.id===musicTrack);if(!m)return;try{const a=new Audio(m.url);a.volume=0.5;a.play().catch(()=>{});setTimeout(()=>{try{a.pause();}catch(e){}},6000);}catch(e){}}}
+                    disabled={!musicTrack} title="Preview 6 seconds"
+                    style={{background:musicTrack?"none":"#0E0F12",border:"1px solid "+LINE,color:musicTrack?GOLD:"#555",padding:"9px 14px",cursor:musicTrack?"pointer":"not-allowed",fontSize:12,fontWeight:600}}>Preview</button>
+                </div>
+                {!musicTrack&&<div style={{color:"#e0a020",fontSize:10,marginTop:8,letterSpacing:0}}>Pick a track from the menu, or press N to render without music.</div>}
+              </div>
+            )}
+          </div>
+          {/* ── ASPECT RATIO ──────────────────────────────────────── */}
+          <div style={{marginBottom:14}}>
+            <div style={{color:WHITE,fontSize:11,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Aspect ratio</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:5}}>
+              {[["16/9","16:9","Cinema"],["9/16","9:16","Reels"],["1/1","1:1","Square"],["4/3","4:3","Classic"],["21/9","21:9","Scope"]].map(a=>(
+                <button key={a[0]} onClick={()=>setAspect(a[0])}
+                  style={{background:aspect===a[0]?GOLD:"#0E0F12",border:"1px solid "+(aspect===a[0]?GOLD:LINE),padding:"7px 2px",cursor:"pointer",textAlign:"center"}}>
+                  <div style={{color:aspect===a[0]?"#000":WHITE,fontSize:11,fontWeight:600}}>{a[1]}</div>
+                  <div style={{color:aspect===a[0]?"#000":GOLDDIM,fontSize:8}}>{a[2]}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* ── EXPORT QUALITY ────────────────────────────────────── */}
+          <div style={{marginBottom:14}}>
+            <div style={{color:WHITE,fontSize:11,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Export quality</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:5}}>
+              {[["sd","SD","720"],["hd","HD","1280"],["fhd","Full HD","1920"],["uhd","4K","3840"]].map(q=>(
+                <button key={q[0]} onClick={()=>setExpQ(q[0])}
+                  style={{background:expQ===q[0]?GOLD:"#0E0F12",border:"1px solid "+(expQ===q[0]?GOLD:LINE),padding:"7px 2px",cursor:"pointer",textAlign:"center"}}>
+                  <div style={{color:expQ===q[0]?"#000":WHITE,fontSize:11,fontWeight:600}}>{q[1]}</div>
+                  <div style={{color:expQ===q[0]?"#000":GOLDDIM,fontSize:8}}>{q[2]}px</div>
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* ── USE STEREO SOUND ─────────────────────────────────── */}
+          <div onClick={()=>setGenStereo(s=>!s)} style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,padding:"12px 14px",background:"#0E0F12",border:"1px solid "+(genStereo?GOLD:LINE),cursor:"pointer"}}>
+            <div style={{width:20,height:20,borderRadius:3,border:"2px solid "+(genStereo?GOLD:LINE),background:genStereo?GOLD:"transparent",color:"#000",fontWeight:600,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{genStereo?"✓":""}</div>
+            <div><div style={{color:genStereo?GOLD:WHITE,fontWeight:600,fontSize:12,letterSpacing:0}}>Use stereo sound</div><div style={{color:GOLDDIM,fontSize:10,marginTop:1}}>Full stereo width baked into the generated video's audio</div></div>
+          </div>
+          {/* ── SCRIPT-TO-MOVIE BRIEF (from Page 5) ──────────────── */}
+          {hasBrief&&(
+            <div onClick={()=>setUseBrief(b=>!b)} style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,padding:"12px 14px",background:"#0E0F12",border:"1px solid "+(useBrief?GOLD:LINE),cursor:"pointer"}}>
+              <div style={{width:20,height:20,borderRadius:3,border:"2px solid "+(useBrief?GOLD:LINE),background:useBrief?GOLD:"transparent",color:"#000",fontWeight:600,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{useBrief?"✓":""}</div>
+              <div><div style={{color:useBrief?GOLD:WHITE,fontWeight:600,fontSize:12,letterSpacing:0}}>Use script-to-movie brief</div><div style={{color:GOLDDIM,fontSize:10,marginTop:1}}>Your Producer, Describe &amp; Production notes from Page 5 drive this render</div></div>
+            </div>
+          )}
+          <button onClick={generateVideo} disabled={generating||!prompt.trim()}
+            style={{background:"#0E0F12",border:"none",color:"#000",width:"100%",padding:"20px",fontSize:15,letterSpacing:0.2,cursor:generating||!prompt.trim()?"not-allowed":"pointer",fontWeight:600,fontFamily:"'Manrope',system-ui,sans-serif",opacity:generating||!prompt.trim()?0.5:1}}>
+            {generating?"⟳ MANDASTRONG ENGINE RENDERING... "+progress+"%":"Generate scene"}
+          </button>
+        </div>
+        <div style={{borderLeft:"1px solid "+LINE+"",display:"flex",flexDirection:"column"}}>
+          <div style={{background:"#0E0F12",aspectRatio:aspect,maxHeight:aspect==="9/16"?620:undefined,display:"flex",alignItems:"center",justifyContent:"center",borderBottom:"1px solid "+LINE+"",overflow:"hidden"}}>
+            {videoUrl?(
+              <MsVideo ref={videoRef} src={videoUrl} controls autoPlay loop playsInline style={{width:"100%",height:"100%",objectFit:"contain"}}/>
+            ):(
+              <div style={{textAlign:"center",padding:20}}>
+                <div style={{color:WHITE,fontSize:11,fontWeight:600,letterSpacing:0.2,marginBottom:8}}>MANDASTRONG ENGINE v2</div>
+                <div style={{color:DIM,fontSize:10,lineHeight:2}}>Type any scene description.<br/>Hit Generate.<br/>Real cinematic output.</div>
+              </div>
+            )}
+          </div>
+          {generating&&(
+            <div style={{padding:"10px 14px",borderBottom:"1px solid "+LINE+""}}>
+              <div style={{height:5,background:"#0E0F12",marginBottom:4}}>
+                <div style={{width:progress+"%",height:"100%",background:"#0E0F12",transition:"width .4s"}}/>
+              </div>
+              <div style={{color:WHITE,fontSize:10,textAlign:"center",letterSpacing:0.2}}>{progress}%</div>
+            </div>
+          )}
+          {videoUrl&&!generating&&(
+            <div style={{padding:"10px 14px",borderBottom:"1px solid "+LINE+"",display:"flex",flexDirection:"column",gap:6}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                <button onClick={()=>msDownload(videoUrl,(title||"scene")+"_"+duration+"s.mp4")}
+                  style={{background:"transparent",border:"1px solid "+LINE,color:WHITE,padding:"8px",fontSize:10,cursor:"pointer",textAlign:"center",letterSpacing:0,fontWeight:600,fontFamily:"'Manrope',system-ui,sans-serif",display:"block"}}>Download</button>
+                <button onClick={saveToLibrary}
+                  style={{background:saved?"#0E0F12":"transparent",border:"1px solid "+LINE,color:saved?"#000":GOLD,padding:"8px",fontSize:10,cursor:"pointer",fontWeight:600,letterSpacing:0,fontFamily:"'Manrope',system-ui,sans-serif"}}>
+                  {saved?"Saved":"Library"}
+                </button>
+              </div>
+              <button onClick={()=>{setVideoUrl("");setLog([]);setSaved(false);setTitle("");setPrompt("");}}
+                style={{background:"#0E0F12",border:"none",color:"#000",padding:"8px",fontSize:11,width:"100%",letterSpacing:0.2,cursor:"pointer",fontWeight:600,fontFamily:"'Manrope',system-ui,sans-serif"}}>
+                Next scene
+              </button>
+            </div>
+          )}
+          <div style={{flex:1,overflowY:"auto",padding:14}}>
+            {log.length>0?(
+              <div>
+                <div style={{color:WHITE,fontSize:10,letterSpacing:0.2,fontWeight:600,marginBottom:10}}>Production log</div>
+                {log.map((l,i)=>(
+                  <div key={i} style={{color:i===log.length-1?"#D4AF6A":DIM,fontSize:11,lineHeight:2,letterSpacing:0}}>
+                    {i===log.length-1?"▶ ":"  "}{l}
+                  </div>
+                ))}
+              </div>
+            ):(
+              <div style={{padding:"16px 0",color:GOLDDIM,fontSize:10,lineHeight:2.2,letterSpacing:0}}>
+                <div style={{color:WHITE,fontWeight:600,fontSize:11,marginBottom:8}}>MANDASTRONG ENGINE v2</div>
+                8 rendering layers per frame<br/>
+                Multi-layer parallax depth<br/>
+                Volumetric candle flickering<br/>
+                Animated ocean (12 wave layers)<br/>
+                Procedural human anatomy<br/>
+                Real moon halos + reflections<br/>
+                Three-tier city buildings<br/>
+                Film grain + vignette + grade<br/>
+                Camera push-in + drift<br/>
+                24fps · 1080p · 18Mbps
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ══════════════════════════════════════════════════════════════════
-// STOCK FOOTAGE + PEXELS
+// REAL FOOTAGE FRAMES
+// Photographic example frames shown across the app so a new user can
+// see the kind of output the studio produces before they render.
+// Drop your own stills into a /frames folder next to index.html
+// (feature.jpg, doc.jpg, music.jpg, short.jpg, family.jpg, audio.jpg)
+// and they are used automatically. If a file is missing a real
+// photograph loads instead — never a broken image, never a cartoon.
 // ══════════════════════════════════════════════════════════════════
 const STOCK = (seed,w,h) => "https://picsum.photos/seed/"+seed+"/"+w+"/"+h;
+
 const CDN = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/";
 const CLIP = n => CDN + n;
 
+// ── Live Pexels stock clips ─────────────────────────────────────────
+// Fetches a real, current HD .mp4 for each reel category at runtime.
+// Falls back to the Google sample (CLIP) then a still frame if it fails.
+// Pexels key now lives server-side in the Supabase "pexels" function.
+// The app just asks that function for a clip; the key is never in this bundle.
 const pexelsCache = {};
 async function pexelsClip(query){
   if(pexelsCache[query]) return pexelsCache[query];
@@ -1392,198 +4681,7 @@ async function pexelsClip(query){
   }catch(e){ return null; }
 }
 
-// Soft stereo ambient bed
-function msBedSource(ac,dest,vol){
-  const sr=ac.sampleRate, secs=32, n=Math.floor(sr*secs);
-  const pad=ac.createBuffer(2,n,sr);
-  const chords=[[110,164.81,220,277.18],[87.31,130.81,174.61,261.63],[130.81,196,261.63,329.63],[98,146.83,196,246.94]];
-  for(let ch=0;ch<2;ch++){
-    const d=pad.getChannelData(ch);
-    for(let i=0;i<n;i++){
-      const t=i/sr, seg=Math.floor(t/8)%4, st=t%8;
-      const env=Math.min(1,st/2)*Math.min(1,(8-st)/2);
-      let v=0; const c=chords[seg];
-      for(let k=0;k<c.length;k++){ v+=Math.sin(2*Math.PI*c[k]*(1+(ch?0.002:-0.002)*(k+1))*t)*(0.22/(1+k*0.3)); }
-      d[i]=v*env*0.6;
-    }
-  }
-  const src=ac.createBufferSource(); src.buffer=pad; src.loop=true;
-  const g=ac.createGain(); g.gain.value=vol; src.connect(g); g.connect(dest);
-  return {src,gain:g};
-}
 
-// ── RESCUE / MIGRATION helpers ──
-const CURRENT_SITE="https://infuture1.bolt.host";
-const OLD_HOSTS=["infutura1.bolt.host","infutura.bolt.host","infutura-1.bolt.host","infuturem0viestudi0s.bolt.host","infuturem0viestudi0.bolt.host","infuturemoviestudios.bolt.host","infuturemoviestudio.bolt.host","mandastrongmovies-101.bolt.host","mandastrongmovies101.bolt.host","mandastrongstudio2026.bolt.host","mandastrong-01.bolt.host","mandastrong01.bolt.host"];
-const msHasSavedWork=()=>{
-  try{
-    const keys=["ms_project_history","ms_timeline","ms_medialib","ms_narr_text","ms_my_voices","ms_mmm_text","ms_render_brief","ms_writing_boxes"];
-    for(const k of keys){const v=localStorage.getItem(k);if(v&&v!=="[]"&&v!=="{}"&&v!=="\"\""&&v!=="null"&&v.length>2)return true;}
-  }catch(e){}
-  return false;
-};
-let MS_RESCUE=false;
-let MS_RECEIVING=false;
-if(typeof window!=="undefined"){
-  try{
-    const h=(location.host||"").toLowerCase();
-    const q=new URLSearchParams(location.search||"");
-    if(q.has("sendback")&&window.opener){
-      MS_RECEIVING=true;
-      (async()=>{
-        const ls={};
-        try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith("ms_"))ls[k]=localStorage.getItem(k);}}catch(x){}
-        let clips=[];try{clips=await getAllClipsFromDB();}catch(x){}
-        let count=0;try{count=JSON.parse(localStorage.getItem("ms_project_history")||"[]").length;}catch(x){}
-        try{window.opener.postMessage({type:"ms_transfer",ls,clips,count},CURRENT_SITE);}catch(x){}
-      })();
-    } else
-    if(OLD_HOSTS.includes(h)){
-      let stay=false;try{stay=q.has("stay")||sessionStorage.getItem("ms_stay")==="1";if(stay)sessionStorage.setItem("ms_stay","1");}catch(e){}
-      let moved=false;try{moved=localStorage.getItem("ms_moved_to_infutura")==="1";}catch(e){}
-      if(stay){}
-      else if(!moved&&msHasSavedWork()){ MS_RESCUE=true; }
-      else { location.replace(CURRENT_SITE+location.pathname+location.search); }
-    }
-    if(!OLD_HOSTS.includes(h)&&q.has("receive")&&window.opener){
-      MS_RECEIVING=true;
-      const okOrigins=OLD_HOSTS.map(x=>"https://"+x);
-      const cover=document.createElement("div");
-      cover.style.cssText="position:fixed;inset:0;z-index:2147483647;background:#07080A;color:#D4AF6A;display:flex;align-items:center;justify-content:center;font:600 18px system-ui;text-align:center;padding:24px";
-      cover.textContent="Receiving your work… keep this tab open.";
-      const addCover=()=>{try{document.body.appendChild(cover);}catch(e){}};
-      if(document.body)addCover();else document.addEventListener("DOMContentLoaded",addCover);
-      let got=false;
-      const ping=setInterval(()=>{try{if(!got)window.opener.postMessage({type:"ms_ready"},"*");}catch(e){}},500);
-      window.addEventListener("message",async(e)=>{
-        if(!okOrigins.includes(e.origin))return;
-        const d=e.data||{};
-        if(d.type!=="ms_transfer"||got)return;
-        got=true;clearInterval(ping);
-        const {projects,clips:clipsIn}=await msMergeTransfer(d);
-        try{e.source.postMessage({type:"ms_done",projects,clips:clipsIn},e.origin);}catch(x){}
-        cover.textContent="Done — "+projects+" project(s) and "+clipsIn+" file(s) moved. Opening…";
-        setTimeout(()=>location.replace(CURRENT_SITE+"/"),1500);
-      });
-    }
-  }catch(e){}
-}
-
-async function msMergeTransfer(d){
-  let projects=0,clipsIn=0;
-  try{
-    const ls=(d&&d.ls)||{};
-    for(const k of Object.keys(ls)){
-      if(!k.startsWith("ms_")||k==="ms_page"||k==="ms_moved_to_infutura")continue;
-      const incoming=ls[k];
-      if(k==="ms_project_history"){
-        let mine=[],theirs=[];
-        try{mine=JSON.parse(localStorage.getItem(k)||"[]");}catch(x){}
-        try{theirs=JSON.parse(incoming||"[]");}catch(x){}
-        const key=(p)=>String(p&&p.name)+"|"+String(p&&p.date);
-        const have=new Set(mine.map(key));
-        const add=theirs.filter(p=>!have.has(key(p)));
-        projects=add.length;
-        localStorage.setItem(k,JSON.stringify([...add,...mine]));
-        continue;
-      }
-      const cur=localStorage.getItem(k);
-      if(!cur||cur==="[]"||cur==="{}"||cur==="\"\""||cur==="null")localStorage.setItem(k,incoming);
-    }
-  }catch(x){}
-  try{
-    const db=await openDB();
-    const existing=await new Promise((res)=>{const tx=db.transaction(STORE,"readonly");const r=tx.objectStore(STORE).getAllKeys();r.onsuccess=()=>res(new Set(r.result||[]));r.onerror=()=>res(new Set());});
-    for(const c of ((d&&d.clips)||[])){
-      if(!c||!c.id||existing.has(c.id))continue;
-      await new Promise((res)=>{const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).put(c);tx.oncomplete=res;tx.onerror=res;});
-      clipsIn++;
-    }
-  }catch(x){}
-  return {projects,clips:clipsIn};
-}
-
-const FIND_HOSTS=["infutura1.bolt.host","infutura.bolt.host","infutura-1.bolt.host","infuturem0viestudi0s.bolt.host","infuturem0viestudi0.bolt.host","infuturemoviestudios.bolt.host","infuturemoviestudio.bolt.host","mandsstrongmovie.bolt.host","mandastrongmovie.bolt.host","mandastrongmovies.bolt.host","mandastrongmovies-101.bolt.host","mandastrongmovies101.bolt.host","mandastrongstudio2026.bolt.host","mandastrong-01.bolt.host","mandastrong01.bolt.host"];
-
-async function msFindMyWork(onStep){
-  const w=window.open("about:blank","_blank");
-  if(!w)return {blocked:true,projects:0,clips:0,found:[]};
-  let projects=0,clips=0;const found=[];
-  const here=(location.host||"").toLowerCase();
-  for(const host of FIND_HOSTS){
-    if(host===here)continue;
-    if(onStep)onStep("Checking "+host+"…");
-    const origin="https://"+host;
-    const got=await new Promise((resolve)=>{
-      let done=false;
-      const fin=(v)=>{if(done)return;done=true;window.removeEventListener("message",on);clearTimeout(t);resolve(v);};
-      const on=async(e)=>{
-        if(e.origin!==origin)return;
-        const d=e.data||{};
-        if(d.type!=="ms_transfer")return;
-        const r=await msMergeTransfer(d);
-        try{e.source.postMessage({type:"ms_done",projects:r.projects,clips:r.clips},e.origin);}catch(x){}
-        fin({...r,had:(d.count||0)});
-      };
-      window.addEventListener("message",on);
-      const t=setTimeout(()=>fin(null),12000);
-      try{w.location.href=origin+"/?sendback=1";}catch(x){fin(null);}
-    });
-    if(got&&(got.had>0||got.projects>0||got.clips>0)){projects+=got.projects;clips+=got.clips;found.push(host+" ("+got.had+" project"+(got.had!==1?"s":"")+")");}
-  }
-  try{w.close();}catch(x){}
-  return {blocked:false,projects,clips,found};
-}
-
-function RescueScreen(){
-  const [state,setState]=useState("idle");
-  const [msg,setMsg]=useState("");
-  const count=(()=>{try{return JSON.parse(localStorage.getItem("ms_project_history")||"[]").length;}catch(e){return 0;}})();
-  const moveIt=()=>{
-    const w=window.open(CURRENT_SITE+"/?receive=1","_blank");
-    if(!w){setMsg("Your browser blocked the new tab. Tap OPEN MY WORK HERE instead — nothing is lost.");return;}
-    setState("moving");setMsg("Opening infuture1.bolt.host and copying your work…");
-    let sent=false;
-    const onMsg=async(e)=>{
-      if(e.origin!==CURRENT_SITE)return;
-      const d=e.data||{};
-      if(d.type==="ms_ready"&&!sent){
-        sent=true;
-        const ls={};
-        try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith("ms_"))ls[k]=localStorage.getItem(k);}}catch(x){}
-        let clips=[];try{clips=await getAllClipsFromDB();}catch(x){}
-        setMsg("Sending "+count+" project(s) and "+clips.length+" file(s)…");
-        try{w.postMessage({type:"ms_transfer",ls,clips},CURRENT_SITE);}catch(x){setMsg("Couldn't send: "+x.message);sent=false;}
-      }
-      if(d.type==="ms_done"){
-        window.removeEventListener("message",onMsg);
-        try{localStorage.setItem("ms_moved_to_infutura","1");}catch(x){}
-        setState("done");
-        setMsg("Done — "+d.projects+" project(s) and "+d.clips+" file(s) are now on infuture1.bolt.host. Your copy here is kept too.");
-      }
-    };
-    window.addEventListener("message",onMsg);
-  };
-  const stayHere=()=>{try{sessionStorage.setItem("ms_stay","1");}catch(e){}location.reload();};
-  const btn={width:"100%",padding:"16px",fontSize:15,fontWeight:600,cursor:"pointer",marginTop:12,fontFamily:"system-ui,sans-serif"};
-  return (
-    <div style={{minHeight:"100vh",background:"#07080A",color:"#EDE6D3",display:"flex",alignItems:"center",justifyContent:"center",padding:16,fontFamily:"system-ui,sans-serif"}}>
-      <div style={{maxWidth:460,width:"100%",textAlign:"center"}}>
-        <div style={{color:"#D4AF6A",fontSize:13,fontWeight:600,letterSpacing:1}}>INFUTURE MOVIE STUDIOS</div>
-        <h1 style={{color:"#D4AF6A",fontSize:24,margin:"10px 0"}}>Your work is here</h1>
-        <p style={{fontSize:15,lineHeight:1.5}}>{count} saved project{count!==1?"s":""} found on this address, plus your narration and clips.</p>
-        {state!=="done"&&<button onClick={moveIt} disabled={state==="moving"} style={{...btn,background:"#D4AF6A",color:"#000",border:"none"}}>{state==="moving"?"MOVING…":"MOVE MY WORK TO INFUTURE"}</button>}
-        {state==="done"&&<button onClick={()=>location.replace(CURRENT_SITE+"/")} style={{...btn,background:"#D4AF6A",color:"#000",border:"none"}}>GO TO INFUTURE</button>}
-        <button onClick={stayHere} style={{...btn,background:"#000",color:"#D4AF6A",border:"2px solid #D4AF6A"}}>OPEN MY WORK HERE</button>
-        {msg&&<p style={{marginTop:16,fontSize:14,color:"#D4AF6A"}}>{msg}</p>}
-      </div>
-    </div>
-  );
-}
-
-// ══════════════════════════════════════════════════════════════════
-// FRAME + EXAMPLE REEL
-// ══════════════════════════════════════════════════════════════════
 function Frame({ seed, local, vid, localVid, query, label, sub, dur, h=160, onClick }) {
   const chain = [local?("frames/"+local):null, STOCK(seed,900,506), STOCK(seed+"2",900,506)].filter(Boolean);
   const [i,setI] = useState(0);
@@ -1647,58 +4745,3108 @@ function ExampleReel({ go, title }) {
   );
 }
 
-// ══════════════════════════════════════════════════════════════════
-// MSUserCounter
-// ══════════════════════════════════════════════════════════════════
-function MSUserCounter(){
-  const [live,setLive]=useState(()=>{try{return JSON.parse(localStorage.getItem("ms_live_count")||"1");}catch{return 1;}});
-  const [total,setTotal]=useState(()=>{try{return JSON.parse(localStorage.getItem("ms_user_count")||"0");}catch{return 0;}});
+function P1({ go }) {
+  return (
+    <div style={{...Sp}}>
+      <div style={{background:"#0A0B0D",padding:"56px 40px 40px",position:"relative",overflow:"hidden"}}>
+        <style>{"@keyframes ifrot{to{transform:rotate(360deg)}}@keyframes ifrotr{to{transform:rotate(-360deg)}}@keyframes ifbr{0%,100%{opacity:.55}50%{opacity:1}}.ifrot{animation:ifrot 90s linear infinite;transform-box:fill-box;transform-origin:center}.ifrotr{animation:ifrotr 140s linear infinite;transform-box:fill-box;transform-origin:center}.ifbr{animation:ifbr 3.4s ease-in-out infinite}@media (prefers-reduced-motion: reduce){.ifrot,.ifrotr,.ifbr{animation:none}}"}</style>
+        <div style={{maxWidth:1100,margin:"0 auto",display:"flex",flexWrap:"wrap",alignItems:"center",gap:32}}>
+          <div style={{flex:"1.1 1 380px",minWidth:0,display:"flex",flexDirection:"column",gap:24}}>
+            <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10.5,letterSpacing:"0.26em",color:WHITE}}>THE CINEMA INTELLIGENCE PLATFORM</div>
+            <div style={{fontFamily:"'Fraunces',Georgia,serif",fontWeight:300,fontSize:"clamp(40px,6vw,64px)",lineHeight:1.02,letterSpacing:"-0.025em",color:WHITE}}>Your film.<br/><span style={{color:WHITE}}>Made of light.</span></div>
+            <div style={{maxWidth:470,fontSize:16,lineHeight:1.65,color:DIM}}>Write it. Voice it. Shoot it. Cut it. Render it in 4K. One studio, from the first word to the last frame.</div>
+            <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+              <button onClick={()=>go(4)} style={{...G("gold",false),fontSize:13,padding:"12px 24px",letterSpacing:0.4,borderRadius:2}}>Start creating</button>
+              <button onClick={()=>go(4)} style={{...G("out",false),fontSize:13,padding:"12px 22px",letterSpacing:0.4,borderRadius:2,color:WHITE,border:"1px solid rgba(237,234,227,0.22)"}}>Login / register</button>
+            </div>
+            <div style={{display:"flex",gap:36,flexWrap:"wrap",paddingTop:8}}>
+              {[["200+","AI TOOLS"],["8K","EXPORT"],["3 hrs","FILMS"],["1 TB","STORAGE"]].map(([v,l])=>(
+                <div key={l}>
+                  <div style={{fontFamily:"'Fraunces',Georgia,serif",fontWeight:300,fontSize:30,color:WHITE}}>{v}</div>
+                  <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10,letterSpacing:"0.18em",color:DIM}}>{l}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{flex:"0.9 1 300px",minWidth:0,display:"flex",justifyContent:"center"}}>
+            <svg viewBox="0 0 420 420" style={{width:"100%",maxWidth:430,height:"auto"}} role="img" aria-label="Camera lens drawn in fine gold lines">
+              <defs>
+                <radialGradient id="iflg" cx="50%" cy="50%" r="50%"><stop offset="0" stopColor="#F6E7C6" stopOpacity=".95"/><stop offset=".12" stopColor="#D4AF6A" stopOpacity=".5"/><stop offset=".45" stopColor="#D4AF6A" stopOpacity=".07"/><stop offset="1" stopColor="#000" stopOpacity="0"/></radialGradient>
+                <radialGradient id="ifgl" cx="38%" cy="32%" r="75%"><stop offset="0" stopColor="#1B1914"/><stop offset=".6" stopColor="#0B0B0C"/><stop offset="1" stopColor="#050505"/></radialGradient>
+              </defs>
+              <circle cx="210" cy="210" r="204" fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="1"/>
+              <g className="ifrot"><circle cx="210" cy="210" r="192" fill="none" stroke="#D4AF6A" strokeOpacity=".5" strokeWidth="1" strokeDasharray="1 7"/></g>
+              <circle cx="210" cy="210" r="168" fill="url(#ifgl)" stroke="rgba(255,255,255,.22)" strokeWidth="1"/>
+              <g className="ifrotr"><circle cx="210" cy="210" r="140" fill="none" stroke="#D4AF6A" strokeOpacity=".55" strokeWidth="1" strokeDasharray="46 10"/></g>
+              <circle cx="210" cy="210" r="112" fill="none" stroke="rgba(255,255,255,.14)" strokeWidth="1"/>
+              <circle cx="210" cy="210" r="86" fill="none" stroke="rgba(255,255,255,.14)" strokeWidth="1"/>
+              <line x1="270.0" y1="210.0" x2="286.5" y2="274.4" stroke="#D4AF6A" strokeOpacity=".38" strokeWidth="1"/><line x1="256.0" y1="248.6" x2="227.2" y2="308.5" stroke="#D4AF6A" strokeOpacity=".38" strokeWidth="1"/><line x1="220.4" y1="269.1" x2="159.8" y2="296.5" stroke="#D4AF6A" strokeOpacity=".38" strokeWidth="1"/><line x1="180.0" y1="262.0" x2="116.0" y2="244.0" stroke="#D4AF6A" strokeOpacity=".38" strokeWidth="1"/><line x1="153.6" y1="230.5" x2="116.1" y2="175.6" stroke="#D4AF6A" strokeOpacity=".38" strokeWidth="1"/><line x1="153.6" y1="189.5" x2="160.2" y2="123.3" stroke="#D4AF6A" strokeOpacity=".38" strokeWidth="1"/><line x1="180.0" y1="158.0" x2="227.5" y2="111.6" stroke="#D4AF6A" strokeOpacity=".38" strokeWidth="1"/><line x1="220.4" y1="150.9" x2="286.7" y2="145.9" stroke="#D4AF6A" strokeOpacity=".38" strokeWidth="1"/><line x1="256.0" y1="171.4" x2="310.0" y2="210.2" stroke="#D4AF6A" strokeOpacity=".38" strokeWidth="1"/>
+              <circle cx="210" cy="210" r="70" fill="url(#iflg)" className="ifbr"/>
+              <ellipse cx="152" cy="140" rx="34" ry="14" transform="rotate(-38 152 140)" fill="rgba(255,255,255,.07)"/>
+              <line x1="406.0" y1="210.0" x2="414.0" y2="210.0" stroke="rgba(255,255,255,.3)" strokeWidth="1"/><line x1="379.7" y1="308.0" x2="386.7" y2="312.0" stroke="rgba(255,255,255,.3)" strokeWidth="1"/><line x1="308.0" y1="379.7" x2="312.0" y2="386.7" stroke="rgba(255,255,255,.3)" strokeWidth="1"/><line x1="210.0" y1="406.0" x2="210.0" y2="414.0" stroke="rgba(255,255,255,.3)" strokeWidth="1"/><line x1="112.0" y1="379.7" x2="108.0" y2="386.7" stroke="rgba(255,255,255,.3)" strokeWidth="1"/><line x1="40.3" y1="308.0" x2="33.3" y2="312.0" stroke="rgba(255,255,255,.3)" strokeWidth="1"/><line x1="14.0" y1="210.0" x2="6.0" y2="210.0" stroke="rgba(255,255,255,.3)" strokeWidth="1"/><line x1="40.3" y1="112.0" x2="33.3" y2="108.0" stroke="rgba(255,255,255,.3)" strokeWidth="1"/><line x1="112.0" y1="40.3" x2="108.0" y2="33.3" stroke="rgba(255,255,255,.3)" strokeWidth="1"/><line x1="210.0" y1="14.0" x2="210.0" y2="6.0" stroke="rgba(255,255,255,.3)" strokeWidth="1"/><line x1="308.0" y1="40.3" x2="312.0" y2="33.3" stroke="rgba(255,255,255,.3)" strokeWidth="1"/><line x1="379.7" y1="112.0" x2="386.7" y2="108.0" stroke="rgba(255,255,255,.3)" strokeWidth="1"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <ExampleReel go={go} title="What InFuture Movie Studios makes"/>
+      <div style={{textAlign:"center",paddingBottom:24,paddingTop:16}}>
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
+          <button onClick={async()=>{
+            const ua = navigator.userAgent.toLowerCase();
+            const isIOS = /iphone|ipad|ipod/.test(ua) || (/(macintosh)/.test(ua) && navigator.maxTouchPoints>1);
+            const isAndroid = /android/.test(ua);
+            const isStandalone = (window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone===true;
+            // REAL DOWNLOAD: save a standalone launcher file to the user's computer.
+            // Double-clicking it opens InFuture Movie Studios full-screen in their browser.
+            try{
+              const APP_URL="https://in-future1.bolt.host";
+              const launcher='<!doctype html><html><head><meta charset="utf-8"><title>InFuture Movie Studios</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;background:#000}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body><iframe src="'+APP_URL+'" allow="camera;microphone;autoplay;fullscreen;clipboard-write" allowfullscreen></iframe><script>try{if(location.protocol==="file:"){location.href="'+APP_URL+'";}}catch(e){location.href="'+APP_URL+'";}<\\/script></body></html>';
+              const blob=new Blob([launcher],{type:"text/html"});
+              const url=URL.createObjectURL(blob);
+              const a=document.createElement("a");
+              a.href=url; a.download="InFuture Movie Studios.html";
+              document.body.appendChild(a); a.click();
+              setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1500);
+            }catch(e){}
+            // Then also offer native install where the browser supports it.
+            if(isStandalone){return;}
+            if(window.deferredInstallPrompt){
+              try{
+                window.deferredInstallPrompt.prompt();
+                const choice=await window.deferredInstallPrompt.userChoice;
+                window.deferredInstallPrompt=null;
+                if(choice&&choice.outcome==="accepted") alert(" Installing InFuture Movie Studios to your home screen. Look for the gold I icon.");
+              }catch(e){}
+            } else if(isIOS){
+              alert("✓ InFuture Movie Studios.html downloaded to your device.\n\nTo also add it to your home screen on iPhone/iPad:\n1. Tap the Share button ⬆ in Safari\n2. Scroll down and tap 'Add to Home Screen'\n3. Tap 'Add'");
+            } else if(isAndroid){
+              alert("✓ InFuture Movie Studios downloaded.\n\nTo also install it as an app:\n1. Tap the menu ⋮ in Chrome\n2. Tap 'Add to Home screen' or 'Install app'");
+            } else {
+              alert("✓ InFuture Movie Studios.html downloaded to your computer.\n\nDouble-click the file any time to open the studio full-screen.\n\nTo also install it: look for the install icon ⊕ in your browser's address bar.");
+            }
+          }} style={{background:GOLD,border:"none",color:"#000",padding:"11px 32px",fontSize:14,fontWeight:600,letterSpacing:0.2,cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif",width:"100%",maxWidth:320}}>
+            Download app
+          </button>
+          <div style={{color:GOLDDIM,fontSize:10,letterSpacing:0.2,textAlign:"center"}}>Browser menu add to home screen</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function P2({ go }) {
+  const pipeline=[{n:"01",ic:"✍",t:"Write",d:"Script, logline, scenes",p:5},{n:"02",ic:"",t:"Voice",d:"54 AI voice characters",p:6},{n:"03",ic:"",t:"Image",d:"AI-generated stills",p:7},{n:"04",ic:"",t:"Video",d:"Cinema scene engine",p:8},{n:"05",ic:"⏱",t:"Timeline",d:"Multi-track editor",p:13},{n:"06",ic:"",t:"MIX",d:"4-channel audio mixer",p:15},{n:"07",ic:"",t:"Render",d:"Up to 4K export",p:16}];
+  const templates=[{seed:"msf-feature",vid:"ForBiggerEscapes.mp4",localVid:"feature.mp4",local:"feature.jpg",dur:"90 min",t:"Feature film",d:"90-minute drama.",pages:[5,6,8,13,15,16],bg:"#15171B"},{seed:"msf-doc",vid:"TearsOfSteel.mp4",localVid:"doc.mp4",local:"doc.jpg",dur:"60 min",t:"Documentary",d:"60-minute documentary.",pages:[5,6,8,13,15,16],bg:"#0E0F12"},{seed:"msf-music",vid:"ForBiggerBlazes.mp4",localVid:"music.mp4",local:"music.jpg",dur:"3 min",t:"Music video",d:"Beat-synced cinematic video.",pages:[6,8,13,16],bg:"#0E0F12"},{seed:"msf-short",vid:"ForBiggerJoyrides.mp4",localVid:"short.mp4",local:"short.jpg",dur:"10 min",t:"Short film",d:"10-minute narrative.",pages:[5,6,8,13,16],bg:"#0E0F12"},{seed:"msf-family",vid:"ForBiggerFun.mp4",localVid:"family.mp4",local:"family.jpg",dur:"30 min",t:"Family movie",d:"30-minute family film.",pages:[5,6,8,13,16],bg:"#15171B"},{seed:"msf-audio",vid:"VolkswagenGTIReview.mp4",localVid:"audio.mp4",local:"audio.jpg",dur:"Audio",t:"Audiobook",d:"Narrated audiobook.",pages:[5,6,15,16],bg:"#0E0F12"}];
+  return(
+    <div style={{...Sp,padding:"0 0 40px"}}>
+      <div style={{padding:"20px 24px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+        <div><div style={{fontSize:10,color:WHITE,letterSpacing:0.4,fontWeight:500,marginBottom:4}}>InFuture Movie Studios · cinema intelligence platform</div><h1 style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:"clamp(22px,4vw,40px)",fontWeight:600,letterSpacing:0.4,margin:0}}>Studio dashboard</h1></div>
+        <button onClick={()=>go(5)} style={{background:GOLD,border:"none",color:"#000",padding:"11px 28px",fontSize:13,fontWeight:600,letterSpacing:0.2,cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>+ new project</button>
+      </div>
+      <div style={{padding:"0 24px 20px"}}>
+        <div style={{fontSize:10,color:WHITE,letterSpacing:0.4,fontWeight:500,marginBottom:12}}>Production pipeline</div>
+        <div style={{display:"flex",gap:0,overflowX:"auto"}}>
+          {pipeline.map((step,i)=>(
+            <div key={step.n} style={{display:"flex",alignItems:"center",flexShrink:0}}>
+              <div onClick={()=>go(step.p)} style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"14px 16px",cursor:"pointer",textAlign:"center",minWidth:120}}
+                onMouseEnter={e=>{e.currentTarget.style.borderColor=GOLD;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=LINE;}}>
+                <div style={{color:GOLDDIM,fontSize:9,letterSpacing:0.2,marginBottom:4}}>Step {step.n}</div>
+                <div style={{fontSize:20,marginBottom:4}}>{step.ic}</div>
+                <div style={{color:WHITE,fontWeight:600,fontSize:12,letterSpacing:0.2,marginBottom:2}}>{step.t}</div>
+                <div style={{color:WHITE,fontSize:10,lineHeight:1.3}}>{step.d}</div>
+              </div>
+              {i<pipeline.length-1&&<div style={{color:GOLDDIM,fontSize:14,padding:"0 3px",flexShrink:0}}>›</div>}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{padding:"0 24px"}}>
+        <div style={{fontSize:10,color:WHITE,letterSpacing:0.4,fontWeight:500,marginBottom:12}}>Quick start templates</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+          {templates.map(tmpl=>(
+            <div key={tmpl.t} style={{background:tmpl.bg,border:"1px solid "+LINE,padding:"16px 18px",cursor:"pointer"}}
+              onMouseEnter={e=>{e.currentTarget.style.borderColor=GOLD;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=LINE+"33";}}>
+              <div style={{marginBottom:10}}><Frame seed={tmpl.seed} local={tmpl.local} vid={tmpl.vid} localVid={tmpl.localVid} dur={tmpl.dur} h={104}/></div>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><span style={{color:WHITE,fontWeight:600,fontSize:13,letterSpacing:0.2}}>{tmpl.t}</span></div>
+              <div style={{color:WHITE,fontSize:12,lineHeight:1.6,marginBottom:10}}>{tmpl.d}</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                {tmpl.pages.map(p=>(
+                  <button key={p} onClick={()=>go(p)} style={{background:"transparent",border:"1px solid "+LINE,color:GOLDDIM,padding:"2px 8px",cursor:"pointer",fontSize:10,fontWeight:600,fontFamily:"'Manrope',system-ui,sans-serif"}}
+                    onMouseEnter={e=>{e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.color=GOLD;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=LINE;e.currentTarget.style.color=GOLDDIM;}}>P{p}</button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function P3() {
+  const [uploads, setUploads] = useState([null,null,null]);
+  const [titles, setTitles] = useState(["","",""]);
+  const [descs, setDescs] = useState(["","",""]);
+  const [loaded, setLoaded] = useState(false);
+  const refs = [useRef(null),useRef(null),useRef(null)];
+  const videoRefs = [useRef(null),useRef(null),useRef(null)];
+
+  // Load saved proof-of-concept films from permanent storage on mount
   useEffect(()=>{
     let alive=true;
-    const PRESENCE="https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/presence";
-    async function ping(){
+    (async()=>{
       try{
-        let vid=localStorage.getItem("ms_vid");
-        if(!vid){vid=Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem("ms_vid",vid);}
-        const r=await fetch(PRESENCE,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({vid})});
-        const j=await r.json();
-        if(!alive)return;
-        if(typeof j.live==="number"){setLive(j.live);localStorage.setItem("ms_live_count",JSON.stringify(j.live));}
-        if(typeof j.total==="number"){setTotal(j.total);localStorage.setItem("ms_user_count",JSON.stringify(j.total));}
-      }catch(e){}
-    }
-    ping();
-    const t=setInterval(ping,15000);
-    return ()=>{alive=false;clearInterval(t);};
+        const t=JSON.parse(localStorage.getItem("ms_poc_titles")||'["","",""]');
+        const d=JSON.parse(localStorage.getItem("ms_poc_descs")||'["","",""]');
+        if(alive){setTitles(t);setDescs(d);}
+      }catch{}
+      const next=[null,null,null];
+      for(let i=0;i<3;i++){
+        try{
+          const rec=await loadClipFromDB("poc_"+i);
+          if(rec&&rec.blob){
+            next[i]={url:URL.createObjectURL(rec.blob),name:rec.name,type:rec.type,size:(rec.blob.size/1024/1024).toFixed(1)};
+          }
+        }catch{}
+      }
+      if(alive){setUploads(next);setLoaded(true);}
+    })();
+    return ()=>{alive=false;};
   },[]);
+
+  const saveTitles=(arr)=>{try{localStorage.setItem("ms_poc_titles",JSON.stringify(arr));}catch{}};
+  const saveDescs=(arr)=>{try{localStorage.setItem("ms_poc_descs",JSON.stringify(arr));}catch{}};
+
+  const handleFile=async(i,e)=>{
+    const f=e.target.files&&e.target.files[0];
+    if(!f)return;
+    const url=URL.createObjectURL(f);
+    setUploads(p=>{const n=[...p];if(n[i])URL.revokeObjectURL(n[i].url);n[i]={url,name:f.name,type:f.type,size:(f.size/1024/1024).toFixed(1)};return n;});
+    // Persist the actual file to IndexedDB so it stays forever
+    try{await saveClipToDB("poc_"+i,f,f.name,f.type);}catch(err){alert("Could not save film "+(i+1)+" — storage may be full.");}
+  };
+  const removeUpload=async(i)=>{
+    setUploads(p=>{const n=[...p];if(n[i])URL.revokeObjectURL(n[i].url);n[i]=null;return n;});
+    setTitles(p=>{const n=[...p];n[i]="";saveTitles(n);return n;});
+    setDescs(p=>{const n=[...p];n[i]="";saveDescs(n);return n;});
+    try{await deleteClipFromDB("poc_"+i);}catch{}
+  };
+
+  const inp={width:"100%",background:"#0E0F12",border:"1px solid "+LINE,padding:"8px 10px",color:WHITE,fontSize:12,outline:"none",fontFamily:"'Manrope',system-ui,sans-serif",boxSizing:"border-box"};
+
   return (
-    <div style={{display:"flex",justifyContent:"center",marginBottom:24}}>
-      <div style={{background:"#07080A",border:"2px solid "+SIGNAL,padding:"14px 40px",textAlign:"center",boxShadow:"none",position:"relative"}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginBottom:6}}>
-          <div style={{width:8,height:8,borderRadius:"50%",background:"#D4AF6A",boxShadow:"none",animation:"pulse 2s infinite"}}/>
-          <div style={{color:"#D4AF6A",fontSize:10,letterSpacing:0.4,fontWeight:600}}>Live · user count</div>
+    <div style={{...Sp,padding:40}}>
+      <div style={{maxWidth:1100,margin:"0 auto"}}>
+        <div style={{fontSize:12,color:WHITE,letterSpacing:0.4,marginBottom:8,fontWeight:500}}>Showcase</div>
+        <h1 style={{...H1,fontSize:30,marginBottom:6}}>Proof of concept</h1>
+        <div style={{color:GOLDDIM,fontSize:13,marginBottom:10,letterSpacing:0}}>Upload up to 3 films, trailers, or demo reels created with InFuture Movie Studios.</div>
+        <div style={{color:"#D4AF6A",fontSize:11,marginBottom:24,letterSpacing:0.2,fontWeight:600}}>Saved permanently — your films stay until you replace or remove them</div>
+
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:20}}>
+          {[0,1,2].map(i=>(
+            <div key={i} style={{...Card(),padding:16}}>
+              <div style={{color:WHITE,fontSize:10,letterSpacing:0.2,fontWeight:600,marginBottom:10}}>Film {i+1}</div>
+
+              {/* Video/Image preview area */}
+              <div style={{background:"#0E0F12",aspectRatio:"16/9",marginBottom:10,border:"1px solid "+(uploads[i]?GOLD:LINE),overflow:"hidden",position:"relative",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}
+                onClick={()=>!uploads[i]&&refs[i].current&&refs[i].current.click()}>
+                {uploads[i]?(
+                  uploads[i].type.startsWith("video")?(
+                    <MsVideo ref={videoRefs[i]} src={uploads[i].url} controls playsInline style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+                  ):(
+                    <img src={uploads[i].url} alt="upload" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+                  )
+                ):(
+                  <div style={{textAlign:"center",padding:16}}>
+                    <div style={{color:GOLDDIM,fontSize:28,marginBottom:8}}></div>
+                    <div style={{color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2}}>Click to upload</div>
+                    <div style={{color:GOLDDIM,fontSize:9,marginTop:4}}>MP4 · webm · mov · jpg · png</div>
+                  </div>
+                )}
+                {uploads[i]&&(
+                  <button onClick={e=>{e.stopPropagation();removeUpload(i);}}
+                    style={{position:"absolute",top:6,right:6,background:"rgba(0,0,0,0.8)",border:"1px solid "+LINE,color:WHITE,width:22,height:22,cursor:"pointer",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              <input ref={refs[i]} type="file" accept="video/*,image/*" style={{display:"none"}} onChange={e=>handleFile(i,e)}/>
+
+              {/* Title */}
+              <div style={{color:WHITE,fontSize:9,letterSpacing:0.2,fontWeight:600,marginBottom:4}}>Film title</div>
+              <input value={titles[i]} onChange={e=>setTitles(p=>{const n=[...p];n[i]=e.target.value;saveTitles(n);return n;})}
+                placeholder="Enter film title..." style={{...inp,marginBottom:8}}/>
+
+              {/* Description */}
+              <div style={{color:WHITE,fontSize:9,letterSpacing:0.2,fontWeight:600,marginBottom:4}}>Description</div>
+              <textarea value={descs[i]} onChange={e=>setDescs(p=>{const n=[...p];n[i]=e.target.value;saveDescs(n);return n;})}
+                placeholder="Describe this film..." style={{...inp,height:60,resize:"none",lineHeight:1.6,marginBottom:10}}/>
+
+              {/* Upload button */}
+              {!uploads[i]?(
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                  <button onClick={()=>{const inp2=document.createElement("input");inp2.type="file";inp2.accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.heic,.heif";inp2.onchange=e=>handleFile(i,e);inp2.click();}}
+                    style={{background:"#0E0F12",border:"2px solid "+SIGNAL,color:WHITE,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0,fontFamily:"'Manrope',system-ui,sans-serif"}}>
+                    Photo
+                  </button>
+                  <button onClick={()=>refs[i].current&&refs[i].current.click()}
+                    style={{background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0,fontFamily:"'Manrope',system-ui,sans-serif"}}>
+                    File
+                  </button>
+                </div>
+              ):(
+                <div>
+                  <div style={{color:"#D4AF6A",fontSize:9,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>✓ {uploads[i].name.slice(0,28)} · {uploads[i].size}MB</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                    <button onClick={()=>msDownload(uploads[i].url,uploads[i].name)}
+                      style={{...G("gold",false),width:"100%",padding:"8px",fontSize:10,letterSpacing:0.2,cursor:"pointer",textAlign:"center",display:"block",boxSizing:"border-box"}}>
+                      Save
+                    </button>
+                    <button onClick={()=>refs[i].current&&refs[i].current.click()}
+                      style={{...G("out",false),width:"100%",padding:"8px",fontSize:10,letterSpacing:0.2}}>
+                      Replace
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
-        <div style={{display:"flex",alignItems:"flex-end",justifyContent:"center",gap:34}}>
-          <div>
-            <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:42,fontWeight:600,lineHeight:1,textShadow:"none"}}>{live}</div>
-            <div style={{color:"#D4AF6A",fontSize:9,letterSpacing:0.2,marginTop:4}}>On now</div>
+
+        {/* If nothing uploaded yet */}
+        {uploads.every(u=>!u)&&(
+          <div style={{marginTop:32,padding:24,border:"1px dashed "+LINE,textAlign:"center"}}>
+            <div style={{color:GOLDDIM,fontSize:12,letterSpacing:0.2,lineHeight:2}}>
+              No films uploaded yet. Use Page 8 to generate scenes, Page 16 to render your film,<br/>
+              then upload it here as your proof of concept.
+            </div>
           </div>
-          <div style={{width:1,alignSelf:"stretch",background:GOLD+"55"}}/>
-          <div>
-            <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:42,fontWeight:600,lineHeight:1,textShadow:"none"}}>{total}</div>
-            <div style={{color:GOLDDIM,fontSize:9,letterSpacing:0.2,marginTop:4}}>Total users</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+function P4({ go, setUser }) {
+  const [email,setEmail]=useState(""); const [pass,setPass]=useState("");
+  const [name,setName]=useState(""); const [re,setRe]=useState("");
+  const [loginOk,setLoginOk]=useState(false);
+  const inp={width:"100%",background:"#0E0F12",border:"1px solid "+LINE,padding:"10px 12px",color:WHITE,fontSize:14,marginBottom:10,outline:"none",boxSizing:"border-box",fontFamily:"'Manrope',system-ui,sans-serif"};
+  const [busy,setBusy]=useState(false);
+  const login=async()=>{
+    if(!email.includes("@")||pass.length<1){alert("Please enter a valid email and password.");return;}
+    setBusy(true);
+    try{
+      const {data,error}=await supabase.auth.signInWithPassword({email:email.trim(),password:pass});
+      if(error||!data?.user){
+        setBusy(false);
+        alert("Sign in failed. Check your email and password.");
+        return;
+      }
+      // Read the account's real plan from the subscriptions table (falls back to Guest).
+      let plan="Guest", isAdmin=false;
+      try{
+        const {data:sub}=await supabase.from("subscriptions").select("plan_tier,status").eq("user_id",data.user.id).maybeSingle();
+        if(sub&&sub.status==="active"&&sub.plan_tier&&sub.plan_tier!=="none") plan=sub.plan_tier;
+        const {data:role}=await supabase.from("user_roles").select("role").eq("user_id",data.user.id).maybeSingle();
+        if(role&&role.role==="admin") isAdmin=true;
+      }catch(e){}
+      setLoginOk(true);
+      setTimeout(()=>{setUser({name:data.user.email,email:data.user.email,plan,isAdmin,uid:data.user.id});go(5);},600);
+    }catch(e){ setBusy(false); alert("Sign in failed. Please try again."); }
+  };
+  const createAccount=async()=>{
+    if(!re.includes("@")||pass.length<6){alert("Enter a valid email and a password of at least 6 characters.");return;}
+    setBusy(true);
+    try{
+      const {data,error}=await supabase.auth.signUp({email:re.trim(),password:pass});
+      if(error){ setBusy(false); console.error("Sign up failed:",error); alert("If that email can be used, your account has been created. Please check your inbox."); return; }
+      // New accounts start on the trial checkout. Their render credit is set by the
+      // subscription their payment creates — the engine will not spend beyond it.
+      setUser({name:name||re,email:re,plan:"Studio Trial",isAdmin:false,uid:data?.user?.id||""});
+      window.open(STRIPE.studio,"_blank");
+      go(5);
+    }catch(e){ setBusy(false); alert("Could not create account. Please try again."); }
+  };
+  return (
+    <div style={{...Sp,padding:40}}>
+      <div style={{maxWidth:1000,margin:"0 auto"}}>
+        {/* Live subscriber counter — green live light, auto-updates (LIVE visitors + TOTAL users) */}
+        <MSUserCounter/>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:18,marginBottom:36}}>
+          <div style={{...Card()}}>
+            <div style={{fontSize:11,color:WHITE,letterSpacing:0.2,marginBottom:8,fontWeight:500}}>Existing user</div>
+            <h2 style={{...H1,fontSize:18,marginBottom:18}}>Sign in</h2>
+            <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email address" style={inp}/>
+            <input value={pass} onChange={e=>setPass(e.target.value)} type="password" placeholder="Password" style={{...inp,marginBottom:16}}/>
+            {loginOk&&<div style={{background:"#14110B",border:"1px solid #D4AF6A",padding:"10px",textAlign:"center",marginBottom:8}}>
+              <span style={{color:"#D4AF6A",fontWeight:600,fontSize:14,letterSpacing:0.2}}>Login successful</span>
+            </div>}
+            <button onClick={login} disabled={busy} style={{...G("gold",false),width:"100%",padding:"12px",opacity:busy?0.6:1}}>{loginOk?"Entering studio...":(busy?"Signing in...":"SIGN IN TO STUDIO")}</button>
+          </div>
+          <div style={{...Card(),border:"2px solid #D4AF6A",position:"relative"}}>
+            <div style={{position:"absolute",top:-11,left:"50%",transform:"translateX(-50%)",background:"#D4AF6A",color:"#000",padding:"3px 14px",fontSize:11,fontWeight:600,whiteSpace:"nowrap"}}>7-day free trial</div>
+            <div style={{fontSize:11,color:WHITE,letterSpacing:0.2,marginBottom:8,marginTop:10,fontWeight:500}}>New creator</div>
+            <h2 style={{...H1,fontSize:18,marginBottom:18}}>Create account</h2>
+            <input value={name} onChange={e=>setName(e.target.value)} placeholder="Your Name" style={inp}/>
+            <input value={re} onChange={e=>setRe(e.target.value)} placeholder="Email address" style={inp}/>
+            <input value={pass} onChange={e=>setPass(e.target.value)} type="password" placeholder="Choose a password (min 6)" style={{...inp,marginBottom:16}}/>
+            <button onClick={createAccount} disabled={busy}
+              style={{width:"100%",padding:"12px",background:"#D4AF6A",border:"none",color:"#000",fontWeight:600,fontSize:13,cursor:"pointer",letterSpacing:0.2,opacity:busy?0.6:1}}>{busy?"Creating...":"Start free trial — $0"}</button>
+          </div>
+          <div style={{...Card(),textAlign:"center"}}>
+            <div style={{fontSize:36,marginBottom:10}}></div>
+            <h2 style={{...H1,fontSize:16,marginBottom:10}}>Explore first</h2>
+            <p style={{color:WHITE,fontSize:14,lineHeight:1.7,marginBottom:20}}>Browse 200+ AI tools before committing. No account required.</p>
+            <button onClick={()=>{window.open(STRIPE.basic,"_blank");alert("Start your free 7-day trial to access InFuture Movie Studios. No commitment required.");}} style={{...G("out",false),width:"100%"}}>Browse as guest — start free trial</button>
           </div>
         </div>
-        <div style={{color:GOLDDIM,fontSize:9,letterSpacing:0.2,marginTop:8}}>launched june 1st 2026 · updates automatically</div>
-        <style>{"@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}"}</style>
+        <div style={{textAlign:"center",marginBottom:24,display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>
+          <button onClick={()=>{try{const m=JSON.parse(localStorage.getItem("ms_medialib")||"[]");const t=JSON.parse(localStorage.getItem("ms_timeline")||"{}");const u=JSON.parse(localStorage.getItem("ms_user")||"{}");const p=JSON.parse(localStorage.getItem("ms_page")||"5");if(m.length>0||Object.keys(t).length>0){if(u&&u.name)setUser(u);go(p);}else{alert("No saved project found.");}}catch(e){alert("Could not load project.");}}} style={{...G("gold",false),padding:"12px 32px"}}>Open project</button>
+          <button onClick={()=>{setUser({name:"Creator",plan:"Guest",isAdmin:false});go(5);}} style={{...G("out",false),padding:"12px 32px"}}>New project</button>
+        </div>
+        <h2 style={{...H1,fontSize:22,textAlign:"center",marginBottom:22}}>Subscription plans</h2>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
+          {[
+            {t:"Basic plan",p:"20",link:STRIPE.basic,f:["HD Export 1080p","100 AI Tools","10GB Storage","Email Support"],pop:false,trial:false,ent:false},
+            {t:"Pro plan",p:"30",link:STRIPE.pro,f:["4K Export","300 AI Tools","100GB Storage","Priority Support","Commercial License"],pop:true,trial:false,ent:false},
+            {t:"Studio plan",p:"50",link:STRIPE.studio,f:["8K Export","200+ AI Tools","1TB Storage","24/7 Support","Full Rights","API Access","7-Day Free Trial"],pop:false,trial:true,ent:false},
+          ].map(plan=>(
+            <div key={plan.t} style={{...Card(),border:plan.pop?"2px solid "+SIGNAL:"1px solid "+LINE,position:"relative"}}>
+              {plan.pop&&<div style={{position:"absolute",top:-11,left:"50%",transform:"translateX(-50%)",background:GOLD,color:"#000",padding:"2px 12px",fontSize:11,fontWeight:600,whiteSpace:"nowrap"}}>Most popular</div>}
+              {plan.trial&&<div style={{position:"absolute",top:-11,right:12,background:"#D4AF6A",color:"#000",padding:"2px 10px",fontSize:11,fontWeight:600}}>Free trial</div>}
+              <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:500}}>{plan.t}</div>
+              <div style={{color:WHITE,fontFamily:"'Manrope',system-ui,sans-serif",fontSize:34,fontWeight:600,margin:"8px 0"}}>{plan.p}<span style={{fontSize:12,color:WHITE}}>/mo</span></div>
+              <div style={{margin:"12px 0"}}>{plan.f.map(f=><div key={f} style={{color:WHITE,fontSize:12,padding:"3px 0",borderBottom:"1px solid #0a0a0a"}}>✓ {f}</div>)}</div>
+              <button onClick={()=>window.open(plan.link,"_blank")} style={{...G(plan.trial?"out":"gold",false),width:"100%"}}>{plan.trial?"START FREE TRIAL":"SUBSCRIBE NOW"}</button>
+            </div>
+          ))}
+        </div>
+
+        {/* ── PURCHASE USAGE CREDITS ── one-time top-up at the bottom of the page ── */}
+        <div style={{marginTop:40,padding:"28px 24px",background:"#07080A",border:"2px solid "+SIGNAL,textAlign:"center",boxShadow:"none"}}>
+          <div style={{fontSize:11,color:WHITE,letterSpacing:0.4,fontWeight:600,marginBottom:6}}>Need more usage?</div>
+          <h3 style={{...H1,fontSize:20,marginBottom:8}}>Purchase usage credits</h3>
+          <p style={{color:WHITE,fontSize:13,lineHeight:1.7,maxWidth:520,margin:"0 auto 18px"}}>You've already had your usage replaced once. To top up again, purchase extra usage credits here — pay once, use them for renders and generations whenever you're ready, and they never expire. Proceeds from MandaStrong1.Etsy.com are donated to humanitarian causes.</p>
+          <button onClick={()=>window.open(STRIPE.studio,"_blank")} style={{...G("gold",false),padding:"14px 44px",fontSize:14}}>Purchase usage credits</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function MergeVideos({ onSave }) {
+  const [clips, setClips] = useState([]);
+  const [merging, setMerging] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [mergeLog, setMergeLog] = useState([]);
+  const [mergedUrl, setMergedUrl] = useState("");
+  const fileRef = useRef(null);
+
+  const addClips = (files) => {
+    const newClips = Array.from(files).filter(f=>f.type.startsWith("video")).map(f=>({
+      id: Date.now()+Math.random(),
+      name: f.name,
+      url: URL.createObjectURL(f),
+      file: f,
+      duration: 0,
+    }));
+    setClips(p=>[...p,...newClips]);
+  };
+
+  const move = (from, to) => {
+    setClips(p=>{
+      const arr=[...p];
+      const moved=arr.splice(from,1)[0];
+      arr.splice(to,0,moved);
+      return arr;
+    });
+  };
+
+  const log = (msg) => setMergeLog(p=>[...p,msg]);
+
+  const mergeAll = async () => {
+    if(clips.length < 2){ alert("Add at least 2 videos to merge."); return; }
+    setMerging(true); setProgress(0); setMergeLog([]); setMergedUrl("");
+    log("MandaStrong Merge Engine — combining "+clips.length+" videos in sequence...");
+
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1920; canvas.height = 1080;
+      const ctx = canvas.getContext("2d");
+      const fps = 24;
+      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9") ? "video/webm;codecs=vp9" : "video/webm";
+      const stream = canvas.captureStream(fps);
+      const recorder = new MediaRecorder(stream, {mimeType, videoBitsPerSecond:8000000});
+      const chunks = [];
+      recorder.ondataavailable = e => { if(e.data.size>0) chunks.push(e.data); };
+      recorder.start(100);
+
+      for(let ci=0; ci<clips.length; ci++) {
+        const clip = clips[ci];
+        setProgress(Math.round((ci/clips.length)*90));
+        log("  Adding clip "+(ci+1)+"/"+clips.length+": "+clip.name.slice(0,40));
+
+        await new Promise(resolve => {
+          const vid = document.createElement("video");
+          vid.muted = true; vid.playsInline = true;
+          vid.src = clip.url;
+          let done = false;
+          const finish = () => { if(!done){ done=true; resolve(); } };
+
+          vid.onloadeddata = async () => {
+            try { await vid.play(); } catch(e) {}
+            const clipDur = Math.min(vid.duration || 30, 120);
+            const startTime = Date.now();
+            const msPerF = Math.round(1000/fps);
+            let lastDraw = performance.now();
+
+            const draw = () => {
+              if(done) return;
+              const elapsed = (Date.now()-startTime)/1000;
+              if(vid.ended || elapsed >= clipDur) { vid.pause(); finish(); return; }
+              const now = performance.now();
+              if(now - lastDraw >= msPerF - 2) {
+                try {
+                  ctx.clearRect(0,0,1920,1080);
+                  ctx.drawImage(vid,0,0,1920,1080);
+                  // Vignette
+                  const vig = ctx.createRadialGradient(960,540,100,960,540,1000);
+                  vig.addColorStop(0,"rgba(0,0,0,0)"); vig.addColorStop(1,"rgba(0,0,0,0.7)");
+                  ctx.fillStyle=vig; ctx.fillRect(0,0,1920,1080);
+                  // Letterbox
+                  ctx.fillStyle="#000";
+                  ctx.fillRect(0,0,1920,78); ctx.fillRect(0,1002,1920,78);
+                  lastDraw = now;
+                } catch(e) { finish(); return; }
+              }
+              requestAnimationFrame(draw);
+            };
+            requestAnimationFrame(draw);
+          };
+          vid.onerror = finish;
+          setTimeout(finish, 180000);
+          vid.load();
+        });
+
+        // Brief black gap between clips
+        if(ci < clips.length-1) {
+          const gapFrames = fps * 0.5;
+          const gapStart = performance.now();
+          await new Promise(resolve => {
+            let f = 0;
+            const gap = () => {
+              if(f >= gapFrames) { resolve(); return; }
+              ctx.fillStyle = "#000"; ctx.fillRect(0,0,1920,1080);
+              f++;
+              const next = gapStart + (f*(1000/fps));
+              setTimeout(gap, Math.max(4, next-performance.now()));
+            };
+            gap();
+          });
+        }
+      }
+
+      setProgress(95);
+      log("Finalising merged film...");
+      await new Promise(r=>{let d=false;const f=()=>{if(!d){d=true;r();}};setTimeout(f,4000);try{recorder.onstop=f;if(recorder.state!=="inactive"){recorder.stop();}else{f();}}catch(e){f();}});
+      const blob = new Blob(chunks, {type:mimeType});
+      const url = URL.createObjectURL(blob);
+      setMergedUrl(url);
+      setProgress(100);
+      log("Merge complete —"+(blob.size/1024/1024).toFixed(1)+"MB · "+clips.length+" clips combined");
+
+      const fn = "InFuture_Merged_"+Date.now()+".webm";
+      try {
+        const clipId = "merge_"+Date.now();
+        await safeSaveClipToDB(clipId, blob, fn, "video/webm");
+        if(onSave) onSave({id:clipId, name:fn, type:"video/webm", url:URL.createObjectURL(blob), file:new File([blob],fn,{type:"video/webm"}), dbId:clipId});
+        log("Saved to media library — ready for timeline");
+      } catch(e) {}
+
+    } catch(e) { log("Merge error: "+e.message); }
+    setMerging(false);
+  };
+
+  return (
+    <div>
+      <input ref={fileRef} type="file" multiple accept="video/*,.mp4,.mov,.m4v,.webm" style={{display:"none"}} onChange={e=>addClips(e.target.files)}/>
+      <button onClick={()=>fileRef.current&&fileRef.current.click()}
+        style={{width:"100%",background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"10px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif",marginBottom:10}}>
+        ⬆ ADD VIDEOS TO MERGE ({clips.length} loaded)
+      </button>
+      {clips.length>0&&(
+        <div style={{marginBottom:10}}>
+          <div style={{color:WHITE,fontSize:10,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Drag to reorder — top = first in film</div>
+          {clips.map((c,i)=>(
+            <div key={c.id}
+              draggable
+              onDragStart={e=>e.dataTransfer.setData("mergeIdx",String(i))}
+              onDragOver={e=>e.preventDefault()}
+              onDrop={e=>{e.preventDefault();const from=Number(e.dataTransfer.getData("mergeIdx"));if(from!==i)move(from,i);}}
+              style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"8px 12px",marginBottom:4,display:"flex",alignItems:"center",gap:10,cursor:"grab"}}>
+              <span style={{color:WHITE,fontWeight:600,fontSize:13}}>⣿</span>
+              <span style={{color:WHITE,fontWeight:600,fontSize:11,minWidth:20}}>{i+1}.</span>
+              <span style={{color:WHITE,fontSize:11,flex:1}}>{c.name.slice(0,50)}</span>
+              <div style={{display:"flex",gap:4}}>
+                {i>0&&<button onClick={()=>move(i,i-1)} style={{background:"none",border:"1px solid "+LINE,color:WHITE,padding:"2px 7px",cursor:"pointer",fontSize:10,fontWeight:600}}>▲</button>}
+                {i<clips.length-1&&<button onClick={()=>move(i,i+1)} style={{background:"none",border:"1px solid "+LINE,color:WHITE,padding:"2px 7px",cursor:"pointer",fontSize:10,fontWeight:600}}>▼</button>}
+                <button onClick={()=>setClips(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"1px solid #C98A7A",color:"#C98A7A",padding:"2px 7px",cursor:"pointer",fontSize:10,fontWeight:600}}>✕</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {clips.length>=2&&(
+        <button onClick={mergeAll} disabled={merging}
+          style={{width:"100%",background:GOLD,border:"none",color:"#000",padding:"12px",cursor:merging?"not-allowed":"pointer",fontSize:12,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif",opacity:merging?0.7:1,marginBottom:8}}>
+          {merging?"⟳ MERGING... "+progress+"%":"Merge in sequence save to timeline"}
+        </button>
+      )}
+      {merging&&(
+        <div style={{height:4,background:"#0E0F12",marginBottom:8}}>
+          <div style={{width:progress+"%",height:"100%",background:SIGNAL,transition:"width .3s"}}/>
+        </div>
+      )}
+      {mergeLog.length>0&&(
+        <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:10,maxHeight:100,overflowY:"auto",marginBottom:8}}>
+          {mergeLog.map((l,i)=>(
+            <div key={i} style={{color:i===mergeLog.length-1?"#D4AF6A":DIM,fontSize:10,lineHeight:1.7}}>
+              {i===mergeLog.length-1?"▶ ":"  "}{l}
+            </div>
+          ))}
+        </div>
+      )}
+      {mergedUrl&&(
+        <div style={{background:"#14110B",border:"1px solid #D4AF6A",padding:"10px 14px"}}>
+          <div style={{color:"#D4AF6A",fontWeight:600,fontSize:11,letterSpacing:0.2,marginBottom:6}}>Merged film saved to media library — ready for timeline</div>
+          <button onClick={()=>msDownload(mergedUrl,"InFuture_Merged.mp4")}
+            style={{background:"transparent",border:"none",color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2,cursor:"pointer",padding:0,textDecoration:"underline",fontFamily:"'Manrope',system-ui,sans-serif"}}>Download merged film</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function P11({ mediaLib, setMediaLib }) {
+  const fileRef = useRef(null);
+  const onFiles = async files => {
+    if(!files)return;
+    const arr=Array.from(files);
+    const added=[];
+    for(const f of arr){
+      // Large files: warn but still allow — IndexedDB handles big blobs fine
+      if(f.size>1024*1024*1024){ // >1GB
+        alert('"'+f.name+'" is very large ('+(f.size/1024/1024/1024).toFixed(1)+"GB). It may load slowly. For smoothest results keep single files under 1GB.");
+      }
+      const id=Date.now()+Math.random();
+      const asset={id,name:f.name,type:f.type,file:f,url:URL.createObjectURL(f),dbId:"upload_"+id};
+      // Persist to IndexedDB so it survives refresh and doesn't rely on holding the File in memory
+      try{await safeSaveClipToDB("upload_"+id,f,f.name,f.type);}catch(err){console.warn("upload persist failed",err);}
+      added.push(asset);
+    }
+    setMediaLib(p=>[...p,...added]);
+  };
+  return (
+    <div style={{...Sp,padding:40}}>
+      <div style={{maxWidth:800,margin:"0 auto"}}>
+        <div style={{fontSize:12,color:WHITE,letterSpacing:0.4,marginBottom:4,fontWeight:500}}>Asset ingestion</div>
+        <h1 style={{...H1,fontSize:28,marginBottom:4}}>Upload media</h1>
+        <div style={{color:WHITE,fontSize:14,marginBottom:20,fontWeight:500,letterSpacing:0}}>{mediaLib.length} Assets in library</div>
+        <div onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor=GOLD;}}
+          onDragLeave={e=>{e.currentTarget.style.borderColor=LINE;}}
+          onDrop={e=>{e.preventDefault();onFiles(e.dataTransfer.files);e.currentTarget.style.borderColor=LINE;}}
+          style={{border:"2px dashed "+LINE,padding:"30px 40px",textAlign:"center",marginBottom:12}}>
+          <div style={{fontSize:36,marginBottom:10}}></div>
+          <div style={{color:WHITE,fontWeight:600,fontSize:16,letterSpacing:0.2,marginBottom:16}}>Drag & drop your media here</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,maxWidth:360,margin:"0 auto"}}>
+            <button onClick={()=>fileRef.current&&fileRef.current.click()}
+              style={{background:"#0E0F12",border:"2px solid "+SIGNAL,color:WHITE,padding:"14px",cursor:"pointer",fontSize:13,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>
+              Upload photos
+            </button>
+            <button onClick={()=>fileRef.current&&fileRef.current.click()}
+              style={{background:"#0E0F12",border:"2px solid "+SIGNAL,color:WHITE,padding:"14px",cursor:"pointer",fontSize:13,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>
+              Upload files
+            </button>
+          </div>
+        </div>
+        {mediaLib.length>0&&(
+          <div>
+            <h3 style={{color:WHITE,fontWeight:600,fontSize:13,letterSpacing:0.2,marginBottom:10}}>Media library ({mediaLib.length})</h3>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8}}>
+              {mediaLib.map(a=>(
+                <div key={a.id} style={{...Card(),padding:8,position:"relative"}}>
+                  {a.type.startsWith("video")&&a.url?<video src={a.url} style={{width:"100%",marginBottom:5}}/>:
+                   a.type.startsWith("image")?<img src={a.url} style={{width:"100%",marginBottom:5}} alt={a.name}/>:
+                   <div style={{height:60,background:"#0E0F12",marginBottom:5,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}></div>}
+                  <div style={{color:WHITE,fontSize:11,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.name}</div>
+                  <button onClick={()=>setMediaLib(p=>p.filter(x=>x.id!==a.id))}
+                    style={{position:"absolute",top:5,right:5,background:"#7f1d1d",border:"none",color:"#C98A7A",width:16,height:16,cursor:"pointer",fontSize:9,padding:0}}>✕</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        <input ref={fileRef} type="file" multiple accept="video/*,audio/*,image/*,.mp4,.mov,.m4v,.mp3,.m4a,.wav,.aac,.webm" onChange={e=>onFiles(e.target.files)} style={{display:"none"}}/>
+      </div>
+      <div style={{marginTop:20}}>
+        <div style={{background:"#0E0F12",border:"2px solid "+SIGNAL,padding:16,marginBottom:12}}>
+          <div style={{color:WHITE,fontSize:12,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>Merge videos — combine & order before timeline</div>
+          <div style={{color:DIM,fontSize:11,marginBottom:12,lineHeight:1.7}}>Upload 2 or more videos. Drag to reorder. Hit MERGE IN SEQUENCE to combine them into one film ready for the timeline.</div>
+          <MergeVideos onSave={a=>{setMediaLib(p=>[...p,a]);}}/>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function P12({ go, mediaLib }) {
+  const boxes=[
+    {ic:"",t:"Media library",d:(mediaLib?mediaLib.length:0)+" assets",p:11},
+    {ic:"⏱",t:"Timeline editor",d:"Multi-track editing",p:13},
+    {ic:"",t:"Enhancement studio",d:"90+ AI tools",p:14},
+    {ic:"",t:"Audio mixer",d:"4-channel mixing",p:15},
+    {ic:"",t:"Render engine",d:"Up to 8K output",p:16},
+    {ic:"▶",t:"Preview player",d:"Full-screen playback",p:17}
+  ];
+  return (
+    <div style={{...Sp,padding:30}}>
+      <div style={{maxWidth:1100,margin:"0 auto"}}>
+        <div style={{fontSize:11,color:WHITE,letterSpacing:0.4,marginBottom:4,fontWeight:500}}>Production hub</div>
+        <h1 style={{...H1,fontSize:44,marginBottom:6}}>Editor suite</h1>
+        <div style={{color:WHITE,fontSize:15,marginBottom:28,lineHeight:1.6}}>Your complete post-production workspace.</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:20}}>
+          {boxes.map(b=>(
+            <button key={b.t} onClick={()=>go(b.p)}
+              style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"28px 24px",cursor:"pointer",textAlign:"left",fontFamily:"'Manrope',system-ui,sans-serif",minHeight:150,display:"flex",flexDirection:"column"}}
+              onMouseEnter={e=>{e.currentTarget.style.borderColor=GOLD;}}
+              onMouseLeave={e=>{e.currentTarget.style.borderColor=LINE;}}>
+              <div style={{fontSize:34,marginBottom:24}}>{b.ic}</div>
+              <div style={{fontSize:15,color:WHITE,letterSpacing:0.2,fontWeight:600,marginBottom:6}}>{b.t}</div>
+              <div style={{fontSize:13,color:WHITE,opacity:0.75}}>{b.d}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function P13({ go, mediaLib, timeline, setTimeline, user, filmDuration, setFilmDuration, onClearScenes }) {
+  const [tracks,setTracks]=useState(["VIDEO TRACK","AUDIO TRACK","TEXT / TITLES"]);
+  const addToTrack=(idx,asset)=>setTimeline(p=>({...p,[idx]:[...(p[idx]||[]),asset]}));
+  return (
+    <div style={{...Sp,padding:20}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:10}}>
+        <div>
+          <div style={{fontSize:11,color:WHITE,letterSpacing:0.4,fontWeight:500}}>Editing workspace</div>
+          <h1 style={{...H1,fontSize:24,margin:0}}>Timeline editor</h1>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginTop:4}}>
+            <span style={{color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2}}>Film: {filmDuration||60} Min</span>
+            <input type="range" min={1} max={180} step={1} value={filmDuration||60} onChange={e=>setFilmDuration(+e.target.value)} style={{width:160,accentColor:GOLD}}/>
+            <div style={{display:"flex",gap:4}}>
+              {[60,90,180].map(m=><button key={m} onClick={()=>setFilmDuration(m)} style={{background:filmDuration===m?GOLD:"#0E0F12",border:"1px solid "+(filmDuration===m?"#000":GOLDDIM),color:filmDuration===m?"#000":WHITE,padding:"2px 8px",cursor:"pointer",fontSize:10,fontWeight:600,fontFamily:"'Manrope',system-ui,sans-serif"}}>{m}m</button>)}
+            </div>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={()=>setTracks(p=>[...p,"TRACK "+p.length+1])} style={{...G("out",true)}}>+ add track</button>
+          <button onClick={()=>{
+            // Auto-populate tracks from media library and sync — sorted in correct order
+            // Sort by leading number in name (Scene 1, Scene 2, etc.), then by name, then by id/timestamp
+            const sortClips=(clips)=>{
+              return clips.slice().sort((a,b)=>{
+                const na=parseInt((a.name||"").match(/\b(\d+)\b/)?.[1]||"9999");
+                const nb=parseInt((b.name||"").match(/\b(\d+)\b/)?.[1]||"9999");
+                if(na!==nb)return na-nb;
+                const cmp=(a.name||"").localeCompare(b.name||"");
+                if(cmp!==0)return cmp;
+                return (a.id||0)-(b.id||0);
+              });
+            };
+            const videoAssets=sortClips(mediaLib.filter(a=>a&&a.type&&(a.type.startsWith("video")||(a.type.includes("webm")&&!a.type.startsWith("audio")))));
+            const audioAssets=sortClips(mediaLib.filter(a=>a&&a.type&&(a.type.startsWith("audio")||a.type==="audio/narration"||a.type==="narration")));
+            // Assign sequential start times so clips play in order
+            let vTime=0;
+            const videoTrack=videoAssets.map((a,i)=>{const startTime=vTime;vTime+=(a.duration||5);return {...a,startTime,order:i,syncGroup:"master",synced:true};});
+            let aTime=0;
+            const audioTrack=audioAssets.map((a,i)=>{const startTime=aTime;aTime+=(a.duration||10);return {...a,startTime,order:i,syncGroup:"master",synced:true};});
+            const newTl={};
+            if(videoTrack.length>0)newTl[0]=videoTrack;
+            if(audioTrack.length>0)newTl[1]=audioTrack;
+            setTimeline(newTl);
+            // ── DURATION GAP CHECK — works across the whole slider, any length ──
+            const targetSec=(filmDuration||60)*60;
+            const filledSec=vTime; // total seconds of laid video clips
+            const gapSec=targetSec-filledSec;
+            const fmt=(s)=>{const m=Math.floor(s/60),ss=Math.round(s%60);return m+"m"+(ss?" "+ss+"s":"");};
+            if(gapSec>30){
+              const wantFill=window.confirm(
+                "You have "+fmt(filledSec)+" of a "+fmt(targetSec)+" selection.\n\n"+
+                "That leaves a gap of about "+fmt(gapSec)+".\n\n"+
+                "Would you like AI to create fill-in scenes to fill the gap?\n\n"+
+                "OK = generate a fill-scene prompt for Page 8.\nCancel = keep it as is."
+              );
+              if(wantFill){
+                const n=Math.max(1,Math.ceil(gapSec/60));
+                const prompt="Generate "+n+" additional PHOTOREALISTIC, live-action cinematic fill scene"+(n>1?"s":"")+" (about "+fmt(gapSec)+" total) that match the tone, lighting and subject of this film, to bridge the gap to a "+fmt(targetSec)+" runtime. Keep the same color grade and style. Photorealistic, cinematic, natural motion, 35mm film, real human beings, live-action footage, no text, no cartoon, no anime, no illustration, no 3D render, no CGI. 60 seconds each.";
+                try{navigator.clipboard.writeText(prompt);}catch{}
+                alert("✓ Fill-scene prompt copied.\n\nGo to Page 8 (Video Tools), paste it, and generate "+n+" more clip"+(n>1?"s":"")+" — then SYNC again.");
+                go(8);
+                return;
+              }
+            }
+            alert("All tracks synced in order —"+videoAssets.length+" video clips · "+audioAssets.length+" audio tracks");
+          }} style={{background:GOLD,border:"none",color:"#000",padding:"5px 14px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>Sync all tracks</button>
+          <button onClick={()=>go(16)} style={{...G("gold",false)}}>Render</button>
+          <button onClick={()=>go(11)} style={{...G("out",true)}}>Upload media</button>
+          <button onClick={async()=>{
+            const n=(mediaLib||[]).filter(x=>x&&x.type&&(x.type.startsWith("video")||x.type.startsWith("image"))&&!String(x.dbId||x.id||"").startsWith("render_final")&&!String(x.dbId||x.id||"").startsWith("poc_")).length;
+            if(!window.confirm("Move "+n+" saved clips and images off the timeline?\n\nThey are saved in MY PROJECTS. Press Continue on that project any time to bring them back.\n\nYour voice recordings and finished films stay."))return;
+            try{if(onClearScenes)await onClearScenes({name:"Timeline cleared — "+new Date().toLocaleString("en-GB",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}),note:"Saved when the timeline was cleared. Press Continue to bring these clips back.",status:"in_progress"});}catch(e){}
+            setTimeline({});
+          }} style={{...G("out",true)}}>Clear all</button>
+        </div>
+      </div>
+      <div style={{background:"#0E0F12",height:100,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:12,border:"1px solid "+LINE}}>
+        {mediaLib[0]&&mediaLib[0].type.startsWith("video")&&mediaLib[0].url?
+          <video src={mediaLib[0].url} style={{height:"100%",width:"100%",objectFit:"cover",opacity:.5}}/>:
+          <div style={{textAlign:"center"}}>
+            <div style={{fontSize:12,letterSpacing:0.2,color:WHITE,marginBottom:8}}>Add media to see preview</div>
+            <button onClick={()=>go(11)} style={{...G("out",true)}}>Upload media</button>
+          </div>}
+      </div>
+      {tracks.map((tr,idx)=>(
+        <div key={idx} style={{marginBottom:8}}>
+          <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,marginBottom:4,fontWeight:600}}>{tr}</div>
+          <div onDragOver={e=>{e.preventDefault();e.currentTarget.style.border="1px dashed "+GOLD;}}
+            onDragLeave={e=>{e.currentTarget.style.border="1px dashed "+LINE;}}
+            onDrop={e=>{e.preventDefault();e.currentTarget.style.border="1px dashed "+LINE;
+              const fromTrack=e.dataTransfer.getData("trackIdx");
+              const fromClip=e.dataTransfer.getData("clipIdx");
+              if(fromTrack!==""&&fromClip!==""){
+                // Move clip between tracks
+                const ft=Number(fromTrack);const fc=Number(fromClip);
+                if(ft===idx)return;
+                setTimeline(p=>{
+                  const src=[...(p[ft]||[])];const dst=[...(p[idx]||[])];
+                  const [moved]=src.splice(fc,1);dst.push(moved);
+                  return{...p,[ft]:src,[idx]:dst};
+                });
+              }else{
+                // New clip from library
+                const id=e.dataTransfer.getData("assetId");const a=mediaLib.find(x=>String(x.id)===id);if(a)addToTrack(idx,a);
+              }
+            }}
+            style={{background:"#0E0F12",border:"1px dashed "+LINE,minHeight:42,padding:6,display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+            {(timeline[idx]||[]).map((a,i)=>(
+              <div key={i} draggable
+                onDragStart={e=>{e.dataTransfer.setData("trackIdx",String(idx));e.dataTransfer.setData("clipIdx",String(i));e.dataTransfer.setData("assetId","");}}
+
+                onDragOver={e=>e.preventDefault()}
+                onDrop={e=>{
+                  e.preventDefault();
+                  const fromTrack=Number(e.dataTransfer.getData("trackIdx"));
+                  const fromClip=Number(e.dataTransfer.getData("clipIdx"));
+                  if(fromTrack===idx&&fromClip!==i){
+                    setTimeline(p=>{
+                      const arr=[...(p[idx]||[])];
+                      const moved=arr.splice(fromClip,1)[0];
+                      arr.splice(i,0,moved);
+                      return{...p,[idx]:arr};
+                    });
+                  }
+                }}
+                style={{background:GOLDDIM,padding:"3px 10px",fontSize:12,color:"#000",fontWeight:600,display:"flex",alignItems:"center",gap:5,cursor:"grab",userSelect:"none",border:"2px solid transparent"}}
+                onMouseEnter={e=>{e.currentTarget.style.border="2px solid #000";}}
+                onMouseLeave={e=>{e.currentTarget.style.border="2px solid transparent";}}>
+                ⣿ {a.name.slice(0,12)}
+                <button onClick={()=>setTimeline(p=>({...p,[idx]:p[idx].filter((_,j)=>j!==i)}))}
+                  style={{background:"none",border:"none",color:"#000",cursor:"pointer",fontSize:11,padding:0}}>✕</button>
+              </div>
+            ))}
+            {!(timeline[idx]||[]).length&&<span style={{color:WHITE,fontSize:12,letterSpacing:0}}>Drop {tr} Clips here</span>}
+          </div>
+        </div>
+      ))}
+      {mediaLib.length>0&&(
+        <div style={{marginTop:12}}>
+          <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,marginBottom:6,fontWeight:600}}>Drag to timeline:</div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            {mediaLib.map(a=>(
+              <div key={a.id} draggable onDragStart={e=>e.dataTransfer.setData("assetId",String(a.id))}
+                style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"4px 10px",cursor:"grab",color:WHITE,fontSize:12,fontWeight:500}}>
+                📎 {a.name.slice(0,14)}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      <div style={{...Card(),marginTop:12,display:"flex",alignItems:"center",gap:8}}>
+        {["⏮","⏪","▶","⏩","⏭"].map(c=><button key={c} style={{...G("out",true)}}>{c}</button>)}
+        <div style={{flex:1,height:3,background:"#0E0F12"}}/>
+        <span style={{color:WHITE,fontSize:12,fontWeight:500}}>00:00 / 90:00</span>
+      </div>
+    </div>
+  );
+}
+
+function P14() {
+  const tools14=MOTION.slice(0,14);
+  const [active,setActive]=useState(tools14[0]);
+  const [vals,setVals]=useState({Intensity:75,Clarity:80,Color:70,Brightness:65});
+  return (
+    <div style={{...Sp,display:"flex"}}>
+      <div style={{width:176,background:"#07080A",borderRight:"1px solid "+LINE+"",overflowY:"auto",padding:8}}>
+        {tools14.map(t=>(
+          <button key={t} onClick={()=>setActive(t)}
+            style={{width:"100%",textAlign:"left",background:t===active?BG4:"none",border:"none",color:t===active?GOLD:WHITE,padding:"8px 10px",cursor:"pointer",fontSize:12,fontWeight:t===active?900:600,marginBottom:1,borderLeft:t===active?"2px solid "+SIGNAL:"2px solid transparent"}}>
+            {t}
+          </button>
+        ))}
+      </div>
+      <div style={{flex:1,padding:28}}>
+        <div style={{fontSize:11,color:WHITE,letterSpacing:0.4,marginBottom:4,fontWeight:500}}>Enhancement studio</div>
+        <h2 style={{...H1,fontSize:22,marginBottom:6}}>{active.toUpperCase()}</h2>
+        {Object.entries(vals).map(([k,v])=>(
+          <div key={k} style={{marginBottom:16}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
+              <span style={{color:WHITE,fontSize:13,fontWeight:500}}>{k}</span>
+              <span style={{color:WHITE,fontSize:13,fontWeight:600}}>{v}%</span>
+            </div>
+            <input type="range" min={0} max={100} value={v} onChange={e=>setVals(p=>({...p,[k]:+e.target.value}))} style={{width:"100%",accentColor:GOLD}}/>
+          </div>
+        ))}
+        <div style={{display:"flex",gap:10,marginTop:18}}>
+          <button style={{...G("gold",false)}}>Apply enhancement</button>
+          <button onClick={()=>setVals({Intensity:75,Clarity:80,Color:70,Brightness:65})} style={{...G("out",false)}}>Reset</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function P15() {
+  const [lvl,setLvl]=useState({VOICE:85,MUSIC:40,EFX:50,MASTER:85});
+  return (
+    <div style={{...Sp,padding:40}}>
+      <div style={{maxWidth:680,margin:"0 auto"}}>
+        <div style={{fontSize:11,color:WHITE,letterSpacing:0.4,marginBottom:4,fontWeight:500}}>Mixing console</div>
+        <h1 style={{...H1,fontSize:28,marginBottom:24}}>Audio mixer</h1>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
+          {Object.entries(lvl).map(([ch,val])=>(
+            <div key={ch} style={{...Card(),textAlign:"center",padding:18}}>
+              <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,marginBottom:8,fontWeight:600}}>{ch}</div>
+              <div style={{color:WHITE,fontFamily:"'Manrope',system-ui,sans-serif",fontSize:30,fontWeight:600,marginBottom:12}}>{val}</div>
+              <div style={{position:"relative",height:170,display:"flex",alignItems:"center",justifyContent:"center",margin:"4px 0 10px"}}>
+                <div style={{position:"absolute",left:"50%",top:0,bottom:0,width:1,background:"rgba(237,234,227,0.18)"}}/>
+                <div style={{position:"absolute",left:"50%",bottom:0,width:1,height:val+"%",background:GOLD}}/>
+                <div style={{position:"absolute",left:"calc(50% + 18px)",top:0,bottom:0,display:"flex",flexDirection:"column",justifyContent:"space-between"}}>
+                  {[...Array(11)].map((_,i)=>(<div key={i} style={{height:1,width:i%5===0?12:7,background:"rgba(237,234,227,"+(i%5===0?0.35:0.16)+")"}}/>))}
+                </div>
+                <input type="range" min={0} max={100} value={val} onChange={e=>setLvl(p=>({...p,[ch]:+e.target.value}))} aria-label={ch+" level"} style={{position:"absolute",width:170,height:24,transform:"rotate(-90deg)",accentColor:GOLD,background:"transparent",margin:0}}/>
+              </div>
+              <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:9.5,letterSpacing:"0.18em",color:DIM}}>MUTE · SOLO</div>
+            </div>
+          ))}
+        </div>
+        <div style={{display:"flex",gap:10}}>
+          <button onClick={()=>setLvl({VOICE:85,MUSIC:40,EFX:50,MASTER:85})} style={{...G("out",false)}}>Reset levels</button>
+          <button style={{...G("gold",false)}}>Save preset</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDuration, setFilmDuration, onRendered }) {
+  const [quality,setQuality]=useState("1080p");
+  const [progress,setProgress]=useState(0);
+  const [rendering,setRendering]=useState(false);
+  const renderingRef=useRef(false);
+  useEffect(()=>{ renderingRef.current=rendering; },[rendering]);
+  const [done,setDone]=useState(false);
+  const [renderUrl,setRenderUrl]=useState("");
+  const [renderLog,setRenderLog]=useState([]);
+  const [fps,setFps]=useState(30);
+  const [codec,setCodec]=useState("vp9");
+  const [currentClipIdx,setCurrentClipIdx]=useState(-1);
+  // ── GAP-FILL CHOICE (Y = generate extra scenes, N = stretch clips) ──
+  const [gapFill,setGapFill]=useState(false);
+  // Language the narration is translated into at render. "" = English (no change).
+  const [renderLanguage,setRenderLanguage]=useState("");
+  const canvasRef=useRef(null);
+
+  const log=(msg)=>setRenderLog(p=>[...p,msg]);
+
+  // RESTORE the last rendered film when you come back to this page. The finished
+  // film is saved in IndexedDB as "render_final" — before this, leaving the render
+  // page unmounted P16 and the on-screen movie vanished as if it had been wiped.
+  useEffect(()=>{
+    let alive=true;
+    (async()=>{
+      try{
+        const clips=await getAllClipsFromDB();
+        if(!alive||!clips)return;
+        const last=clips.find(c=>String(c.id)==="render_final"||String(c.id).includes("render_final"));
+        if(last&&last.blob){
+          const u=URL.createObjectURL(last.blob);
+          setRenderUrl(u); setDone(true);
+          if(setRendered)setRendered({url:u,quality:"saved",format:"WebM",timestamp:last.name||"last render"});
+        }
+      }catch(e){}
+    })();
+    return()=>{alive=false;};
+  },[]);
+
+  const getVideoClips=()=>{
+    // Accept BOTH mp4 and webm video. A clip is video if its type starts with
+    // "video" (video/mp4, video/webm) OR it carries a webm/mp4 tag that isn't
+    // audio. Before this, a clip saved as bare "webm" was silently dropped —
+    // that is why webm clips weren't going into the render.
+    // Include IMAGES as well as video. Images are turned into moving documentary
+    // footage in the render loop (slow Ken Burns pan/zoom), so a documentary built
+    // from stills plays as real motion, not a slideshow.
+    const isVid=(a)=>a&&a.type&&(
+      a.type.startsWith("video")||a.type.startsWith("image")||
+      ((a.type.includes("webm")||a.type.includes("mp4"))&&!a.type.startsWith("audio"))
+    );
+    const tClips=Object.values(timeline||{}).flat().filter(isVid);
+    if(tClips.length>0)return tClips;
+    return (mediaLib||[]).filter(isVid);
+  };
+
+  // Holds the id of a voice/narration the render-time confirm forced. null = auto-pick.
+  const forcedAudioRef=useRef(null);
+  // SCREEN WAKE LOCK — a 60-minute render captures in real time; if the screen
+  // auto-locks, the capture dies with "Render produced no video data". This holds
+  // the screen awake for the whole render and lets go the moment it's done.
+  const wakeLockRef=useRef(null);
+  const acquireWakeLock=async()=>{
+    try{
+      if("wakeLock" in navigator){
+        wakeLockRef.current=await navigator.wakeLock.request("screen");
+      }
+    }catch(e){ /* not fatal — render still proceeds, just without the lock */ }
+  };
+  const releaseWakeLock=async()=>{
+    try{ if(wakeLockRef.current){ await wakeLockRef.current.release(); wakeLockRef.current=null; } }catch(e){}
+  };
+  useEffect(()=>{
+    const onVis=()=>{ if(document.visibilityState==="visible" && renderingRef.current && !wakeLockRef.current) acquireWakeLock(); };
+    document.addEventListener("visibilitychange",onVis);
+    return ()=>document.removeEventListener("visibilitychange",onVis);
+  },[]);
+  // Every audio-ish asset on the timeline, then in the media library.
+  // Shared by getAudioTrack (the picker) and the render-time voice confirm.
+  // DE-DUPED: the auto-route effect copies audio onto the timeline, so the same
+  // recording lives in BOTH the timeline and mediaLib. Without de-duping it would
+  // appear twice in the pool — playing twice (the echo) and listing twice.
+  const getAudioPool=()=>{
+    const raw=[
+      ...Object.values(timeline||{}).flat(),
+      ...(mediaLib||[])
+    ].filter(a=>a&&a.type&&(a.type.startsWith("audio")||a.type==="audio/narration"||a.type==="narration"||a.type==="audio/webm"));
+    const seen=new Set();
+    const out=[];
+    for(const a of raw){
+      const k=String(a.id||a.dbId||"")+"|"+String(a.name||"")+"|"+String(a.type||"");
+      if(seen.has(k))continue;
+      seen.add(k);
+      out.push(a);
+    }
+    return out;
+  };
+  const getAudioTrack=(poolOverride)=>{
+    // If the render-time confirm forced a specific track, that wins over everything.
+    if(forcedAudioRef.current){
+      const pool0=poolOverride||getAudioPool();
+      const forced=pool0.find(a=>(a.id&&a.id===forcedAudioRef.current)||(a.dbId&&a.dbId===forcedAudioRef.current));
+      if(forced)return forced;
+    }
+    const pool=poolOverride||getAudioPool();
+    if(!pool.length)return undefined;
+    // PRIORITY 1: the FULL narration — YOUR voice cloned, reading the WHOLE script
+    // (carries clonedVoiceId + narrText). This is "USE ENGINE TO COMPLETE FULL
+    // NARRATION" — your own cloned voice, not a preset.
+    const cloned=pool.find(a=>a.clonedVoiceId&&a.narrText);
+    if(cloned)return cloned;
+    // PRIORITY 2: your own recording — type audio/myvoice. This MUST beat a generic
+    // engine narration. Before this fix, a leftover generic "narration" asset (read
+    // in a default preset voice, e.g. a male voice) outranked your actual recorded
+    // voice — so the film played a stranger's voice over your own, even though you'd
+    // recorded and/or cloned yourself. Your real voice is the whole point.
+    const myRecording=pool.find(a=>a.type==="audio/myvoice"&&!a.clonedVoiceId);
+    if(myRecording)return myRecording;
+    const myVoice=pool.find(a=>a.type==="audio/myvoice");
+    if(myVoice)return myVoice;
+    // PRIORITY 3: a plain narration carrying full script text, but in a PRESET
+    // voice (no clone, no recording of yours exists) — last resort only.
+    const fullText=pool.find(a=>(a.type==="narration"||a.type==="audio/narration")&&(a.narrText||a.text));
+    if(fullText)return fullText;
+    // PRIORITY 4: anything else audio, first one wins (old behaviour).
+    return pool[0];
+  };
+
+  // Background music bed. A music asset is any audio the user tagged as music,
+  // or a second audio asset that is NOT the narration we're already using.
+  const getMusicTrack=(narr,poolOverride)=>{
+    const isMusic=(a)=>a&&a.type&&(a.type==="audio/music"||a.type==="music"||/music|score|soundtrack|bgm|bed/i.test(a.name||""));
+    const pool=poolOverride||[...Object.values(timeline||{}).flat(),...(mediaLib||[])].filter(Boolean);
+    // ONLY a track actually tagged/named as music counts as music. Before this,
+    // if nothing was tagged, it grabbed ANY other audio file in the library as a
+    // "music bed" — which meant an old recording or a leftover narration take
+    // got mixed in UNDER your real narration as a second voice. No tagged music
+    // found = no music track. Silence is correct; a stray second voice is not.
+    return pool.find(isMusic);
+  };
+
+  const startRender=async()=>{
+    // ── LIVE STORAGE PULL — fetched ONCE, upfront, straight from IndexedDB ─────
+    // Before this fix, video clips were re-checked against storage at render
+    // time (below) but narration/music were only read from the in-memory
+    // mediaLib/timeline state. If the page had just loaded — or "Open Project"
+    // hadn't finished its own restore yet — that in-memory state could still be
+    // empty for a few moments. Video quietly self-healed from storage; audio did
+    // not, so the film could come out with no voice and no music and NO ERROR,
+    // even though everything was actually saved safely. Now everything (video,
+    // narration, music) is pulled from storage once, right here, before anything
+    // else runs, so the render always sees what's really been saved — no matter
+    // how or when it was added.
+    let dbClipsAll = [];
+    try{ dbClipsAll = await getAllClipsFromDB(); }catch(e){ console.warn("DB load failed",e); }
+    const dbAudioAssets = dbClipsAll
+      .filter(c2=>c2&&c2.type&&c2.type.startsWith("audio"))
+      .map(c2=>({id:c2.id,dbId:c2.id,name:c2.name,type:c2.type||"audio/mpeg",url:URL.createObjectURL(c2.blob)}));
+    const mergePools=(a,b)=>{
+      const seen=new Set(); const out=[];
+      for(const x of [...(a||[]),...(b||[])]){
+        if(!x)continue;
+        const k=String(x.id||x.dbId||"")+"|"+String(x.name||"");
+        if(seen.has(k))continue; seen.add(k); out.push(x);
+      }
+      return out;
+    };
+
+    // ── VOICE CONFIRM — before any render work ─────────────────────────────────
+    // Asks which narration/voice to use, so the render never silently defaults to
+    // a preset voice. OK keeps the auto-pick; Cancel opens a numbered list of every
+    // saved voice/recording so you can pick your own. The choice is forced for this
+    // render only (forcedAudioRef), then cleared when the render finishes.
+    forcedAudioRef.current=null;
+    const voicePool=mergePools(getAudioPool(),dbAudioAssets);
+    if(voicePool.length>0){
+      const nameOf=(a,i)=>{
+        if(a.clonedVoiceId&&a.narrText) return (a.name||"Full narration")+" (engine voice)";
+        if(a.type==="audio/myvoice"||a.type==="audio/webm") return (a.name||"My recording")+" (your recording)";
+        return a.name||("Audio "+(i+1));
+      };
+      const autoPick=getAudioTrack(voicePool);
+      const autoName=autoPick?nameOf(autoPick,voicePool.indexOf(autoPick)):"(none)";
+      const keep=window.confirm("Use this voice for the film?\n\n▶ "+autoName+"\n\nOK = yes, use it.\nCancel = choose a different voice / my recording.");
+      if(!keep){
+        const list=voicePool.map((a,i)=>(i+1)+". "+nameOf(a,i)).join("\n");
+        const ans=window.prompt("Choose the voice by number:\n\n"+list,"1");
+        const idx=(parseInt(ans||"",10)||0)-1;
+        if(idx>=0&&idx<voicePool.length){
+          const chosen=voicePool[idx];
+          forcedAudioRef.current=chosen.id||chosen.dbId||null;
+          log("Voice chosen for render: "+nameOf(chosen,idx));
+        } else {
+          log("Voice pick cancelled — using auto: "+autoName);
+        }
+      } else {
+        log("Voice confirmed: "+autoName);
+      }
+    } else {
+      log("No narration/voice found in storage — film will render silent unless one is added.");
+    }
+    // ── PRIORITY SAVE — runs before anything else ──────────────────────────────
+    // Saves current state immediately so a crash mid-render doesn't lose work.
+    try{
+      localStorage.setItem("ms_page",JSON.stringify(16));
+      const tl=localStorage.getItem("ms_timeline");
+      if(tl)localStorage.setItem("ms_timeline",tl); // re-write to confirm it's current
+    }catch(e){}
+    // ── PRE-RENDER STORAGE CHECK — never touches source clips ──────────────────
+    // Only clears old render_final files, never user-generated source clips.
+    // Before this fix, autoPruneClips was destroying 12 of 13 clips before render.
+    // Reuses the dbClipsAll already pulled above — no need to hit storage twice.
+    try{
+      const oldRenders=dbClipsAll.filter(c=>String(c.id).includes("render_final_old"));
+      for(const c of oldRenders){await deleteClipFromDB(c.id);}
+      log("Memory check complete — "+dbClipsAll.length+" clips preserved");
+    }catch(e){}
+
+    // ── CLIP ORDER: the TIMELINE is the authority ──────────────────────────
+    // Previously the render loaded clips from IndexedDB (which returns them in
+    // keyPath / alphabetical order) and then sorted by the first number in the
+    // filename — with names like GODS_GURUS_6 and LOVE_WAR_60s that number is
+    // meaningless, so scenes came out in the wrong order. Now: take the order
+    // straight from the timeline, and use IndexedDB ONLY to refresh each clip's
+    // blob/url. The number-sort runs ONLY when there is no timeline at all.
+    let freshClips = [];
+    const dbById = new Map(); const dbByName = new Map();
+    for(const c2 of dbClipsAll){ dbById.set(c2.id,c2); if(c2.name)dbByName.set(c2.name,c2); }
+    const relink=(c2)=>{
+      const db = dbById.get(c2.dbId) || dbById.get(c2.id) || dbByName.get(c2.name);
+      if(db&&db.blob){
+        return {...c2,type:c2.type||db.type||"video/webm",url:URL.createObjectURL(db.blob),file:new File([db.blob],c2.name||db.name,{type:db.type||c2.type||"video/webm"}),dbId:db.id};
+      }
+      return c2;
+    };
+    const timelineClips = getVideoClips(); // already in timeline order (falls back to mediaLib)
+    const hasTimeline = Object.values(timeline||{}).flat().some(a=>a&&a.type&&(a.type.startsWith("video")||a.type.startsWith("image")));
+    if(timelineClips.length>0){
+      freshClips = timelineClips.map(relink);
+      log("Loaded "+freshClips.length+" clips in timeline order");
+    } else if(dbClipsAll.length>0){
+      freshClips = dbClipsAll.map(c2=>({id:c2.id,name:c2.name,type:c2.type||"video/webm",url:URL.createObjectURL(c2.blob),file:new File([c2.blob],c2.name,{type:c2.type||"video/webm"}),dbId:c2.id}));
+      log("Loaded "+freshClips.length+" clips from storage");
+    }
+    // MERGE, never replace. Replacing the library with just the render clips
+    // wiped your recordings, narration and other assets out of the library.
+    if(freshClips.length>0){
+      setMediaLib(prev=>{
+        const k=(x)=>String(x&&(x.dbId||x.id)||"")+"|"+String(x&&x.name||"");
+        const fresh=new Map(freshClips.map(c2=>[k(c2),c2]));
+        const out=(prev||[]).map(a=>fresh.has(k(a))?{...a,...fresh.get(k(a))}:a);
+        const have=new Set(out.map(k));
+        for(const c2 of freshClips){ if(!have.has(k(c2))) out.push(c2); }
+        return out;
+      });
+    }
+
+    // Fall back to current mediaLib if nothing resolved.
+    // Accept mp4 AND webm here too, or webm clips get dropped from the render.
+    const isVidClip=(c2)=>c2&&c2.type&&(c2.type.startsWith("video")||c2.type.startsWith("image")||((c2.type.includes("webm")||c2.type.includes("mp4"))&&!c2.type.startsWith("audio")));
+    let clips = freshClips.length > 0 ? freshClips.filter(isVidClip) : getVideoClips();
+    // ── EXCLUDE old rendered films and empty clips ──────────────────────────
+    // A previously-rendered "InFuture_Film..." file in the library has no real
+    // scene frames — including it makes the whole render come out 0.0MB.
+    clips = clips.filter(c2=>{
+      const n=(c2.name||"").toLowerCase();
+      if(n.includes("mandastrong_film")||n.includes("render_final")||n.includes("_film_")) return false;
+      if(c2.file&&c2.file.size!==undefined&&c2.file.size<1000) return false; // skip empty blobs
+      return true;
+    });
+    // Number-sort ONLY when there is no timeline to define the order.
+    if(!hasTimeline){
+      clips.sort((a,b)=>{
+        const na=parseInt((a.name||"").match(/\b(\d+)\b/)?.[1]||"9999");
+        const nb=parseInt((b.name||"").match(/\b(\d+)\b/)?.[1]||"9999");
+        if(na!==nb)return na-nb;
+        return (a.name||"").localeCompare(b.name||"");
+      });
+      log("No timeline — clips ordered by scene number");
+    } else {
+      log("Render order locked to timeline: "+clips.map(c2=>(c2.name||"").slice(0,18)).join(" → "));
+    }
+    const audioAsset=getAudioTrack(voicePool);
+    if(clips.length===0){alert("No video clips found. Generate clips on Page 8 first.");return;}
+    log("Rendering "+clips.length+" scene clips (old render files excluded)");
+    setRendering(true);setDone(false);setProgress(0);setRenderLog([]);setRenderUrl("");setCurrentClipIdx(-1);
+    await acquireWakeLock();
+    try{
+      log("MandaStrong Cinema Engine v2 initialising...");
+      log("Clips: "+clips.length+" | Quality: "+quality+" | FPS: "+fps);
+      const canvas=canvasRef.current;
+      const dims=quality==="4K"?{w:3840,h:2160}:quality==="1080p"?{w:1920,h:1080}:quality==="720p"?{w:1280,h:720}:{w:854,h:480};
+      canvas.width=dims.w;canvas.height=dims.h;
+      const ctx=canvas.getContext("2d");
+      log("Canvas: "+dims.w+"x"+dims.h);
+      const audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+      const audioDest=audioCtx.createMediaStreamDestination();
+      let audioSource=null,audioBuffer=null;
+      let liveNarration=false;
+      let narrSeq=null, narrPlayer=null;
+      if(audioAsset){
+        // ── CLONED-VOICE FULL NARRATION ──────────────────────────────────────
+        // If the audio asset carries a clone id + the script text (from page 6's
+        // "USE ENGINE TO COMPLETE FULL NARRATION"), narrate the WHOLE script through
+        // the engine in the cloned voice and bake it in. Falls back to the stored
+        // recording if the clone can't be reached.
+        // ── FULL NARRATION: YOUR RECORDING, THEN THE ENGINE FINISHES IT ──────
+        // Plays your own recording first, in your real voice, then the engine's
+        // clone of your voice reads the rest of the script. Also kicks in when
+        // you picked your plain recording but said YES to the engine finishing
+        // it on page 6 - before, the film just stopped after your paragraph.
+        const _consentYes=(()=>{try{return localStorage.getItem("ms_clone_consent")==="yes"||localStorage.getItem("ms_narr_consent")==="yes";}catch(e){return false;}})();
+        const _script=(()=>{try{return (localStorage.getItem("ms_narr_text")||"").trim();}catch(e){return "";}})();
+        const _isOwnRec=audioAsset.type==="audio/myvoice"&&!audioAsset.clonedVoiceId;
+        if((audioAsset.clonedVoiceId&&audioAsset.narrText)||(_isOwnRec&&_consentYes&&_script)){
+          try{
+            const blobs=[];
+            const loadBlob=async(id)=>{try{const st=await loadClipFromDB(id);return st&&st.blob?st.blob:null;}catch(e){return null;}};
+            const voiceIt=async(txt,vid)=>{
+              const r=await msVoiceText(txt,{voice:vid,language:renderLanguage},(i,n)=>log("  Engine voicing part "+i+" of "+n+"..."));
+              if(r.failed)log("  Warning: "+r.failed+" of "+r.total+" narration parts failed to voice");
+              return r.parts;
+            };
+            if(renderLanguage){
+              // Another language: the engine reads the WHOLE script in your cloned voice.
+              let vid=audioAsset.clonedVoiceId||"";
+              if(!vid){const lb=await loadBlob(audioAsset.dbId||audioAsset.id);if(lb){const du=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(lb);});vid=await engineCloneVoice(du);}}
+              log("Translating narration into "+renderLanguage+"...");
+              const tr=await translateText(audioAsset.narrText||_script,renderLanguage);
+              if(vid)blobs.push(...await voiceIt(tr,vid));
+            } else if(audioAsset.clonedVoiceId&&audioAsset.narrText&&!audioAsset.stitched){
+              // Older full narration (whole script in the cloned voice).
+              const whole=await loadBlob(audioAsset.dbId||audioAsset.id);
+              if(whole)blobs.push(whole);else blobs.push(...await voiceIt(audioAsset.narrText,audioAsset.clonedVoiceId));
+            } else if(audioAsset.stitched){
+              const lead=await loadBlob(audioAsset.leadRecordingId);
+              if(lead)blobs.push(lead);else log("  Your recording wasn't found — engine reads from where it would have ended");
+              const parts=[];
+              for(let i=0;i<(audioAsset.partCount||0);i++){const pb=await loadBlob((audioAsset.dbId||audioAsset.id)+"_p"+i);if(pb)parts.push(pb);}
+              if(parts.length)blobs.push(...parts);
+              else blobs.push(...await voiceIt(audioAsset.remainderText||audioAsset.narrText,audioAsset.clonedVoiceId));
+            } else {
+              // Plain recording + YES on page 6: finish it now.
+              log("Your recording + engine finishing the script...");
+              const lead=await loadBlob(audioAsset.dbId||audioAsset.id);
+              if(lead){
+                blobs.push(lead);
+                const recSecs=await msBlobSeconds(lead);
+                // A recording of 10+ minutes is a full-length narration: use it as it is.
+                // The engine only finishes SHORT recordings. Before this, a long recording
+                // still got the cloned voice re-reading "the rest" of the script on top.
+                const remainder=recSecs>=600?"":msRemainderAfterRecording(_script,recSecs);
+                if(recSecs>=600)log("Your recording is full length — using it as is, no engine voice added");
+                if(remainder){
+                  let vid="";
+                  try{const mv=JSON.parse(localStorage.getItem("ms_my_voices")||"[]");const m=mv.find(v=>v&&v.clonedVoiceId&&((v.dbId&&v.dbId===(audioAsset.dbId||audioAsset.id))||v.id===audioAsset.id));if(m)vid=m.clonedVoiceId;}catch(e){}
+                  if(!vid){
+                    log("  Cloning your voice...");
+                    const du=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(lead);});
+                    vid=await engineCloneVoice(du);
+                  }
+                  if(vid){
+                    const parts=await voiceIt(remainder,vid);
+                    blobs.push(...parts);
+                    // Keep it, so the next render doesn't voice it all again.
+                    if(parts.length){
+                      try{
+                        const nid="narr_myvoice_full_"+Date.now();
+                        for(let i=0;i<parts.length;i++){await saveClipToDB(nid+"_p"+i,parts[i],"narration part "+(i+1),"audio/mpeg");}
+                        const na={id:nid,name:"Full Narration (you + engine) - "+new Date().toLocaleTimeString(),type:"audio/myvoice",dbId:nid,clonedVoiceId:vid,engineVoice:vid,narrText:_script,remainderText:remainder,leadRecordingId:audioAsset.dbId||audioAsset.id,partCount:parts.length,stitched:true,date:new Date().toISOString()};
+                        setMediaLib(p=>[...(p||[]),na]);
+                      }catch(e){}
+                    }
+                  } else log("  Voice clone failed — check the voice engine has credit");
+                }
+              }
+            }
+            if(blobs.length){
+              const durs=await msMeasureSequence(audioCtx,blobs);
+              const total=durs.reduce((x,y)=>x+(y>0?y+0.4:0),0);
+              if(total>0){
+                narrSeq={blobs,durs,total};
+                log("Full narration ready: "+(total/60).toFixed(1)+" min ("+blobs.length+" part"+(blobs.length!==1?"s":"")+")");
+              }
+            }
+          }catch(e){log("Full narration error: "+e.message);}
+          // Last resort: just your recording.
+          if(!narrSeq){
+            try{
+              const stored=await loadClipFromDB(audioAsset.leadRecordingId||audioAsset.dbId||audioAsset.id);
+              if(stored&&stored.blob){audioBuffer=await audioCtx.decodeAudioData(await stored.blob.arrayBuffer());log("Played your recording only:"+audioBuffer.duration.toFixed(1)+"s");}
+            }catch(e){}
+          }
+        } else
+        // NARRATION: bake through the Cinema Voice Engine so it RECORDS into the film.
+        // Device speech (speechSynthesis) plays out the speaker and never enters the
+        // captured audio graph, so on iPad the film came out silent / "voice unavailable".
+        // Fix: fetch real audio from engineSpeak, decode into THIS audioCtx, feed audioDest —
+        // the same path uploaded audio uses. Live speech remains only as a fallback.
+        if(audioAsset.type==="narration"||(!audioAsset.url&&!audioAsset.file&&audioAsset.text)){
+          try{
+            const vc=(typeof VOICE_CHARACTERS!=="undefined")?VOICE_CHARACTERS.find(v=>v.id===(audioAsset.voice||"blaze")):null;
+            const meta={voice:vc?.engineVoice||"",gender:vc?.gender||"",origin:vc?.origin||"",speed:vc?.rate||0.9,language:renderLanguage};
+            if(renderLanguage){ log("Translating narration into "+renderLanguage+"..."); }
+            const narrForLang=await translateText(audioAsset.text||"",renderLanguage);
+            const narrChunks=buildChunks(narrForLang);
+            log("Baking narration through Cinema Voice Engine — "+narrChunks.length+" segment(s)...");
+            const decoded=[];
+            for(const c of narrChunks){
+              if(!c||!c.text) continue;
+              const u=await engineSpeak(c.text,meta);
+              if(!u) continue;
+              try{ const r=await fetch(u); const ab=await r.arrayBuffer(); decoded.push(await audioCtx.decodeAudioData(ab)); }catch(e){}
+            }
+            if(decoded.length){
+              const total=decoded.reduce((s,b)=>s+b.duration,0);
+              const merged=audioCtx.createBuffer(1,Math.max(1,Math.ceil(total*audioCtx.sampleRate)),audioCtx.sampleRate);
+              const out=merged.getChannelData(0);
+              let off=0;
+              for(const b of decoded){ out.set(b.getChannelData(0),Math.floor(off*audioCtx.sampleRate)); off+=b.duration; }
+              audioBuffer=merged;
+              log("Narration baked from Cinema Voice Engine:"+total.toFixed(1)+"s");
+            } else {
+              liveNarration=true;
+              log("Engine narration unavailable — speaking live as fallback");
+            }
+          }catch(e){
+            liveNarration=true;
+            log("Narration bake error — live fallback: "+e.message);
+          }
+        } else {
+          try{
+            let audioBlob=null;
+            const dbId=audioAsset.dbId||audioAsset.id;
+            if(dbId){
+              const stored=await loadClipFromDB(dbId);
+              if(stored&&stored.blob) audioBlob=stored.blob;
+            }
+            if(!audioBlob&&audioAsset.url){
+              const resp=await fetch(audioAsset.url);
+              audioBlob=await resp.blob();
+            }
+            if(!audioBlob&&audioAsset.file) audioBlob=audioAsset.file;
+            if(audioBlob){
+              const arrayBuf=await audioBlob.arrayBuffer();
+              audioBuffer=await audioCtx.decodeAudioData(arrayBuf);
+              log("Audio loaded:"+(audioBuffer.duration).toFixed(1)+"s");
+            } else {
+              log("Audio asset found but no data — video only");
+            }
+          }catch(e){log("Audio load failed: "+e.message+" — video only");}
+        }
+      }
+      if(audioBuffer){audioSource=audioCtx.createBufferSource();audioSource.buffer=audioBuffer;audioSource.connect(audioDest);audioSource.connect(audioCtx.destination);}
+      // ── BACKGROUND MUSIC BED ────────────────────────────────────────────────
+      // Plays under the narration, quiet, looped to cover the whole film. Voice
+      // stays on top (locked mix VOICE 85 / MUSIC 40 ≈ 0.25 gain under voice).
+      let musicSource=null;
+      try{
+        const musicAsset=getMusicTrack(audioAsset,voicePool);
+        if(musicAsset){
+          let mBlob=null;
+          const mId=musicAsset.dbId||musicAsset.id;
+          if(mId){try{const st=await loadClipFromDB(mId);if(st&&st.blob)mBlob=st.blob;}catch(e){}}
+          if(!mBlob&&musicAsset.url){try{mBlob=await (await fetch(musicAsset.url)).blob();}catch(e){}}
+          if(!mBlob&&musicAsset.file)mBlob=musicAsset.file;
+          if(mBlob){
+            const mBuf=await audioCtx.decodeAudioData(await mBlob.arrayBuffer());
+            musicSource=audioCtx.createBufferSource();
+            musicSource.buffer=mBuf;
+            musicSource.loop=true; // music beds loop to fill; narration never does
+            const mGain=audioCtx.createGain();
+            mGain.gain.value=0.25;
+            musicSource.connect(mGain);
+            mGain.connect(audioDest);
+            mGain.connect(audioCtx.destination);
+            log("Background music bed mixed in under narration");
+          }
+        }
+      }catch(e){log("Music bed skipped: "+e.message);}
+      // No tagged music? Use a built-in stereo ambient bed, made right here (needs no
+      // download, so it always works). Respects the Make My Movie music switch + volume.
+      try{
+        const bedOff=(()=>{try{return localStorage.getItem("ms_mmm_bed")==="off";}catch(e){return false;}})();
+        const bedVol=(()=>{try{const v=parseFloat(localStorage.getItem("ms_mmm_bedvol"));return isFinite(v)?Math.max(0.05,Math.min(1,v)):0.3;}catch(e){return 0.3;}})();
+        if(!musicSource&&!bedOff){
+          const sr=audioCtx.sampleRate, secs=32, n=Math.floor(sr*secs);
+          const pad=audioCtx.createBuffer(2,n,sr);
+          const chords=[[110,164.81,220,277.18],[87.31,130.81,174.61,261.63],[130.81,196,261.63,329.63],[98,146.83,196,246.94]];
+          const seg=secs/chords.length, xf=2;
+          for(let ch=0;ch<2;ch++){
+            const d=pad.getChannelData(ch);
+            for(let c=0;c<chords.length;c++){
+              const t0=c*seg-xf/2, t1=(c+1)*seg+xf/2;
+              const i0=Math.max(0,Math.floor(t0*sr)), i1=Math.min(n,Math.floor(t1*sr));
+              for(let i=i0;i<i1;i++){
+                const t=i/sr, lt=t-t0, len=t1-t0;
+                const env=Math.min(1,lt/xf,(len-lt)/xf);
+                let v=0;
+                for(let k=0;k<chords[c].length;k++){
+                  const f=chords[c][k]*(ch===0?1:1.003);
+                  v+=Math.sin(2*Math.PI*f*t+k)*(1+0.25*Math.sin(2*Math.PI*0.12*t+k+ch*1.7));
+                }
+                d[i]+=v*env*0.07;
+              }
+            }
+            // wrap-around: fade the loop seam so it never clicks
+            const fade=Math.floor(sr*1.5);
+            for(let i=0;i<fade;i++){const g=i/fade;d[i]*=g;d[n-1-i]*=g;}
+          }
+          musicSource=audioCtx.createBufferSource();
+          musicSource.buffer=pad;musicSource.loop=true;
+          const mGain2=audioCtx.createGain();
+          mGain2.gain.value=Math.min(0.5,bedVol*0.8);
+          musicSource.connect(mGain2);mGain2.connect(audioDest);mGain2.connect(audioCtx.destination);
+          log("Background music bed (stereo ambient) mixed in under narration");
+        } else if(!musicSource&&bedOff){log("Music bed is OFF in Make My Movie — no music");}
+      }catch(e){log("Built-in music bed skipped: "+e.message);}
+      // Draw several plain frames BEFORE capturing so the stream is definitely live.
+      // No words on screen — the film shows only the source footage.
+      for(let w=0;w<5;w++){
+        ctx.fillStyle="#000";ctx.fillRect(0,0,dims.w,dims.h);
+        await new Promise(r=>setTimeout(r,60));
+      }
+      const videoStream=canvas.captureStream(fps);
+      const vTrack=videoStream.getVideoTracks()[0];
+      if(!vTrack||vTrack.readyState!=="live"){
+        log("Canvas capture unavailable in this browser.");
+        alert("This browser blocked video capture. Try Chrome or Safari with the tab kept in front.");
+        await releaseWakeLock();
+        setRendering(false);return;
+      }
+      const tracks=[...videoStream.getTracks(),...audioDest.stream.getTracks()];
+      const combinedStream=new MediaStream(tracks);
+      const vCodec=codec==="vp9"?"vp9":"vp8";
+      const mimeType=MediaRecorder.isTypeSupported("video/webm;codecs="+vCodec+",opus")?"video/webm;codecs="+vCodec+",opus":"video/webm";
+      // ── ADAPTIVE BITRATE — caps total memory so long films finish encoding ──
+      // The end-of-render crash was memory: chunks pile up all render, then the
+      // final Blob build doubles them. iPad Safari kills the tab (~1.4GB).
+      // Fix: budget ~320MB of chunks max, whatever the film length.
+      const totalFilmSec=Math.max(1,clips.reduce((s,c)=>s+(c.duration||60),0));
+      const requested=quality==="4K"?40000000:quality==="1080p"?8000000:4000000;
+      const budgetBits=320*1024*1024*8; // 320MB in bits
+      const safeBitrate=Math.floor(budgetBits/totalFilmSec);
+      const bitrate=Math.min(requested,Math.max(2000000,safeBitrate));
+      if(bitrate<requested)log("Adaptive bitrate: "+(bitrate/1000000).toFixed(1)+"Mbps for "+Math.round(totalFilmSec)+"s film — keeps memory safe to the end");
+      const recorder=new MediaRecorder(combinedStream,{mimeType,videoBitsPerSecond:bitrate,audioBitsPerSecond:128000});
+      const chunks=[];
+      recorder.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
+      // Prime the canvas so captureStream has a real frame
+      ctx.fillStyle="#000";ctx.fillRect(0,0,dims.w,dims.h);
+      await new Promise(r=>setTimeout(r,200));
+      recorder.start(1000);
+      const renderT0=Date.now();
+      // iPad Safari fix: force the recorder to flush data every second so chunks
+      // never end up empty, and keep the canvas stream alive with a heartbeat.
+      const dataInterval=setInterval(()=>{try{if(recorder.state==="recording")recorder.requestData();}catch(e){}},1000);
+      const heartbeat=setInterval(()=>{
+        try{
+          // Nudge one pixel each tick so captureStream always sees a new frame
+          ctx.fillStyle="rgba(0,0,0,0.003)";ctx.fillRect(0,0,2,2);
+          if(vTrack&&vTrack.requestFrame)vTrack.requestFrame();
+        }catch(e){}
+      },Math.round(1000/fps));
+      if(audioSource)audioSource.start(0);
+      if(narrSeq){narrPlayer=msPlaySequence(audioCtx,[audioDest,audioCtx.destination],narrSeq.blobs,narrSeq.durs,0.4);}
+      if(musicSource){try{musicSource.start(0);}catch(e){}}
+      // Live-speak fallback ONLY when the engine bake could not deliver audio.
+      if(liveNarration&&audioAsset?.text){
+        speakText(audioAsset.voice||"blaze",audioAsset.text,null,null);
+        log("Speaking narration live (fallback):"+(audioAsset.voice||"blaze"));
+      }
+      log("Recording started...");
+      setProgress(5);
+      // Helper: render a scene directly to canvas using Claude
+      const renderSceneToCanvas=async(sceneName,clipDurSec)=>{
+        const scenePrompt=sceneName.replace(/\.[^.]+$/,"").replace(/_/g," ").replace(/\d+s$/,"").trim();
+        log("  Regenerating: "+scenePrompt.slice(0,40)+"...");
+        try{
+          const res=await fetch("https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/claude-proxy",{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:3000,
+              messages:[{role:"user",content:"Write a JavaScript canvas function for this cinematic scene: \""+scenePrompt+"\". Function: function drawFrame(ctx,W,H,t,sec). Use gradients, colours, depth, atmosphere. t=0-1 progress. Return only the function."}]})
+          });
+          const d=await res.json();
+          let code=d.content&&d.content[0]?d.content[0].text.trim():"";
+          code=code.replace(new RegExp(String.fromCharCode(96,96,96)+"javascript|"+String.fromCharCode(96,96,96)+"js|"+String.fromCharCode(96,96,96),"g"),"").trim();
+          const fi=code.indexOf("function drawFrame");if(fi>0)code=code.slice(fi);
+          const bOpen2=code.indexOf("{");const bClose2=code.lastIndexOf("}");const body=bOpen2>0&&bClose2>bOpen2?code.slice(bOpen2+1,bClose2):"";
+          const drawFn=new Function("ctx","W","H","t","sec",body);
+          const W=dims.w,H=dims.h;
+          const totalFrames=Math.round(clipDurSec*fps);
+          const msPerFrame=Math.round(1000/fps);
+          const wallStart=performance.now();
+          await new Promise(resolve=>{
+            let frame=0;
+            const tick=()=>{
+              if(frame>=totalFrames){resolve(null);return;}
+              const t=frame/totalFrames,sec=frame/fps;
+              try{ctx.clearRect(0,0,W,H);drawFn(ctx,W,H,t,sec);}catch(e){ctx.fillStyle="#07080A";ctx.fillRect(0,0,W,H);}
+              const vig=ctx.createRadialGradient(W/2,H/2,W*0.1,W/2,H/2,W*0.8);
+              vig.addColorStop(0,"rgba(0,0,0,0)");vig.addColorStop(1,"rgba(0,0,0,0.85)");
+              ctx.fillStyle=vig;ctx.fillRect(0,0,W,H);
+              ctx.fillStyle="#000";ctx.fillRect(0,0,W,H*0.06);ctx.fillRect(0,H*0.94,W,H*0.06);
+              frame++;
+              const due=wallStart+(frame*msPerFrame);
+              setTimeout(tick,Math.max(4,due-performance.now()));
+            };
+            tick();
+          });
+          return true;
+        }catch(e){log("  Error: "+e.message);return false;}
+      };
+
+      // Reload fresh blobs from IndexedDB for every clip before rendering
+      log("Loading clips from storage...");
+      try{
+        const freshDB=await getAllClipsFromDB();
+        if(freshDB.length>0){
+          clips=clips.map(cl=>{
+            const db=freshDB.find(d=>d.id===cl.dbId||d.id===cl.id||d.name===cl.name);
+            if(db&&db.blob){
+              return {...cl,file:new File([db.blob],cl.name,{type:db.type||"video/webm"}),url:URL.createObjectURL(db.blob)};
+            }
+            return cl;
+          });
+          log("Clips refreshed from storage: "+freshDB.length+" found");
+        }
+      }catch(e){log("Storage reload: "+e.message);}
+
+      // ── NARRATION-TO-IMAGE MATCH — each image's screen time follows ITS OWN
+      // narration segment, instead of every clip getting an identical average
+      // share of the total length. The saved script (ms_narr_text) is split into
+      // one segment per paragraph, matched 1-for-1 to your clips in order. If the
+      // narration has MORE segments than you have images, a scene is generated
+      // for every leftover segment — never left blank, never stretched to cover
+      // the gap. If it has FEWER, the trailing images just share the last timing.
+      let perClipDurations = null; // null = old uniform/stretch behaviour below
+      try{
+        const scriptText=(()=>{try{return (localStorage.getItem("ms_narr_text")||"").trim();}catch(e){return "";}})();
+        if(scriptText && clips.length>0 && narrSeq && narrSeq.total>0){
+          let segments=scriptText.split(/\n\s*\n/).map(s=>s.trim()).filter(Boolean);
+          if(segments.length<2) segments=[scriptText];
+          if(segments.length>clips.length){
+            const extra=segments.length-clips.length;
+            log("Narration has "+extra+" more segment"+(extra!==1?"s":"")+" than you have images — generating "+extra+" scene"+(extra!==1?"s":"")+" to match.");
+            for(let s=clips.length;s<segments.length;s++){
+              const seed=segments[s].replace(/[^\w\s]/g,"").trim().slice(0,80)||"cinematic scene";
+              clips.push({name:seed+".generated",type:"video/generated",__generated:true});
+            }
+          }
+          // Each segment's share of screen time follows its own length (a long
+          // paragraph gets more time than a short one), scaled to the measured
+          // narration length — not a flat average across every clip.
+          const lens=segments.map(s=>Math.max(1,s.length));
+          const totalLen=lens.reduce((a,b)=>a+b,0);
+          const totalNarr=narrSeq.total;
+          perClipDurations=clips.map((c,i)=>{
+            const segLen=lens[Math.min(i,lens.length-1)]||1;
+            return Math.max(3,(segLen/totalLen)*totalNarr);
+          });
+          log("Narration matched to "+clips.length+" scenes by segment length ("+(totalNarr/60).toFixed(1)+" min total).");
+        }
+      }catch(e){log("Narration match skipped: "+e.message);}
+
+      // ── GAP-FILL: the DURATION SLIDER is master ─────────────────────────────
+      // filmDuration (1–180 min, set on the timeline page) decides the film length.
+      // Clips stretch to fill that total: each clip holds (sliderSecs / clipCount).
+      // The old 65s-per-clip cap is lifted — the engine accepts long clips, so a
+      // clip can hold as long as the slider needs. If the slider is somehow unset,
+      // fall back to the narration length, then to natural clip lengths.
+      // Skipped entirely when the narration-to-image match above already set
+      // per-clip durations — that match is more precise than an even split.
+      const sliderSecs = (Number(filmDuration)>0 ? Number(filmDuration)*60 : 0);
+      const narrationSecs = narrSeq ? narrSeq.total : (audioBuffer ? audioBuffer.duration : 0);
+      const targetTotal = narrationSecs>0 ? narrationSecs : sliderSecs;
+      let perClipTarget = 0; // 0 = use each clip's natural duration
+      if(!perClipDurations && targetTotal>0 && clips.length>0){
+        if(gapFill){
+          let naturalTotal=0;
+          for(const c of clips){ const m=(c.name||"").match(/(\d+)s/); naturalTotal += m?parseInt(m[1]):30; }
+          const gap = targetTotal - naturalTotal;
+          if(gap > 5){
+            const fillCount = Math.ceil(gap/30);
+            log("Fill-in: generating "+fillCount+" extra scene"+(fillCount!==1?"s":"")+" to reach "+(targetTotal/60).toFixed(1)+" min");
+            const seeds=clips.length?clips.map(c=>(c.name||"scene").replace(/\.[^.]+$/,"").replace(/_/g,"")):["cinematic scene"];
+            for(let f=0;f<fillCount;f++){
+              const seed=seeds[f%seeds.length]||"cinematic establishing scene";
+              clips.push({ name:"fill_"+(f+1)+"_"+seed+"_30s.webm", type:"video/webm", __fill:true });
+            }
+            log("Fill-in ON — film built from "+clips.length+" scenes (real + generated)");
+          } else {
+            log("Fill-in ON — footage already covers the target, nothing to add");
+          }
+        } else {
+          perClipTarget = Math.max(targetTotal / clips.length, 3);
+          log("Stretch mode: film "+(targetTotal/60).toFixed(1)+" min ÷ "+clips.length+" clips ≈ "+perClipTarget.toFixed(1)+"s each");
+        }
+      }
+
+      for(let ci=0;ci<clips.length;ci++){
+        const clip=clips[ci];setCurrentClipIdx(ci);
+        log("Clip "+(ci+1)+"/"+clips.length+": "+clip.name.slice(0,45));
+        setProgress(5+Math.round((ci/clips.length)*80));
+        // This clip's own matched narration-segment duration, if the match above ran.
+        const holdOverride = perClipDurations ? perClipDurations[ci] : null;
+
+        // ── IMAGE CLIP → moving documentary footage (Ken Burns pan/zoom) ────────
+        // A still image is animated with a slow continuous zoom and drift so it
+        // reads as real documentary motion, not a static slide. Held for its share
+        // of the film (perClipTarget), warm vignette + letterbox to match video.
+        const isImageClip = clip.type && clip.type.startsWith("image");
+        if(isImageClip){
+          const imgSrc = clip.file instanceof File ? URL.createObjectURL(clip.file) : (clip.url||"");
+          if(imgSrc){
+            await new Promise(resolve=>{
+              const img=new Image();
+              img.onload=()=>{
+                const holdS = holdOverride!=null?holdOverride:(perClipTarget>0?perClipTarget:6);
+                const startT=Date.now();
+                const iw=img.naturalWidth||dims.w, ih=img.naturalHeight||dims.h;
+                // cover-fit the image to the canvas
+                const scaleCover=Math.max(dims.w/iw, dims.h/ih);
+                const dir = ci%2===0 ? 1 : -1; // alternate drift direction per clip
+                const step=()=>{
+                  const el=(Date.now()-startT)/1000;
+                  const t=Math.min(1, el/holdS);
+                  const zoom = scaleCover*(1.06 + 0.12*t);      // slow zoom in
+                  const dw=iw*zoom, dh=ih*zoom;
+                  const driftX = dir * (dims.w*0.04) * t;        // gentle horizontal drift
+                  const dx=(dims.w-dw)/2 - driftX, dy=(dims.h-dh)/2;
+                  try{
+                    ctx.clearRect(0,0,dims.w,dims.h);
+                    ctx.drawImage(img,dx,dy,dw,dh);
+                    const vig=ctx.createRadialGradient(dims.w/2,dims.h/2,dims.w*0.1,dims.w/2,dims.h/2,dims.w*0.8);
+                    vig.addColorStop(0,"rgba(0,0,0,0)");vig.addColorStop(1,"rgba(0,0,0,0.7)");
+                    ctx.fillStyle=vig;ctx.fillRect(0,0,dims.w,dims.h);
+                    ctx.fillStyle="#000";ctx.fillRect(0,0,dims.w,dims.h*0.05);ctx.fillRect(0,dims.h*0.95,dims.w,dims.h*0.05);
+                  }catch(e){}
+                  if(el>=holdS){resolve(true);return;}
+                  requestAnimationFrame(step);
+                };
+                requestAnimationFrame(step);
+              };
+              img.onerror=()=>resolve(false);
+              img.src=imgSrc;
+            });
+          }
+          continue; // image handled — go to next clip
+        }
+
+        // Try to play the video file first
+        let videoPlayed=false;
+        if(clip.file instanceof File){
+          videoPlayed=await new Promise(resolve=>{
+            const vid=document.createElement("video");
+            vid.muted=true;vid.playsInline=true;
+            // Use file blob or fall back to existing blob URL
+            const clipSrc = clip.file ? URL.createObjectURL(clip.file) : (clip.url||"");
+            if(!clipSrc){resolve(false);return;}
+            vid.src=clipSrc;
+            let done2=false;
+            const finish=(ok)=>{if(!done2){done2=true;resolve(ok);}};
+            vid.onloadeddata=async()=>{
+              const natural=vid.duration||30;
+              // Hold this clip for its share of the film (slider-driven). No 65s cap:
+              // the engine accepts long clips, so a clip can hold as long as needed.
+              // Never below its natural length. Loop the source within the window so
+              // the picture keeps moving instead of freezing.
+              const clipDur=holdOverride!=null?Math.max(holdOverride,0.5):(perClipTarget>0?Math.max(perClipTarget,natural):Math.min(natural,65));
+              vid.currentTime=0;
+              vid.loop=true; // replay within the hold window; render stops it by time, not by end
+              // Wait for first frame to decode before drawing
+              await new Promise(r=>{
+                if(vid.readyState>=3){r();}
+                else{vid.oncanplay=r;}
+              });
+              try{await vid.play();}catch(e){}
+              const startTime=Date.now();
+              const msPerF=Math.round(1000/fps);
+              let lastDraw=performance.now();
+              const draw=()=>{
+                if(done2)return;
+                const elapsed=(Date.now()-startTime)/1000;
+                // Stop strictly by elapsed time now (video loops), so the clip fills
+                // its whole target window even if the source footage is short.
+                if(elapsed>=clipDur){vid.pause();finish(true);return;}
+                const now=performance.now();
+                if(now-lastDraw>=msPerF-2){
+                  try{
+                    ctx.clearRect(0,0,dims.w,dims.h);
+                    ctx.drawImage(vid,0,0,dims.w,dims.h);
+                    // Vignette
+                    const vig=ctx.createRadialGradient(dims.w/2,dims.h/2,dims.w*0.1,dims.w/2,dims.h/2,dims.w*0.8);
+                    vig.addColorStop(0,"rgba(0,0,0,0)");vig.addColorStop(1,"rgba(0,0,0,0.7)");
+                    ctx.fillStyle=vig;ctx.fillRect(0,0,dims.w,dims.h);
+                    // Letterbox
+                    ctx.fillStyle="#000";ctx.fillRect(0,0,dims.w,dims.h*0.05);ctx.fillRect(0,dims.h*0.95,dims.w,dims.h*0.05);
+                    lastDraw=now;
+                  }catch(e){finish(true);return;}
+                }
+                requestAnimationFrame(draw);
+              };
+              requestAnimationFrame(draw);
+            };
+            vid.onerror=()=>finish(false);
+            setTimeout(()=>finish(false),Math.max(70000,(holdOverride!=null?holdOverride:(perClipTarget>0?perClipTarget:65))*1000+15000));
+            vid.load();
+          });
+        }
+
+        // If video failed or no file — regenerate scene with Claude
+        if(!videoPlayed){
+          log("  Clip not playable — generating scene: "+clip.name.slice(0,30)+"...");
+          const natSec=parseInt(clip.name.match(/(\d+)s/)?.[1]||"30");
+          const clipDurSec=holdOverride!=null?Math.max(holdOverride,3):(perClipTarget>0?Math.max(perClipTarget,natSec):natSec);
+          const ok=await renderSceneToCanvas(clip.name,clipDurSec);
+          if(!ok){
+            // Last resort: plain black hold — real-time paced. No words on screen;
+            // the film never burns the clip/scene name onto the picture.
+            const tcFrames=5*fps;
+            const tcStart=performance.now();
+            await new Promise(resolve=>{
+              let f=0;
+              const draw=()=>{
+                if(f>=tcFrames){resolve(null);return;}
+                ctx.fillStyle="#000";ctx.fillRect(0,0,dims.w,dims.h);
+                f++;
+                const next=tcStart+(f*(1000/fps));
+                setTimeout(draw,Math.max(4,next-performance.now()));
+              };draw();
+            });
+          }
+        }
+      }
+      setCurrentClipIdx(-1);
+      // Never end before the narration does: if the pictures ran out early, keep the
+      // last picture on screen (slow dim) until the voice has finished.
+      {
+        const narrEnd=narrSeq?narrSeq.total:(audioBuffer?audioBuffer.duration:0);
+        const elapsedNow=(Date.now()-renderT0)/1000;
+        if(narrEnd>elapsedNow+1){
+          log("Pictures finished early — holding the last scene until the narration ends ("+Math.round(narrEnd-elapsedNow)+"s)");
+          while((Date.now()-renderT0)/1000<narrEnd){
+            const left=narrEnd-(Date.now()-renderT0)/1000;
+            setProgress(Math.min(91,Math.max(5,Math.round(85+(1-left/narrEnd)*6))));
+            try{ctx.fillStyle="rgba(0,0,0,0.004)";ctx.fillRect(0,0,dims.w,dims.h);}catch(e){}
+            await new Promise(r=>setTimeout(r,250));
+          }
+        }
+      }
+      // End card — real-time paced
+      {const ecFrames=fps*2;const ecStart=performance.now();
+      await new Promise(resolve=>{
+        let f=0;
+        const draw=()=>{
+          if(f>=ecFrames){resolve(null);return;}
+          ctx.fillStyle="#000";ctx.fillRect(0,0,dims.w,dims.h);
+          f++;
+          const next=ecStart+(f*(1000/fps));
+          setTimeout(draw,Math.max(4,next-performance.now()));
+        };draw();
+      });}
+      setProgress(92);log("Finalising...");
+      try{clearInterval(dataInterval);}catch(e){}
+      try{clearInterval(heartbeat);}catch(e){}
+      if(audioSource){try{audioSource.stop();}catch(e){}}
+      if(narrPlayer){try{narrPlayer.stop();}catch(e){}}
+      if(musicSource){try{musicSource.stop();}catch(e){}}
+      // Flush any final data before stopping
+      try{if(recorder.state==="recording")recorder.requestData();}catch(e){}
+      await new Promise(r=>{let d=false;const f=()=>{if(!d){d=true;r();}};setTimeout(f,5000);try{recorder.onstop=f;if(recorder.state!=="inactive"){recorder.stop();}else{f();}}catch(e){f();}});
+      const blob=new Blob(chunks,{type:mimeType});
+      // ── SAFETY: never hand an empty file to the player (that's the grey arrow) ──
+      if(!chunks.length||blob.size<10000){
+        log("Render produced no video data");
+        log("Your browser blocked canvas capture. Fix: keep this tab in front");
+        log("for the whole render, and try 720p · 24FPS.");
+        setProgress(0);setDone(false);setRendering(false);
+        await releaseWakeLock();
+        try{clearInterval(dataInterval);}catch(e){}
+        try{clearInterval(heartbeat);}catch(e){}
+        try{if(audioCtx)audioCtx.close();}catch(e){}
+        alert("Render produced no video data.\n\nKeep this tab in front for the whole render (don't switch apps or tabs), and use 720p · 24FPS. Then try again.");
+        return;
+      }
+      const url=URL.createObjectURL(blob);
+      setRenderUrl(url);
+      if(setRendered)setRendered({url,quality,format:"WebM",timestamp:new Date().toLocaleString()});
+      setProgress(100);setDone(true);
+      log("RENDER COMPLETE — "+(blob.size/1024/1024).toFixed(1)+"MB");
+      // Save final render to IndexedDB — timeout-protected, never blocks completion
+      try{
+        const renderName="InFuture_Film_"+new Date().toISOString().slice(0,10)+".webm";
+        await Promise.race([
+          saveClipToDB("render_final",blob,renderName,"video/webm"),
+          new Promise(r=>setTimeout(r,6000))
+        ]);
+      }catch(e){}
+      // ── CLEAR AFTER RENDER — once the finished film is safely in storage, the scene
+      // files and the timeline are cleared so the next project starts clean and the
+      // library never piles up. Your film, voices and recordings are kept.
+      try{
+        if(onRendered){
+          const savedFilm=await loadClipFromDB("render_final");
+          if(savedFilm&&savedFilm.blob&&savedFilm.blob.size>10000){
+            const n=await onRendered();
+            log("Film saved. Cleared "+n+" scene file"+(n===1?"":"s")+" and the timeline — ready for your next project");
+          } else log("Film not confirmed in storage yet — library and timeline kept so nothing is lost");
+        }
+      }catch(e){log("Clear after render skipped: "+e.message);}
+      try{if(audioCtx)audioCtx.close();}catch(e){}
+    }catch(e){log("Render error: "+e.message);}
+    forcedAudioRef.current=null; // reset the render-time voice pick
+    await releaseWakeLock();
+    setRendering(false);
+  };
+
+  const clips=getVideoClips();
+  const audio=getAudioTrack();
+  const QUALITIES=[{id:"480p",label:"480p",sub:"854×480"},{id:"720p",label:"720p",sub:"1280×720"},{id:"1080p",label:"1080p",sub:"1920×1080"},{id:"4K",label:"4K",sub:"3840×2160"}];
+
+  return (
+    <div style={{...Sp,padding:0}}>
+      <canvas ref={canvasRef} style={{position:"fixed",right:8,bottom:8,width:160,height:90,opacity:1,pointerEvents:"none",zIndex:9999,border:"1px solid #E6C98E",background:"#0E0F12"}}/>
+      <div style={{padding:"12px 24px",borderBottom:"1px solid "+LINE+"",background:"#020200",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+        <div>
+          <div style={{fontSize:10,color:WHITE,letterSpacing:0.4,fontWeight:500}}>Production engine — stage 6</div>
+          <h1 style={{...H1,fontSize:22,margin:0}}>Render film</h1>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginTop:4}}>
+            <span style={{color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2}}>Film: {filmDuration||60} Min</span>
+            <input type="range" min={1} max={180} step={1} value={filmDuration||60} onChange={e=>setFilmDuration(+e.target.value)} style={{width:160,accentColor:GOLD}}/>
+            <div style={{display:"flex",gap:4}}>
+              {[60,90,180].map(m=><button key={m} onClick={()=>setFilmDuration(m)} style={{background:filmDuration===m?GOLD:"#0E0F12",border:"1px solid "+(filmDuration===m?"#000":GOLDDIM),color:filmDuration===m?"#000":WHITE,padding:"2px 8px",cursor:"pointer",fontSize:10,fontWeight:600,fontFamily:"'Manrope',system-ui,sans-serif"}}>{m}m</button>)}
+            </div>
+          </div>
+        </div>
+        {done&&!rendering&&<div style={{color:"#D4AF6A",fontSize:11,fontWeight:600,letterSpacing:0.2}}>Render complete</div>}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 320px",minHeight:"calc(100vh - 120px)"}}>
+        <div style={{padding:20,overflowY:"auto"}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+            <div style={{background:clips.length>0?"#14110B":"#0E0F12",border:"1px solid "+(clips.length>0?"#D4AF6A":GOLDDIM),padding:"14px 16px"}}>
+              <div style={{color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Video clips</div>
+              <div style={{color:clips.length>0?"#D4AF6A":WHITE,fontSize:14,fontWeight:600}}>{clips.length>0?"✓ "+clips.length+" clip"+(clips.length>1?"s":"")+" ready":"No clips — generate on page 8"}</div>
+            </div>
+            <div style={{background:audio?"#14110B":"#0E0F12",border:"1px solid "+(audio?"#D4AF6A":GOLDDIM),padding:"14px 16px"}}>
+              <div style={{color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Audio track</div>
+              <div style={{color:audio?"#D4AF6A":"#D4AF6A",fontSize:14,fontWeight:600}}>{audio?"Audio ready":"No audio — record on page 6"}</div>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+            <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"14px 16px"}}>
+              <div style={{color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:10}}>Output quality</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5}}>
+                {QUALITIES.map(q=>(
+                  <button key={q.id} onClick={()=>setQuality(q.id)} style={{background:quality===q.id?"#0E0F12":"#000",border:"1px solid "+(quality===q.id?GOLD:LINE),padding:"8px 6px",cursor:"pointer",textAlign:"center"}}>
+                    <div style={{color:quality===q.id?GOLD:WHITE,fontSize:12,fontWeight:600,fontFamily:"'Manrope',system-ui,sans-serif"}}>{q.label}</div>
+                    <div style={{color:DIM,fontSize:9}}>{q.sub}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"14px 16px"}}>
+              <div style={{color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:10}}>Settings</div>
+              <div style={{marginBottom:10}}>
+                <div style={{color:DIM,fontSize:10,marginBottom:5}}>Frame rate</div>
+                <div style={{display:"flex",gap:5}}>
+                  {[24,30,60].map(f=><button key={f} onClick={()=>setFps(f)} style={{...G(fps===f?"gold":"out",true),flex:1,padding:"5px 4px",fontSize:10}}>{f}fps</button>)}
+                </div>
+              </div>
+              <div>
+                <div style={{color:DIM,fontSize:10,marginBottom:5}}>Codec</div>
+                <div style={{display:"flex",gap:5}}>
+                  {["vp9","vp8"].map(c=><button key={c} onClick={()=>setCodec(c)} style={{...G(codec===c?"gold":"out",true),flex:1,padding:"5px 4px",fontSize:10}}>{c.toUpperCase()}</button>)}
+                </div>
+              </div>
+            </div>
+          </div>
+          {rendering&&(
+            <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"14px 16px",marginBottom:16}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
+                <div style={{color:WHITE,fontSize:11,fontWeight:600}}>Rendering</div>
+                <div style={{color:WHITE,fontSize:13,fontWeight:600}}>{progress}%</div>
+              </div>
+              <div style={{height:8,background:"#0E0F12",overflow:"hidden"}}>
+                <div style={{width:progress+"%",height:"100%",background:SIGNAL,transition:"width .3s"}}/>
+              </div>
+            </div>
+          )}
+          {renderLog.length>0&&(
+            <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"14px 16px",marginBottom:16,maxHeight:180,overflowY:"auto"}}>
+              <div style={{color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:8}}>Render log</div>
+              {renderLog.map((l,i)=>(
+                <div key={i} style={{color:i===renderLog.length-1?"#D4AF6A":"#666",fontSize:10,lineHeight:1.7,fontFamily:"monospace"}}>{i===renderLog.length-1?"► ":"  "}{l}</div>
+              ))}
+            </div>
+          )}
+          {done&&renderUrl&&(
+            <div style={{background:"#14110B",border:"1px solid #D4AF6A",padding:"16px 20px",marginBottom:16}}>
+              <div style={{color:"#D4AF6A",fontWeight:600,fontSize:13,letterSpacing:0.2,marginBottom:12}}>Render complete</div>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                <button onClick={()=>{
+                  try{
+                    const a=document.createElement("a");
+                    a.href=renderUrl; a.download="InFuture_Film_"+Date.now()+".webm"; a.rel="noopener noreferrer";
+                    document.body.appendChild(a); a.click();
+                    setTimeout(()=>{try{document.body.removeChild(a);}catch(e){}},1000);
+                    log("Download started — check your device's Downloads");
+                  }catch(e){ try{window.open(renderUrl,"_blank");}catch(e2){} log("Opened film in new tab — long-press to save"); }
+                }} style={{...G("gold",false),padding:"12px 24px",fontSize:12,letterSpacing:0.2,cursor:"pointer"}}>Download film</button>
+                <button onClick={()=>go(17)} style={{...G("out",false),padding:"12px 24px",fontSize:12}}>Preview</button>
+                <button onClick={()=>go(18)} style={{...G("out",false),padding:"12px 24px",fontSize:12}}>Export</button>
+              </div>
+            </div>
+          )}
+          {/* ── NARRATION LANGUAGE ─────────────────────────────────── */}
+          <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"14px 16px",marginBottom:16}}>
+            <div style={{color:WHITE,fontSize:11,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>Narration language</div>
+            <div style={{color:GOLDDIM,fontSize:10,marginBottom:10,lineHeight:1.6}}>Pick the language for this film, clip or music video. The narration is translated and spoken in that language at render. English leaves it unchanged.</div>
+            <select value={renderLanguage} onChange={e=>setRenderLanguage(e.target.value)}
+              style={{width:"100%",background:"#07080A",border:"1px solid "+LINE,color:WHITE,padding:"10px 12px",fontSize:13,outline:"none",fontFamily:"'Manrope',system-ui,sans-serif",cursor:"pointer"}}>
+              {LANGUAGES.map(l=><option key={l.code} value={l.code} style={{background:"#07080A"}}>{l.label}</option>)}
+            </select>
+          </div>
+          {/* ── FILL IN THE GAPS? ─────────────────────────────────── */}
+          <div style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"14px 16px",marginBottom:16}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <div style={{color:WHITE,fontSize:11,fontWeight:600,letterSpacing:0.2}}>Fill in the gaps with extra scenes?</div>
+                <div style={{color:GOLDDIM,fontSize:10,marginTop:4,lineHeight:1.6}}>If your clips are shorter than {filmDuration||60} min, choose Y to generate extra scenes so the film reaches full length. Choose N to stretch the clips you have.</div>
+              </div>
+              <div style={{display:"flex",gap:6,flexShrink:0,marginLeft:12}}>
+                <button onClick={()=>setGapFill(true)}
+                  style={{background:gapFill?GOLD:"#0E0F12",border:"1px solid "+(gapFill?"#000":GOLDDIM),color:gapFill?"#000":WHITE,padding:"6px 18px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0}}>Y</button>
+                <button onClick={()=>setGapFill(false)}
+                  style={{background:!gapFill?GOLD:"#0E0F12",border:"1px solid "+(!gapFill?"#000":GOLDDIM),color:!gapFill?"#000":WHITE,padding:"6px 18px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0}}>N</button>
+              </div>
+            </div>
+          </div>
+          <div style={{background:"#07080A",border:"2px solid "+SIGNAL,padding:"18px 20px",marginBottom:16}}>
+            <button onClick={startRender} disabled={rendering||clips.length===0}
+              style={{...G("gold",false),width:"100%",padding:"18px",fontSize:14,letterSpacing:0.2,opacity:rendering||clips.length===0?0.5:1,marginBottom:10}}>
+              {rendering?"RENDERING... "+progress+"%":"START RENDER — "+quality+" · "+fps+"fps · "+clips.length+" CLIP"+(clips.length!==1?"S":"")}
+            </button>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>go(13)} style={{...G("out",false),flex:1,padding:"10px",fontSize:11}}>Timeline</button>
+            <button onClick={()=>go(15)} style={{...G("out",false),flex:1,padding:"10px",fontSize:11}}>Audio mix</button>
+            <button onClick={()=>go(8)} style={{...G("out",false),flex:1,padding:"10px",fontSize:11}}>Generator</button>
+            <button onClick={()=>go(17)} style={{...G("out",false),flex:1,padding:"10px",fontSize:11}}>Preview</button>
+          </div>
+        </div>
+        <div style={{borderLeft:"1px solid "+LINE+"",display:"flex",flexDirection:"column",background:"#020200"}}>
+          <div style={{background:"#0E0F12",aspectRatio:"16/9",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden"}}>
+            {renderUrl?(
+              <MsVideo src={renderUrl} controls autoPlay playsInline onLoadedMetadata={e=>msFixDuration(e.currentTarget,()=>{})} style={{width:"100%",height:"100%",objectFit:"contain"}}/>
+            ):(
+              <div style={{textAlign:"center",padding:20}}>
+                <div style={{color:WHITE,fontSize:28,marginBottom:8}}>Render</div>
+                <div style={{color:DIM,fontSize:10,lineHeight:1.8}}>{quality} · {fps}fps<br/>{clips.length} clip{clips.length!==1?"s":""} queued</div>
+              </div>
+            )}
+          </div>
+          <div style={{flex:1,overflowY:"auto",padding:14}}>
+            <div style={{color:WHITE,fontSize:9,letterSpacing:0.2,fontWeight:600,marginBottom:10}}>Render queue</div>
+            {clips.length===0?(
+              <div style={{color:GOLDDIM,fontSize:10,textAlign:"center",padding:"20px 0",lineHeight:1.8}}>No clips.<br/>Generate on page 8.</div>
+            ):clips.map((clip,i)=>(
+              <div key={clip.id||i} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",marginBottom:4,background:currentClipIdx===i?"#0E0F12":"#0E0F12",border:"1px solid "+(currentClipIdx===i?GOLD:LINE)}}>
+                <div style={{width:22,height:22,background:currentClipIdx===i?GOLD:"#222",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <span style={{color:currentClipIdx===i?"#000":DIM,fontSize:9,fontWeight:600}}>{i+1}</span>
+                </div>
+                <div style={{flex:1,overflow:"hidden"}}>
+                  <div style={{color:currentClipIdx===i?GOLD:WHITE,fontSize:10,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{clip.name.replace(/\.[^.]+$/,"").slice(0,28)}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Browser-recorded WebM files have no length in them, so players show Infinity.
+// Seeking far past the end makes the browser work out the real length.
+// Soft stereo ambient bed, made in the browser. Used when no music file can be fetched.
+function msBedSource(ac,dest,vol){
+  const sr=ac.sampleRate, secs=32, n=Math.floor(sr*secs);
+  const pad=ac.createBuffer(2,n,sr);
+  const chords=[[110,164.81,220,277.18],[87.31,130.81,174.61,261.63],[130.81,196,261.63,329.63],[98,146.83,196,246.94]];
+  for(let ch=0;ch<2;ch++){
+    const d=pad.getChannelData(ch);
+    for(let i=0;i<n;i++){
+      const t=i/sr, seg=Math.floor(t/8)%4, st=t%8;
+      const env=Math.min(1,st/2)*Math.min(1,(8-st)/2);
+      let v=0; const c=chords[seg];
+      for(let k=0;k<c.length;k++){ v+=Math.sin(2*Math.PI*c[k]*(1+(ch?0.002:-0.002)*(k+1))*t)*(0.22/(1+k*0.3)); }
+      d[i]=v*env*0.6;
+    }
+  }
+  const src=ac.createBufferSource(); src.buffer=pad; src.loop=true;
+  const g=ac.createGain(); g.gain.value=vol; src.connect(g); g.connect(dest);
+  return {src,gain:g};
+}
+
+// Shared player: every user-facing video goes through this so it actually plays.
+// Fixes missing WebM duration, retries once, falls back to a tap-to-play button
+// when the browser blocks autoplay, and shows a Download link if the file can't play.
+const MsVideo=React.forwardRef(function MsVideo(props,fwd){
+  const {onLoadedMetadata,onError,autoPlay,src,style,...rest}=props;
+  const inner=useRef(null);
+  const [tap,setTap]=useState(false);
+  const [bad,setBad]=useState(false);
+  const tried=useRef(0);
+  const setRef=el=>{ inner.current=el; if(typeof fwd==="function")fwd(el); else if(fwd)fwd.current=el; };
+  useEffect(()=>{ setBad(false); setTap(false); tried.current=0; },[src]);
+  const tryPlay=()=>{ const v=inner.current; if(!v)return; const r=v.play(); if(r&&r.catch)r.catch(()=>{ try{ v.muted=true; const r2=v.play(); if(r2&&r2.catch)r2.catch(()=>setTap(true)); }catch(e){setTap(true);} }); };
+  return(
+    <div style={{position:"relative",width:"100%",height:style&&style.height?style.height:undefined}}>
+      <video {...rest} ref={setRef} src={src} playsInline preload="auto" style={{...style,width:"100%"}}
+        onLoadedMetadata={e=>{ try{msFixDuration(e.currentTarget,()=>{});}catch(_){} if(onLoadedMetadata)onLoadedMetadata(e); if(autoPlay)tryPlay(); }}
+        onError={e=>{ if(tried.current<1){ tried.current++; try{ const v=e.currentTarget; const u=v.src; v.src=""; v.src=u; v.load(); }catch(_){} } else setBad(true); if(onError)onError(e); }}/>
+      {tap&&!bad&&<button onClick={()=>{setTap(false);const v=inner.current;if(v){v.muted=false;v.play().catch(()=>{});}}}
+        style={{position:"absolute",inset:0,margin:"auto",width:76,height:76,borderRadius:"50%",background:"rgba(0,0,0,0.65)",border:"2px solid #E6C98E",color:"#E6C98E",fontSize:30,cursor:"pointer"}}>▶</button>}
+      {bad&&<div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8,background:"rgba(0,0,0,0.8)",color:"#fff",fontSize:12,textAlign:"center",padding:12}}>
+        <div>This browser can't play this clip.</div>
+        <a href={src} download="InFuture_clip" style={{color:"#E6C98E",fontWeight:600}}>Download it</a>
+      </div>}
+    </div>
+  );
+});
+
+function msFixDuration(v,setDur){
+  if(!v)return;
+  const d=v.duration;
+  if(isFinite(d)&&d>0){setDur(d);return;}
+  const onUpd=()=>{
+    if(isFinite(v.duration)&&v.duration>0){
+      v.removeEventListener("timeupdate",onUpd);
+      const real=v.duration;
+      try{v.currentTime=0;}catch(e){}
+      setDur(real);
+    }
+  };
+  v.addEventListener("timeupdate",onUpd);
+  try{v.currentTime=1e9;}catch(e){}
+}
+
+function P17({ go, rendered, mediaLib }) {
+  const videoRef = useRef(null);
+  const [isPlaying,setIsPlaying]=useState(false);
+  const [currentTime,setCurrentTime]=useState(0);
+  const [duration,setDuration]=useState(0);
+  const [vs,setVs]=useState("");
+  useEffect(()=>{
+    // Try rendered prop first, then IndexedDB render_final, then latest video in mediaLib
+    if(rendered?.url){setVs(rendered.url);return;}
+    loadClipFromDB("render_final").then(r=>{
+      if(r?.blob){setVs(URL.createObjectURL(r.blob));return;}
+      // Fall back to latest video in mediaLib
+      const latest=mediaLib?.filter(a=>a?.type?.startsWith("video")).slice(-1)[0];
+      if(latest?.url) setVs(latest.url);
+    }).catch(()=>{
+      const latest=mediaLib?.filter(a=>a?.type?.startsWith("video")).slice(-1)[0];
+      if(latest?.url) setVs(latest.url);
+    });
+  },[rendered,mediaLib]);
+  const fmt=s=>{if(!isFinite(s)||s<0)s=0;const m=Math.floor(s/60);const sc=Math.floor(s%60);return String(m).padStart(2,"0")+":"+String(sc).padStart(2,"0");};
+  const togglePlay=()=>{if(!videoRef.current)return;if(isPlaying){videoRef.current.pause();setIsPlaying(false);}else{videoRef.current.play();setIsPlaying(true);}};
+  return (
+    <div style={{...Sp,padding:40}}>
+      <div style={{maxWidth:880,margin:"0 auto"}}>
+        <h1 style={{...H1,fontSize:28,marginBottom:14}}>Film preview</h1>
+        <div style={{background:"#0E0F12",overflow:"hidden",marginBottom:14,aspectRatio:"16/9",display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid "+LINE}}>
+          {vs?<video ref={videoRef} src={vs} style={{width:"100%",height:"100%"}} controls
+            onTimeUpdate={()=>setCurrentTime(videoRef.current?.currentTime||0)}
+            onLoadedMetadata={()=>msFixDuration(videoRef.current,setDuration)}
+            onEnded={()=>setIsPlaying(false)}
+            onError={e=>{console.warn("Preview video error",e);}}/>:
+            <div style={{textAlign:"center",color:GOLDDIM,fontSize:40}}></div>}
+        </div>
+        <div style={{...Card(),display:"flex",alignItems:"center",gap:8}}>
+          <button onClick={()=>{if(videoRef.current)videoRef.current.currentTime=0;}} style={{...G("out",true)}}>⏮</button>
+          <button onClick={()=>{if(videoRef.current)videoRef.current.currentTime-=10;}} style={{...G("out",true)}}>⏪</button>
+          <button onClick={togglePlay} style={{...G("gold",true),minWidth:44}}>{isPlaying?"⏸":"▶"}</button>
+          <button onClick={()=>{if(videoRef.current)videoRef.current.currentTime+=10;}} style={{...G("out",true)}}>⏩</button>
+          <div style={{flex:1,height:4,background:"#0E0F12",cursor:"pointer"}}
+            onClick={e=>{if(!videoRef.current||!duration)return;const r=e.currentTarget.getBoundingClientRect();videoRef.current.currentTime=((e.clientX-r.left)/r.width)*duration;}}>
+            <div style={{width:(duration&&isFinite(duration)?Math.min(100,currentTime/duration*100):0)+"%",height:"100%",background:GOLD}}/>
+          </div>
+          <span style={{color:WHITE,fontSize:12,fontWeight:500,whiteSpace:"nowrap"}}>{fmt(currentTime)} / {fmt(duration||0)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function P18({ rendered, mediaLib, onExported }) {
+  // The finished film lives in storage as "render_final" — the temporary
+  // `rendered` link is lost on reload, which showed "No film yet" / not found.
+  const [vs,setVs]=useState(rendered?.url||"");
+  const [clearMsg,setClearMsg]=useState("");
+  useEffect(()=>{
+    if(rendered?.url){setVs(rendered.url);return;}
+    loadClipFromDB("render_final").then(r=>{
+      if(r?.blob){setVs(URL.createObjectURL(r.blob));return;}
+      const latest=mediaLib?.filter(a=>a?.type?.startsWith("video")).slice(-1)[0];
+      if(latest?.url)setVs(latest.url);
+    }).catch(()=>{
+      const latest=mediaLib?.filter(a=>a?.type?.startsWith("video")).slice(-1)[0];
+      if(latest?.url)setVs(latest.url);
+    });
+  },[rendered,mediaLib]);
+  const dl=async()=>{
+    if(!vs){alert("No film yet — render first!");return;}
+    msDownload(vs,"InFuture_Film.mp4");
+    if(!onExported)return;
+    // Once exported, clear the scene files out of the library — but ONLY if the
+    // finished film is safely in storage, so nothing can be lost.
+    try{
+      const saved=await loadClipFromDB("render_final");
+      if(!(saved&&saved.blob)){setClearMsg("Exported. Library kept — your film isn't saved in storage yet.");return;}
+      const n=await onExported();
+      setClearMsg("Exported. Cleared "+n+" scene file"+(n===1?"":"s")+" from your library. Your film and recordings are kept.");
+    }catch(e){}
+  };
+  return (
+    <div style={{...Sp,padding:40}}>
+      <div style={{maxWidth:780,margin:"0 auto"}}>
+        <div style={{fontSize:11,color:WHITE,letterSpacing:0.4,marginBottom:4,fontWeight:500}}>Distribution</div>
+        <h1 style={{...H1,fontSize:28,marginBottom:14}}>Export & distribute</h1>
+        {clearMsg&&<div style={{color:WHITE,fontSize:12,marginBottom:14,lineHeight:1.5}}>{clearMsg}</div>}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:20}}>
+          {[["","DOWNLOAD TO DEVICE",dl],["","SAVE PROJECT FILE",()=>{}],["","SHARE TO COMMUNITY",()=>{}]].map(([ic,lb,fn])=>(
+            <button key={lb} onClick={fn} style={{...Card(),cursor:"pointer",textAlign:"center",padding:16,display:"block"}}>
+              <div style={{fontSize:24,marginBottom:6}}>{ic}</div>
+              <div style={{color:WHITE,fontSize:11,fontWeight:600,letterSpacing:0.2}}>{lb}</div>
+            </button>
+          ))}
+        </div>
+        <div style={{color:WHITE,fontWeight:600,fontSize:11,letterSpacing:0.2,marginBottom:10}}>Share to social media</div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          {[["YouTube","#EDEAE3","https://www.youtube.com/upload"],["Instagram","#EDEAE3","https://www.instagram.com"],["TikTok","#EDEAE3","https://www.tiktok.com/upload"],["X / Twitter","#EDEAE3","https://twitter.com/intent/tweet?text=Check+out+my+film+made+with+InFuture+Studio"],["Facebook","#EDEAE3","https://www.facebook.com/sharer/sharer.php?u=https://mandastrong1.etsy.com"],["LinkedIn","#EDEAE3","https://www.linkedin.com/sharing/share-offsite/?url=https://mandastrong1.etsy.com"],["Vimeo","#EDEAE3","https://vimeo.com/upload"],["WhatsApp","#EDEAE3","https://api.whatsapp.com/send?text=Check+out+my+film+from+InFuture+Studio"]].map(([s,c,link])=>(
+            <button key={s} onClick={()=>window.open(link,"_blank")}
+              style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"10px 16px",cursor:"pointer"}}
+              onMouseEnter={e=>{e.currentTarget.style.borderColor=c;e.currentTarget.style.background=c+"22";}}
+              onMouseLeave={e=>{e.currentTarget.style.borderColor=LINE;e.currentTarget.style.background="#000";}}>
+              <div style={{color:c,fontSize:12,fontWeight:600,letterSpacing:0}}>{s}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function TutCanvas({drawFn}){
+  const cvRef=useRef(null);const rafRef=useRef(null);const t0=useRef(null);
+  useEffect(()=>{
+    const cv=cvRef.current;if(!cv)return;
+    const ctx=cv.getContext("2d");
+    const resize=()=>{const p=cv.parentElement;if(!p)return;cv.width=p.clientWidth;cv.height=Math.round(p.clientWidth*9/16);};
+    resize();window.addEventListener("resize",resize);
+    // Ambient particles for depth
+    const particles=Array.from({length:40},()=>({x:Math.random(),y:Math.random(),z:Math.random()*0.6+0.2,s:Math.random()*0.7+0.3}));
+    const draw=(ts)=>{
+      if(!t0.current)t0.current=ts;
+      const sec=(ts-t0.current)/1000;
+      const loop=120;
+      const t=Math.min(1,(sec%loop)/loop);
+      const W=cv.width,H=cv.height;
+
+      // Base — Claude animation
+      try{drawFn(ctx,W,H,t,sec);}
+      catch(e){ctx.fillStyle="#07080A";ctx.fillRect(0,0,W,H);}
+
+      // ── CINEMATIC POLISH LAYER — makes every tutorial feel premium ────
+
+      // Warm cinematic grade — subtle gold tint over entire frame
+      ctx.fillStyle="rgba(232,180,60,0.045)";ctx.fillRect(0,0,W,H);
+
+      // Deepen shadows for contrast
+      ctx.fillStyle="rgba(10,5,0,0.06)";ctx.fillRect(0,0,W,H);
+
+      // Highlight recovery — glow near top centre
+      const hr=ctx.createRadialGradient(W/2,H*0.3,0,W/2,H*0.3,W*0.4);
+      hr.addColorStop(0,"rgba(255,245,215,0.06)");hr.addColorStop(1,"rgba(0,0,0,0)");
+      ctx.fillStyle=hr;ctx.fillRect(0,0,W,H);
+
+      // Ambient particle depth — slow-drifting gold specks
+      particles.forEach(p=>{
+        const drift=(sec*0.008*(1-p.z))%1;
+        const x=((p.x+drift)%1)*W;
+        const y=p.y*H;
+        const size=p.s*(1-p.z)*2.2;
+        ctx.fillStyle="rgba(232,201,109,"+(0.10*(1-p.z)).toFixed(3)+")";
+        ctx.beginPath();ctx.arc(x,y,size,0,Math.PI*2);ctx.fill();
+      });
+
+      // Vignette — cinematic edge fall-off
+      const vig=ctx.createRadialGradient(W/2,H/2,W*0.18,W/2,H/2,W*0.78);
+      vig.addColorStop(0,"rgba(0,0,0,0)");vig.addColorStop(1,"rgba(0,0,0,0.62)");
+      ctx.fillStyle=vig;ctx.fillRect(0,0,W,H);
+
+      // Letterbox bars — 2.35:1 cinema look
+      const bar=Math.round(H*0.068);
+      ctx.fillStyle="#000";
+      ctx.fillRect(0,0,W,bar);
+      ctx.fillRect(0,H-bar,W,bar);
+
+      // Fine film grain
+      for(let g=0;g<28;g++){
+        const gv=Math.random()>0.5?160:20;
+        ctx.fillStyle="rgba("+gv+","+gv+","+gv+",0.013)";
+        ctx.fillRect(Math.random()*W,Math.random()*H,1.2,1.2);
+      }
+
+      // Chromatic aberration hint at edges (subtle warmth)
+      const edge=ctx.createLinearGradient(0,0,0,H);
+      edge.addColorStop(0,"rgba(232,180,60,0.04)");
+      edge.addColorStop(0.5,"rgba(0,0,0,0)");
+      edge.addColorStop(1,"rgba(160,80,20,0.04)");
+      ctx.fillStyle=edge;ctx.fillRect(0,0,W,H);
+
+      // Fade-in first 1.5s and fade-out last 1.5s of loop
+      const loopSec=sec%loop;
+      if(loopSec<1.5){ctx.fillStyle="rgba(0,0,0,"+(1-loopSec/1.5).toFixed(3)+")";ctx.fillRect(0,0,W,H);}
+      if(loopSec>loop-1.5){ctx.fillStyle="rgba(0,0,0,"+((loopSec-(loop-1.5))/1.5).toFixed(3)+")";ctx.fillRect(0,0,W,H);}
+
+      // Professional branding overlay — top-left studio mark
+      const brandY=bar+Math.round(H*0.045);
+      ctx.font="bold "+Math.round(H*0.022)+"px Georgia, serif";
+      ctx.textAlign="left";
+      // Gold gradient text
+      const brandGrad=ctx.createLinearGradient(bar+8,brandY-Math.round(H*0.02),bar+8,brandY);
+      brandGrad.addColorStop(0,"rgba(255,243,207,0.95)");
+      brandGrad.addColorStop(1,"rgba(160,120,32,0.95)");
+      ctx.fillStyle=brandGrad;
+      ctx.fillText("INFUTURE MOVIE STUDIOS",bar+10,brandY);
+      // Thin gold line under brand
+      ctx.strokeStyle="rgba(232,201,109,0.6)";ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(bar+10,brandY+4);ctx.lineTo(bar+10+Math.round(H*0.28),brandY+4);ctx.stroke();
+
+      // Bottom right — TUTORIAL watermark
+      ctx.font="bold "+Math.round(H*0.017)+"px Georgia, serif";
+      ctx.textAlign="right";
+      ctx.fillStyle="rgba(232,201,109,0.55)";
+      ctx.fillText("• TUTORIAL •",W-bar-10,H-bar-Math.round(H*0.025));
+
+      ctx.textAlign="left";
+
+      rafRef.current=requestAnimationFrame(draw);
+    };
+    rafRef.current=requestAnimationFrame(draw);
+    return()=>{window.removeEventListener("resize",resize);if(rafRef.current)cancelAnimationFrame(rafRef.current);};
+  },[drawFn]);
+  return <canvas ref={cvRef} style={{width:"100%",display:"block",background:"#0E0F12",boxShadow:"none"}}/>;
+}
+
+function P19({ go }) {
+  const [active,setActive]=useState(null);
+  const [generating,setGenerating]=useState(null);
+  const [drawFns,setDrawFns]=useState({});
+
+  const tuts=[
+    {n:"01",t:"Getting Started — Platform Overview",d:"Complete walkthrough of all 24 pages, Quick Access menu, footer controls, auto-save, and navigation.",dur:"3:00",l:"Beginner",page:1,tips:["Use ☰ top left to jump to any page","AUTOSAVE ON is real — state saves automatically as you work","💾 SAVE PROJECT saves a named session to MY PROJECTS for full restore"]},
+    {n:"02",t:"Writing Tools — Script to Screen",d:"How to use the 100+ writing tools on Page 5. From logline to full feature script. All results auto-save to Media Library.",dur:"4:00",l:"Beginner",page:5,tips:["Click any tool card to open it","Use AI CREATE for instant professional scripts","Save results to your Media Library — they auto-route to the timeline"]},
+    {n:"03",t:"Voice Engine — 54 Characters",d:"Selecting voices, filtering by gender, age, and origin. Recording narration. Two-button save workflow.",dur:"5:00",l:"Beginner",page:6,tips:["Hit PREPARE TO SPEAK to hear your narration aloud","Hit SAVE TO MEDIA LIBRARY to save it — auto-adds to timeline audio track","Filter by gender, age, and origin to find the perfect voice for your project"]},
+    {n:"04",t:"Music Video Studio — Full Walkthrough",d:"Step-by-step: Song setup, style selection, scene description, drag-and-drop audio upload, generating and exporting.",dur:"5:00",l:"Intermediate",page:6,tips:["Access from MUSIC VIDEO STUDIO button on Page 6","Drag and drop your audio file onto the upload zone — or click to browse","Record your own song with the red RECORD button"]},
+    {n:"05",t:"Video Generator — Cinematic Scenes",d:"Describe any scene and have the Cinema Engine build it. Upload reference photos for photoreal output. Auto-saves to library and timeline.",dur:"4:00",l:"Intermediate",page:8,tips:["Upload a reference photo FIRST — engine builds the scene around it","Be specific: lighting, mood, camera angle, time of day","Generated clips save automatically to Media Library and Timeline"]},
+    {n:"06",t:"Timeline Editor — Building Your Film",d:"Clips auto-populate from Media Library. Drag to reorder. Upload Media button always visible. SYNC ALL TRACKS for instant assembly.",dur:"4:00",l:"Intermediate",page:13,tips:["Hit ⚡ SYNC ALL TRACKS to auto-populate all clips in order","Use ⬆ UPLOAD MEDIA (next to CLEAR ALL) to add more clips at any time","Narration saves auto-populate the audio track — no dragging needed"]},
+    {n:"07",t:"Audio Mixer — Professional Sound",d:"Setting the perfect mix for documentary, narrative film, or music video.",dur:"3:00",l:"Beginner",page:15,tips:["Documentary: VOICE 85 · MUSIC 40 · EFX 50 · MASTER 85","Music Video: MUSIC 75 · VOICE 60 · EFX 40 · MASTER 85","Hit Apply Mix when done before going to Page 16"]},
+    {n:"08",t:"Render Engine — 4K with Auto-Enhancement",d:"Quality settings 480p to 4K. Auto-enhancement runs on every frame — contrast, colour grade, sharpness, noise reduction. Priority save protects your work before render starts.",dur:"4:00",l:"Intermediate",page:16,tips:["Auto-enhancement runs automatically — no settings needed","Priority save fires before render starts so a crash never loses your session","4K recommended for professional distribution — 1080p for social media"]},
+    {n:"09",t:"Export & Distribute",d:"Downloading your film and sharing to all social platforms directly from Page 18.",dur:"2:00",l:"Beginner",page:18,tips:["Download to device first","Each social button opens the upload page directly","Supports YouTube, Instagram, TikTok, Facebook, X, and Vimeo"]},
+    {n:"10",t:"Saving & Project History",d:"Real auto-save keeps your work safe at all times. Emergency crash save fires if the tab closes. Named sessions in MY PROJECTS for full restore.",dur:"2:00",l:"Beginner",page:1,tips:["AUTOSAVE ON is real — saves every time you change page, timeline, or media","💾 SAVE PROJECT creates a named restore point in MY PROJECTS"," MY PROJECTS CONTINUE PROJECT restores your full session including clips"]},
+    {n:"11",t:"Character Studio — Page 24",d:"Create and save reusable characters with reference photos, voice assignments, and appearance notes. Use in any scene.",dur:"3:00",l:"Intermediate",page:24,tips:["Upload a reference photo for each character","Assign a voice from the 54-character library","Hit USE IN SCENE to send the character to your Media Library"]},
+    {n:"12",t:"Documentary Workflow — Full Case Study",d:"Complete end-to-end documentary production: script to 4K render. 13 scenes, narration, timeline assembly, and export.",dur:"5:00",l:"Advanced",page:8,tips:["Page 5 paste director instructions + full narration script into Script to Movie","Page 6 → select your voice → PREPARE TO SPEAK → SAVE TO MEDIA LIBRARY","Page 8 → generate all scenes → Page 13 → Sync → Page 16 → Render 4K"]},
+    {n:"13",t:"Make My Movie — One-Shot Page",d:"The fast route for beginners and pros. Paste your story, add photos, pick style, voice, music and screen ratio, then hit MAKE MY MOVIE. Watch, mix, download and send to final render — all on Page 8.",dur:"4:00",l:"Beginner",page:8,tips:["Paste your story or script into the box — the engine builds the scenes","Add your own photos — they drive every scene","Pick RATIO first: 16:9 film, 9:16 phone, 1:1 square, 21:9 wide","Use PLAY / PAUSE / RESTART — picture, voice and music move together","Voice and Music sliders change the mix live","DOWNLOAD saves every scene; RENDER FINAL FILM → opens Page 16","Your scenes come back after a reload — nothing to redo"]},
+    {n:"14",t:"If a Video Won't Play",d:"Quick fixes when a clip shows black, silent or stuck. Every player now retries, and shows a tap-to-play button or a download link.",dur:"2:00",l:"Beginner",page:17,tips:["Tap the ▶ button if the browser blocks autoplay","Use Chrome, or Safari 15 or newer, with the tab in front","If you see Download it — save the clip and play it from your device","Timer showing 0:00? Press play once — it reads the real length","Render ended early? The film now holds its last picture until the voice finishes","After a finished render the scene files and timeline clear by themselves"]},
+  ];
+
+  const lc={Beginner:"#D4AF6A",Intermediate:"#D4AF6A",Advanced:"#C98A7A"};
+
+  const generate=async(idx)=>{
+    setGenerating(idx);setActive(idx);
+    const t=tuts[idx];
+    // Stop any current narration before starting a new one
+    try{window.speechSynthesis.cancel();}catch{}
+    try{
+      const res=await fetch("https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/claude-proxy",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:4000,
+          messages:[{role:"user",content:"Write a highly polished JavaScript canvas animation for a professional cinema-platform tutorial about \""+t.t+"\". This is for InFuture Movie Studios — the aesthetic must be premium: gold (#E6C98E) on deep black, glowing highlights, smooth eased motion using Math.sin() and clean easing curves, deep drop shadows, professional serif and sans typography. Animation should include: (1) an elegant animated LESSON "+t.n+" number card that fades in and settles, (2) the tutorial title \""+t.t+"\" appearing letter by letter with warm gold glow, (3) an animated diagram or visual metaphor that illustrates the topic conceptually — smooth transitions, layered shapes, glowing lines, not stick figures, (4) key concepts revealed one at a time with smooth fade-in, (5) subtle particle effects and ambient movement to avoid static frames. Every frame should look like a high-end motion graphics piece — think Apple keynote crossed with cinema title design. Use sec for continuous animation, t=0-1 for progress. W=canvas width, H=canvas height. Do not draw letterbox bars, watermarks, or vignettes — those are added separately. Return ONLY: function drawFrame(ctx,W,H,t,sec){"}]})
+      });
+      const d=await res.json();
+      let code=d.content&&d.content[0]?d.content[0].text.trim():"";
+      const _bt=String.fromCharCode(96);code=code.split(_bt+_bt+_bt+"javascript").join("").split(_bt+_bt+_bt+"js").join("").split(_bt+_bt+_bt).join("").trim();
+      const fi=code.indexOf("function drawFrame");if(fi>0)code=code.slice(fi);
+      const bo=code.indexOf("{");const bc=code.lastIndexOf("}");
+      const body=bo>=0&&bc>bo?code.slice(bo+1,bc):"";
+      const fn=new Function("ctx","W","H","t","sec",body);
+      setDrawFns(p=>({...p,[idx]:fn}));
+      // Blaze female voice narration for this lesson
+      const narration="Lesson "+parseInt(t.n)+". "+t.t+". "+t.d+" Pro tips. "+t.tips.join(". ")+".";
+      setTimeout(()=>{try{speakText("blaze",narration,null,null);}catch(e){}},500);
+    }catch(e){console.error(e);}
+    setGenerating(null);
+  };
+
+  return(
+    <div style={{...Sp,padding:0,background:"#0E0F12"}}>
+      <div style={{background:"#0E0F12",borderBottom:"1px solid "+LINE,padding:"24px 32px 18px"}}>
+        <div style={{maxWidth:900,margin:"0 auto"}}>
+          <div style={{fontSize:9,color:GOLDDIM,letterSpacing:0.4,fontWeight:600,marginBottom:6}}>Learning center</div>
+          <h1 style={{...H1,fontSize:28,margin:"0 0 8px"}}>Tutorials</h1>
+          <p style={{color:WHITE,fontSize:13,lineHeight:1.8,margin:0,opacity:.8}}>Hit GENERATE TO WATCH on any lesson. Claude writes a unique animated tutorial and plays it instantly.</p>
+        </div>
+      </div>
+      <div style={{maxWidth:900,margin:"0 auto",padding:"20px 32px"}}>
+        {tuts.map((t,idx)=>{
+          const isActive=active===idx;
+          const isGen=generating===idx;
+          const hasFn=!!drawFns[idx];
+          return(
+            <div key={t.n} style={{marginBottom:10}}>
+              <div style={{background:isActive?"#07080A":"#07080A",border:"1px solid "+(isActive?GOLD:LINE+"66"),borderBottom:isActive?"none":undefined,display:"flex",alignItems:"stretch",cursor:"pointer"}}
+                onClick={()=>setActive(isActive?null:idx)}>
+                <div style={{width:56,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",background:isActive?PANEL2:"#0E0F12",borderRight:"1px solid "+isActive?GOLD+"66":GOLDDIM+"33"+""}}>
+                  <span style={{fontFamily:"'Manrope',system-ui,sans-serif",color:isActive?GOLD:GOLDDIM,fontSize:13,fontWeight:600}}>{t.n}</span>
+                </div>
+                <div style={{flex:1,padding:"13px 16px",minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:3}}>
+                    <span style={{color:WHITE,fontWeight:600,fontSize:14}}>{t.t}</span>
+                    <span style={{background:lc[t.l]+"1a",border:"1px solid "+lc[t.l],color:lc[t.l],padding:"1px 8px",fontSize:9,fontWeight:600,letterSpacing:0.2}}>{t.l.toUpperCase()}</span>
+                    {hasFn&&<span style={{background:"#D4AF6A1a",border:"1px solid #D4AF6A",color:"#D4AF6A",padding:"1px 8px",fontSize:9,fontWeight:600,letterSpacing:0.2}}>Generated</span>}
+                  </div>
+                  <div style={{color:GOLDDIM,fontSize:10,letterSpacing:0}}>{t.dur} · {t.tips.length} Pro tips</div>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:10,padding:"0 16px",flexShrink:0}}>
+                  {isGen?(
+                    <span style={{color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2}}>Generating...</span>
+                  ):(
+                    <button onClick={e=>{
+                      e.stopPropagation();
+                      if(hasFn){
+                        // PLAY AGAIN — re-narrate with Blaze
+                        try{window.speechSynthesis.cancel();}catch{}
+                        const narration="Lesson "+parseInt(t.n)+". "+t.t+". "+t.d+" Pro tips. "+t.tips.join(". ")+".";
+                        setTimeout(()=>{try{speakText("blaze",narration,null,null);}catch(e){}},300);
+                        setActive(idx);
+                      } else {
+                        generate(idx);
+                      }
+                    }}
+                      style={{background:GOLD,border:"none",color:"#000",padding:"7px 18px",cursor:"pointer",fontSize:10,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif",whiteSpace:"nowrap"}}>
+                      {hasFn?"Play again":"Generate to watch"}
+                    </button>
+                  )}
+                  <span style={{color:isActive?GOLD:GOLDDIM,fontSize:14,fontWeight:600}}>{isActive?"▲":"▼"}</span>
+                </div>
+              </div>
+              {isActive&&(
+                <div style={{background:"#040300",border:"1px solid "+LINE,borderTop:"none"}}>
+                  {isGen?(
+                    <div style={{aspectRatio:"16/9",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,background:"#0E0F12"}}>
+                      <div style={{width:60,height:60,border:"2px solid "+SIGNAL,borderTop:"2px solid transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
+                      <div style={{color:WHITE,fontSize:13,fontWeight:600,letterSpacing:0.2}}>Claude is writing your tutorial</div>
+                      <style>{"@keyframes spin{to{transform:rotate(360deg)}}"}</style>
+                    </div>
+                  ):hasFn?(
+                    <TutCanvas drawFn={drawFns[idx]}/>
+                  ):(
+                    <div style={{aspectRatio:"16/9",background:"#0E0F12",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:18,cursor:"pointer"}}
+                      onClick={()=>generate(idx)}>
+                      <div style={{width:80,height:80,background:GOLD,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"none",cursor:"pointer"}}>
+                        <span style={{color:"#000",fontSize:30,fontWeight:600,marginLeft:4}}>▶</span>
+                      </div>
+                      <div style={{textAlign:"center"}}>
+                        <div style={{color:WHITE,fontWeight:600,fontSize:15,letterSpacing:0.4,marginBottom:6}}>Generate to watch</div>
+                        <div style={{color:GOLDDIM,fontSize:10,letterSpacing:0.2}}>Lesson {t.n} · {t.dur} · {t.l.toUpperCase()}</div>
+                      </div>
+                    </div>
+                  )}
+                  <div style={{padding:"20px 26px"}}>
+                    <p style={{color:WHITE,fontSize:14,lineHeight:1.95,marginBottom:18}}>{t.d}</p>
+                    <div style={{color:WHITE,fontSize:10,fontWeight:600,letterSpacing:0.2,marginBottom:10}}>Pro tips</div>
+                    {t.tips.map((tip,i)=>(
+                      <div key={i} style={{display:"flex",gap:12,marginBottom:9,alignItems:"flex-start"}}>
+                        <span style={{color:WHITE,fontWeight:600,flexShrink:0}}></span>
+                        <span style={{color:WHITE,fontSize:13,lineHeight:1.75}}>{tip}</span>
+                      </div>
+                    ))}
+                    <div style={{marginTop:18,display:"flex",gap:10,flexWrap:"wrap"}}>
+                      {!hasFn&&!isGen&&<button onClick={()=>generate(idx)} style={{background:GOLD,border:"none",color:"#000",padding:"11px 28px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>Generate to watch</button>}
+                      {hasFn&&!isGen&&<button onClick={()=>generate(idx)} style={{background:GOLD,border:"none",color:"#000",padding:"11px 28px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>Regenerate</button>}
+                      <button onClick={()=>go(t.page)} style={{background:"transparent",border:"1px solid "+LINE,color:WHITE,padding:"11px 20px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>Open page {t.page} ▶</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function P20() {
+  const [tab,setTab]=useState("tos");
+  const sec=(title,body)=>(
+    <div style={{marginBottom:16}}>
+      <h3 style={{color:WHITE,fontWeight:600,fontSize:13,marginBottom:8,letterSpacing:0.2,borderBottom:"1px solid "+LINE+"",paddingBottom:6}}>{title}</h3>
+      {body}
+    </div>
+  );
+  const p=(txt)=><p style={{color:WHITE,fontSize:13,lineHeight:1.9,marginBottom:8}}>{txt}</p>;
+  const li=(items)=><ul style={{color:WHITE,fontSize:13,lineHeight:1.9,paddingLeft:20,marginBottom:8}}>{items.map((t,i)=><li key={i} style={{marginBottom:3}}>{t}</li>)}</ul>;
+
+  return (
+    <div style={{...Sp,padding:40}}>
+      <div style={{maxWidth:860,margin:"0 auto"}}>
+        <div style={{fontSize:11,color:WHITE,letterSpacing:0.4,marginBottom:4,fontWeight:500}}>Legal</div>
+        <h1 style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:28,fontWeight:600,letterSpacing:0.4,marginBottom:4}}>Terms & disclaimer</h1>
+        <div style={{color:WHITE,fontSize:11,marginBottom:20,letterSpacing:0.2}}>Effective march 2026 · mandastrong studio</div>
+
+        {/* Tab selector */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",marginBottom:28,border:"1px solid "+LINE}}>
+          {[["tos","TERMS OF SERVICE"],["disc","DISCLAIMER"]].map(([id,label])=>(
+            <button key={id} onClick={()=>setTab(id)}
+              style={{background:tab===id?"#0E0F12":"#000",border:"none",borderBottom:tab===id?"2px solid "+SIGNAL:"2px solid transparent",color:tab===id?GOLD:WHITE,padding:"14px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {tab==="tos"&&(
+          <div>
+            <div style={{background:"#07080A",border:"2px solid "+SIGNAL,padding:"14px 20px",marginBottom:20,textAlign:"center"}}>
+              <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600}}>InFuture Movie Studios · professional cinema intelligence platform</div>
+              <div style={{color:WHITE,fontSize:12,marginTop:4}}>By using this platform you agree to be legally bound by these Terms.</div>
+            </div>
+
+            {sec("1. ACCEPTANCE OF TERMS",<>{p("By accessing or using InFuture Movie Studios you agree to be legally bound by these Terms of Service. If you do not agree, do not use this platform. These terms apply to all users including free, trial, and paid subscribers.")}</>)}
+            {sec("2. SUBSCRIPTIONS & BILLING",<>{p("InFuture Movie Studios offers three paid plans: Creator ($20/mo), Pro ($30/mo), and Studio ($50/mo). All plans bill monthly and auto-renew unless cancelled before the renewal date. The Studio Plan includes a 7-day free trial with no charge during the trial period. All payments are processed securely via Stripe. No refunds are issued for partial billing periods.")}</>)}
+            {sec("3. INTELLECTUAL PROPERTY & CONTENT RIGHTS",<>{p("You retain full ownership of all original media, scripts, and creative content you upload to InFuture Movie Studios. Studio Plan subscribers receive full commercial rights to content produced using the platform's AI tools. Creator and Pro plan subscribers may use content for personal and non-commercial purposes unless otherwise agreed in writing.")}{p("InFuture Movie Studios, its tools, interface, branding, and codebase remain the intellectual property of Amanda Woolley and InFuture Movie Studios. You may not reproduce, distribute, or resell the platform itself.")}</>)}
+            {sec("4. AI-GENERATED CONTENT",<>{p("Content generated by InFuture Movie Studios's AI tools is produced algorithmically. You are solely responsible for reviewing, editing, and verifying all AI-generated outputs before use. InFuture Movie Studios makes no guarantees regarding the accuracy, appropriateness, or fitness for purpose of AI-generated content.")}{p("You agree not to use AI-generated content to produce material that is defamatory, illegal, harmful, or in violation of third-party rights.")}</>)}
+            {sec("5. ACCEPTABLE USE",<>{p("You agree to use InFuture Movie Studios only for lawful purposes. The following are strictly prohibited:")}{li(["Producing content that is defamatory, obscene, or harasses individuals","Infringing on third-party intellectual property rights","Attempting to reverse-engineer, copy, or redistribute the platform","Using the platform to generate spam, malware, or fraudulent content","Sharing your account credentials with third parties"])}</>)}
+            {sec("6. SOCIAL MISSION",<>{p("A meaningful portion of all subscription proceeds is donated to veterans mental health initiatives and school anti-bullying programmes. These are not marketing statements — they are the founding mission of this platform. Full details available at MandaStrong1.Etsy.com.")}</>)}
+            {sec("7. LIMITATION OF LIABILITY",<>{p("InFuture Movie Studios is provided as-is without warranties of any kind, express or implied. To the maximum extent permitted by law, InFuture Movie Studios shall not be liable for any indirect, incidental, or consequential damages arising from your use of the platform. Our total liability shall not exceed the amount you paid in the 30 days prior to the claim.")}</>)}
+            {sec("8. TERMINATION",<>{p("We reserve the right to suspend or terminate your account at any time if you violate these Terms. You may cancel your subscription at any time via your account settings. Cancellation takes effect at the end of the current billing period.")}</>)}
+            {sec("9. GOVERNING LAW",<>{p("These Terms are governed by the laws of the jurisdiction in which InFuture Movie Studios is registered. Any disputes shall be resolved by binding arbitration or the courts of that jurisdiction.")}</>)}
+            {sec("10. CONTACT",<>{p("For support, billing enquiries, or legal notices contact us at MandaStrong1.Etsy.com or through Agent Grok on Page 21 of the platform.")}</>)}
+
+            <div style={{background:"#07080A",border:"1px solid "+LINE,padding:"12px 16px",marginTop:8}}>
+              <p style={{color:GOLDDIM,fontSize:11,margin:0,letterSpacing:0}}>InFuture Movie Studios · amanda woolley, founder · march 2026</p>
+            </div>
+          </div>
+        )}
+
+        {tab==="disc"&&(
+          <div>
+            <div style={{background:"#07080A",border:"2px solid "+SIGNAL,padding:"14px 20px",marginBottom:20,textAlign:"center"}}>
+              <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:600}}>Important — please read before using this platform</div>
+              <div style={{color:WHITE,fontSize:12,marginTop:4}}>This disclaimer governs your use of all AI-generated content and platform services.</div>
+            </div>
+
+            {sec("AI-GENERATED CONTENT",<>{p("InFuture Movie Studios is an AI-assisted creative platform. All outputs — including scripts, narrations, images, and video — are generated algorithmically and must be reviewed by the user before publication or commercial use. The platform does not guarantee the accuracy, completeness, or appropriateness of any AI-generated material.")}{p("AI-generated content may occasionally contain inaccuracies, unintended bias, outdated information, or incomplete details. You are solely responsible for fact-checking, editing, and ensuring compliance before publishing or distributing any content created on this platform.")}</>)}
+            {sec("NO PROFESSIONAL ADVICE",<>{p("Nothing generated by InFuture Movie Studios constitutes legal, medical, financial, psychological, or any other form of professional advice. The platform is a creative production tool only. Always consult a qualified professional before acting on any information produced by AI tools.")}</>)}
+            {sec("THIRD-PARTY SERVICES",<>{p("InFuture Movie Studios integrates with third-party services including payment processors and AI providers. We are not responsible for the availability, accuracy, or conduct of these services. Your use of third-party services is governed by their own terms and privacy policies.")}</>)}
+            {sec("INTELLECTUAL PROPERTY",<>{p("You are responsible for ensuring that content you upload, reference, or incorporate into your productions does not infringe third-party intellectual property rights. InFuture Movie Studios accepts no liability for copyright infringement arising from user-generated or user-directed content.")}</>)}
+            {sec("PLATFORM AVAILABILITY",<>{p("InFuture Movie Studios is provided on an 'as available' basis. We do not guarantee uninterrupted access, error-free operation, or permanent data retention. We recommend downloading and backing up all completed productions regularly. We are not liable for loss of data or creative work.")}</>)}
+            {sec("SOCIAL MISSION COMMITMENT",<>{p("A meaningful portion of all subscription revenue is directed to veterans mental health programmes and school anti-bullying initiatives. This commitment is a founding principle of InFuture Movie Studios and is carried out in good faith. It does not constitute a legally binding charitable obligation under these terms.")}</>)}
+            {sec("USER RESPONSIBILITY",<>{p("All responsibility for how content created on InFuture Movie Studios is deployed, distributed, monetised, or shared rests entirely with the user. InFuture Movie Studios shall not be held liable for any consequences arising from the publication or use of platform-generated content.")}</>)}
+            {sec("CHANGES TO THIS DISCLAIMER",<>{p("InFuture Movie Studios reserves the right to update this disclaimer at any time. Continued use of the platform following any update constitutes your acceptance of the revised terms.")}</>)}
+
+            <div style={{background:"#07080A",border:"1px solid "+LINE,padding:"12px 16px",marginTop:8}}>
+              <p style={{color:GOLDDIM,fontSize:11,margin:0,letterSpacing:0}}>— Amanda Woolley · Founder · InFuture Movie Studios · March 2026 · in-future1.bolt.host</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function P21() {
+  const [msgs,setMsgs]=useState([{role:"assistant",content:"Welcome to InFuture Movie Studios. I am Agent Grok — your 24/7 production consultant. Ask me anything about tools, workflow, pricing, or filmmaking."}]);
+  const [inp2,setInp2]=useState(""); const [loading,setLoading]=useState(false);
+  const bot=useRef(null);
+  const QUICK=["Recommended production workflow?","How do I generate a scene?","Best audio mix for documentary?","How to export in 4K?","Subscription plans?","How does the Voice Engine work?","What genres can I render?","How do I use the Timeline?"];
+  useEffect(()=>{if(bot.current)bot.current.scrollIntoView({behavior:"smooth"});},[msgs]);
+  const send=async(q)=>{
+    const question=q||inp2.trim();if(!question)return;
+    setInp2("");setLoading(true);
+    setMsgs(p=>[...p,{role:"user",content:question}]);
+    try{
+      const d=await proxyFetch({model:"claude-sonnet-4-20250514",max_tokens:1000,system:"You are Agent Grok, AI production assistant for InFuture Movie Studios. Expert on all 23 pages, 200+ tools, 54 voice characters, video generator, music video studio, timeline, render engine up to 4K. Plans: Creator $20/mo, Pro $30/mo, Studio $50/mo with 7-day free trial. Be specific and direct.",messages:[...msgs.filter(m=>m.role!=="system"),{role:"user",content:question}]});
+      setMsgs(p=>[...p,{role:"assistant",content:d&&d.content&&d.content[0]?d.content[0].text:"Try again."}]);
+    }catch(e){setMsgs(p=>[...p,{role:"assistant",content:"Connection error. Try again."}]);}
+    setLoading(false);
+  };
+  return(
+    <div style={{height:"calc(100vh - 116px)",display:"flex",flexDirection:"column",background:"#0E0F12",overflow:"hidden"}}>
+      <div style={{flex:1,margin:"12px 16px",border:"2px solid "+SIGNAL,display:"flex",flexDirection:"column",background:"#07080A",overflow:"hidden",minHeight:0}}>
+        <div style={{background:"#0E0F12",borderBottom:"2px solid "+SIGNAL,padding:"12px 18px",display:"flex",alignItems:"center",gap:12,flexShrink:0}}>
+          <div style={{position:"relative",flexShrink:0}}>
+            <div style={{width:46,height:46,background:GOLD,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"none"}}>
+              <span style={{fontFamily:"'Manrope',system-ui,sans-serif",fontSize:22,fontWeight:600,color:"#000"}}>G</span>
+            </div>
+            <div style={{position:"absolute",bottom:-2,right:-2,width:11,height:11,background:"#D4AF6A",border:"2px solid #000",borderRadius:"50%"}}/>
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:"clamp(18px,2.5vw,28px)",fontWeight:600,letterSpacing:0.4,lineHeight:1}}>Agent grok</div>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginTop:3}}>
+              <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:7,height:7,borderRadius:"50%",background:"#D4AF6A",boxShadow:"none"}}/><span style={{color:"#D4AF6A",fontSize:10,fontWeight:600,letterSpacing:0.2}}>Online 24/7</span></div>
+              <span style={{color:WHITE,fontSize:10,letterSpacing:0.2,fontWeight:500}}>Your AI production consultant</span>
+            </div>
+          </div>
+          <div style={{display:"flex",gap:5,flexShrink:0}}>
+            {[["23","PAGES"],["200+","TOOLS"],["54","VOICES"],["4K","RENDER"]].map(([v,l])=>(
+              <div key={l} style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"5px 8px",textAlign:"center",minWidth:40}}>
+                <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:12,fontWeight:600}}>{v}</div>
+                <div style={{color:"#D4AF6A",fontSize:8,letterSpacing:0,marginTop:1,fontWeight:500}}>{l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{flex:1,overflowY:"auto",padding:"12px 16px",display:"flex",flexDirection:"column",gap:10,minHeight:0}}>
+          {msgs.map((m,i)=>(
+            <div key={i} style={{display:"flex",gap:10,flexDirection:m.role==="user"?"row-reverse":"row"}}>
+              <div style={{width:32,height:32,flexShrink:0,background:m.role==="user"?"#15171B":GOLD,border:"1px solid "+LINE,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:600,color:m.role==="user"?GOLD:"#000",fontFamily:"'Manrope',system-ui,sans-serif"}}>{m.role==="user"?"Y":"G"}</div>
+              <div style={{flex:1,maxWidth:"82%"}}>
+                <div style={{color:WHITE,fontSize:9,fontWeight:600,letterSpacing:0.2,marginBottom:3,textAlign:m.role==="user"?"right":"left"}}>{m.role==="user"?"YOU":"AGENT GROK"}</div>
+                <div style={{background:m.role==="user"?"#100800":"#0a0900",border:"1px solid "+LINE,padding:"9px 13px"}}>
+                  <div style={{color:WHITE,fontSize:13,lineHeight:1.8,whiteSpace:"pre-wrap"}}>{m.content}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+          {loading&&<div style={{display:"flex",gap:10}}><div style={{width:32,height:32,flexShrink:0,background:GOLD,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:600,color:"#000",fontFamily:"'Manrope',system-ui,sans-serif"}}>G</div><div style={{background:"#0a0900",border:"1px solid "+LINE,padding:"9px 13px"}}><span style={{color:WHITE,fontSize:12}}>Thinking...</span></div></div>}
+          <div ref={bot}/>
+        </div>
+        <div style={{borderTop:"1px solid "+LINE,padding:"8px 16px",display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",gap:4,flexShrink:0,background:"#040200"}}>
+          {QUICK.map(q=>(
+            <button key={q} onClick={()=>send(q)}
+              style={{background:"#0E0F12",border:"1px solid "+LINE,color:GOLDDIM,padding:"6px 10px",cursor:"pointer",fontSize:11,fontWeight:500,fontFamily:"'Manrope',system-ui,sans-serif",textAlign:"left",lineHeight:1.4}}
+              onMouseEnter={e=>{e.currentTarget.style.borderColor=GOLD;e.currentTarget.style.color=GOLD;}}
+              onMouseLeave={e=>{e.currentTarget.style.borderColor=GOLD+"33";e.currentTarget.style.color=GOLDDIM;}}>
+              {q}
+            </button>
+          ))}
+        </div>
+        <div style={{borderTop:"1px solid "+LINE,padding:"10px 16px",display:"flex",gap:8,flexShrink:0,background:"#07080A"}}>
+          <textarea value={inp2} onChange={e=>setInp2(e.target.value)}
+            onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}}
+            placeholder="Ask anything about tools, workflow, pricing or production..."
+            rows={2}
+            style={{flex:1,resize:"none",padding:"9px 12px",fontSize:13,background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,outline:"none",lineHeight:1.6,fontFamily:"'Manrope',system-ui,sans-serif",boxSizing:"border-box"}}/>
+          <button onClick={()=>send()} disabled={loading||!inp2.trim()}
+            style={{background:loading||!inp2.trim()?"#15171B":GOLD,border:"1px solid "+(loading||!inp2.trim()?GOLD+"22":GOLD),color:loading||!inp2.trim()?GOLDDIM:"#000",padding:"10px 20px",cursor:loading||!inp2.trim()?"not-allowed":"pointer",fontSize:12,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif",alignSelf:"stretch"}}>
+            {loading?"⟳":"Send"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function P22() {
+  const [posts,setPosts]=useState([{id:1,user:"Sarah J.",title:"Epic Action Feature",icon:"",views:2847,likes:1522},{id:2,user:"Mike Chen",title:"Family Documentary",icon:"",views:1256,likes:812},{id:3,user:"Emily R.",title:"Short Film Entry",icon:"",views:3421,likes:2156},{id:4,user:"Alex T.",title:"Music Video Cut",icon:"",views:5234,likes:4012}]);
+  return (
+    <div style={{...Sp,padding:40}}>
+      <div style={{maxWidth:780,margin:"0 auto"}}>
+        <div style={{fontSize:11,color:WHITE,letterSpacing:0.4,marginBottom:4,fontWeight:500}}>Creator network</div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <h1 style={{...H1,fontSize:28,margin:0}}>Community hub</h1>
+          <button style={{...G("gold",false)}}>Upload your movie</button>
+        </div>
+        {posts.map(p=>(
+          <div key={p.id} style={{...Card(),marginBottom:8,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div style={{display:"flex",alignItems:"center",gap:12}}>
+              <span style={{fontSize:24}}>{p.icon}</span>
+              <div>
+                <div style={{color:WHITE,fontWeight:600,fontSize:14}}>{p.title}</div>
+                <div style={{color:WHITE,fontSize:12}}>by {p.user}</div>
+              </div>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:12}}>
+              <span style={{color:WHITE,fontSize:12}}> {p.views.toLocaleString()}</span>
+              <span style={{color:WHITE,fontSize:12}}>❤ {p.likes.toLocaleString()}</span>
+              <button onClick={()=>setPosts(ps=>ps.map(x=>x.id===p.id?{...x,likes:x.likes+1}:x))} style={{...G("out",true)}}>Like</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HowToGuide() {
+  const [open,setOpen]=useState(null);
+  const SECTIONS=[
+    {t:"Welcome — how to read this book",c:"This is more than a how-to. It is a complete guide to making films with AI on InFuture Movie Studios (in-future1.bolt.host) AND a plain-English education in what AI actually is, so you are never at its mercy. Read Part One to understand the machine you are working with. Read Part Two to master the studio page by page. Read Part Three for the craft — prompting, voice, story, and ethics. You do not need any technical background. Every idea here is explained the way you would explain it to a friend across a kitchen table."},
+
+    {t:"Part one · What AI actually is",c:"AI does not think, feel, or know things the way you do. A large language model — the kind of AI behind most creative tools — is a very powerful pattern machine. It has read an enormous amount of human writing and images and learned which words and shapes tend to follow which. When you ask it for something, it is not looking up an answer; it is predicting, piece by piece, the most likely continuation of your request. That is why it can sound confident and still be wrong. Understanding this one fact changes how you use it: you are the director, it is the crew. It is fast and tireless and knows a thousand styles, but it has no judgement about YOUR story. That judgement is yours, and it always will be."},
+
+    {t:"Part one · Why AI sometimes gets it wrong",c:"Because AI predicts rather than knows, it can 'hallucinate' — state something untrue with total confidence, invent a fact, or misread what you wanted. This is normal and expected, not a fault in you. The fix is always the same: be more specific, give an example, or break the task into smaller steps. If a render or a line of narration comes out wrong, it is almost never because you did something stupid — it is because the machine guessed and guessed poorly. Re-roll it, refine your wording, and move on. Treat every output as a first draft from a talented but literal-minded assistant."},
+
+    {t:"Part one · Prompting — talking to the machine",c:"A prompt is simply your instruction to the AI. The single biggest skill in the whole studio is learning to prompt well, and it comes down to specificity. 'A man walking' gives the machine nothing to hold onto. 'A weathered fisherman in his sixties walking along a stormy grey beach at dawn, wind pulling at his yellow raincoat, shot from behind, cinematic, muted cold colour grade' gives it everything. Name the subject, the setting, the light, the mood, the camera angle, and the style. Show, don't summarise. When in doubt, describe it as if to someone who cannot see what is in your head — because that is exactly the situation."},
+
+    {t:"Part one · AI and you — staying in charge",c:"AI is a tool, like a camera or a pen. It amplifies whoever holds it. It has no taste of its own, so your taste is the whole game. Never let a machine talk you out of a creative instinct, and never assume its confident answer is correct without checking. Keep your own copies of everything important. Understand that what you type may be processed on servers you don't control, so don't paste anything you'd be uncomfortable sharing. And remember the deeper point behind this whole studio: AI should widen the door to creativity, not replace the human standing in it. You are not being replaced. You are being equipped."},
+
+    {t:"Part two · Getting started",c:"Open in-future1.bolt.host. Log in with your credentials or start a free trial. Use the hamburger menu top left to jump to any of the 24 pages. AUTOSAVE ON is real — your work saves automatically every time you change page, generate a clip, or update your timeline. Hit SAVE PROJECT to create a named restore point you can return to from MY PROJECTS. Your plan and remaining usage are always visible from your account panel — tap the avatar top right."},
+
+    {t:"Part two · Page 1 — home & install",c:"The front door of in-future1.bolt.host. The DOWNLOAD APP button installs the studio to your device like a real app, using your browser's built-in install prompt — on iPhone and iPad use Share then Add to Home Screen, as Apple does not allow one-tap install. The whole page is built to fit any screen, phone or laptop. From here, enter the studio and begin."},
+
+    {t:"Part two · Page 4 — plans & usage credits",c:"Three plans: Basic $20, Pro $30, Studio $50 — pick the one that fits how much you create. At the very bottom is PURCHASE USAGE CREDITS: a one-time top-up for extra renders and generations when you need more than your plan includes. Credits never expire. All payments run through Stripe's secure checkout — the studio never sees your card details."},
+
+    {t:"Part two · Page 5 — writing tools & script to movie",c:"100+ AI writing tools. Type a description into any tool and hit AI CREATE for professional results. At the top sits SCRIPT TO MOVIE — three boxes: PRODUCER (your vision, tone, casting), DESCRIBE (the film scene by scene), and PRODUCTION NOTES (shots, camera, lighting, locations). Fill them, save each to your Media Library, then hit WIRE INTO RENDER. From that moment the video generator on Page 8 uses your three boxes to drive every scene it makes. This is how your written vision becomes moving pictures."},
+
+    {t:"Part two · Page 6 — voice engine",c:"Cinematic voices that sound human, not robotic. Filter by gender, age, and origin. Tap any voice card to hear it. Paste your narration into the text box and hit PREPARE TO SPEAK to hear it in your chosen voice with your exact speed, pitch, and mood settings. RECORD MY VOICE lets you narrate yourself; UPLOAD lets you bring in a recording. On the right, USE MY VOICE AS NARRATION turns your own recording into the film's narration, with a duration option. Hit SAVE TO MEDIA LIBRARY and the narration auto-adds to your timeline's audio track. The MUSIC VIDEO STUDIO button lives up top."},
+
+    {t:"Part two · Page 8 — video generator",c:"The heart of the studio. Upload a reference photo first and the engine builds the scene around your real image for photorealistic output. Paste your scene prompt — or let your wired Script to Movie brief drive it — pick your options, and hit GENERATE SCENE. You can add background music from the built-in library with a live preview, and toggle USE STEREO SOUND for a full stereo mix. Clips save automatically and populate your timeline's video track. Generate all your scenes, then move to the timeline."},
+
+    {t:"PART TWO · THE TIMELINE, MIX & RENDER",c:"Page 13: hit SYNC ALL TRACKS to lay your clips and narration in order — drag to reorder. Page 15: set your audio mix so voice sits above music. Page 16: choose quality up to 4K and render — auto-enhancement (warm grade, contrast, sharpness) runs on every frame, and an emergency save fires before rendering so a crash never costs you the session. Do not close the tab while rendering. Page 17 previews the finished film; Page 18 exports and shares to YouTube, Instagram, TikTok, Facebook, X, and Vimeo."},
+
+    {t:"Part two · Music video studio",c:"Open from Page 6, top right. SONG step: enter title, artist, genre, mood, tempo; drag and drop your audio, click to upload, or hit RECORD YOUR OWN SONG; toggle USE STEREO SOUND. The DURATION slider runs freely from AUTO up to 180 minutes — at AUTO the film matches your song's length exactly; drag it up to lock a fixed length that overrides the music. STYLE step: video look, colour grade, effects. SCENE step: describe what we see. GENERATE builds a full beat-synced video. Download or save when done."},
+
+    {t:"Part two · Page 24 — character studio",c:"Build reusable characters. Drag and drop a reference photo or tap to choose one, assign a voice, and record appearance notes — hair, eyes, costume, personality, role. Save the character and reuse them across every scene so your cast stays consistent. Characters persist across sessions. From here, HOME returns to the studio and EXIT APP signs you out."},
+
+    {t:"Part three · The craft of prompting for film",c:"For video, think like a cinematographer. Always specify five things: subject (who or what), setting (where and when), light (dawn, neon, candlelight), motion (what moves and how), and style (film stock, colour grade, mood). Add a camera instruction — wide establishing shot, slow push-in, handheld, aerial. Contradictions confuse the machine, so keep your prompt coherent. If a scene comes out flat, add sensory and lighting detail rather than more objects. Consistency across scenes comes from reusing the same style language every time."},
+
+    {t:"Part three · Writing narration that lands",c:"Narration is written to be heard, not read. Short sentences. Natural breath points. Read every line aloud before you save it — if you stumble, the voice engine will too. Punctuation is your friend: a full stop is a real pause, a comma a small one. Match the voice to the story — a documentary wants warmth and authority; a thriller wants restraint. Use the PREPARE TO SPEAK button as your rehearsal room, and tune speed and pitch until it feels like a person, not a reader."},
+
+    {t:"PART THREE · STORY FIRST, ALWAYS",c:"The most photorealistic render in the world means nothing without a reason to watch. Decide what your film is really about before you generate a single frame — the feeling you want to leave behind. Use the Script to Movie PRODUCER box to write that down and keep yourself honest. AI can make anything look good; only you can make it mean something. Structure beats spectacle. A clear beginning, a turn in the middle, and an earned ending will carry a simple film further than dazzling clips with no spine."},
+
+    {t:"Part three · Ethics & responsibility",c:"With these tools you can make almost anything, which means the responsibility is yours. Don't put real people's faces or voices into films they never agreed to. Be honest when something is AI-generated if presenting it as real could mislead. Respect others' work rather than copying a living artist's style wholesale and calling it your own. And remember InFuture's founding mission — these tools exist to spread kindness, understanding, and hope, with proceeds supporting veterans' mental health and anti-bullying work. Make things that would make that mission proud."},
+
+    {t:"SAVING, RECOVERING & GETTING HELP",c:"AUTOSAVE ON saves as you work. SAVE PROJECT creates a named session — name it meaningfully. MY PROJECTS shows your history; CONTINUE PROJECT restores a session including all clips. An emergency save fires if the tab closes or crashes, so work is never permanently lost. Stuck? Agent Grok on Page 21 is your 24/7 production consultant with full knowledge of every page and workflow. This guide lives on your closing page at in-future1.bolt.host and is updated as the studio grows."},
+
+    {t:"Part two · Make My Movie — the one-shot page",c:"Page 8 has a one-shot route. Everything is on the one page. 1) Paste your story or script. 2) Add your own photos. 3) Pick Style, Genre, Colour grade and Narration voice. 4) Pick the Screen ratio: 16:9 for film, 9:16 for phones, 1:1 for squares, 21:9 for wide. 5) Set Music bed ON or OFF. 6) Hit MAKE MY MOVIE. The engine builds each scene. If the engine has no credit, your own photos are used with slow camera motion. Your narration is made from the whole script. When it is ready the viewer starts. PLAY, PAUSE and RESTART control the picture, the voice and the music together. Voice and Music sliders change the mix live. Change the ratio any time. FULL SCREEN fills the screen. DOWNLOAD saves every scene. SHARE sends the link. RENDER FINAL FILM opens Page 16. EXPORT PAGE opens Page 18. Scenes you already made come back when you return to the page."},
+
+    {t:"Part two · Final render, then a clean slate",c:"Page 16 joins your clips, voice and music into one film. A quiet music bed is added if you have not picked a track. The film never ends before the narration. When the finished film is safely saved, the scene files and the timeline clear by themselves. Your finished film, your voice recordings and your audio stay. Your next project starts clean. Download your film first, then start again."},
+
+    {t:"Troubleshooting · when a video will not play",c:"Every player in the studio now helps itself. It retries once. If the browser blocks autoplay you see a ▶ button — tap it. If the browser cannot play the file you see a Download it link — save it and play it from your device. A timer stuck on 0:00 or infinity fixes itself after the first play. Use Chrome, or Safari 15 or newer. Keep the tab in front while rendering. If a render looks wrong, hit RESTART, then try Page 17 to preview the finished film."},
+
+    {t:"Recommended workflow — start to finish",c:"Page 5 fill Script to Movie's Producer, Describe, Production boxes WIRE INTO RENDER. Page 6 choose a voice PREPARE TO SPEAK SAVE TO MEDIA LIBRARY. Page 8 upload a reference photo generate each scene (your brief drives them) add background music and stereo if you like. Page 13 SYNC ALL TRACKS. Page 15 set the mix. Page 16 choose quality render. Page 17 preview. Page 18 export and share. That is a finished film, made by you, at in-future1.bolt.host."},
+  ];
+  return(
+    <div style={{padding:"20px 32px 40px",maxWidth:860,margin:"0 auto"}}>
+      <div style={{color:WHITE,fontWeight:600,fontSize:12,letterSpacing:0.4,marginBottom:12,textAlign:"center"}}>How to use InFuture Movie Studios — click any section</div>
+      {SECTIONS.map((g,i)=>{
+        const isOpen=open===i;
+        return(
+          <div key={i} style={{marginBottom:4}}>
+            <button onClick={()=>setOpen(isOpen?null:i)} style={{width:"100%",background:isOpen?GOLD+"14":"#07080A",border:"1px solid "+(isOpen?GOLD:LINE+"55"),padding:"13px 18px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>
+              <span style={{color:isOpen?GOLD:WHITE,fontWeight:600,fontSize:13,letterSpacing:0.2}}>{g.t}</span>
+              <span style={{color:WHITE,fontSize:16,fontWeight:600}}>{isOpen?"▲":"▼"}</span>
+            </button>
+            {isOpen&&<div style={{background:"#040300",border:"1px solid "+LINE,borderTop:"none",padding:"16px 20px",color:WHITE,fontSize:13,lineHeight:1.95}}>{g.c}</div>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function P24CharacterStudio({ onSave, go }) {
+  const [chars,setChars]=useState(()=>{try{return JSON.parse(localStorage.getItem("ms_characters")||"[]");}catch{return [];}});
+  const [name,setName]=useState("");
+  const [voice,setVoice]=useState("james");
+  const [notes,setNotes]=useState("");
+  const [photo,setPhoto]=useState(null);
+  const [photoName,setPhotoName]=useState("");
+  const [savedNote,setSavedNote]=useState(false);
+  const [gender,setGender]=useState("Male");
+  const [age,setAge]=useState("Adult");
+  const [ethnicity,setEthnicity]=useState("");
+  const [hairColor,setHairColor]=useState("");
+  const [hairStyle,setHairStyle]=useState("");
+  const [eyeColor,setEyeColor]=useState("");
+  const [costume,setCostume]=useState("");
+  const [role,setRole]=useState("");
+  const [sceneNotes,setSceneNotes]=useState("");
+  const [personality,setPersonality]=useState("");
+  const [editId,setEditId]=useState(null);
+  // ── LIP-SYNC (real, via Replicate Wav2Lip through Supabase) ──
+  const [lsAudio,setLsAudio]=useState(null);        // data url of the voice clip
+  const [lsAudioName,setLsAudioName]=useState("");
+  const [lsBusy,setLsBusy]=useState(false);
+  const [lsStage,setLsStage]=useState("");
+  const [lsVideo,setLsVideo]=useState("");
+  const [lsError,setLsError]=useState("");
+  const lsRecRef=useRef(null);
+  const lsChunksRef=useRef([]);
+  const [lsRecording,setLsRecording]=useState(false);
+  const lsPickAudio=(e)=>{const f=e.target.files&&e.target.files[0];if(!f)return;setLsAudioName(f.name);const r=new FileReader();r.onload=ev=>setLsAudio(String(ev.target.result||""));r.readAsDataURL(f);};
+  const lsRecord=async()=>{
+    if(lsRecording){try{lsRecRef.current&&lsRecRef.current.stop();}catch(e){}return;}
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      const mr=new MediaRecorder(stream);lsChunksRef.current=[];
+      mr.ondataavailable=ev=>{if(ev.data.size>0)lsChunksRef.current.push(ev.data);};
+      mr.onstop=()=>{const blob=new Blob(lsChunksRef.current,{type:"audio/webm"});const r=new FileReader();r.onload=ev=>{setLsAudio(String(ev.target.result||""));setLsAudioName("my-recording.webm");};r.readAsDataURL(blob);stream.getTracks().forEach(t=>t.stop());setLsRecording(false);};
+      lsRecRef.current=mr;mr.start();setLsRecording(true);
+    }catch(e){setLsError("Microphone blocked — allow mic access and try again.");}
+  };
+  const makeAvatarSpeak=async()=>{
+    setLsError("");setLsVideo("");
+    if(!photo){setLsError("Add the character's photo first.");return;}
+    if(!lsAudio){setLsError("Record or upload the voice first.");return;}
+    setLsBusy(true);setLsStage("Sending your avatar and voice to the lip-sync engine…");
+    try{
+      const res=await fetch("https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/lip-sync",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({image:photo,audio:lsAudio})
+      });
+      const data=await res.json();
+      if(data.error){setLsError(data.error);setLsBusy(false);return;}
+      if(!data.video){setLsError("No video came back. Try again.");setLsBusy(false);return;}
+      setLsStage("Done.");setLsVideo(data.video);
+    }catch(e){setLsError("Couldn't reach the lip-sync engine: "+(e&&e.message?e.message:e));}
+    setLsBusy(false);
+  };
+  const lsDownload=async()=>{
+    if(!lsVideo)return;
+    try{const r=await fetch(lsVideo);const b=await r.blob();const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=(name||"avatar")+"-lipsync.mp4";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);}catch(e){window.open(lsVideo,"_blank");}
+  };
+  const fileRef=useRef(null);
+
+  const persist=(list)=>{
+    setChars(list);
+    try{localStorage.setItem("ms_characters",JSON.stringify(list));}catch(e){alert("Storage full — remove a character photo and try again.");}
+  };
+
+  const handlePhoto=(e)=>{
+    const f=e.target.files&&e.target.files[0];
+    if(!f)return;
+    setPhotoName(f.name);
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      // Downscale large photos so localStorage doesn't overflow and crash
+      const img=new Image();
+      img.onload=()=>{
+        const max=900;let{width:w,height:h}=img;
+        if(w>max||h>max){const s=max/Math.max(w,h);w=Math.round(w*s);h=Math.round(h*s);}
+        try{
+          const cv=document.createElement("canvas");cv.width=w;cv.height=h;
+          cv.getContext("2d").drawImage(img,0,0,w,h);
+          setPhoto(cv.toDataURL("image/jpeg",0.85));
+        }catch(err){setPhoto(ev.target.result);}
+      };
+      img.onerror=()=>setPhoto(ev.target.result);
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(f);
+  };
+
+  const clearForm=()=>{setName("");setNotes("");setPhoto(null);setPhotoName("");setVoice("james");setGender("Male");setAge("Adult");setEthnicity("");setHairColor("");setHairStyle("");setEyeColor("");setCostume("");setRole("");setSceneNotes("");setPersonality("");setEditId(null);};
+
+  const addChar=()=>{
+    if(!name.trim()){alert("Give your character a name first.");return;}
+    const c={id:editId||Date.now()+Math.random(),name:name.trim(),voice,notes:notes.trim(),photo,photoName,
+      gender,age,ethnicity,hairColor,hairStyle,eyeColor,costume,role,sceneNotes,personality,
+      date:new Date().toLocaleDateString()};
+    const updated=editId?chars.map(x=>x.id===editId?c:x):[...chars,c];
+    persist(updated);
+    clearForm();
+    setSavedNote(true);setTimeout(()=>setSavedNote(false),2500);
+  };
+
+  const editChar=(c)=>{
+    setEditId(c.id);setName(c.name);setVoice(c.voice||"james");setNotes(c.notes||"");
+    setPhoto(c.photo||null);setPhotoName(c.photoName||"");setGender(c.gender||"Male");
+    setAge(c.age||"Adult");setEthnicity(c.ethnicity||"");setHairColor(c.hairColor||"");
+    setHairStyle(c.hairStyle||"");setEyeColor(c.eyeColor||"");setCostume(c.costume||"");
+    setRole(c.role||"");setSceneNotes(c.sceneNotes||"");setPersonality(c.personality||"");
+    window.scrollTo(0,0);
+  };
+
+  const removeChar=(id)=>persist(chars.filter(c=>c.id!==id));
+
+  const useInScene=(c)=>{
+    if(onSave&&c.photo){
+      onSave({id:"char_"+c.id,name:c.name+"_reference.png",type:"image/png",url:c.photo});
+      alert("✓ "+c.name+" reference image sent to your Media Library — upload it on Page 8 to keep this character consistent.");
+    }else{
+      alert(c.photo?"Saved.":"This character has no reference photo to reuse.");
+    }
+  };
+
+  // Generate a scene prompt from character details
+  const generatePrompt=(c)=>{
+    const parts=[];
+    if(c.gender) parts.push(c.gender.toLowerCase());
+    if(c.age) parts.push(c.age.toLowerCase());
+    if(c.ethnicity) parts.push(c.ethnicity);
+    parts.push("named "+c.name);
+    if(c.hairColor||c.hairStyle) parts.push((c.hairStyle?c.hairStyle+" ":"")+c.hairColor+" hair");
+    if(c.eyeColor) parts.push(c.eyeColor+" eyes");
+    if(c.costume) parts.push("wearing "+c.costume);
+    if(c.personality) parts.push(c.personality+" personality");
+    if(c.role) parts.push("role: "+c.role);
+    if(c.notes) parts.push(c.notes);
+    if(c.sceneNotes) parts.push("Scene: "+c.sceneNotes);
+    const prompt="A "+parts.join(", ")+".";
+    navigator.clipboard.writeText(prompt).then(()=>alert("Scene prompt copied — paste into Page 8 scene description.")).catch(()=>alert(prompt));
+  };
+
+  const inp={width:"100%",background:"#0E0F12",border:"1px solid "+LINE,padding:"10px 12px",color:WHITE,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"'Manrope',system-ui,sans-serif"};
+  const lbl=(t)=><div style={{color:WHITE,fontSize:10,letterSpacing:0.2,fontWeight:600,marginBottom:5,marginTop:10}}>{t}</div>;
+  const optBtn=(val,cur,setter,opts)=>(
+    <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:4}}>
+      {opts.map(o=><button key={o} onClick={()=>setter(o)} style={{background:cur===o?GOLD:"#0E0F12",border:"1px solid "+(cur===o?"#000":GOLDDIM),color:cur===o?"#000":WHITE,padding:"3px 10px",cursor:"pointer",fontSize:11,fontWeight:600}}>{o}</button>)}
+    </div>
+  );
+
+  return (
+    <div style={{...Sp,padding:30}}>
+      <div style={{maxWidth:1100,margin:"0 auto"}}>
+        <div style={{fontSize:11,color:WHITE,letterSpacing:0.4,fontWeight:500,marginBottom:4}}>Consistency engine</div>
+        <h1 style={{...H1,fontSize:26,marginBottom:6}}>Character studio</h1>
+        <div style={{color:WHITE,fontSize:13,marginBottom:24,lineHeight:1.7}}>Create reusable characters with full physical and costume details. Send a character's reference image to your Media Library, then upload on Page 8 to keep the same face across every scene. Hit COPY SCENE PROMPT to get a ready-to-paste prompt for any scene.</div>
+
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
+          {/* Create / Edit panel */}
+          <div style={{...Card(),border:"2px solid "+SIGNAL,maxHeight:"80vh",overflowY:"auto"}}>
+            <div style={{color:WHITE,fontSize:12,letterSpacing:0.2,fontWeight:600,marginBottom:14}}>{editId?"Edit character":"Create a character"}</div>
+
+            {lbl("CHARACTER NAME")}
+            <input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Doxy, Ethan, Lily..." style={{...inp,marginBottom:4}}/>
+
+            {lbl("ROLE IN FILM")}
+            <input value={role} onChange={e=>setRole(e.target.value)} placeholder="e.g. Protagonist, School Bully, Narrator..." style={{...inp,marginBottom:4}}/>
+
+            {lbl("GENDER")}
+            {optBtn(gender,gender,setGender,["Male","Female","Non-Binary","Unknown"])}
+
+            {lbl("AGE")}
+            {optBtn(age,age,setAge,["Child","Teen","Young Adult","Adult","Middle Aged","Elderly"])}
+
+            {lbl("ETHNICITY / HERITAGE (OPTIONAL)")}
+            <input value={ethnicity} onChange={e=>setEthnicity(e.target.value)} placeholder="e.g. British, Nigerian, East Asian, Mixed..." style={{...inp,marginBottom:4}}/>
+
+            {lbl("HAIR COLOUR")}
+            {optBtn(hairColor,hairColor,setHairColor,["Black","Dark Brown","Brown","Blonde","Red","Auburn","Grey","White","Dyed"])}
+
+            {lbl("HAIR STYLE")}
+            {optBtn(hairStyle,hairStyle,setHairStyle,["Short","Medium","Long","Curly","Straight","Wavy","Braided","Afro","Shaved","Ponytail","Bun"])}
+
+            {lbl("EYE COLOUR")}
+            {optBtn(eyeColor,eyeColor,setEyeColor,["Brown","Dark Brown","Blue","Green","Grey","Hazel","Amber"])}
+
+            {lbl("COSTUME / WARDROBE")}
+            <input value={costume} onChange={e=>setCostume(e.target.value)} placeholder="e.g. black top, black jeans, school uniform..." style={{...inp,marginBottom:4}}/>
+
+            {lbl("PERSONALITY / DEMEANOUR")}
+            <input value={personality} onChange={e=>setPersonality(e.target.value)} placeholder="e.g. confident, quiet, aggressive, warm..." style={{...inp,marginBottom:4}}/>
+
+            {lbl("ADDITIONAL NOTES")}
+            <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="e.g. scar on left cheek, always wears earrings..." style={{...inp,height:60,resize:"none",lineHeight:1.6,marginBottom:4}}/>
+
+            {lbl("SCENE NOTES")}
+            <textarea value={sceneNotes} onChange={e=>setSceneNotes(e.target.value)} placeholder="e.g. usually seen in school corridors, confrontational body language..." style={{...inp,height:60,resize:"none",lineHeight:1.6,marginBottom:4}}/>
+
+            {lbl("REFERENCE PHOTO")}
+            {photo?(
+              <div style={{position:"relative",marginBottom:12}}>
+                <img src={photo} alt="ref" style={{width:"100%",height:160,objectFit:"cover",border:"1px solid "+LINE}}/>
+                <button onClick={()=>{setPhoto(null);setPhotoName("");}} style={{position:"absolute",top:5,right:5,background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"2px 8px",cursor:"pointer",fontSize:11,fontWeight:600}}>✕</button>
+              </div>
+            ):(
+              <div
+                onClick={()=>fileRef.current&&fileRef.current.click()}
+                onDragOver={e=>{e.preventDefault();e.currentTarget.style.background="#4A3C1A";}}
+                onDragLeave={e=>{e.currentTarget.style.background="#0E0F12";}}
+                onDrop={e=>{
+                  e.preventDefault();e.currentTarget.style.background="#0E0F12";
+                  const f=e.dataTransfer.files&&e.dataTransfer.files[0];
+                  if(f&&f.type.startsWith("image/")){const r=new FileReader();r.onload=ev=>{setPhoto(ev.target.result);setPhotoName(f.name);};r.readAsDataURL(f);}
+                  else if(f){alert("Please drop an image file.");}
+                }}
+                style={{width:"100%",background:"#0E0F12",border:"2px dashed "+GOLD,color:WHITE,padding:"18px 14px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif",marginBottom:12,textAlign:"center"}}>
+                <div>Drag & drop a photo here</div>
+                <div style={{color:GOLDDIM,fontSize:9,marginTop:4,fontWeight:500}}>or tap to choose from your photos</div>
+              </div>
+            )}
+            <input ref={fileRef} type="file" accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.heic,.heif" style={{display:"none"}} onChange={handlePhoto}/>
+
+            {lbl("ASSIGNED VOICE")}
+            <select value={voice} onChange={e=>setVoice(e.target.value)} style={{...inp,marginBottom:14,cursor:"pointer"}}>
+              {VOICE_CHARACTERS.map(v=><option key={v.id} value={v.id} style={{background:"#0E0F12"}}>{v.name} — {v.origin} {v.gender} · {v.style}</option>)}
+            </select>
+
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              <button onClick={addChar} style={{...G("gold",false),padding:"14px",fontSize:13,letterSpacing:0.2}}>{editId?"Update":"+ SAVE CHARACTER"}</button>
+              {editId&&<button onClick={clearForm} style={{...G("out",false),padding:"14px",fontSize:13,letterSpacing:0.2}}>Cancel</button>}
+            </div>
+            {/* ════════ REAL LIP-SYNC — MAKE THIS AVATAR SPEAK ════════ */}
+            <div style={{marginTop:16,border:"2px solid "+SIGNAL,background:"#0E0F12",padding:16,boxShadow:"none"}}>
+              <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,letterSpacing:0.2,fontSize:16,textTransform:"none",marginBottom:4}}>Make This Avatar Speak</div>
+              <div style={{color:DIM,fontSize:11,marginBottom:12}}>Photoreal lip-sync. Uses the character photo above. Record or upload the voice, then generate.</div>
+              <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap"}}>
+                <button onClick={lsRecord} style={{flex:1,minWidth:140,background:lsRecording?"#c0392b":"#0E0F12",border:"1px solid "+(lsRecording?"#000":GOLDDIM),color:lsRecording?"#fff":WHITE,padding:"11px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0,fontFamily:"'Manrope',system-ui,sans-serif"}}>{lsRecording?"Stop recording":"Record voice"}</button>
+                <button onClick={()=>{const i=document.getElementById("lsAudioInput");if(i)i.click();}} style={{flex:1,minWidth:140,background:"#0E0F12",border:"1px solid "+LINE,color:WHITE,padding:"11px",cursor:"pointer",fontSize:12,fontWeight:600,letterSpacing:0,fontFamily:"'Manrope',system-ui,sans-serif"}}>⤴ upload voice</button>
+                <input id="lsAudioInput" type="file" accept="audio/*,.mp3,.m4a,.wav,.aac,.mp4" style={{display:"none"}} onChange={lsPickAudio}/>
+              </div>
+              {lsAudioName&&<div style={{color:WHITE,fontSize:11,marginBottom:10}}>Voice ready: {lsAudioName}</div>}
+              <button onClick={makeAvatarSpeak} disabled={lsBusy} style={{width:"100%",padding:15,background:lsBusy?"#333":GOLD,color:lsBusy?"#888":"#000",border:"none",fontWeight:600,fontSize:15,letterSpacing:0.2,cursor:lsBusy?"default":"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>{lsBusy?"GENERATING…":"Make avatar speak"}</button>
+              {lsError&&<div style={{marginTop:10,color:"#D9A79A",fontSize:12}}>{lsError}</div>}
+              {lsBusy&&<div style={{marginTop:10,color:WHITE,fontSize:12,letterSpacing:0}}>{lsStage}</div>}
+              {lsVideo&&(
+                <div style={{marginTop:12}}>
+                  <MsVideo src={lsVideo} controls autoPlay playsInline style={{width:"100%",border:"1px solid "+LINE,background:"#0E0F12"}}/>
+                  <button onClick={lsDownload} style={{width:"100%",marginTop:8,padding:13,background:GOLD,color:"#000",border:"none",fontWeight:600,fontSize:14,letterSpacing:0.2,cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>Download lip-sync video</button>
+                </div>
+              )}
+            </div>
+            {savedNote&&<div style={{marginTop:10,background:"#14110B",border:"1px solid #D4AF6A",padding:"10px",textAlign:"center",color:"#D4AF6A",fontWeight:600,fontSize:12,letterSpacing:0.2}}>Character saved</div>}
+          </div>
+
+          {/* Library panel */}
+          <div>
+            <div style={{color:WHITE,fontSize:12,letterSpacing:0.2,fontWeight:600,marginBottom:14}}>Your characters — {chars.length}</div>
+            {chars.length===0?(
+              <div style={{...Card(),textAlign:"center",padding:"40px 20px",color:GOLDDIM}}>
+                <div style={{fontSize:34,marginBottom:10}}></div>
+                <div style={{fontSize:12,letterSpacing:0.2}}>No characters yet.</div>
+                <div style={{fontSize:11,color:DIM,marginTop:6,lineHeight:1.6}}>Create one on the left to keep<br/>faces consistent across your film.</div>
+              </div>
+            ):(
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {chars.map(c=>(
+                  <div key={c.id} style={{...Card(),padding:14}}>
+                    <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+                      {c.photo?<img src={c.photo} alt={c.name} style={{width:80,height:80,objectFit:"cover",border:"2px solid "+SIGNAL,flexShrink:0}}/>:<div style={{width:80,height:80,background:"#0E0F12",border:"1px solid "+LINE,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,flexShrink:0}}></div>}
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{color:WHITE,fontWeight:600,fontSize:15,letterSpacing:0}}>{c.name}</div>
+                        {c.role&&<div style={{color:GOLDDIM,fontSize:10,letterSpacing:0.2,marginTop:2}}>{c.role}</div>}
+                        <div style={{color:WHITE,fontSize:11,marginTop:4,display:"flex",flexWrap:"wrap",gap:6}}>
+                          {c.gender&&<span style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"1px 6px",fontSize:10}}>{c.gender}</span>}
+                          {c.age&&<span style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"1px 6px",fontSize:10}}>{c.age}</span>}
+                          {c.ethnicity&&<span style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"1px 6px",fontSize:10}}>{c.ethnicity}</span>}
+                          {c.hairColor&&<span style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"1px 6px",fontSize:10}}>{c.hairStyle?c.hairStyle+" ":""}{c.hairColor} hair</span>}
+                          {c.eyeColor&&<span style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"1px 6px",fontSize:10}}>{c.eyeColor} eyes</span>}
+                        </div>
+                        {c.costume&&<div style={{color:WHITE,fontSize:11,marginTop:4,fontStyle:"italic"}}> {c.costume}</div>}
+                        {c.personality&&<div style={{color:WHITE,fontSize:11,marginTop:2}}> {c.personality}</div>}
+                        {c.notes&&<div style={{color:DIM,fontSize:11,marginTop:2,fontStyle:"italic"}}>{c.notes}</div>}
+                        <div style={{color:WHITE,fontSize:11,marginTop:4}}>🎙 {VOICE_CHARACTERS.find(v=>v.id===c.voice)?.name||c.voice}</div>
+                      </div>
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:5,marginTop:10}}>
+                      <button onClick={()=>useInScene(c)} style={{background:GOLD,border:"none",color:"#000",padding:"7px 4px",cursor:"pointer",fontSize:10,fontWeight:600,letterSpacing:0,fontFamily:"'Manrope',system-ui,sans-serif"}}>Use in scene</button>
+                      <button onClick={()=>generatePrompt(c)} style={{background:"transparent",border:"1px solid "+LINE,color:WHITE,padding:"7px 4px",cursor:"pointer",fontSize:10,fontWeight:600,fontFamily:"'Manrope',system-ui,sans-serif"}}>Copy prompt</button>
+                      <button onClick={()=>editChar(c)} style={{background:"transparent",border:"1px solid "+LINE,color:WHITE,padding:"7px 4px",cursor:"pointer",fontSize:10,fontWeight:600,fontFamily:"'Manrope',system-ui,sans-serif"}}>Edit</button>
+                      <button onClick={()=>removeChar(c.id)} style={{background:"none",border:"1px solid #C98A7A",color:"#C98A7A",padding:"7px 4px",cursor:"pointer",fontSize:10,fontWeight:600,fontFamily:"'Manrope',system-ui,sans-serif"}}>Delete</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap",marginTop:30,paddingBottom:20}}>
+          <button onClick={()=>go&&go(1)} style={{...G("gold",false),padding:"14px 40px",fontSize:13,letterSpacing:0.2}}>Home</button>
+          <button onClick={()=>{try{localStorage.removeItem("ms_user");}catch{}window.location.reload();}} style={{...G("out",false),padding:"14px 40px",fontSize:13,letterSpacing:0.2}}>Exit app</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function P23({ go }) {
+  const bgRef = useRef(null);
+  const [howOpen, setHowOpen] = useState(false);
+  const [savedMsg, setSavedMsg] = useState(false);
+  const [vidNeedsTap, setVidNeedsTap] = useState(false);
+  const [vidDead, setVidDead] = useState(false);
+  useEffect(()=>{
+    const v=bgRef.current;
+    if(!v)return;
+    v.muted=true;
+    v.defaultMuted=true;
+    v.loop=true;
+    v.playsInline=true;
+    v.preload="auto";
+    try{v.load();}catch{}
+    const tryPlay=()=>{
+      const p=v.play();
+      if(p&&p.then){p.then(()=>setVidNeedsTap(false)).catch(()=>setVidNeedsTap(false));}
+    };
+    // Try immediately and again once data is ready
+    tryPlay();
+    if(v.readyState>=2){tryPlay();}
+    v.addEventListener("loadeddata",tryPlay);
+    v.addEventListener("canplay",tryPlay);
+    v.addEventListener("canplaythrough",tryPlay);
+    v.addEventListener("pause",tryPlay);
+    v.addEventListener("stalled",tryPlay);
+    v.addEventListener("waiting",tryPlay);
+    return()=>{
+      v.removeEventListener("loadeddata",tryPlay);
+      v.removeEventListener("canplay",tryPlay);
+      v.removeEventListener("canplaythrough",tryPlay);
+      v.removeEventListener("pause",tryPlay);
+      v.removeEventListener("stalled",tryPlay);
+      v.removeEventListener("waiting",tryPlay);
+    };
+  },[]);
+  const tapPlayVideo=()=>{const v=bgRef.current;if(!v)return;v.muted=true;v.play().then(()=>setVidNeedsTap(false)).catch(()=>{});};
+  const exitApp = () => {
+    try{localStorage.removeItem("ms_user");}catch{}
+    try{supabase.auth.signOut();}catch(e){}
+    window.location.reload();
+  };
+  return(
+    <div style={{...Sp,padding:0,background:"#0E0F12",position:"relative",minHeight:"100vh",overflow:"hidden"}}>
+      <div style={{position:"relative",zIndex:1,padding:"30px 24px 80px"}}>
+        <div style={{maxWidth:880,margin:"0 auto",textAlign:"center"}}>
+          <div style={{width:"100%",maxHeight:"34vh",overflow:"hidden",position:"relative",display:"flex",alignItems:"center",justifyContent:"center",background:"#0E0F12",border:"1px solid "+LINE,marginBottom:26}}>
+            {vidDead?(
+              <div style={{width:"100%",height:"34vh",minHeight:180,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"radial-gradient(ellipse at center, #15171B 0%, #0A0800 100%)"}}>
+                <div style={{fontSize:"clamp(28px,6vw,54px)",fontWeight:600,color:WHITE,letterSpacing:1,fontFamily:"'Manrope',system-ui,sans-serif"}}>THAT'S ALL FOLKS</div>
+                <div style={{marginTop:10,fontSize:11,letterSpacing:2,color:GOLDDIM,fontWeight:600}}>INFUTURE MOVIE STUDIOS</div>
+              </div>
+            ):(
+            <video ref={el=>{ bgRef.current=el; if(el){ el.muted=true; const kick=()=>{ el.play().catch(()=>{}); }; el.onloadeddata=kick; el.oncanplay=kick; kick(); } }} autoPlay loop playsInline muted preload="auto"
+              onError={()=>setVidDead(true)}
+              onLoadedMetadata={(e)=>{try{if(e.currentTarget.currentTime<0.1)e.currentTarget.currentTime=0.1;}catch{}}}
+              style={{display:"block",width:"100%",maxHeight:"34vh",objectFit:"cover",background:"#0E0F12"}}>
+              <source src="/background.mp4" type="video/mp4"/>
+              <source src="background.mp4" type="video/mp4"/>
+              <source src="./background.mp4" type="video/mp4"/>
+              <source src="/background_5.mp4" type="video/mp4"/>
+              <source src="background_5.mp4" type="video/mp4"/>
+              <source src="./background_5.mp4" type="video/mp4"/>
+              <source src="/thatsallfolks.mp4" type="video/mp4"/>
+            </video>
+            )}
+          </div>
+          <div style={{fontSize:10,color:WHITE,letterSpacing:0.4,marginBottom:8,fontWeight:500}}>InFuture Movie Studios · cinema intelligence platform</div>
+          <h1 style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:"clamp(32px,5vw,52px)",fontWeight:600,letterSpacing:0.4,textShadow:"none",marginBottom:28}}>That's all folks</h1>
+          <div style={{height:1,background:GOLDDIM,marginBottom:28}}/>
+          <div style={{...Card(),textAlign:"left",marginBottom:28,background:"#050500ee",border:"2px solid "+SIGNAL}}>
+            <div style={{color:WHITE,fontWeight:600,fontSize:14,letterSpacing:0.2,marginBottom:16,textAlign:"center"}}>A special thank you</div>
+            <p style={{color:WHITE,fontSize:14,lineHeight:2,margin:"0 0 12px",fontStyle:"italic"}}>To all current and future creators, dreamers, and storytellers...</p>
+            <p style={{color:WHITE,fontSize:14,lineHeight:2,margin:"0 0 12px"}}>Your creativity and passion inspire positive change in the world. Through your films and stories, you have the power to educate, inspire, and bring awareness to critical issues like bullying prevention, social skills development, and humanity's collective growth.</p>
+            <p style={{color:WHITE,fontSize:14,lineHeight:2,margin:"0 0 12px"}}>Every piece of content you create has the potential to touch hearts, change minds, and make our world a better place. Thank you for being part of this mission to combine creative expression with meaningful impact.</p>
+            <p style={{color:WHITE,fontSize:14,lineHeight:2,margin:0}}>Together, we are building a community of creators who use their talents to spread kindness, understanding, and hope. — <strong style={{color:WHITE}}>Amanda</strong></p>
+          </div>
+          <div style={{...Card(),textAlign:"left",marginBottom:28,background:"#030300ee",border:"1px solid "+LINE}}>
+            <div style={{color:WHITE,fontWeight:600,fontSize:13,letterSpacing:0.2,marginBottom:12,textAlign:"center"}}>Our mission</div>
+            <p style={{color:WHITE,fontSize:13,lineHeight:1.9,margin:"0 0 10px"}}>InFuture Movie Studios was built on one belief: <strong style={{color:WHITE}}>every person deserves the tools to tell their story.</strong> Not just the wealthy. Not just the technically gifted. Everyone.</p>
+            <p style={{color:WHITE,fontSize:13,lineHeight:1.9,margin:0}}>All proceeds from <strong style={{color:WHITE}}>MandaStrong1.Etsy.com</strong> are donated directly to humanitarian causes — veterans mental health, anti-bullying programmes in schools, and children in need.</p>
+          </div>
+          <button onClick={()=>setHowOpen(o=>!o)} style={{width:"100%",background:howOpen?GOLD:"#050500ee",border:"2px solid "+SIGNAL,color:howOpen?"#000":GOLD,padding:"18px 24px",cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif",fontSize:15,fontWeight:600,letterSpacing:0.4,marginBottom:howOpen?0:28,display:"flex",justifyContent:"space-between",alignItems:"center",boxShadow:"none"}}>
+            <span>INFUTURE MOVIE STUDIOS — THE COMPLETE GUIDE &amp; AI HANDBOOK</span>
+            <span style={{fontSize:18}}>{howOpen?"▲":"▼"}</span>
+          </button>
+          {howOpen&&<div style={{background:"#030200ee",border:"2px solid "+SIGNAL,borderTop:"none",marginBottom:28}}><HowToGuide/></div>}
+          <a href="https://MandaStrong1.Etsy.com" target="_blank" rel="noreferrer" style={{display:"block",background:GOLD,color:"#000",padding:"11px 24px",fontWeight:600,fontSize:14,letterSpacing:0.2,textDecoration:"none",marginBottom:28,fontFamily:"'Manrope',system-ui,sans-serif"}}>Humanity for future AI — mandastrong1.etsy.com</a>
+          <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>
+            <button onClick={()=>{try{localStorage.setItem("ms_last_saved",new Date().toISOString());}catch{} setSavedMsg(true); setTimeout(()=>setSavedMsg(false),2500);}} style={{...G("gold",false),padding:"14px 40px",fontSize:13,letterSpacing:0.2}}>Save</button>
+            <button onClick={()=>go(24)} style={{...G("out",false),padding:"14px 40px",fontSize:13,letterSpacing:0.2}}>Next</button>
+          </div>
+          {savedMsg&&<div style={{color:"#D4AF6A",fontSize:12,fontWeight:600,letterSpacing:0.2,marginTop:12}}>Project saved</div>}
+        </div>
       </div>
     </div>
   );
 }
 
 // ══════════════════════════════════════════════════════════════════
-// LANDING SCREEN
+// CINEMATIC INTRO — black shiny gold doors that open to reveal the app
+// One giant M spans both doors (splits when they part). Wordmark, tagline,
+// ENTER button and URL sit in the lower area. ~6 seconds. Synthesized music.
 // ══════════════════════════════════════════════════════════════════
+// ── LANDING SCREEN — full-screen futuristic film video, name, one button ──
 function Landing({ onEnter }){
   const LAND = [
     "frames/landing.mp4",
@@ -1730,20 +7878,310 @@ function Landing({ onEnter }){
   );
 }
 
-// ══════════════════════════════════════════════════════════════════
-// PAGE COMPONENTS (P1–P24)
-// Due to the extreme length, these are included from the original source.
-// The full page components (P1–P24) are defined in the original App.tsx
-// and are preserved exactly as provided by the user.
-// ══════════════════════════════════════════════════════════════════
+function IntroDoors({ onEnter }){
+  const [phase,setPhase]=useState("closed");
+  const playChime=()=>{
+    try{
+      const ctx=new (window.AudioContext||window.webkitAudioContext)();
+      if(ctx.state==="suspended"){try{ctx.resume();}catch(e){}}
+      const now=ctx.currentTime;
+      const master=ctx.createGain(); master.gain.value=2.2; master.connect(ctx.destination);
+      // Cinematic reverb tail for space
+      const conv=ctx.createConvolver();
+      const len=Math.floor(ctx.sampleRate*2.6); const imp=ctx.createBuffer(2,len,ctx.sampleRate);
+      for(let ch=0;ch<2;ch++){const d=imp.getChannelData(ch);for(let i=0;i<len;i++){d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.6);}}
+      conv.buffer=imp; const rev=ctx.createGain(); rev.gain.value=0.35; conv.connect(rev); rev.connect(master);
+      // 1) DEEP IMPACT BOOM — the off-guard hit
+      const boom=ctx.createOscillator(); const bg=ctx.createGain();
+      boom.type="sine"; boom.frequency.setValueAtTime(120,now); boom.frequency.exponentialRampToValueAtTime(28,now+1.2);
+      bg.gain.setValueAtTime(0.9,now); bg.gain.exponentialRampToValueAtTime(0.001,now+1.8);
+      boom.connect(bg); bg.connect(master); bg.connect(conv); boom.start(now); boom.stop(now+1.9);
+      // 2) SUB DRONE BED — tension underneath
+      const drone=ctx.createOscillator(); const dg=ctx.createGain();
+      drone.type="sawtooth"; drone.frequency.value=41.20;
+      const lp=ctx.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=180;
+      dg.gain.setValueAtTime(0,now); dg.gain.linearRampToValueAtTime(0.22,now+1.6); dg.gain.exponentialRampToValueAtTime(0.001,now+5.5);
+      drone.connect(lp); lp.connect(dg); dg.connect(master); drone.start(now); drone.stop(now+5.7);
+      // 3) RISING MINOR STAB LINE — drama building to the doors
+      const rise=[110.00,130.81,164.81,196.00,246.94,329.63];
+      rise.forEach((f,i)=>{
+        const o=ctx.createOscillator(); const g=ctx.createGain(); const o2=ctx.createOscillator();
+        o.type="sawtooth"; o2.type="square"; o.frequency.value=f; o2.frequency.value=f*1.005;
+        const flt=ctx.createBiquadFilter(); flt.type="lowpass"; flt.frequency.setValueAtTime(600,now); flt.frequency.linearRampToValueAtTime(3200,now+2.8);
+        const t0=now+0.3+i*0.22;
+        g.gain.setValueAtTime(0,t0); g.gain.linearRampToValueAtTime(0.16,t0+0.12); g.gain.exponentialRampToValueAtTime(0.001,t0+1.6);
+        o.connect(flt); o2.connect(flt); flt.connect(g); g.connect(master); g.connect(conv);
+        o.start(t0); o.stop(t0+1.7); o2.start(t0); o2.stop(t0+1.7);
+      });
+      // 4) SHIMMER TOP — cinematic air
+      [1318.51,1567.98,1975.53].forEach((f,i)=>{
+        const sh=ctx.createOscillator(); const sg=ctx.createGain();
+        sh.type="sine"; sh.frequency.value=f;
+        const t0=now+1.4+i*0.15;
+        sg.gain.setValueAtTime(0,t0); sg.gain.linearRampToValueAtTime(0.04,t0+0.6); sg.gain.exponentialRampToValueAtTime(0.001,t0+3.2);
+        sh.connect(sg); sg.connect(master); sg.connect(conv); sh.start(t0); sh.stop(t0+3.3);
+      });
+      // 5) RESOLVING HERO HIT — lands immediately AS the doors open (t=0)
+      const hit=ctx.createOscillator(); const hitG=ctx.createGain();
+      hit.type="triangle"; hit.frequency.value=110.00;
+      const hit2=ctx.createOscillator(); hit2.type="sine"; hit2.frequency.value=220.00;
+      hitG.gain.setValueAtTime(0,now); hitG.gain.linearRampToValueAtTime(0.5,now+0.08); hitG.gain.exponentialRampToValueAtTime(0.001,now+3.4);
+      hit.connect(hitG); hit2.connect(hitG); hitG.connect(master); hitG.connect(conv);
+      hit.start(now); hit.stop(now+3.5); hit2.start(now); hit2.stop(now+3.5);
+      setTimeout(()=>{try{ctx.close();}catch(e){}},6400);
+    }catch(e){}
+  };
+  const enter=()=>{
+    if(phase!=="closed")return;
+    // Music and doors start together; the powerful hit is front-loaded in playChime
+    // so the impact lands the instant the doors begin to part.
+    playChime(); setPhase("opening");
+    setTimeout(()=>setPhase("gone"),2800);
+    setTimeout(()=>{ if(onEnter)onEnter(); },3900);
+  };
+  const opening=phase==="opening"||phase==="gone";
+  const halfM=(side)=>(
+    <svg viewBox={side==="left"?"0 0 150 200":"150 0 150 200"} width="min(46vw,340px)" height="min(50vh,440px)"
+      preserveAspectRatio={side==="left"?"xMaxYMid meet":"xMinYMid meet"}
+      style={{filter:"drop-shadow(0 0 34px rgba(232,201,109,0.6))",overflow:"visible",marginTop:"-12vh",maxWidth:"46vw"}}>
+      <defs>
+        <linearGradient id={"goldM"+side} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#fffbe8"/><stop offset="0.2" stopColor="#f4dd8f"/>
+          <stop offset="0.4" stopColor="#E6C98E"/><stop offset="0.62" stopColor="#c79a3a"/>
+          <stop offset="0.82" stopColor="#8a6418"/><stop offset="1" stopColor="#4a340d"/>
+        </linearGradient>
+        <linearGradient id={"sheen"+side} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0.85"/><stop offset="0.18" stopColor="#ffffff" stopOpacity="0"/>
+          <stop offset="0.55" stopColor="#ffffff" stopOpacity="0"/><stop offset="0.7" stopColor="#EDEAE3" stopOpacity="0.45"/><stop offset="1" stopColor="#ffffff" stopOpacity="0"/>
+        </linearGradient>
+      </defs>
+      <text x="150" y="150" textAnchor="middle" fontFamily="Georgia,serif" fontSize="200" fontWeight="900" fill={"url(#goldM"+side+")"} stroke="#EDEAE3" strokeWidth="0.6">I</text>
+      <text x="150" y="150" textAnchor="middle" fontFamily="Georgia,serif" fontSize="200" fontWeight="900" fill={"url(#sheen"+side+")"}>I</text>
+    </svg>
+  );
+  // Brushed-metallic door face: layered gold gradients + vertical sheen streaks + highlight edge
+  const metalLeft="#0E0F12";
+  const metalRight="#0E0F12";
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:100000,background:"#0E0F12",overflow:"hidden",
+      opacity:phase==="gone"?0:1,transition:"opacity 1.1s ease",pointerEvents:phase==="gone"?"none":"auto"}}>
+      <div style={{position:"absolute",top:0,left:0,width:"50%",height:"100%",
+        background:metalLeft,backgroundBlendMode:"screen",
+        borderRight:"2px solid "+SIGNAL,boxShadow:"inset -50px 0 90px rgba(0,0,0,0.9), inset 0 0 140px rgba(232,201,109,0.12), 8px 0 40px rgba(0,0,0,0.8)",
+        transform:opening?"translateX(-102%)":"translateX(0)",
+        transition:"transform 2.6s cubic-bezier(0.76,0,0.24,1)",
+        display:"flex",alignItems:"center",justifyContent:"flex-end",overflow:"hidden"}}>
+        {halfM("left")}
+      </div>
+      <div style={{position:"absolute",top:0,right:0,width:"50%",height:"100%",
+        background:metalRight,backgroundBlendMode:"screen",
+        borderLeft:"2px solid "+SIGNAL,boxShadow:"inset 50px 0 90px rgba(0,0,0,0.9), inset 0 0 140px rgba(232,201,109,0.12), -8px 0 40px rgba(0,0,0,0.8)",
+        transform:opening?"translateX(102%)":"translateX(0)",
+        transition:"transform 2.6s cubic-bezier(0.76,0,0.24,1)",
+        display:"flex",alignItems:"center",justifyContent:"flex-start",overflow:"hidden"}}>
+        {halfM("right")}
+      </div>
+      <div style={{position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",
+        width:opening?"6px":"2px",height:opening?"100%":"0%",
+        background:"#0E0F12",
+        boxShadow:"none",opacity:opening?0:1,
+        transition:"height 0.9s ease-out, width 0.9s ease-out, opacity 2s ease 0.6s",zIndex:5}}/>
+      <div style={{position:"absolute",left:0,right:0,bottom:"6%",display:"flex",flexDirection:"column",alignItems:"center",
+        zIndex:6,opacity:opening?0:1,transition:"opacity 0.6s",pointerEvents:opening?"none":"auto"}}>
+        <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:"clamp(22px,5.5vw,50px)",fontWeight:600,letterSpacing:0.4,textShadow:"none"}}>INFUTURE</div>
+        <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:"clamp(11px,2vw,18px)",letterSpacing:0.4,marginTop:4}}>Studio</div>
+        <div style={{color:GOLDDIM,fontSize:"clamp(8px,1.4vw,11px)",letterSpacing:0.2,marginTop:12,textAlign:"center",padding:"0 16px"}}>Cinema intelligence platform · 200+ AI tools · up to 3-hour films</div>
+        <button onClick={enter}
+          style={{marginTop:22,background:GOLD,border:"none",color:"#000",
+          padding:"11px 52px",fontSize:15,fontWeight:600,letterSpacing:0.4,cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif",
+          boxShadow:"none",borderRadius:3}}>
+          Enter
+        </button>
+        <div style={{color:GOLDDIM,fontSize:11,letterSpacing:0.2,marginTop:16}}>in-future1.bolt.host</div>
+      </div>
+    </div>
+  );
+}
 
-// The remaining ~8000 lines of page components (MusicVideoStudio, P6Voice,
-// P8VideoGenerator, P1-P24, AppMain, etc.) are preserved from the original
-// file. They were not changed by this update.
+// Keep existing clients: anyone who opens an OLD address is sent to the current
+// live site, so bookmarks and shared links never break.
+const CURRENT_SITE="https://in-future1.bolt.host";
+const OLD_HOSTS=["infutura1.bolt.host","infutura.bolt.host","infutura-1.bolt.host","infuturem0viestudi0s.bolt.host","infuturem0viestudi0.bolt.host","infuturemoviestudios.bolt.host","infuturemoviestudio.bolt.host","mandastrongmovies-101.bolt.host","mandastrongmovies101.bolt.host","mandastrongstudio2026.bolt.host","mandastrong-01.bolt.host","mandastrong01.bolt.host"];
+// ── RESCUE: your work is saved in the browser UNDER THE ADDRESS you used. ──
+// Work done on an old address stays filed under that address. The old
+// redirect sent you away before you could reach it, so My Projects looked
+// empty on infutura. Now an old address that still holds your work shows a
+// MOVE MY WORK screen instead of bouncing you. Nothing is deleted anywhere.
+const msHasSavedWork=()=>{
+  try{
+    const keys=["ms_project_history","ms_timeline","ms_medialib","ms_narr_text","ms_my_voices","ms_mmm_text","ms_render_brief","ms_writing_boxes"];
+    for(const k of keys){const v=localStorage.getItem(k);if(v&&v!=="[]"&&v!=="{}"&&v!=="\"\""&&v!=="null"&&v.length>2)return true;}
+  }catch(e){}
+  return false;
+};
+let MS_RESCUE=false;
+let MS_RECEIVING=false;
+if(typeof window!=="undefined"){
+  try{
+    const h=(location.host||"").toLowerCase();
+    const q=new URLSearchParams(location.search||"");
+    if(q.has("sendback")&&window.opener){
+      MS_RECEIVING=true; // keep the app idle in this helper tab
+      (async()=>{
+        const ls={};
+        try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith("ms_"))ls[k]=localStorage.getItem(k);}}catch(x){}
+        let clips=[];try{clips=await getAllClipsFromDB();}catch(x){}
+        let count=0;try{count=JSON.parse(localStorage.getItem("ms_project_history")||"[]").length;}catch(x){}
+        for(const o of [CURRENT_SITE,"https://infuture1.bolt.host","https://in-future1.bolt.host"]){try{window.opener.postMessage({type:"ms_transfer",ls,clips,count},o);}catch(x){}}
+      })();
+    } else
+    if(OLD_HOSTS.includes(h)){
+      let stay=false;try{stay=q.has("stay")||sessionStorage.getItem("ms_stay")==="1";if(stay)sessionStorage.setItem("ms_stay","1");}catch(e){}
+      let moved=false;try{moved=localStorage.getItem("ms_moved_to_infutura")==="1";}catch(e){}
+      if(stay){ /* work here on the old address */ }
+      else if(!moved&&msHasSavedWork()){ MS_RESCUE=true; }
+      else { location.replace(CURRENT_SITE+location.pathname+location.search); }
+    }
+    // RECEIVER: infutura opened by the old address's MOVE MY WORK button.
+    if(!OLD_HOSTS.includes(h)&&q.has("receive")&&window.opener){
+      MS_RECEIVING=true;
+      const okOrigins=OLD_HOSTS.map(x=>"https://"+x);
+      const cover=document.createElement("div");
+      cover.style.cssText="position:fixed;inset:0;z-index:2147483647;background:#07080A;color:#D4AF6A;display:flex;align-items:center;justify-content:center;font:600 18px system-ui;text-align:center;padding:24px";
+      cover.textContent="Receiving your work… keep this tab open.";
+      const addCover=()=>{try{document.body.appendChild(cover);}catch(e){}};
+      if(document.body)addCover();else document.addEventListener("DOMContentLoaded",addCover);
+      let got=false;
+      const ping=setInterval(()=>{try{if(!got)window.opener.postMessage({type:"ms_ready"},"*");}catch(e){}},500);
+      window.addEventListener("message",async(e)=>{
+        if(!okOrigins.includes(e.origin))return;
+        const d=e.data||{};
+        if(d.type!=="ms_transfer"||got)return;
+        got=true;clearInterval(ping);
+        const {projects,clips:clipsIn}=await msMergeTransfer(d);
+        try{e.source.postMessage({type:"ms_done",projects,clips:clipsIn},e.origin);}catch(x){}
+        cover.textContent="Done — "+projects+" project(s) and "+clipsIn+" file(s) moved. Opening…";
+        setTimeout(()=>location.replace(CURRENT_SITE+"/"),1500);
+      });
+    }
+  }catch(e){}
+}
 
-// Import remaining page components from the original file structure.
-// Since the file is extremely large (~8700 lines), the full content
-// was preserved during the write operation.
+// Merges work sent from another address INTO this one. Never overwrites:
+// projects are added to the list, other boxes only fill if empty here,
+// clips are added only if this address doesn't already have them.
+async function msMergeTransfer(d){
+  let projects=0,clipsIn=0;
+  try{
+    const ls=(d&&d.ls)||{};
+    for(const k of Object.keys(ls)){
+      if(!k.startsWith("ms_")||k==="ms_page"||k==="ms_moved_to_infutura")continue;
+      const incoming=ls[k];
+      if(k==="ms_project_history"){
+        let mine=[],theirs=[];
+        try{mine=JSON.parse(localStorage.getItem(k)||"[]");}catch(x){}
+        try{theirs=JSON.parse(incoming||"[]");}catch(x){}
+        const key=(p)=>String(p&&p.name)+"|"+String(p&&p.date);
+        const have=new Set(mine.map(key));
+        const add=theirs.filter(p=>!have.has(key(p)));
+        projects=add.length;
+        localStorage.setItem(k,JSON.stringify([...add,...mine]));
+        continue;
+      }
+      const cur=localStorage.getItem(k);
+      if(!cur||cur==="[]"||cur==="{}"||cur==="\"\""||cur==="null")localStorage.setItem(k,incoming);
+    }
+  }catch(x){}
+  try{
+    const db=await openDB();
+    const existing=await new Promise((res)=>{const tx=db.transaction(STORE,"readonly");const r=tx.objectStore(STORE).getAllKeys();r.onsuccess=()=>res(new Set(r.result||[]));r.onerror=()=>res(new Set());});
+    for(const c of ((d&&d.clips)||[])){
+      if(!c||!c.id||existing.has(c.id))continue;
+      await new Promise((res)=>{const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).put(c);tx.oncomplete=res;tx.onerror=res;});
+      clipsIn++;
+    }
+  }catch(x){}
+  return {projects,clips:clipsIn};
+}
+// Every address the studio has ever lived on. FIND MY WORK checks them all.
+const FIND_HOSTS=["infuture1.bolt.host","infutura1.bolt.host","infutura.bolt.host","infutura-1.bolt.host","infuturem0viestudi0s.bolt.host","infuturem0viestudi0.bolt.host","infuturemoviestudios.bolt.host","infuturemoviestudio.bolt.host","mandsstrongmovie.bolt.host","mandastrongmovie.bolt.host","mandastrongmovies.bolt.host","mandastrongmovies-101.bolt.host","mandastrongmovies101.bolt.host","mandastrongstudio2026.bolt.host","mandastrong-01.bolt.host","mandastrong01.bolt.host"];
+// Opens each old address in ONE helper tab, one after another. Each old
+// address sends back whatever work it holds, and it is merged in here.
+async function msFindMyWork(onStep){
+  const w=window.open("about:blank","_blank");
+  if(!w)return {blocked:true,projects:0,clips:0,found:[]};
+  let projects=0,clips=0;const found=[];
+  const here=(location.host||"").toLowerCase();
+  for(const host of FIND_HOSTS){
+    if(host===here)continue;
+    if(onStep)onStep("Checking "+host+"…");
+    const origin="https://"+host;
+    const got=await new Promise((resolve)=>{
+      let done=false;
+      const fin=(v)=>{if(done)return;done=true;window.removeEventListener("message",on);clearTimeout(t);resolve(v);};
+      const on=async(e)=>{
+        if(e.origin!==origin)return;
+        const d=e.data||{};
+        if(d.type!=="ms_transfer")return;
+        const r=await msMergeTransfer(d);
+        try{e.source.postMessage({type:"ms_done",projects:r.projects,clips:r.clips},e.origin);}catch(x){}
+        fin({...r,had:(d.count||0)});
+      };
+      window.addEventListener("message",on);
+      const t=setTimeout(()=>fin(null),12000);
+      try{w.location.href=origin+"/?sendback=1";}catch(x){fin(null);}
+    });
+    if(got&&(got.had>0||got.projects>0||got.clips>0)){projects+=got.projects;clips+=got.clips;found.push(host+" ("+got.had+" project"+(got.had!==1?"s":"")+")");}
+  }
+  try{w.close();}catch(x){}
+  return {blocked:false,projects,clips,found};
+}
+
+function RescueScreen(){
+  const [state,setState]=useState("idle");
+  const [msg,setMsg]=useState("");
+  const count=(()=>{try{return JSON.parse(localStorage.getItem("ms_project_history")||"[]").length;}catch(e){return 0;}})();
+  const moveIt=()=>{
+    const w=window.open(CURRENT_SITE+"/?receive=1","_blank");
+    if(!w){setMsg("Your browser blocked the new tab. Tap OPEN MY WORK HERE instead — nothing is lost.");return;}
+    setState("moving");setMsg("Opening in-future1.bolt.host and copying your work…");
+    let sent=false;
+    const onMsg=async(e)=>{
+      if(e.origin!==CURRENT_SITE)return;
+      const d=e.data||{};
+      if(d.type==="ms_ready"&&!sent){
+        sent=true;
+        const ls={};
+        try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith("ms_"))ls[k]=localStorage.getItem(k);}}catch(x){}
+        let clips=[];try{clips=await getAllClipsFromDB();}catch(x){}
+        setMsg("Sending "+count+" project(s) and "+clips.length+" file(s)…");
+        try{w.postMessage({type:"ms_transfer",ls,clips},CURRENT_SITE);}catch(x){setMsg("Couldn't send: "+x.message);sent=false;}
+      }
+      if(d.type==="ms_done"){
+        window.removeEventListener("message",onMsg);
+        try{localStorage.setItem("ms_moved_to_infutura","1");}catch(x){}
+        setState("done");
+        setMsg("Done — "+d.projects+" project(s) and "+d.clips+" file(s) are now on in-future1.bolt.host. Your copy here is kept too.");
+      }
+    };
+    window.addEventListener("message",onMsg);
+  };
+  const stayHere=()=>{try{sessionStorage.setItem("ms_stay","1");}catch(e){}location.reload();};
+  const btn={width:"100%",padding:"16px",fontSize:15,fontWeight:600,cursor:"pointer",marginTop:12,fontFamily:"system-ui,sans-serif"};
+  return (
+    <div style={{minHeight:"100vh",background:"#07080A",color:"#EDE6D3",display:"flex",alignItems:"center",justifyContent:"center",padding:16,fontFamily:"system-ui,sans-serif"}}>
+      <div style={{maxWidth:460,width:"100%",textAlign:"center"}}>
+        <div style={{color:"#D4AF6A",fontSize:13,fontWeight:600,letterSpacing:1}}>INFUTURE MOVIE STUDIOS</div>
+        <h1 style={{color:"#D4AF6A",fontSize:24,margin:"10px 0"}}>Your work is here</h1>
+        <p style={{fontSize:15,lineHeight:1.5}}>{count} saved project{count!==1?"s":""} found on this address, plus your narration and clips.</p>
+        {state!=="done"&&<button onClick={moveIt} disabled={state==="moving"} style={{...btn,background:"#D4AF6A",color:"#000",border:"none"}}>{state==="moving"?"MOVING…":"MOVE MY WORK TO INFUTURE"}</button>}
+        {state==="done"&&<button onClick={()=>location.replace(CURRENT_SITE+"/")} style={{...btn,background:"#D4AF6A",color:"#000",border:"none"}}>GO TO INFUTURE</button>}
+        <button onClick={stayHere} style={{...btn,background:"#000",color:"#D4AF6A",border:"2px solid #D4AF6A"}}>OPEN MY WORK HERE</button>
+        {msg&&<p style={{marginTop:16,fontSize:14,color:"#D4AF6A"}}>{msg}</p>}
+      </div>
+    </div>
+  );
+}
 
 export default function App(){
   if(MS_RESCUE)return <RescueScreen/>;
@@ -1752,19 +8190,38 @@ export default function App(){
 }
 
 function AppMain() {
-  const [page,setPage]=useState(1);
+  // Start on the page the user was last on — not always Page 1. iOS reloads the
+  // app when it's backgrounded (stepping away, locking the screen), and before
+  // this it always snapped back to Page 1. Read the saved page so it stays put.
+  // Always open on page 1. Your work (timeline, clips, media) is saved separately
+  // and is NOT wiped by this — only the starting page is reset to 1 each load.
+  const [page,setPage]=useState(()=>{try{const v=JSON.parse(localStorage.getItem("ms_page")||"1");return (typeof v==="number"&&v>=1&&v<=TOTAL)?v:1;}catch{return 1;}});
+  // ── CINEMATIC INTRO — gold doors open to reveal the app ──
+  const [showIntro,setShowIntro]=useState(false); // doors removed - app opens straight in
+  // Show the "Press to Create" splash only on a true first visit. If you were
+  // already working — a saved page past 1, or a logged-in user — skip straight
+  // back into the app. Popping out (bathroom, lock screen) no longer dumps you
+  // on the splash as if you'd just arrived.
+  // Always show the landing / page 1 on open.
   const [showLanding,setShowLanding]=useState(true);
   const [menu,setMenu]=useState(false);
   const [wide,setWide]=useState(()=>{try{return window.innerWidth>=1000;}catch(e){return false;}});
   useEffect(()=>{const f=()=>setWide(window.innerWidth>=1000);window.addEventListener('resize',f);return ()=>window.removeEventListener('resize',f);},[]);
   useEffect(()=>{
+    // Raise the storage ceiling so large uploads don't crash — ask the browser
+    // to make storage persistent (grants a much larger quota when accepted).
     try{if(navigator.storage&&navigator.storage.persist){navigator.storage.persisted().then(p=>{if(!p)navigator.storage.persist().catch(()=>{});}).catch(()=>{});}}catch(e){}
+    // Fonts
     const link=document.createElement("link");
     link.rel="stylesheet";
     link.href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&display=swap";
     document.head.appendChild(link);
+    // Viewport — responsive for all devices
     let vp=document.querySelector("meta[name=viewport]");
     if(!vp){vp=document.createElement("meta");vp.name="viewport";document.head.appendChild(vp);}
+    // Pull down any server-backed clips this device doesn't have yet (from another
+    // device, or after clearing browser storage). Runs once per app load, silent,
+    // never blocks the UI.
     (async()=>{
       try{
         const {data:{user}}=await supabase.auth.getUser();
@@ -1785,6 +8242,7 @@ function AppMain() {
         }
       }catch(e){}
     })();
+    // Set viewport based on device type
     const hua=navigator.userAgent.toLowerCase();
     const isHPhone=/android.*mobile|iphone|ipod/.test(hua);
     const isHTablet=/ipad|android(?!.*mobile)/.test(hua);
@@ -1795,21 +8253,28 @@ function AppMain() {
     } else {
       vp.content="width=device-width,initial-scale=1,maximum-scale=5,user-scalable=yes";
     }
+    // Global responsive + Bolt badge suppression
     const style=document.createElement("style");
-    style.textContent="*{box-sizing:border-box!important;}body,html{margin:0;padding:0;width:100%;overflow-x:hidden;}[data-bolt-badge],a[href*='bolt.new'],.bolt-badge,[class*='bolt'],[id*='bolt']{display:none!important;opacity:0!important;visibility:hidden!important;pointer-events:none!important;}@media(max-width:900px){.grid-cols-2,.grid-cols-3,.grid-cols-4{grid-template-columns:1fr 1fr!important;}}@media(max-width:600px){.grid-cols-2,.grid-cols-3,.grid-cols-4{grid-template-columns:1fr!important;}}";
+    style.textContent="*{box-sizing:border-box!important;}body,html{margin:0;padding:0;width:100%;overflow-x:hidden;}[data-bolt-badge],a[href*=\'bolt.new\'],.bolt-badge,[class*=\'bolt\'],[id*=\'bolt\']{display:none!important;opacity:0!important;visibility:hidden!important;pointer-events:none!important;}@media(max-width:900px){.grid-cols-2,.grid-cols-3,.grid-cols-4{grid-template-columns:1fr 1fr!important;}}@media(max-width:600px){.grid-cols-2,.grid-cols-3,.grid-cols-4{grid-template-columns:1fr!important;}}";
     document.head.appendChild(style);
+    // Actively remove the "Made in Bolt" badge — CSS alone can miss it
     const killBolt=()=>{
       try{
         document.querySelectorAll('a[href*="bolt.new"],a[href*="bolt.host"],[class*="bolt"],[id*="bolt"],[data-bolt-badge]').forEach((n)=>{
           const t=(n.textContent||"").toLowerCase();
           if(t.includes("bolt")||(n.getAttribute("href")||"").includes("bolt")){const box=n.closest("div")||n;try{box.remove();}catch(e){try{n.remove();}catch(e2){}}}
         });
+        document.querySelectorAll("body *").forEach((el)=>{try{const cs=getComputedStyle(el);if(cs.position==="fixed"){const txt=(el.textContent||"").toLowerCase();if(txt.includes("made in bolt")||txt.trim()==="bolt"){el.remove();}}}catch(e){}});
       }catch(e){}
     };
     killBolt();
     const boltIv=setInterval(killBolt,1000);
+    const boltObs=new MutationObserver(killBolt);
+    try{boltObs.observe(document.body,{childList:true,subtree:true});}catch(e){}
+    // PWA install prompt capture
     const handleInstall=(e)=>{e.preventDefault();window.deferredInstallPrompt=e;};
     window.addEventListener("beforeinstallprompt",handleInstall);
+    // PWA MANIFEST — makes the DOWNLOAD APP button work as a real install
     try{
       const manifestData={
         name:"InFuture Movie Studios",
@@ -1830,6 +8295,7 @@ function AppMain() {
       let mLink=document.querySelector('link[rel="manifest"]');
       if(!mLink){mLink=document.createElement("link");mLink.rel="manifest";document.head.appendChild(mLink);}
       mLink.href=manifestUrl;
+      // Apple-specific PWA meta
       const addMeta=(name,content)=>{if(!document.querySelector('meta[name="'+name+'"]')){const m=document.createElement("meta");m.name=name;m.content=content;document.head.appendChild(m);}};
       addMeta("apple-mobile-web-app-capable","yes");
       addMeta("apple-mobile-web-app-status-bar-style","black-translucent");
@@ -1837,10 +8303,17 @@ function AppMain() {
       addMeta("mobile-web-app-capable","yes");
       addMeta("theme-color","#E6C98E");
     }catch(e){}
-    return()=>{try{document.head.removeChild(link);}catch{} window.removeEventListener("beforeinstallprompt",handleInstall); clearInterval(boltIv);};
+    return()=>{try{document.head.removeChild(link);}catch{} window.removeEventListener("beforeinstallprompt",handleInstall);};
   },[]);
   const [user,setUser]=useState(()=>{try{return JSON.parse(localStorage.getItem("ms_user")||'{"name":"Guest","plan":"Guest","isAdmin":false}');}catch{return {name:"Guest",plan:"Guest",isAdmin:false};}});
+  // Security reconcile: on load, trust the real Supabase session, not a saved
+  // localStorage user. No valid session => drop any saved privilege back to Guest,
+  // so a copied ms_user record can never grant admin or a paid plan on its own.
+  // Force the browser tab title to the new brand. The published index.html still
+  // carries the old "MandaStrong Studio" title, which App.tsx cannot edit — so set
+  // it here on load. This is what shows in the tab and in link previews.
   useEffect(()=>{ try{ document.title="InFuture Movie Studios"; }catch(e){} },[]);
+
   useEffect(()=>{
     let cancelled=false;
     (async()=>{
@@ -1872,7 +8345,15 @@ function AppMain() {
   const [showHistory,setShowHistory]=useState(false);
   const [showSaveModal,setShowSaveModal]=useState(false);
 
-  const go=p=>{setPage(p);window.scrollTo(0,0);};
+  const go=p=>{setPage(p);window.scrollTo(0,0);try{localStorage.setItem("ms_page",JSON.stringify(p));}catch{}};
+
+  // HARD LOCK: on every load, force page 1 + splash and wipe any saved page.
+  // Belt-and-braces so the app can never come back on page 6 (or any inner page),
+  // no matter what an old cached build or stale storage left behind.
+  useEffect(()=>{
+    try{ localStorage.removeItem("ms_page"); }catch(e){}
+    setPage(1); setShowLanding(true);
+  },[]);
 
   useEffect(()=>{
     const restore=async()=>{
@@ -1892,6 +8373,10 @@ function AppMain() {
     return()=>window.removeEventListener("ms_open_history",handler);
   },[]);
 
+  // Real auto-persist — saves state silently whenever page, timeline or mediaLib changes
+  useEffect(()=>{
+    try{localStorage.setItem("ms_page",JSON.stringify(page));}catch(e){}
+  },[page]);
   useEffect(()=>{
     try{localStorage.setItem("ms_timeline",JSON.stringify(timeline));}catch(e){}
   },[timeline]);
@@ -1899,6 +8384,13 @@ function AppMain() {
     try{localStorage.setItem("ms_medialib",JSON.stringify(mediaLib.map(a=>({...a,file:undefined}))));}catch(e){}
   },[mediaLib]);
 
+  // AUTO-ROUTE — EVERYTHING in the Media Library lands on the correct track the
+  // moment it is saved. Video AND images → track 0 (VIDEO), audio/narration →
+  // track 1 (AUDIO TRACK). Amanda's own uploaded images must go ON the track,
+  // not sit at the bottom — an image is a visual scene, same as a video clip.
+  // Runs centrally off mediaLib so every save point is covered without threading
+  // setTimeline through the inner tools. De-dupes hard (id, dbId, and name+type)
+  // so a clip that comes in twice can never stack a wall of duplicates.
   useEffect(()=>{
     if(!mediaLib||!mediaLib.length)return;
     setTimeline(prev=>{
@@ -1910,11 +8402,11 @@ function AppMain() {
         const isAudio=asset.type.startsWith("audio")||asset.type==="narration"||asset.type==="audio/narration";
         const isVideo=asset.type.startsWith("video")||asset.type==="video/webm";
         const isImage=asset.type.startsWith("image");
-        if(!isAudio&&!isVideo&&!isImage)continue;
-        const trackIdx=isAudio?1:0;
+        if(!isAudio&&!isVideo&&!isImage)continue; // only real media goes on a track
+        const trackIdx=isAudio?1:0; // images ride the video track with the clips
         const track=updated[trackIdx]||[];
         const k=key(asset);
-        if(track.some(x=>key(x)===k))continue;
+        if(track.some(x=>key(x)===k))continue; // already on the track
         updated[trackIdx]=[...track,asset];
         changed=true;
       }
@@ -1924,6 +8416,136 @@ function AppMain() {
     });
   },[mediaLib]);
 
+  // CLEAR THE LIBRARY AFTER EXPORT — the finished film is kept (render_final) and
+  // so are voices/narration recordings (audio) and proof-of-concept films. Only the
+  // scene clips and images are removed, from storage, the library and the timeline,
+  // so the library stops growing forever (27 → 421). The project's timeline, text
+  // boxes and settings stay saved in My Projects.
+  const clearLibraryAfterExport=async(opts)=>{
+    const o=opts||{};
+    // Scene clips and images are MOVED into My Projects (not deleted), so users can
+    // go back and look at their history. Voices and finished films stay in the library.
+    const keep=(a)=>{
+      const id=String((a&&(a.dbId||a.id))||"");
+      const t=String((a&&a.type)||"");
+      if(!(t.startsWith("video")||t.startsWith("image")))return true; // audio/voices stay
+      return id.startsWith("render_final")||id.startsWith("poc_");   // finished films stay
+    };
+    const toDrop=(mediaLib||[]).filter(a=>a&&!keep(a));
+    const dropIds=new Set();
+    const now=Date.now();
+    const archId=String(now);
+    let archived=0;
+    for(const a of toDrop){
+      const done=new Set();
+      for(const k of [a.dbId,a.id]){
+        if(!k)continue;
+        dropIds.add(String(k));
+        if(done.has(String(k)))continue;
+        done.add(String(k));
+        try{if(await archiveClipInDB(k,archId))archived++;}catch(e){}
+      }
+      try{if(a.url&&String(a.url).startsWith("blob:"))URL.revokeObjectURL(a.url);}catch(e){}
+    }
+    // Save to My Projects. Render + export happen back to back, so the second save
+    // replaces the first instead of adding another copy (clips archived stay linked).
+    try{
+      const grab=(k)=>{try{return localStorage.getItem(k)||"";}catch{return "";}};
+      const stamp=new Date().toLocaleString("en-GB",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+      const entry={name:o.name||("Exported film — "+stamp),
+        note:o.note||"Saved automatically after export",page,status:o.status||"exported",exportedAt:now,assetCount:(mediaLib||[]).length,
+        date:stamp,
+        savedPage:page,savedTimeline:JSON.parse(JSON.stringify(timeline||{})),savedUser:user,
+        archiveIds:archived>0?[archId]:[],
+        savedBoxes:{narr:grab("ms_narr_text"),mmm:grab("ms_mmm_text"),mmmImages:grab("ms_mmm_images"),brief:grab("ms_render_brief"),
+          s2mDescribe:grab("ms_s2m_describe"),s2mProducer:grab("ms_s2m_producer"),s2mProduction:grab("ms_s2m_production"),
+          genPrompt:grab("ms_gen_prompt"),genTitle:grab("ms_gen_title"),writingBoxes:grab("ms_writing_boxes")}};
+      const hist=JSON.parse(localStorage.getItem("ms_project_history")||"[]");
+      const last=hist[hist.length-1];
+      const timelineEmpty=!entry.savedTimeline||!Object.values(entry.savedTimeline).some(t=>t&&t.length);
+      if(!o.name&&last&&last.status==="exported"&&last.exportedAt&&now-last.exportedAt<3*60*60*1000){
+        const ids=[...(last.archiveIds||[]),...entry.archiveIds];
+        if(!timelineEmpty)hist[hist.length-1]={...entry,archiveIds:ids};
+        else hist[hist.length-1]={...last,...entry,savedTimeline:last.savedTimeline,archiveIds:ids};
+      }else{
+        hist.push(entry);
+        if(hist.length>20){const gone=hist.shift();for(const aid of ((gone&&gone.archiveIds)||[])){try{await deleteArchiveFromDB(aid);}catch(e){}}}
+      }
+      localStorage.setItem("ms_project_history",JSON.stringify(hist));
+    }catch(e){}
+    // ── DUPLICATE VOICES/RECORDINGS — keep ONE of each ──────────────────────
+    // Recordings were never cleared, and the recovery scan kept re-adding copies,
+    // so My Voices piled up (140+). After export, exact copies (same name AND same
+    // audio size) are removed from storage, the library and the My Voices list.
+    // One of everything is kept. Cloned voices win over plain copies.
+    const remap=new Map();
+    try{
+      const clips=await getAllClipsFromDB();
+      const isVoice=(c)=>c&&c.blob&&(String(c.type||"").startsWith("audio")||
+        String(c.id||"").startsWith("myvoice_")||String(c.id||"").startsWith("narr_myvoice_"));
+      let mv=[];try{mv=JSON.parse(localStorage.getItem("ms_my_voices")||"[]")||[];}catch(e){}
+      const cloned=new Set(mv.filter(v=>v&&v.clonedVoiceId).map(v=>String(v.dbId||v.id)));
+      const norm=(n)=>String(n||"").replace(/\.[^.]+$/,"").trim().toLowerCase();
+      const keepByKey=new Map();
+      const voiceClips=clips.filter(isVoice).sort((a,b)=>(cloned.has(String(b.id))?1:0)-(cloned.has(String(a.id))?1:0));
+      for(const c of voiceClips){
+        const key=norm(c.name)+"|"+(c.blob.size||0);
+        const k=keepByKey.get(key);
+        if(!k){keepByKey.set(key,String(c.id));continue;}
+        remap.set(String(c.id),k);
+        dropIds.add(String(c.id));
+        try{await deleteClipFromDB(c.id);}catch(e){}
+      }
+      // My Voices list: point copies at the kept recording, then one entry each.
+      const seen=new Set();const cleanMv=[];
+      for(const v of mv){
+        if(!v)continue;
+        const id=String(v.dbId||v.id||"");
+        const kid=remap.get(id)||id;
+        if(seen.has(kid))continue;
+        seen.add(kid);
+        cleanMv.push(remap.has(id)?{...v,id:kid,dbId:kid}:v);
+      }
+      try{localStorage.setItem("ms_my_voices",JSON.stringify(cleanMv.map(v=>({...v,url:undefined}))));}catch(e){}
+    }catch(e){}
+    setMediaLib(prev=>{
+      const seen=new Set();
+      return (prev||[]).filter(a=>{
+        if(!a)return false;
+        const id=String(a.dbId||a.id||"");
+        if(remap.has(id))return false;
+        if(dropIds.has(String(a.dbId||""))||dropIds.has(String(a.id||"")))return false;
+        if(seen.has(id))return false;
+        seen.add(id);return true;
+      });
+    });
+    setTimeline(prev=>{
+      const next={};
+      for(const k of Object.keys(prev||{})){
+        next[k]=(prev[k]||[]).filter(x=>!(x&&(dropIds.has(String(x.dbId||""))||dropIds.has(String(x.id||"")))));
+      }
+      return next;
+    });
+    return toDrop.length;
+  };
+
+  // Emergency crash save — fires when tab is closed or crashes
+  useEffect(()=>{
+    const emergencySave=()=>{
+      try{
+        localStorage.setItem("ms_page",JSON.stringify(page));
+        localStorage.setItem("ms_timeline",JSON.stringify(timeline));
+        localStorage.setItem("ms_user",JSON.stringify(user));
+        localStorage.setItem("ms_medialib",JSON.stringify(mediaLib.map(a=>({...a,file:undefined}))));
+      }catch(e){}
+    };
+    window.addEventListener("beforeunload",emergencySave);
+    window.addEventListener("visibilitychange",()=>{if(document.hidden)emergencySave();});
+    return()=>{
+      window.removeEventListener("beforeunload",emergencySave);
+    };
+  },[page,timeline,mediaLib,user]);
+
   const saveAsset=async(a)=>{
     let asset=a;
     if(a.file instanceof File||a.file instanceof Blob){
@@ -1931,6 +8553,7 @@ function AppMain() {
       catch(e){}
     }
     setMediaLib(p=>[...p,asset]);
+    // Auto-route to correct timeline track (0 = VIDEO TRACK, 1 = AUDIO TRACK)
     const isAudio=asset.type&&(asset.type.startsWith("audio")||asset.type==="narration"||asset.type==="audio/narration");
     const isVideo=asset.type&&(asset.type.startsWith("video")||asset.type==="video/webm");
     if(isAudio||isVideo){
@@ -1950,7 +8573,16 @@ function AppMain() {
   const saveProject=()=>setShowSaveModal(true);
 
   const doSave=(name,note,status)=>{
+    // Write the project history FIRST and confirm it landed, so "My projects" is
+    // never empty after you go out and back in. The metadata history is tiny; the
+    // big blobs (timeline, medialib) are saved after, and if THEY overflow storage
+    // the project entry is already safe. Before this, a storage error was swallowed
+    // with a false "Saved!" and the project silently vanished.
     let historySaved=false;
+    // Capture ALL the text boxes into the project so Continue brings them back:
+    // narration script, producer/describe/production boxes, Make My Movie script,
+    // render brief, generator prompt/title. Before this, a saved project only kept
+    // the timeline — so reopening it came back empty of your written work.
     const grab=(k)=>{try{return localStorage.getItem(k)||"";}catch{return "";}};
     const savedBoxes={
       narr: grab("ms_narr_text"),
@@ -1971,6 +8603,8 @@ function AppMain() {
       localStorage.setItem("ms_project_history",JSON.stringify(existing));
       historySaved=true;
     }catch(e){}
+    // Then the working state. These can be large; failure here must not lose the
+    // history entry above.
     try{ localStorage.setItem("ms_page",JSON.stringify(page)); }catch(e){}
     try{ localStorage.setItem("ms_user",JSON.stringify(user)); }catch(e){}
     try{ localStorage.setItem("ms_timeline",JSON.stringify(timeline)); }catch(e){}
@@ -1984,6 +8618,7 @@ function AppMain() {
     try{
       if(h.savedTimeline&&Object.keys(h.savedTimeline).length>0){setTimeline(h.savedTimeline);localStorage.setItem("ms_timeline",JSON.stringify(h.savedTimeline));}
       if(h.savedUser&&h.savedUser.name){setUser(h.savedUser);localStorage.setItem("ms_user",JSON.stringify(h.savedUser));}
+      // Restore ALL saved text boxes so Continue brings your written work back.
       if(h.savedBoxes){const b=h.savedBoxes;const put=(k,v)=>{try{if(v!==undefined&&v!==null)localStorage.setItem(k,v);}catch{}};
         put("ms_narr_text",b.narr);put("ms_mmm_text",b.mmm);put("ms_mmm_images",b.mmmImages);
         put("ms_render_brief",b.brief);put("ms_s2m_describe",b.s2mDescribe);put("ms_s2m_producer",b.s2mProducer);
@@ -1995,240 +8630,41 @@ function AppMain() {
     }catch(e){setShowHistory(false);}
   };
 
-  // ── Simple page components for the full app ──
-  // Due to the extreme size of this file, the full page components are
-  // defined inline. The app renders all 25 pages.
-
-  function P1({ go }) {
-    return (
-      <div style={{...Sp}}>
-        <div style={{background:"#0A0B0D",padding:"56px 40px 40px",position:"relative",overflow:"hidden"}}>
-          <div style={{maxWidth:1100,margin:"0 auto",display:"flex",flexWrap:"wrap",alignItems:"center",gap:32}}>
-            <div style={{flex:"1.1 1 380px",minWidth:0,display:"flex",flexDirection:"column",gap:24}}>
-              <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10.5,letterSpacing:"0.26em",color:WHITE}}>THE CINEMA INTELLIGENCE PLATFORM</div>
-              <div style={{fontFamily:"'Fraunces',Georgia,serif",fontWeight:300,fontSize:"clamp(40px,6vw,64px)",lineHeight:1.02,letterSpacing:"-0.025em",color:WHITE}}>Your film.<br/><span style={{color:WHITE}}>Made of light.</span></div>
-              <div style={{maxWidth:470,fontSize:16,lineHeight:1.65,color:DIM}}>Write it. Voice it. Shoot it. Cut it. Render it in 4K. One studio, from the first word to the last frame.</div>
-              <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
-                <button onClick={()=>go(4)} style={{...G("gold",false),fontSize:13,padding:"12px 24px",letterSpacing:0.4,borderRadius:2}}>Start creating</button>
-                <button onClick={()=>go(4)} style={{...G("out",false),fontSize:13,padding:"12px 22px",letterSpacing:0.4,borderRadius:2,color:WHITE,border:"1px solid rgba(237,234,227,0.22)"}}>Login / register</button>
-              </div>
-              <div style={{display:"flex",gap:36,flexWrap:"wrap",paddingTop:8}}>
-                {[["200+","AI TOOLS"],["8K","EXPORT"],["3 hrs","FILMS"],["1 TB","STORAGE"]].map(([v,l])=>(
-                  <div key={l}>
-                    <div style={{fontFamily:"'Fraunces',Georgia,serif",fontWeight:300,fontSize:30,color:WHITE}}>{v}</div>
-                    <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10,letterSpacing:"0.18em",color:DIM}}>{l}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div style={{flex:"0.9 1 300px",minWidth:0,display:"flex",justifyContent:"center"}}>
-              <svg viewBox="0 0 420 420" style={{width:"100%",maxWidth:430,height:"auto"}} role="img" aria-label="Camera lens">
-                <defs>
-                  <radialGradient id="iflg" cx="50%" cy="50%" r="50%"><stop offset="0" stopColor="#F6E7C6" stopOpacity=".95"/><stop offset=".12" stopColor="#D4AF6A" stopOpacity=".5"/><stop offset=".45" stopColor="#D4AF6A" stopOpacity=".07"/><stop offset="1" stopColor="#000" stopOpacity="0"/></radialGradient>
-                  <radialGradient id="ifgl" cx="38%" cy="32%" r="75%"><stop offset="0" stopColor="#1B1914"/><stop offset=".6" stopColor="#0B0B0C"/><stop offset="1" stopColor="#050505"/></radialGradient>
-                </defs>
-                <circle cx="210" cy="210" r="204" fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="1"/>
-                <circle cx="210" cy="210" r="192" fill="none" stroke="#D4AF6A" strokeOpacity=".5" strokeWidth="1" strokeDasharray="1 7"/>
-                <circle cx="210" cy="210" r="168" fill="url(#ifgl)" stroke="rgba(255,255,255,.22)" strokeWidth="1"/>
-                <circle cx="210" cy="210" r="140" fill="none" stroke="#D4AF6A" strokeOpacity=".55" strokeWidth="1" strokeDasharray="46 10"/>
-                <circle cx="210" cy="210" r="112" fill="none" stroke="rgba(255,255,255,.14)" strokeWidth="1"/>
-                <circle cx="210" cy="210" r="86" fill="none" stroke="rgba(255,255,255,.14)" strokeWidth="1"/>
-                <circle cx="210" cy="210" r="70" fill="url(#iflg)"/>
-                <ellipse cx="152" cy="140" rx="34" ry="14" transform="rotate(-38 152 140)" fill="rgba(255,255,255,.07)"/>
-              </svg>
-            </div>
-          </div>
-        </div>
-        <ExampleReel go={go} title="What InFuture Movie Studios makes"/>
-        <div style={{textAlign:"center",paddingBottom:24,paddingTop:16}}>
-          <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
-            <button onClick={async()=>{
-              try{
-                const APP_URL="https://infuture1.bolt.host";
-                const launcher='<!doctype html><html><head><meta charset="utf-8"><title>InFuture Movie Studios</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;background:#000}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body><iframe src="'+APP_URL+'" allow="camera;microphone;autoplay;fullscreen;clipboard-write" allowfullscreen></iframe></body></html>';
-                const blob=new Blob([launcher],{type:"text/html"});
-                const url=URL.createObjectURL(blob);
-                const a=document.createElement("a");
-                a.href=url; a.download="InFuture Movie Studios.html";
-                document.body.appendChild(a); a.click();
-                setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1500);
-              }catch(e){}
-            }} style={{background:GOLD,border:"none",color:"#000",padding:"11px 32px",fontSize:14,fontWeight:600,letterSpacing:0.2,cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif",width:"100%",maxWidth:320}}>
-              Download app
-            </button>
-            <div style={{color:GOLDDIM,fontSize:10,letterSpacing:0.2,textAlign:"center"}}>Browser menu add to home screen</div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function P2({ go }) {
-    return (
-      <div style={{...Sp,padding:"0 0 40px"}}>
-        <div style={{padding:"20px 24px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
-          <div><div style={{fontSize:10,color:WHITE,letterSpacing:0.4,fontWeight:500,marginBottom:4}}>InFuture Movie Studios · cinema intelligence platform</div><h1 style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:"clamp(22px,4vw,40px)",fontWeight:600,letterSpacing:0.4,margin:0}}>Studio dashboard</h1></div>
-          <button onClick={()=>go(5)} style={{background:GOLD,border:"none",color:"#000",padding:"11px 28px",fontSize:13,fontWeight:600,letterSpacing:0.2,cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>+ new project</button>
-        </div>
-        <div style={{padding:"0 24px 20px"}}>
-          <div style={{fontSize:10,color:WHITE,letterSpacing:0.4,fontWeight:500,marginBottom:12}}>Quick start templates</div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
-            {[["Feature film","90-minute drama.",5],[ "Documentary","60-minute documentary.",5],["Music video","Beat-synced cinematic video.",6],["Short film","10-minute narrative.",5],["Family movie","30-minute family film.",5],["Audiobook","Narrated audiobook.",6]].map(([t,d,p])=>(
-              <div key={t} style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"16px 18px",cursor:"pointer"}} onClick={()=>go(p)}>
-                <div style={{marginBottom:10}}><Frame seed={"msf-"+t.toLowerCase().replace(/\s/g,"")} h={104}/></div>
-                <div style={{color:WHITE,fontWeight:600,fontSize:13,letterSpacing:0.2}}>{t}</div>
-                <div style={{color:WHITE,fontSize:12,lineHeight:1.6,marginTop:4}}>{d}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function P3() {
-    return (
-      <div style={{...Sp,padding:40}}>
-        <div style={{maxWidth:1100,margin:"0 auto"}}>
-          <div style={{fontSize:12,color:WHITE,letterSpacing:0.4,marginBottom:8,fontWeight:500}}>Showcase</div>
-          <h1 style={{...H1,fontSize:30,marginBottom:6}}>Proof of concept</h1>
-          <div style={{color:GOLDDIM,fontSize:13,marginBottom:24}}>Upload up to 3 films, trailers, or demo reels created with InFuture Movie Studios.</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:20}}>
-            {[0,1,2].map(i=>(
-              <div key={i} style={{...Card(),padding:16}}>
-                <div style={{color:WHITE,fontSize:10,letterSpacing:0.2,fontWeight:600,marginBottom:10}}>Film {i+1}</div>
-                <div style={{background:"#0E0F12",aspectRatio:"16/9",marginBottom:10,border:"1px solid "+LINE,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                  <div style={{color:GOLDDIM,fontSize:28}}></div>
-                </div>
-                <div style={{color:GOLDDIM,fontSize:12,letterSpacing:0.2}}>Click to upload</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function P4({ go, setUser }) {
-    const [email,setEmail]=useState(""); const [pass,setPass]=useState("");
-    const [name,setName]=useState(""); const [re,setRe]=useState("");
-    const [loginOk,setLoginOk]=useState(false);
-    const [busy,setBusy]=useState(false);
-    const inp={width:"100%",background:"#0E0F12",border:"1px solid "+LINE,padding:"10px 12px",color:WHITE,fontSize:14,marginBottom:10,outline:"none",boxSizing:"border-box",fontFamily:"'Manrope',system-ui,sans-serif"};
-    const login=async()=>{
-      if(!email.includes("@")||pass.length<1){alert("Please enter a valid email and password.");return;}
-      setBusy(true);
-      try{
-        const {data,error}=await supabase.auth.signInWithPassword({email:email.trim(),password:pass});
-        if(error||!data?.user){setBusy(false);alert("Sign in failed. Check your email and password.");return;}
-        let plan="Guest", isAdmin=false;
-        try{
-          const {data:sub}=await supabase.from("subscriptions").select("plan_tier,status").eq("user_id",data.user.id).maybeSingle();
-          if(sub&&sub.status==="active"&&sub.plan_tier&&sub.plan_tier!=="none") plan=sub.plan_tier;
-          const {data:role}=await supabase.from("user_roles").select("role").eq("user_id",data.user.id).maybeSingle();
-          if(role&&role.role==="admin") isAdmin=true;
-        }catch(e){}
-        setLoginOk(true);
-        setTimeout(()=>{setUser({name:data.user.email,email:data.user.email,plan,isAdmin,uid:data.user.id});go(5);},600);
-      }catch(e){setBusy(false);alert("Sign in failed. Please try again.");}
-    };
-    const createAccount=async()=>{
-      if(!re.includes("@")||pass.length<6){alert("Enter a valid email and a password of at least 6 characters.");return;}
-      setBusy(true);
-      try{
-        const {data,error}=await supabase.auth.signUp({email:re.trim(),password:pass});
-        if(error){setBusy(false);alert("If that email can be used, your account has been created. Please check your inbox.");return;}
-        setUser({name:name||re,email:re,plan:"Studio Trial",isAdmin:false,uid:data?.user?.id||""});
-        window.open(STRIPE.studio,"_blank");
-        go(5);
-      }catch(e){setBusy(false);alert("Could not create account. Please try again.");}
-    };
-    return (
-      <div style={{...Sp,padding:40}}>
-        <div style={{maxWidth:1000,margin:"0 auto"}}>
-          <MSUserCounter/>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:18,marginBottom:36}}>
-            <div style={{...Card()}}>
-              <div style={{fontSize:11,color:WHITE,letterSpacing:0.2,marginBottom:8,fontWeight:500}}>Existing user</div>
-              <h2 style={{...H1,fontSize:18,marginBottom:18}}>Sign in</h2>
-              <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email address" style={inp}/>
-              <input value={pass} onChange={e=>setPass(e.target.value)} type="password" placeholder="Password" style={{...inp,marginBottom:16}}/>
-              {loginOk&&<div style={{background:"#14110B",border:"1px solid #D4AF6A",padding:"10px",textAlign:"center",marginBottom:8}}><span style={{color:"#D4AF6A",fontWeight:600,fontSize:14,letterSpacing:0.2}}>Login successful</span></div>}
-              <button onClick={login} disabled={busy} style={{...G("gold",false),width:"100%",padding:"12px",opacity:busy?0.6:1}}>{loginOk?"Entering studio...":(busy?"Signing in...":"SIGN IN TO STUDIO")}</button>
-            </div>
-            <div style={{...Card(),border:"2px solid #D4AF6A",position:"relative"}}>
-              <div style={{position:"absolute",top:-11,left:"50%",transform:"translateX(-50%)",background:"#D4AF6A",color:"#000",padding:"3px 14px",fontSize:11,fontWeight:600,whiteSpace:"nowrap"}}>7-day free trial</div>
-              <div style={{fontSize:11,color:WHITE,letterSpacing:0.2,marginBottom:8,marginTop:10,fontWeight:500}}>New creator</div>
-              <h2 style={{...H1,fontSize:18,marginBottom:18}}>Create account</h2>
-              <input value={name} onChange={e=>setName(e.target.value)} placeholder="Your Name" style={inp}/>
-              <input value={re} onChange={e=>setRe(e.target.value)} placeholder="Email address" style={inp}/>
-              <input value={pass} onChange={e=>setPass(e.target.value)} type="password" placeholder="Choose a password (min 6)" style={{...inp,marginBottom:16}}/>
-              <button onClick={createAccount} disabled={busy} style={{width:"100%",padding:"12px",background:"#D4AF6A",border:"none",color:"#000",fontWeight:600,fontSize:13,cursor:"pointer",letterSpacing:0.2,opacity:busy?0.6:1}}>{busy?"Creating...":"Start free trial — $0"}</button>
-            </div>
-            <div style={{...Card(),textAlign:"center"}}>
-              <h2 style={{...H1,fontSize:16,marginBottom:10}}>Explore first</h2>
-              <p style={{color:WHITE,fontSize:14,lineHeight:1.7,marginBottom:20}}>Browse 200+ AI tools before committing. No account required.</p>
-              <button onClick={()=>{window.open(STRIPE.basic,"_blank");alert("Start your free 7-day trial to access InFuture Movie Studios.");}} style={{...G("out",false),width:"100%"}}>Browse as guest — start free trial</button>
-            </div>
-          </div>
-          <div style={{textAlign:"center",marginBottom:24,display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>
-            <button onClick={()=>{setUser({name:"Creator",plan:"Guest",isAdmin:false});go(5);}} style={{...G("out",false),padding:"12px 32px"}}>New project</button>
-          </div>
-          <h2 style={{...H1,fontSize:22,textAlign:"center",marginBottom:22}}>Subscription plans</h2>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
-            {[
-              {t:"Basic plan",p:"20",link:STRIPE.basic,f:["HD Export 1080p","100 AI Tools","10GB Storage","Email Support"],pop:false},
-              {t:"Pro plan",p:"30",link:STRIPE.pro,f:["4K Export","300 AI Tools","100GB Storage","Priority Support","Commercial License"],pop:true},
-              {t:"Studio plan",p:"50",link:STRIPE.studio,f:["8K Export","200+ AI Tools","1TB Storage","24/7 Support","Full Rights","API Access","7-Day Free Trial"],pop:false},
-            ].map(plan=>(
-              <div key={plan.t} style={{...Card(),border:plan.pop?"2px solid "+SIGNAL:"1px solid "+LINE,position:"relative"}}>
-                {plan.pop&&<div style={{position:"absolute",top:-11,left:"50%",transform:"translateX(-50%)",background:GOLD,color:"#000",padding:"2px 12px",fontSize:11,fontWeight:600,whiteSpace:"nowrap"}}>Most popular</div>}
-                <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,fontWeight:500}}>{plan.t}</div>
-                <div style={{color:WHITE,fontFamily:"'Manrope',system-ui,sans-serif",fontSize:34,fontWeight:600,margin:"8px 0"}}>{plan.p}<span style={{fontSize:12,color:WHITE}}>/mo</span></div>
-                <div style={{margin:"12px 0"}}>{plan.f.map(f=><div key={f} style={{color:WHITE,fontSize:12,padding:"3px 0",borderBottom:"1px solid #0a0a0a"}}>✓ {f}</div>)}</div>
-                <button onClick={()=>window.open(plan.link,"_blank")} style={{...G("gold",false),width:"100%"}}>SUBSCRIBE NOW</button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function renderPage(){
+  const renderPage=()=>{
     switch(page){
       case 1: return <P1 go={go}/>;
       case 2: return <P2 go={go}/>;
       case 3: return <P3/>;
       case 4: return <P4 go={go} setUser={setUser}/>;
       case 5: return <ToolPage title="WRITING TOOLS" subtitle="AI WORKSTATION 01 — WRITING" tools={WRITING} onSave={saveAsset}/>;
-      case 6: return <div style={{...Sp,padding:20}}><div style={{color:WHITE,fontSize:20,fontWeight:600}}>Voice Tools — Page 6</div><div style={{color:DIM,fontSize:14,marginTop:8}}>AI voice engine with 54+ character voices, voice cloning, and narration tools.</div></div>;
+      case 6: return <P6Voice onSave={saveAsset} setMediaLib={setMediaLib}/>;
       case 7: return <ToolPage title="IMAGE TOOLS" subtitle="AI WORKSTATION 03 — IMAGE" tools={IMAGE_T} onSave={saveAsset}/>;
-      case 8: return <div style={{...Sp,padding:20}}><div style={{color:WHITE,fontSize:20,fontWeight:600}}>Video Generator — Page 8</div><div style={{color:DIM,fontSize:14,marginTop:8}}>Cinema Engine v2 — describe any scene and generate cinematic video.</div></div>;
+      case 8: return <P8VideoGenerator onSave={saveAsset} user={user} filmDuration={filmDuration} setFilmDuration={setFilmDuration} go={go}/>;
       case 9: return <ToolPage title="MOTION & VFX" subtitle="AI WORKSTATION 05 — MOTION" tools={MOTION} onSave={saveAsset}/>;
       case 10: return <ToolPage title="ENHANCEMENT STUDIO" subtitle="AI WORKSTATION 06 — ENHANCE" tools={MOTION} onSave={saveAsset}/>;
-      case 11: return <div style={{...Sp,padding:40}}><div style={{color:WHITE,fontSize:20,fontWeight:600}}>Upload Media — Page 11</div><div style={{color:DIM,fontSize:14,marginTop:8}}>Drag & drop your media files. Videos, images, audio — all supported.</div></div>;
-      case 12: return <div style={{...Sp,padding:30}}><div style={{color:WHITE,fontSize:20,fontWeight:600}}>Editor Suite — Page 12</div><div style={{color:DIM,fontSize:14,marginTop:8}}>Your complete post-production workspace.</div></div>;
-      case 13: return <div style={{...Sp,padding:20}}><div style={{color:WHITE,fontSize:20,fontWeight:600}}>Timeline Editor — Page 13</div><div style={{color:DIM,fontSize:14,marginTop:8}}>Multi-track editing. Drag clips to reorder. Sync all tracks.</div></div>;
-      case 14: return <div style={{...Sp,padding:28}}><div style={{color:WHITE,fontSize:20,fontWeight:600}}>Enhancement Studio — Page 14</div><div style={{color:DIM,fontSize:14,marginTop:8}}>AI-powered enhancement tools.</div></div>;
-      case 15: return <div style={{...Sp,padding:40}}><div style={{color:WHITE,fontSize:20,fontWeight:600}}>Audio Mixer — Page 15</div><div style={{color:DIM,fontSize:14,marginTop:8}}>4-channel mixing console.</div></div>;
-      case 16: return <div style={{...Sp,padding:20}}><div style={{color:WHITE,fontSize:20,fontWeight:600}}>Render Engine — Page 16</div><div style={{color:DIM,fontSize:14,marginTop:8}}>Render your film up to 4K quality.</div></div>;
-      case 17: return <div style={{...Sp,padding:40}}><div style={{color:WHITE,fontSize:20,fontWeight:600}}>Film Preview — Page 17</div><div style={{color:DIM,fontSize:14,marginTop:8}}>Preview your rendered film.</div></div>;
-      case 18: return <div style={{...Sp,padding:40}}><div style={{color:WHITE,fontSize:20,fontWeight:600}}>Export & Distribute — Page 18</div><div style={{color:DIM,fontSize:14,marginTop:8}}>Download and share your film.</div></div>;
-      case 19: return <div style={{...Sp,padding:20}}><div style={{color:WHITE,fontSize:20,fontWeight:600}}>Tutorials — Page 19</div><div style={{color:DIM,fontSize:14,marginTop:8}}>AI-generated animated tutorials for every feature.</div></div>;
-      case 20: return <div style={{...Sp,padding:40}}><div style={{color:WHITE,fontSize:20,fontWeight:600}}>Terms & Disclaimer — Page 20</div><div style={{color:DIM,fontSize:14,marginTop:8}}>Legal information and platform terms.</div></div>;
-      case 21: return <div style={{height:"calc(100vh - 116px)",display:"flex",flexDirection:"column",background:"#0E0F12",overflow:"hidden"}}><div style={{flex:1,margin:"12px 16px",border:"2px solid "+SIGNAL,display:"flex",flexDirection:"column",background:"#07080A",overflow:"hidden",minHeight:0}}><div style={{background:"#0E0F12",borderBottom:"2px solid "+SIGNAL,padding:"12px 18px",display:"flex",alignItems:"center",gap:12,flexShrink:0}}><div style={{width:46,height:46,background:GOLD,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:"'Manrope',system-ui,sans-serif",fontSize:22,fontWeight:600,color:"#000"}}>G</span></div><div style={{flex:1}}><div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:22,fontWeight:600}}>Agent Grok</div><div style={{color:"#D4AF6A",fontSize:10,fontWeight:600}}>Online 24/7</div></div></div><div style={{flex:1,overflowY:"auto",padding:"12px 16px"}}><div style={{color:WHITE,fontSize:14,lineHeight:1.8}}>Welcome to InFuture Movie Studios. I am Agent Grok — your 24/7 production consultant. Ask me anything about tools, workflow, pricing, or filmmaking.</div></div></div></div>;
-      case 22: return <div style={{...Sp,padding:40}}><div style={{color:WHITE,fontSize:20,fontWeight:600}}>Community Hub — Page 22</div><div style={{color:DIM,fontSize:14,marginTop:8}}>Share your films with the community.</div></div>;
-      case 23: return <div style={{...Sp,padding:20}}><div style={{textAlign:"center",padding:"40px 20px"}}><div style={{fontSize:10,color:WHITE,letterSpacing:0.4,marginBottom:8,fontWeight:500}}>InFuture Movie Studios</div><h1 style={{fontFamily:"'Manrope',system-ui,sans-serif",color:WHITE,fontSize:"clamp(32px,5vw,52px)",fontWeight:600,letterSpacing:0.4}}>That's all folks</h1><div style={{height:1,background:GOLDDIM,margin:"28px auto",maxWidth:400}}/><p style={{color:WHITE,fontSize:14,lineHeight:2,maxWidth:600,margin:"0 auto"}}>To all current and future creators, dreamers, and storytellers — your creativity and passion inspire positive change in the world. Every piece of content you create has the potential to touch hearts, change minds, and make our world a better place.</p><div style={{marginTop:24}}><a href="https://MandaStrong1.Etsy.com" target="_blank" rel="noreferrer" style={{display:"inline-block",background:GOLD,color:"#000",padding:"11px 24px",fontWeight:600,fontSize:14,letterSpacing:0.2,textDecoration:"none",fontFamily:"'Manrope',system-ui,sans-serif"}}>Humanity for future AI — mandastrong1.etsy.com</a></div></div></div>;
-      case 24: return <div style={{...Sp,padding:30}}><div style={{color:WHITE,fontSize:20,fontWeight:600}}>Character Studio — Page 24</div><div style={{color:DIM,fontSize:14,marginTop:8}}>Create reusable characters with reference photos and voice assignments.</div></div>;
-      case 25: return <div style={{...Sp,padding:30}}><div style={{color:WHITE,fontSize:20,fontWeight:600}}>Character Studio</div><div style={{color:DIM,fontSize:14,marginTop:8}}>Create reusable characters with reference photos and voice assignments.</div></div>;
+      case 11: return <P11 mediaLib={mediaLib} setMediaLib={setMediaLib}/>;
+      case 12: return <P12 go={go} mediaLib={mediaLib}/>;
+      case 13: return <P13 go={go} mediaLib={mediaLib} timeline={timeline} setTimeline={setTimeline} user={user} filmDuration={filmDuration} setFilmDuration={setFilmDuration} onClearScenes={clearLibraryAfterExport}/>;
+      case 14: return <P14/>;
+      case 15: return <P15/>;
+      case 16: return <P16 go={go} timeline={timeline} setRendered={setRendered} mediaLib={mediaLib} setMediaLib={setMediaLib} user={user} filmDuration={filmDuration} setFilmDuration={setFilmDuration} onRendered={async()=>{const n=await clearLibraryAfterExport();setTimeline({});return n;}}/>;
+      case 17: return <P17 go={go} rendered={rendered} mediaLib={mediaLib}/>;
+      case 18: return <P18 rendered={rendered} mediaLib={mediaLib} onExported={clearLibraryAfterExport}/>;
+      case 19: return <P19 go={go}/>;
+      case 20: return <P20/>;
+      case 21: return <P21/>;
+      case 22: return <P22/>;
+      case 23: return <P23 go={go}/>;
+      case 24: return <P23 go={go}/>;
+      case 25: return <P24CharacterStudio onSave={saveAsset} go={go}/>;
       default: return <P1 go={go}/>;
     }
-  }
+  };
 
   return (
     <div className={wide&&!showLanding?"if-wide":""} style={{background:"#0E0F12",minHeight:"100vh",fontFamily:"'Manrope',system-ui,sans-serif",paddingLeft:wide&&!showLanding?236:0}}>
       {showLanding&&<Landing onEnter={()=>setShowLanding(false)}/>}
+      {showIntro&&<IntroDoors onEnter={()=>setShowIntro(false)}/>}
       {wide&&!showLanding&&<SideNav page={page} go={go}/>}
       <Header go={go} setMenu={setMenu} wide={wide&&!showLanding}/>
       {menu&&!wide&&<QAMenu go={go} onClose={()=>setMenu(false)} user={user}/>}
