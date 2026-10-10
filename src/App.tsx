@@ -318,6 +318,24 @@ async function engineRenderMany(prompts,opts){
   return results.filter(Boolean);
 }
 
+// Make My Movie reads the box aloud when no recording is attached. Directions, descriptions and scene
+// prompts are instructions for the film, NOT words to speak. This keeps only the narration.
+function msSpokenOnly(text){
+  const paras=String(text||"").split(/\n\s*\n/).map(x=>x.trim()).filter(Boolean);
+  const out=[];
+  let skipNext=false;
+  const dir=/^(make my movie\b|directions?\b|description\b|producer\b|describe\b|production\b|look\s*:|people\s*:|tone\s*:|sound\s*:|current issues\b|opening\s*:|order\s*:|the \d+ scene prompts|documentary\s*:|one hour\b|director'?s notes|no chimp|stretch each scene|the narration is the clock)/i;
+  for(const para of paras){
+    if(skipNext){skipNext=false;continue;}                     // the paragraph right after "SCENE n" is the prompt
+    if(/^scene\s*\d+\s*$/i.test(para)){skipNext=true;continue;}
+    if(/^scene\s*\d+\b/i.test(para)){continue;}              // "SCENE 3 ..." on one line
+    if(dir.test(para))continue;
+    if(/^(the script|script|narration)\s*(\(narration\))?\s*:?\s*$/i.test(para))continue; // bare headings
+    out.push(para);
+  }
+  return out.join("\n\n").trim();
+}
+
 // Turns an uploaded photo (blob/object URL) into a small JPEG data URL the engine can use as the
 // starting picture. Large phone photos are shrunk first so the request is never refused for size.
 async function photoToEngineImage(url,maxPx){
@@ -3249,12 +3267,12 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
     if(mmmOwn.url&&!mmmOwnOff){
       narrUrl=mmmOwn.url; setMmmStage("Using your own recording as the narration…");
       try{localStorage.setItem("ms_mmm_narr",narrUrl);}catch(e){}
-    }else if(source){
+    }else if(msSpokenOnly(source)){
       try{
         setMmmStage("MandaStrong Cinema Engine — narrating your script…");
         const _mv=(typeof VOICE_CHARACTERS!=="undefined")?VOICE_CHARACTERS.find(v=>v.id===mmmVoiceId):null;
         const meta={voice:_mv?.engineVoice||mmmVoiceId,gender:_mv?.gender||"",origin:_mv?.origin||"",speed:_mv?.rate||1};
-        const vr=await msVoiceText(source,meta,(i,n)=>setMmmStage("MandaStrong Cinema Engine — narrating your script, part "+i+" of "+n+"…"));
+        const vr=await msVoiceText(msSpokenOnly(source),meta,(i,n)=>setMmmStage("MandaStrong Cinema Engine — narrating your script, part "+i+" of "+n+"…"));
         const parts=vr.parts;
         if(parts.length){ narrUrl=URL.createObjectURL(new Blob(parts,{type:parts[0].type||"audio/mpeg"})); try{localStorage.setItem("ms_mmm_narr",narrUrl);}catch(e){} try{ const nb=new Blob(parts,{type:parts[0].type||"audio/mpeg"}); await Promise.race([safeSaveClipToDB("mmmnarr_"+Date.now(),nb,"MakeMyMovie_narration"+((nb.type||"").includes("mp4")?".m4a":".mp3"),nb.type||"audio/mpeg"),new Promise(r=>setTimeout(()=>r("t"),8000))]); }catch(e){} }
       }catch(e){}
