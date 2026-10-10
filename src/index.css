@@ -80,3 +80,18 @@ body::after {
   mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
+
+/* InFuture headings */
+h1,h2,h3{font-family:'Fraunces',Georgia,serif !important;font-weight:300 !important;letter-spacing:-0.01em !important;text-transform:none !important}
+
+/* InFuture: slim gold buttons, hairline outlines on inner pages */
+button[style*="background: rgb(212, 175, 106)"]{
+  padding-top:10px !important;padding-bottom:10px !important;
+  font-size:13px !important;font-weight:500 !important;letter-spacing:0.04em !important;
+  border-radius:2px !important;min-height:0 !important;line-height:1.3 !important;
+}
+[style*="border: 2px solid rgb(212, 175, 106)"],
+[style*="border: 2px solid rgba(212, 175, 106"]{
+  border-width:1px !important;
+}
+[style*="border: 2px dashed"]{border-width:1px !important}
