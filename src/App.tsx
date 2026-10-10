@@ -1871,12 +1871,12 @@ llł
 
 
   const SOCIAL = [
-    ["YouTube","#C98A7A","https://www.youtube.com/upload"],
-    ["Instagram","#E1306C","https://www.instagram.com"],
-    ["TikTok","#69C9D0","https://www.tiktok.com/upload"],
-    ["Facebook","#1877F2","https://www.facebook.com"],
-    ["X / Twitter","#1DA1F2","https://twitter.com"],
-    ["Vimeo","#1AB7EA","https://vimeo.com/upload"],
+    ["YouTube","#EDEAE3","https://www.youtube.com/upload"],
+    ["Instagram","#EDEAE3","https://www.instagram.com"],
+    ["TikTok","#EDEAE3","https://www.tiktok.com/upload"],
+    ["Facebook","#EDEAE3","https://www.facebook.com"],
+    ["X / Twitter","#EDEAE3","https://twitter.com"],
+    ["Vimeo","#EDEAE3","https://vimeo.com/upload"],
   ];
 
   const inp = {width:"100%",background:"#0E0F12",border:"1px solid "+LINE,padding:"9px 12px",color:WHITE,fontSize:13,outline:"none",fontFamily:"'Manrope',system-ui,sans-serif",boxSizing:"border-box"};
@@ -5641,10 +5641,15 @@ function P15() {
             <div key={ch} style={{...Card(),textAlign:"center",padding:18}}>
               <div style={{color:WHITE,fontSize:11,letterSpacing:0.2,marginBottom:8,fontWeight:600}}>{ch}</div>
               <div style={{color:WHITE,fontFamily:"'Manrope',system-ui,sans-serif",fontSize:30,fontWeight:600,marginBottom:12}}>{val}</div>
-              <input type="range" min={0} max={100} value={val} onChange={e=>setLvl(p=>({...p,[ch]:+e.target.value}))} style={{width:"100%",height:100,accentColor:GOLD}}/>
-              <div style={{height:3,background:"#0E0F12",marginTop:10}}>
-                <div style={{width:val+"%",height:"100%",background:SIGNAL}}/>
+              <div style={{position:"relative",height:170,display:"flex",alignItems:"center",justifyContent:"center",margin:"4px 0 10px"}}>
+                <div style={{position:"absolute",left:"50%",top:0,bottom:0,width:1,background:"rgba(237,234,227,0.18)"}}/>
+                <div style={{position:"absolute",left:"50%",bottom:0,width:1,height:val+"%",background:GOLD}}/>
+                <div style={{position:"absolute",left:"calc(50% + 18px)",top:0,bottom:0,display:"flex",flexDirection:"column",justifyContent:"space-between"}}>
+                  {[...Array(11)].map((_,i)=>(<div key={i} style={{height:1,width:i%5===0?12:7,background:"rgba(237,234,227,"+(i%5===0?0.35:0.16)+")"}}/>))}
+                </div>
+                <input type="range" min={0} max={100} value={val} onChange={e=>setLvl(p=>({...p,[ch]:+e.target.value}))} aria-label={ch+" level"} style={{position:"absolute",width:170,height:24,transform:"rotate(-90deg)",accentColor:GOLD,background:"transparent",margin:0}}/>
               </div>
+              <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:9.5,letterSpacing:"0.18em",color:DIM}}>MUTE · SOLO</div>
             </div>
           ))}
         </div>
@@ -6903,7 +6908,7 @@ function P18({ rendered, mediaLib, onExported }) {
         </div>
         <div style={{color:WHITE,fontWeight:600,fontSize:11,letterSpacing:0.2,marginBottom:10}}>Share to social media</div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          {[["YouTube","#C98A7A","https://www.youtube.com/upload"],["Instagram","#E1306C","https://www.instagram.com"],["TikTok","#69C9D0","https://www.tiktok.com/upload"],["X / Twitter","#1DA1F2","https://twitter.com/intent/tweet?text=Check+out+my+film+made+with+InFuture+Studio"],["Facebook","#1877F2","https://www.facebook.com/sharer/sharer.php?u=https://mandastrong1.etsy.com"],["LinkedIn","#0A66C2","https://www.linkedin.com/sharing/share-offsite/?url=https://mandastrong1.etsy.com"],["Vimeo","#1AB7EA","https://vimeo.com/upload"],["WhatsApp","#25D366","https://api.whatsapp.com/send?text=Check+out+my+film+from+InFuture+Studio"]].map(([s,c,link])=>(
+          {[["YouTube","#EDEAE3","https://www.youtube.com/upload"],["Instagram","#EDEAE3","https://www.instagram.com"],["TikTok","#EDEAE3","https://www.tiktok.com/upload"],["X / Twitter","#EDEAE3","https://twitter.com/intent/tweet?text=Check+out+my+film+made+with+InFuture+Studio"],["Facebook","#EDEAE3","https://www.facebook.com/sharer/sharer.php?u=https://mandastrong1.etsy.com"],["LinkedIn","#EDEAE3","https://www.linkedin.com/sharing/share-offsite/?url=https://mandastrong1.etsy.com"],["Vimeo","#EDEAE3","https://vimeo.com/upload"],["WhatsApp","#EDEAE3","https://api.whatsapp.com/send?text=Check+out+my+film+from+InFuture+Studio"]].map(([s,c,link])=>(
             <button key={s} onClick={()=>window.open(link,"_blank")}
               style={{background:"#0E0F12",border:"1px solid "+LINE,padding:"10px 16px",cursor:"pointer"}}
               onMouseEnter={e=>{e.currentTarget.style.borderColor=c;e.currentTarget.style.background=c+"22";}}
