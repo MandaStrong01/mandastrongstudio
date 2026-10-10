@@ -12,7 +12,8 @@ try{
       "h1,h2,h3{font-family:'Fraunces',Georgia,serif !important;font-weight:300 !important;letter-spacing:-0.01em !important;text-transform:none !important}",
       "button[style*='width: 100%'][style*='background: rgb(212, 175, 106)']{padding-top:10px !important;padding-bottom:10px !important;font-size:13px !important;font-weight:500 !important;letter-spacing:0.04em !important;border-radius:2px !important;min-height:0 !important;line-height:1.3 !important}",
       "[style*='border: 2px solid rgb(212, 175, 106)'],[style*='border: 2px solid rgba(212, 175, 106']{border-width:1px !important}",
-      "[style*='border: 2px dashed']{border-width:1px !important}"
+      "[style*='border: 2px dashed']{border-width:1px !important}",
+      ".if-wide footer{left:236px !important}"
     ].join("\n");
     document.head.appendChild(st);
   }
@@ -793,10 +794,43 @@ function QAMenu({ go, onClose, user }) {
   );
 }
 
-function Header({ go, setMenu }) {
+const SIDE_GROUPS = [
+  ["START",[1,2,3,4]],
+  ["CREATE",[5,6,7,8,9]],
+  ["EDIT",[10,11,12,13,14,15]],
+  ["FINISH",[16,17,18]],
+  ["MORE",[19,22,21,24,20,23]],
+];
+function SideNav({ page, go }) {
+  const label=(n)=>{const f=NAV.find(x=>x.p===n);return f?f.l:"Page "+n;};
+  return (
+    <nav style={{position:"fixed",top:0,left:0,bottom:0,width:236,zIndex:600,background:"#090A0C",borderRight:"1px solid rgba(237,234,227,0.08)",overflowY:"auto",paddingBottom:140}}>
+      <div onClick={()=>go(1)} style={{display:"flex",alignItems:"center",gap:12,padding:"22px 22px 6px",cursor:"pointer"}}>
+        <div style={{width:30,height:30,border:"1px solid "+GOLD,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:GOLD,letterSpacing:1}}>IF</div>
+        <div style={{lineHeight:1.15}}>
+          <div style={{fontSize:12,fontWeight:600,letterSpacing:2,color:WHITE}}>INFUTURE</div>
+          <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:9.5,letterSpacing:2.4,color:DIM}}>MOVIE STUDIOS</div>
+        </div>
+      </div>
+      {SIDE_GROUPS.map(([g,items])=>(
+        <div key={g}>
+          <div style={{padding:"18px 0 6px 22px",fontFamily:"'JetBrains Mono',monospace",fontSize:9.5,letterSpacing:2.8,color:"rgba(237,234,227,0.28)"}}>{g}</div>
+          {items.map(n=>{
+            const on=n===page||(n===24&&page===25);
+            return (
+              <div key={n} onClick={()=>go(n)} style={{display:"flex",alignItems:"center",height:32,paddingLeft:22,cursor:"pointer",fontSize:13,fontWeight:on?600:400,color:on?WHITE:"rgba(237,234,227,0.5)",borderLeft:"1px solid "+(on?GOLD:"transparent"),background:on?"rgba(212,175,106,0.06)":"transparent"}}>{label(n)}</div>
+            );
+          })}
+        </div>
+      ))}
+    </nav>
+  );
+}
+
+function Header({ go, setMenu, wide }) {
   return (
     <header style={{position:"sticky",top:0,zIndex:500,background:"#0E0F12",borderBottom:"1px solid "+LINE+"",padding:"0 16px",height:52,display:"flex",alignItems:"center",gap:12}}>
-      <button onClick={()=>setMenu(true)} style={{background:"none",border:"1px solid "+LINE,color:GOLD,width:34,height:34,cursor:"pointer",fontSize:16,flexShrink:0}}>☰</button>
+      {!wide&&<button onClick={()=>setMenu(true)} style={{background:"none",border:"1px solid "+LINE,color:GOLD,width:34,height:34,cursor:"pointer",fontSize:16,flexShrink:0}}>☰</button>}
       <div onClick={()=>go(1)} style={{cursor:"pointer",flexShrink:0}}>
         <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:GOLD,fontSize:13,fontWeight:600,letterSpacing:0.2,lineHeight:1,textShadow:"none"}}>INFUTURE</div>
         <div style={{fontFamily:"'Manrope',system-ui,sans-serif",color:GOLDDIM,fontSize:9,letterSpacing:0.4}}>Movie Studios</div>
@@ -8152,6 +8186,8 @@ function AppMain() {
   // Always show the landing / page 1 on open.
   const [showLanding,setShowLanding]=useState(true);
   const [menu,setMenu]=useState(false);
+  const [wide,setWide]=useState(()=>{try{return window.innerWidth>=1000;}catch(e){return false;}});
+  useEffect(()=>{const f=()=>setWide(window.innerWidth>=1000);window.addEventListener('resize',f);return ()=>window.removeEventListener('resize',f);},[]);
   useEffect(()=>{
     // Raise the storage ceiling so large uploads don't crash — ask the browser
     // to make storage persistent (grants a much larger quota when accepted).
@@ -8607,11 +8643,12 @@ function AppMain() {
   };
 
   return (
-    <div style={{background:"#0E0F12",minHeight:"100vh",fontFamily:"'Manrope',system-ui,sans-serif"}}>
+    <div className={wide&&!showLanding?"if-wide":""} style={{background:"#0E0F12",minHeight:"100vh",fontFamily:"'Manrope',system-ui,sans-serif",paddingLeft:wide&&!showLanding?236:0}}>
       {showLanding&&<Landing onEnter={()=>setShowLanding(false)}/>}
       {showIntro&&<IntroDoors onEnter={()=>setShowIntro(false)}/>}
-      <Header go={go} setMenu={setMenu}/>
-      {menu&&<QAMenu go={go} onClose={()=>setMenu(false)} user={user}/>}
+      {wide&&!showLanding&&<SideNav page={page} go={go}/>}
+      <Header go={go} setMenu={setMenu} wide={wide&&!showLanding}/>
+      {menu&&!wide&&<QAMenu go={go} onClose={()=>setMenu(false)} user={user}/>}
       {showHistory&&<ProjectHistoryModal onClose={()=>setShowHistory(false)} onResume={resumeProject}/>}
       {showSaveModal&&<SaveSessionModal onClose={()=>setShowSaveModal(false)} onSave={doSave} currentPage={page} assetCount={mediaLib.length}/>}
       {savedNotice&&<div style={{position:"fixed",top:60,left:"50%",transform:"translateX(-50%)",background:GOLDDIM,color:"#000",padding:"10px 24px",fontWeight:600,fontSize:13,letterSpacing:0.2,zIndex:999}}>Project saved</div>}
