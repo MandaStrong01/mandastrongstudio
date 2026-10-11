@@ -3059,6 +3059,30 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
     setMmmOwnMusic({id,name:file.name||"My music",url:URL.createObjectURL(file)});
     setMmmBgSound(true);
   };
+  // ── END SONG: plays once over the final picture after the narration finishes ──
+  const [mmmEndSong,setMmmEndSong]=useState({id:"",name:"",url:""});
+  const mmmEndRef=useRef(null);
+  useEffect(()=>{
+    let dead=false;
+    (async()=>{
+      try{
+        const all=await getAllClipsFromDB();
+        const es=all.filter(x=>x&&x.blob&&String(x.id).startsWith("mmmend_"));
+        if(!es.length||dead)return;
+        let pick=null; try{ const k=localStorage.getItem("ms_mmm_endsong"); if(k)pick=es.find(x=>x.id===k); }catch(e){}
+        if(!pick)pick=es.sort((a,b)=>String(b.id).localeCompare(String(a.id)))[0];
+        if(pick&&!dead)setMmmEndSong({id:pick.id,name:pick.name||"End song",url:URL.createObjectURL(pick.blob)});
+      }catch(e){}
+    })();
+    return ()=>{dead=true;};
+  },[]);
+  const mmmPickEndSong=async(file)=>{
+    if(!file)return;
+    const id="mmmend_"+Date.now();
+    try{ await safeSaveClipToDB(id,file,file.name||"End song","audio/music"); }catch(e){}
+    try{ localStorage.setItem("ms_mmm_endsong",id); }catch(e){}
+    setMmmEndSong({id,name:file.name||"End song",url:URL.createObjectURL(file)});
+  };
   const mmmMusicSrc=mmmBgSound?(mmmOwnMusic.url||((MUSIC_LIBRARY.find(m=>m.id===musicTrack)||MUSIC_LIBRARY.find(m=>m.id==="ambient")||MUSIC_LIBRARY[0]||{}).url||"")):"";
   const MMM_GRADES=[
     {id:"gold",label:"Gold & Amber"},
@@ -3408,19 +3432,24 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
     const v=mmmVideoRef.current; if(!v||!mmmDone)return;
     const onP=()=>setMmmSceneNo(mmmIdxRef.current+1);
     v.addEventListener("play",onP);
-    const n=mmmNarrRef.current; const onNE=()=>setMmmPlaying(false);
+    const n=mmmNarrRef.current; const onNE=()=>{
+      const es=mmmEndRef.current;
+      if(es){ try{ const m=mmmMusicRef.current; if(m)m.pause(); es.currentTime=0; es.volume=Math.max(0,Math.min(1,mmmVolume)); es.onended=()=>setMmmPlaying(false); es.play().catch(()=>setMmmPlaying(false)); return; }catch(e){} }
+      setMmmPlaying(false);
+    };
     if(n)n.addEventListener("ended",onNE);
     return ()=>{ v.removeEventListener("play",onP); if(n)n.removeEventListener("ended",onNE); };
-  },[mmmDone,mmmNarrUrl,mmmFilmUrl]);
+  },[mmmDone,mmmNarrUrl,mmmFilmUrl,mmmEndSong.url]);
   useEffect(()=>{ if(mmmDone&&!mmmNarrUrl&&mmmOwn.url&&!mmmOwnOff)setMmmNarrUrl(mmmOwn.url); },[mmmDone,mmmNarrUrl,mmmOwn.url,mmmOwnOff]);
   const mmmTogglePlay=()=>{
     const v=mmmVideoRef.current,n=mmmNarrRef.current,m=mmmMusicRef.current;
-    if(mmmPlaying){ try{v&&v.pause();}catch(e){} try{n&&n.pause();}catch(e){} try{m&&m.pause();}catch(e){} setMmmPlaying(false); }
+    if(mmmPlaying){ try{v&&v.pause();}catch(e){} try{n&&n.pause();}catch(e){} try{m&&m.pause();}catch(e){} try{mmmEndRef.current&&mmmEndRef.current.pause();}catch(e){} setMmmPlaying(false); }
     else{ try{v&&v.play().catch(()=>{});}catch(e){} try{n&&n.play().catch(()=>{});}catch(e){} try{m&&mmmBgSound&&m.play().catch(()=>{});}catch(e){} setMmmPlaying(true); }
   };
   const mmmRestart=()=>{
     const list=mmmListNow(); const v=mmmVideoRef.current,n=mmmNarrRef.current,m=mmmMusicRef.current;
     mmmIdxRef.current=0; setMmmSceneNo(1); setMmmClock(0);
+    try{ const es=mmmEndRef.current; if(es){es.pause();es.currentTime=0;} }catch(e){}
     try{ if(v&&list.length){v.src=list[0];} v&&v.play().catch(()=>{}); }catch(e){}
     try{ if(n){n.currentTime=0;n.play().catch(()=>{});} }catch(e){}
     try{ if(m&&mmmBgSound){m.currentTime=0;m.play().catch(()=>{});} }catch(e){}
@@ -3525,6 +3554,21 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
       }
       try{ narr&&narr.pause(); }catch(e){}
       try{ bed&&bed.src&&bed.src.stop(); }catch(e){}
+      // END SONG: plays once over the last picture, after the voice finishes
+      if(mmmEndSong.url&&!mmmExpCancel.current){
+        try{
+          setMmmExp(x=>({...x,pct:97,msg:"Adding the end song…"}));
+          const es=new Audio(); es.src=mmmEndSong.url; es.preload="auto";
+          const g=ac.createGain(); g.gain.value=Math.max(0,Math.min(1,mmmVolume));
+          ac.createMediaElementSource(es).connect(g); g.connect(dest);
+          await es.play();
+          await new Promise(res=>{
+            const tm=setInterval(()=>{ if(lastFrameV)drawV(lastFrameV); if(es.ended||es.paused||mmmExpCancel.current){clearInterval(tm);res();} },100);
+            es.onended=()=>{clearInterval(tm);res();};
+          });
+          try{ es.pause(); }catch(e){}
+        }catch(e){}
+      }
       try{ rec.state!=="inactive"&&rec.stop(); }catch(e){}
       await done;
       if(mmmExpCancel.current){ setMmmExp({busy:false,pct:0,msg:"Stopped.",url:"",name:""}); }
@@ -4309,6 +4353,9 @@ Write the drawFrame body now.`}]
           <div style={{color:mmmOwnMusic.url?"#fff":DIM,fontSize:12,marginBottom:8}}>{mmmOwnMusic.url?<>Using your music: <span style={{color:WHITE}}>{mmmOwnMusic.name}</span></>:"No music added. A soft music bed plays under the voice."}</div>
           <button onClick={()=>{const i=document.getElementById("mmmMusicInput");if(i)i.click();}} style={{width:"100%",padding:9,background:GOLD,color:"#000",border:"none",borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>{mmmOwnMusic.url?"CHANGE MY MUSIC":"ADD MY MUSIC"}</button>
           <input id="mmmMusicInput" type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.mp4" style={{display:"none"}} onChange={e=>{const f=e.target.files&&e.target.files[0];if(f)mmmPickMusic(f);e.target.value="";}}/>
+          <div style={{color:mmmEndSong.url?"#fff":DIM,fontSize:12,margin:"10px 0 8px"}}>{mmmEndSong.url?<>End song: <span style={{color:WHITE}}>{mmmEndSong.name}</span></>:"No end song. It plays once at the very end, after the voice."}</div>
+          <button onClick={()=>{const i=document.getElementById("mmmEndInput");if(i)i.click();}} style={{width:"100%",padding:9,background:GOLD,color:"#000",border:"none",borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>{mmmEndSong.url?"CHANGE END SONG":"ADD END SONG"}</button>
+          <input id="mmmEndInput" type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.mp4" style={{display:"none"}} onChange={e=>{const f=e.target.files&&e.target.files[0];if(f)mmmPickEndSong(f);e.target.value="";}}/>
         </div>
 
         <div style={{padding:10,border:"1px solid "+LINE,borderRadius:3,marginBottom:10}}>
@@ -4377,6 +4424,7 @@ Write the drawFrame body now.`}]
             {mmmTransport}
             {mmmNarrUrl&&<audio ref={mmmNarrRef} src={mmmNarrUrl} preload="auto" style={{display:"none"}}/>}
             {mmmBgSound&&mmmMusicSrc&&<audio ref={mmmMusicRef} src={mmmMusicSrc} loop preload="auto" style={{display:"none"}}/>}
+            {mmmEndSong.url&&<audio ref={mmmEndRef} src={mmmEndSong.url} preload="auto" style={{display:"none"}}/>}
             {mmmDone&&(<>
               <button onClick={mmmDownloadAll}
                 style={{width:"100%",padding:14,marginTop:10,background:GOLD,color:"#000",border:"none",fontWeight:600,fontSize:14,letterSpacing:0.2,borderRadius:3,cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>
