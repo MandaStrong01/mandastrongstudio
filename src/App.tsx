@@ -3035,31 +3035,7 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
   useEffect(()=>{try{localStorage.setItem("ms_mmm_bed",mmmBgSound?"on":"off");localStorage.setItem("ms_mmm_bedvol",String(mmmBgVolume));}catch(e){}},[mmmBgSound,mmmBgVolume]);
   // Music bed for the Make My Movie player: the track picked in "Add background
   // music" if any, otherwise a calm cinematic default. Only when Music bed is ON.
-  // ── YOUR OWN MUSIC as the music bed (uploaded here, saved, picked up automatically) ──
-  const [mmmOwnMusic,setMmmOwnMusic]=useState({id:"",name:"",url:""});
-  useEffect(()=>{
-    let dead=false;
-    (async()=>{
-      try{
-        const all=await getAllClipsFromDB();
-        const mus=all.filter(x=>x&&x.blob&&String(x.id).startsWith("mmmmusic_"));
-        if(!mus.length||dead)return;
-        let pick=null; try{ const k=localStorage.getItem("ms_mmm_ownmusic"); if(k)pick=mus.find(x=>x.id===k); }catch(e){}
-        if(!pick)pick=mus.sort((a,b)=>String(b.id).localeCompare(String(a.id)))[0];
-        if(pick&&!dead)setMmmOwnMusic({id:pick.id,name:pick.name||"My music",url:URL.createObjectURL(pick.blob)});
-      }catch(e){}
-    })();
-    return ()=>{dead=true;};
-  },[]);
-  const mmmPickMusic=async(file)=>{
-    if(!file)return;
-    const id="mmmmusic_"+Date.now();
-    try{ await safeSaveClipToDB(id,file,file.name||"My music","audio/music"); }catch(e){}
-    try{ localStorage.setItem("ms_mmm_ownmusic",id); }catch(e){}
-    setMmmOwnMusic({id,name:file.name||"My music",url:URL.createObjectURL(file)});
-    setMmmBgSound(true);
-  };
-  const mmmMusicSrc=mmmBgSound?(mmmOwnMusic.url||((MUSIC_LIBRARY.find(m=>m.id===musicTrack)||MUSIC_LIBRARY.find(m=>m.id==="ambient")||MUSIC_LIBRARY[0]||{}).url||"")):"";
+  const mmmMusicSrc=mmmBgSound?((MUSIC_LIBRARY.find(m=>m.id===musicTrack)||MUSIC_LIBRARY.find(m=>m.id==="ambient")||MUSIC_LIBRARY[0]||{}).url||""):"";
   const MMM_GRADES=[
     {id:"gold",label:"Gold & Amber"},
     {id:"cold",label:"Cold Blue"},
@@ -4302,13 +4278,6 @@ Write the drawFrame body now.`}]
             {mmmOwn.url&&<button onClick={()=>setMmmOwnOff(v=>!v)} style={{flex:"1 1 45%",padding:9,background:"#0E0F12",color:WHITE,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>{mmmOwnOff?"USE MY RECORDING":"USE VOICE ENGINE"}</button>}
           </div>
           <input id="mmmOwnInput" type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.mp4" style={{display:"none"}} onChange={e=>{const f=e.target.files&&e.target.files[0];if(f)mmmPickOwn(f);e.target.value="";}}/>
-        </div>
-
-        <div style={{padding:10,border:"1px solid "+LINE,borderRadius:3,marginBottom:10}}>
-          <div style={{color:WHITE,fontSize:12,fontWeight:600,marginBottom:6}}>Music</div>
-          <div style={{color:mmmOwnMusic.url?"#fff":DIM,fontSize:12,marginBottom:8}}>{mmmOwnMusic.url?<>Using your music: <span style={{color:WHITE}}>{mmmOwnMusic.name}</span></>:"No music added. A soft music bed plays under the voice."}</div>
-          <button onClick={()=>{const i=document.getElementById("mmmMusicInput");if(i)i.click();}} style={{width:"100%",padding:9,background:GOLD,color:"#000",border:"none",borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>{mmmOwnMusic.url?"CHANGE MY MUSIC":"ADD MY MUSIC"}</button>
-          <input id="mmmMusicInput" type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.mp4" style={{display:"none"}} onChange={e=>{const f=e.target.files&&e.target.files[0];if(f)mmmPickMusic(f);e.target.value="";}}/>
         </div>
 
         <div style={{padding:10,border:"1px solid "+LINE,borderRadius:3,marginBottom:10}}>
