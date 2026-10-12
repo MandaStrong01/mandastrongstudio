@@ -4900,12 +4900,18 @@ function P3() {
         const d=JSON.parse(localStorage.getItem("ms_poc_descs")||'["","",""]');
         if(alive){setTitles(t);setDescs(d);}
       }catch{}
+      // Each film is saved in two places: this device AND your cloud. If the device
+      // copy is missing (storage full or cleared), the film loads from the cloud.
+      let cloud=[null,null,null];
+      try{ cloud=JSON.parse(localStorage.getItem("ms_poc_cloud")||"[null,null,null]"); }catch{}
       const next=[null,null,null];
       for(let i=0;i<3;i++){
         try{
           const rec=await loadClipFromDB("poc_"+i);
           if(rec&&rec.blob){
             next[i]={url:URL.createObjectURL(rec.blob),name:rec.name,type:rec.type,size:(rec.blob.size/1024/1024).toFixed(1)};
+          }else if(cloud[i]&&cloud[i].url){
+            next[i]={url:cloud[i].url,name:cloud[i].name||("Film "+(i+1)),type:cloud[i].type||"video/mp4",size:cloud[i].size||"",cloud:true};
           }
         }catch{}
       }
@@ -4916,19 +4922,39 @@ function P3() {
 
   const saveTitles=(arr)=>{try{localStorage.setItem("ms_poc_titles",JSON.stringify(arr));}catch{}};
   const saveDescs=(arr)=>{try{localStorage.setItem("ms_poc_descs",JSON.stringify(arr));}catch{}};
+  const [saveMsg,setSaveMsg]=useState(["","",""]);
+  const setMsg=(i,m)=>setSaveMsg(p=>{const n=[...p];n[i]=m;return n;});
+  const setCloud=(i,v)=>{try{const c=JSON.parse(localStorage.getItem("ms_poc_cloud")||"[null,null,null]");c[i]=v;localStorage.setItem("ms_poc_cloud",JSON.stringify(c));}catch{}};
 
   const handleFile=async(i,e)=>{
     const f=e.target.files&&e.target.files[0];
     if(!f)return;
     const url=URL.createObjectURL(f);
-    setUploads(p=>{const n=[...p];if(n[i])URL.revokeObjectURL(n[i].url);n[i]={url,name:f.name,type:f.type,size:(f.size/1024/1024).toFixed(1)};return n;});
-    // Persist the actual file to IndexedDB so it stays forever
-    try{await saveClipToDB("poc_"+i,f,f.name,f.type);}catch(err){alert("Could not save film "+(i+1)+" — storage may be full.");}
+    const size=(f.size/1024/1024).toFixed(1);
+    setUploads(p=>{const n=[...p];if(n[i]&&!n[i].cloud)URL.revokeObjectURL(n[i].url);n[i]={url,name:f.name,type:f.type,size};return n;});
+    // 1 — this device
+    try{await saveClipToDB("poc_"+i,f,f.name,f.type);}catch(err){}
+    // 2 — your cloud, so it never disappears
+    setMsg(i,"Saving to your cloud…");
+    try{
+      const {data:{user}}=await supabase.auth.getUser();
+      if(!user){setMsg(i,"Saved on this device only. Log in to save it to your cloud.");return;}
+      const path=user.id+"/poc_"+i+"_"+Date.now()+"_"+encodeURIComponent(f.name||"film");
+      const {error:upErr}=await supabase.storage.from("media").upload(path,f,{upsert:true,contentType:f.type||"video/mp4"});
+      if(upErr)throw upErr;
+      const {data:pub}=supabase.storage.from("media").getPublicUrl(path);
+      if(!pub||!pub.publicUrl)throw new Error("no link");
+      setCloud(i,{url:pub.publicUrl,name:f.name,type:f.type,size});
+      setMsg(i,"✓ Saved to your cloud");
+    }catch(err){
+      setMsg(i,"Cloud save failed. Tap Replace and pick the film again.");
+    }
   };
   const removeUpload=async(i)=>{
-    setUploads(p=>{const n=[...p];if(n[i])URL.revokeObjectURL(n[i].url);n[i]=null;return n;});
+    setUploads(p=>{const n=[...p];if(n[i]&&!n[i].cloud)URL.revokeObjectURL(n[i].url);n[i]=null;return n;});
     setTitles(p=>{const n=[...p];n[i]="";saveTitles(n);return n;});
     setDescs(p=>{const n=[...p];n[i]="";saveDescs(n);return n;});
+    setCloud(i,null); setMsg(i,"");
     try{await deleteClipFromDB("poc_"+i);}catch{}
   };
 
@@ -4997,7 +5023,8 @@ function P3() {
                 </div>
               ):(
                 <div>
-                  <div style={{color:"#D4AF6A",fontSize:9,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>✓ {uploads[i].name.slice(0,28)} · {uploads[i].size}MB</div>
+                  <div style={{color:"#D4AF6A",fontSize:9,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>✓ {uploads[i].name.slice(0,28)}{uploads[i].size?" · "+uploads[i].size+"MB":""}</div>
+                  {saveMsg[i]&&<div style={{color:WHITE,fontSize:9,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>{saveMsg[i]}</div>}
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
                     <button onClick={()=>msDownload(uploads[i].url,uploads[i].name)}
                       style={{...G("gold",false),width:"100%",padding:"8px",fontSize:10,letterSpacing:0.2,cursor:"pointer",textAlign:"center",display:"block",boxSizing:"border-box"}}>
