@@ -4989,6 +4989,13 @@ function P3() {
           const rec=await loadClipFromDB("poc_"+i);
           if(rec&&rec.blob){
             next[i]={url:URL.createObjectURL(rec.blob),name:rec.name,type:rec.type,size:(rec.blob.size/1024/1024).toFixed(1)};
+          }else if(cloud[i]&&cloud[i].parts&&cloud[i].parts.length){
+            // Big film saved in parts — fetch every part, join them back into one film.
+            const bufs=[];
+            for(const u of cloud[i].parts){const r=await fetch(u);if(!r.ok)throw new Error("part");bufs.push(await r.blob());}
+            const blob=new Blob(bufs,{type:cloud[i].type||"video/mp4"});
+            next[i]={url:URL.createObjectURL(blob),name:cloud[i].name||("Film "+(i+1)),type:cloud[i].type||"video/mp4",size:cloud[i].size||"",cloud:false};
+            try{await saveClipToDB("poc_"+i,blob,cloud[i].name,cloud[i].type);}catch{}
           }else if(cloud[i]&&cloud[i].url){
             next[i]={url:cloud[i].url,name:cloud[i].name||("Film "+(i+1)),type:cloud[i].type||"video/mp4",size:cloud[i].size||"",cloud:true};
           }
@@ -5018,12 +5025,22 @@ function P3() {
     try{
       const {data:{user}}=await supabase.auth.getUser();
       if(!user){setMsg(i,"Saved on this device only. Log in to save it to your cloud.");return;}
-      const path=user.id+"/poc_"+i+"_"+Date.now()+"_"+encodeURIComponent(f.name||"film");
-      const {error:upErr}=await supabase.storage.from("media").upload(path,f,{upsert:true,contentType:f.type||"video/mp4"});
-      if(upErr)throw upErr;
-      const {data:pub}=supabase.storage.from("media").getPublicUrl(path);
-      if(!pub||!pub.publicUrl)throw new Error("no link");
-      setCloud(i,{url:pub.publicUrl,name:f.name,type:f.type,size});
+      // Cloud files max out at 50 MB each, so a big film is saved in 40 MB parts.
+      const PART=40*1024*1024;
+      const stamp=Date.now();
+      const total=Math.max(1,Math.ceil(f.size/PART));
+      const parts=[];
+      for(let k=0;k<total;k++){
+        setMsg(i,"Saving to your cloud… "+Math.round((k/total)*100)+"%");
+        const piece=f.slice(k*PART,Math.min(f.size,(k+1)*PART),f.type||"video/mp4");
+        const path=user.id+"/poc_"+i+"_"+stamp+"_part"+String(k).padStart(3,"0")+".mp4";
+        const {error:upErr}=await supabase.storage.from("media").upload(path,piece,{upsert:true,contentType:f.type||"video/mp4"});
+        if(upErr)throw upErr;
+        const {data:pub}=supabase.storage.from("media").getPublicUrl(path);
+        if(!pub||!pub.publicUrl)throw new Error("no link");
+        parts.push(pub.publicUrl);
+      }
+      setCloud(i,{parts,name:f.name,type:f.type,size});
       setMsg(i,"✓ Saved to your cloud");
     }catch(err){
       setMsg(i,"Cloud save failed. Tap Replace and pick the film again.");
