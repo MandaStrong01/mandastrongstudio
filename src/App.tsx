@@ -449,12 +449,14 @@ const safeSaveClipToDB=async(id,blob,name,type)=>{
         for(const c of oldRenders){await deleteClipFromDB(c.id);}
       }catch(e){}
     }
-    await saveClipToDB(id,blob,name,type);
-    serverBackupClip(id,blob,name,type); // fire-and-forget, never blocks the local save
+    // Cloud copy first — it must not depend on the device having room.
+    try{ serverBackupClip(id,blob,name,type); }catch(e){}
+    const withTimeout=(pr)=>Promise.race([pr,new Promise((_,rej)=>setTimeout(()=>rej(new Error("device save timed out")),20000))]);
+    await withTimeout(saveClipToDB(id,blob,name,type));
     return true;
   }catch(e){
     // If it still failed, try once more without deleting anything
-    try{ await saveClipToDB(id,blob,name,type); serverBackupClip(id,blob,name,type); return true; }
+    try{ await Promise.race([saveClipToDB(id,blob,name,type),new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")),20000))]); return true; }
     catch(e2){ return false; }
   }
 };
@@ -2397,11 +2399,12 @@ function P6Voice({ onSave, setMediaLib }) {
     const id="myvoice_"+Date.now();
     const url=URL.createObjectURL(file);
     const nv={id,name:(file.name||"My Voice").replace(/\.[^.]+$/,""),url,dbId:id,origin:"My Upload",gender:"—",age:"—",emoji:"🎙",style:"Your recorded voice",desc:"Your own voice — plays back exactly as recorded."};
-    try{await safeSaveClipToDB(id,file,nv.name,"audio/myvoice");}catch(e){}
+    // Show it straight away, then save in the background (a full iPad can stall the save).
     const upd=[nv,...myVoices];
     setMyVoices(upd);
     try{localStorage.setItem("ms_my_voices",JSON.stringify(upd.map(v=>({...v,url:undefined}))));}catch{}
     setSelVoice(id);
+    safeSaveClipToDB(id,file,nv.name,"audio/myvoice").catch(()=>{});
   };
   const startMyRecording=async()=>{
     try{
@@ -2717,7 +2720,7 @@ function P6Voice({ onSave, setMediaLib }) {
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search voices..." style={{...inp,padding:"6px 10px",fontSize:11,height:30}}/>
           </div>
           <div style={{flex:1,overflowY:"auto",padding:"6px 6px 80px"}}>
-            <input ref={myVoiceInputRef} type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg" style={{display:"none"}} onChange={e=>{const f=e.target.files&&e.target.files[0];if(f)addMyVoice(f);e.target.value="";}}/>
+            <input ref={myVoiceInputRef} type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.webm,.mp4" style={{display:"none"}} onChange={e=>{const f=e.target.files&&e.target.files[0];if(f)addMyVoice(f);e.target.value="";}}/>
             {recordingMine?(
               <div style={{display:"flex",alignItems:"center",gap:8,background:"#1C1410",border:"2px solid #C98A7A",padding:"9px 12px",marginBottom:6}}>
                 <div style={{width:10,height:10,borderRadius:"50%",background:"#C98A7A",boxShadow:"none"}}/>
@@ -3532,17 +3535,45 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
         const dw=vw*sc, dh=vh*sc; try{ ctx.drawImage(v,(W-dw)/2,(H-dh)/2,dw,dh); }catch(e){}
       };
       let lastFrameV=null;
+      // SEAMLESS STITCH: the next scene loads while this one plays, then the two
+      // blend over a short dissolve so the film runs as one continuous shot.
+      const XF=0.6;
+      const drawFit=(v,alpha)=>{
+        const vw=v.videoWidth||W, vh=v.videoHeight||H; const sc=Math.min(W/vw,H/vh);
+        const dw=vw*sc, dh=vh*sc; ctx.globalAlpha=alpha; try{ ctx.drawImage(v,(W-dw)/2,(H-dh)/2,dw,dh); }catch(e){} ctx.globalAlpha=1;
+      };
+      const loadV=(src)=>{
+        const v=document.createElement("video"); v.muted=true; v.playsInline=true; v.preload="auto"; v.src=src;
+        v._ready=new Promise(res=>{ v.onloadeddata=()=>res(true); v.onerror=()=>res(false); setTimeout(()=>res(v.readyState>=2),15000); });
+        return v;
+      };
+      let nextV=list.length?loadV(list[0]):null;
       for(let i=0;i<list.length&&!mmmExpCancel.current;i++){
         setMmmExp(x=>({...x,pct:Math.min(95,Math.round((i/list.length)*95)),msg:"Scene "+(i+1)+" of "+list.length+" · "+mmmFmtClock((Date.now()-t0)/1000)}));
-        const v=document.createElement("video"); v.muted=true; v.playsInline=true; v.preload="auto"; v.src=list[i];
-        await new Promise(res=>{ v.onloadeddata=res; v.onerror=res; setTimeout(res,15000); });
-        try{ await v.play(); }catch(e){ continue; }
+        const v=nextV; nextV=null;
+        const ok=await v._ready;
+        if(!ok){ if(i+1<list.length)nextV=loadV(list[i+1]); continue; }
+        if(v.paused){ try{ await v.play(); }catch(e){ if(i+1<list.length)nextV=loadV(list[i+1]); continue; } }
+        const upNext=(i+1<list.length)?loadV(list[i+1]):null;
+        let upReady=false; if(upNext)upNext._ready.then(r=>{upReady=r;});
+        let upStarted=false;
         await new Promise(res=>{
           let fin=false; const end=()=>{ if(!fin){fin=true;clearInterval(tm);res();} };
           v.onended=end; v.onerror=end;
-          const tm=setInterval(()=>{ if(mmmExpCancel.current){end();return;} drawV(v); },33);
+          const tm=setInterval(()=>{
+            if(mmmExpCancel.current){end();return;}
+            ctx.fillStyle="#000"; ctx.fillRect(0,0,W,H);
+            drawFit(v,1);
+            const dur=isFinite(v.duration)&&v.duration>0?v.duration:0;
+            const left=dur?dur-v.currentTime:99;
+            if(upNext&&upReady&&left<=XF){
+              if(!upStarted){ upStarted=true; upNext.play().catch(()=>{}); }
+              drawFit(upNext,Math.max(0,Math.min(1,1-left/XF)));
+            }
+          },33);
           setTimeout(end,((isFinite(v.duration)&&v.duration>0?v.duration:90)+5)*1000);
         });
+        nextV=upNext;
         lastFrameV=v;
       }
       // keep the last picture on screen until the voice has finished
