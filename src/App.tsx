@@ -490,6 +490,24 @@ const LINE = "rgba(237,234,227,0.12)";
 // appended to the DOM just PREVIEWS the file on iOS Safari instead of saving it.
 // This appends, clicks, cleans up, and falls back to opening in a new tab.
 function msDownload(url, filename){
+  // Phones and tablets: open the save sheet so you can pick Files or Drive.
+  try{
+    const touch=window.matchMedia&&window.matchMedia("(pointer:coarse)").matches;
+    if(url&&touch&&navigator.canShare&&typeof File!=="undefined"){
+      const nm=String(filename||"InFuture.mp4").replace(/\.webm$/i,".mp4");
+      return (async()=>{
+        try{
+          const b=await (await fetch(url)).blob();
+          const f=new File([b],nm,{type:b.type&&b.type.startsWith("video")?"video/mp4":(b.type||"application/octet-stream")});
+          if(navigator.canShare({files:[f]})){await navigator.share({files:[f],title:nm});return;}
+        }catch(e){ if(e&&e.name==="AbortError")return; }
+        msDownloadPlain(url,nm);
+      })();
+    }
+  }catch(e){}
+  return msDownloadPlain(url,filename);
+}
+function msDownloadPlain(url, filename){
   try{
     if(!url){return;}
     const a=document.createElement("a");
@@ -8812,7 +8830,7 @@ function AppMain() {
       case 15: return <P15/>;
       case 16: return <P16 go={go} timeline={timeline} setRendered={setRendered} mediaLib={mediaLib} setMediaLib={setMediaLib} user={user} filmDuration={filmDuration} setFilmDuration={setFilmDuration} onRendered={async()=>{const n=await clearLibraryAfterExport();setTimeline({});return n;}}/>;
       case 17: return <P17 go={go} rendered={rendered} mediaLib={mediaLib}/>;
-      case 18: return <P18 rendered={rendered} mediaLib={mediaLib} onExported={clearLibraryAfterExport}/>;
+      case 18: return <P18 rendered={rendered} mediaLib={mediaLib} onExported={async()=>{const n=await clearLibraryAfterExport();setTimeline({});return n;}}/>;
       case 19: return <P19 go={go}/>;
       case 20: return <P20/>;
       case 21: return <P21/>;
