@@ -6755,7 +6755,16 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
             </div>
           </div>
         </div>
-        {done&&!rendering&&<div style={{color:"#D4AF6A",fontSize:11,fontWeight:600,letterSpacing:0.2}}>Render complete</div>}
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          {done&&!rendering&&<div style={{color:"#D4AF6A",fontSize:11,fontWeight:600,letterSpacing:0.2}}>Render complete</div>}
+          {!rendering&&<button onClick={async()=>{
+            const n=(mediaLib||[]).length;
+            if(!n){alert("No clips to clear.");return;}
+            if(!window.confirm("Save all "+n+" clips to My Projects, then clear them from here? Nothing is deleted."))return;
+            try{const moved=onRendered?await onRendered():0; alert("Done. "+(moved||0)+" clips saved to My Projects. Render Engine is clear.");}
+            catch(e){alert("Could not clear. Your clips are untouched.");}
+          }} style={{background:"#0E0F12",border:"1px solid "+GOLD,color:WHITE,padding:"8px 14px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>Save clips & clear</button>}
+        </div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 320px",minHeight:"calc(100vh - 120px)"}}>
         <div style={{padding:20,overflowY:"auto"}}>
