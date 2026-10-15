@@ -8502,16 +8502,25 @@ function AppMain() {
         const {data}=await supabase.auth.getSession();
         const sess=data?.session;
         if(cancelled)return;
+        // Stay signed in: if the login server can't be reached (offline, or the
+        // server refusing requests), keep the saved account instead of signing out.
+        let serverUp=true;
+        try{ const h=await fetch(SUPABASE_URL+"/auth/v1/health",{headers:{apikey:SUPABASE_PUBLISHABLE_KEY}}); serverUp=h.ok; }catch(e){ serverUp=false; }
+        if(cancelled)return;
         if(!sess||!sess.user){
-          setUser(u=>(u&&u.isAdmin)?{name:"Guest",plan:"Guest",isAdmin:false}:u);
+          if(serverUp) setUser(u=>(u&&u.isAdmin)?{name:"Guest",plan:"Guest",isAdmin:false}:u);
           return;
         }
-        let plan="Guest", isAdmin=false;
+        let saved=null; try{ saved=JSON.parse(localStorage.getItem("ms_user")||"null"); }catch(e){}
+        const same=saved&&saved.email&&String(saved.email).toLowerCase()===String(sess.user.email||"").toLowerCase();
+        let plan=same?(saved.plan||"Guest"):"Guest", isAdmin=same?!!saved.isAdmin:false;
         try{
-          const {data:sub}=await supabase.from("subscriptions").select("plan_tier,status").eq("user_id",sess.user.id).maybeSingle();
-          if(sub&&sub.status==="active"&&sub.plan_tier&&sub.plan_tier!=="none") plan=sub.plan_tier;
-          const {data:role}=await supabase.from("user_roles").select("role").eq("user_id",sess.user.id).maybeSingle();
-          if(role&&role.role==="admin") isAdmin=true;
+          const {data:sub,error:subErr}=await supabase.from("subscriptions").select("plan_tier,status").eq("user_id",sess.user.id).maybeSingle();
+          const {data:role,error:roleErr}=await supabase.from("user_roles").select("role").eq("user_id",sess.user.id).maybeSingle();
+          if(!subErr&&!roleErr){
+            plan=(sub&&sub.status==="active"&&sub.plan_tier&&sub.plan_tier!=="none")?sub.plan_tier:"Guest";
+            isAdmin=!!(role&&role.role==="admin");
+          }
         }catch(e){}
         if(!cancelled) setUser({name:sess.user.email,email:sess.user.email,plan,isAdmin,uid:sess.user.id});
       }catch(e){}
