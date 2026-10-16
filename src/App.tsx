@@ -2997,6 +2997,7 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
   const [mmmVolume,setMmmVolume]=useState(1);
   const [mmmBgSound,setMmmBgSound]=useState(true);
   const [mmmBgVolume,setMmmBgVolume]=useState(0.3);
+  const [mmmClipAudio,setMmmClipAudio]=useState(true);
   const [mmmRatio,setMmmRatio]=useState(()=>{try{return localStorage.getItem("ms_mmm_ratio")||"16:9";}catch{return "16:9";}});
   const [mmmPlaying,setMmmPlaying]=useState(false);
   const [mmmClock,setMmmClock]=useState(0);
@@ -3461,6 +3462,20 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
           const g=ac.createGain(); g.gain.value=Math.max(0,Math.min(1,mmmBgVolume)); src.connect(g); g.connect(dest);
           bed={src};
         }catch(e){ bed=msBedSource(ac,dest,Math.min(0.5,Math.max(0,mmmBgVolume)*0.8)); }
+      }
+      if(mmmClipAudio&&!bed){
+        for(const cu of list){
+          try{
+            const ab2=await (await fetch(cu)).arrayBuffer();
+            const buf2=await ac.decodeAudioData(ab2);
+            if(buf2&&buf2.duration>0&&buf2.numberOfChannels>0){
+              const src2=ac.createBufferSource(); src2.buffer=buf2; src2.loop=true;
+              const g2=ac.createGain(); g2.gain.value=0.35; src2.connect(g2); g2.connect(dest);
+              bed={src:src2};
+              break;
+            }
+          }catch(e){}
+        }
       }
       const stream=canvas.captureStream(30);
       dest.stream.getAudioTracks().forEach(t=>stream.addTrack(t));
@@ -4299,6 +4314,13 @@ Write the drawFrame body now.`}]
             </div>
           </div>
           <button onClick={()=>setMmmBgSound(v=>!v)} style={{width:"100%",padding:9,background:mmmBgSound?GOLD:"#0E0F12",color:mmmBgSound?"#000":GOLD,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>Music bed {mmmBgSound?"ON":"OFF"}</button>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8}}>
+            <span style={{color:WHITE,fontSize:11,fontWeight:600,letterSpacing:0.2}}>Use audio from your video clips?</span>
+            <div style={{display:"flex",gap:6}}>
+              <button onClick={()=>setMmmClipAudio(true)} style={{background:mmmClipAudio?GOLD:"#0E0F12",border:"1px solid "+(mmmClipAudio?"#000":GOLDDIM),color:mmmClipAudio?"#000":WHITE,padding:"5px 16px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0}}>Y</button>
+              <button onClick={()=>setMmmClipAudio(false)} style={{background:!mmmClipAudio?GOLD:"#0E0F12",border:"1px solid "+(!mmmClipAudio?"#000":GOLDDIM),color:!mmmClipAudio?"#000":WHITE,padding:"5px 16px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0}}>N</button>
+            </div>
+          </div>
         </div>
 
         <button onClick={()=>setMmmStudio(true)}
@@ -6143,7 +6165,32 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
           }
         }
       }catch(e){log("Music bed skipped: "+e.message);}
-      // No tagged music? Use a built-in stereo ambient bed, made right here (needs no
+      // No tagged music? Pull the audio out of the video clips themselves so the
+      // film keeps the sound that was already in the footage. Only falls through to
+      // the synthetic bed if the clips have no audio track at all.
+      if(!musicSource){
+        try{
+          for(const vc of clips){
+            try{
+              let vBlob=null;
+              if(vc.file instanceof File)vBlob=vc.file;
+              else if(vc.url){vBlob=await (await fetch(vc.url)).blob();}
+              if(!vBlob)continue;
+              const ab=await vBlob.arrayBuffer();
+              const vBuf=await audioCtx.decodeAudioData(ab);
+              if(vBuf&&vBuf.duration>0&&vBuf.numberOfChannels>0){
+                musicSource=audioCtx.createBufferSource();
+                musicSource.buffer=vBuf;musicSource.loop=true;
+                const vGain=audioCtx.createGain();vGain.gain.value=0.35;
+                musicSource.connect(vGain);vGain.connect(audioDest);vGain.connect(audioCtx.destination);
+                log("No music chosen — using audio from your video clips");
+                break;
+              }
+            }catch(e){/* clip has no audio track — try the next one */}
+          }
+        }catch(e){log("Video audio extraction skipped: "+e.message);}
+      }
+      // No tagged music and no clip audio? Use a built-in stereo ambient bed, made right here (needs no
       // download, so it always works). Respects the Make My Movie music switch + volume.
       try{
         const bedOff=(()=>{try{return localStorage.getItem("ms_mmm_bed")==="off";}catch(e){return false;}})();
