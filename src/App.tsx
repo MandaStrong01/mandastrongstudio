@@ -449,14 +449,12 @@ const safeSaveClipToDB=async(id,blob,name,type)=>{
         for(const c of oldRenders){await deleteClipFromDB(c.id);}
       }catch(e){}
     }
-    // Cloud copy first — it must not depend on the device having room.
-    try{ serverBackupClip(id,blob,name,type); }catch(e){}
-    const withTimeout=(pr)=>Promise.race([pr,new Promise((_,rej)=>setTimeout(()=>rej(new Error("device save timed out")),20000))]);
-    await withTimeout(saveClipToDB(id,blob,name,type));
+    await saveClipToDB(id,blob,name,type);
+    serverBackupClip(id,blob,name,type); // fire-and-forget, never blocks the local save
     return true;
   }catch(e){
     // If it still failed, try once more without deleting anything
-    try{ await Promise.race([saveClipToDB(id,blob,name,type),new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")),20000))]); return true; }
+    try{ await saveClipToDB(id,blob,name,type); serverBackupClip(id,blob,name,type); return true; }
     catch(e2){ return false; }
   }
 };
@@ -490,24 +488,6 @@ const LINE = "rgba(237,234,227,0.12)";
 // appended to the DOM just PREVIEWS the file on iOS Safari instead of saving it.
 // This appends, clicks, cleans up, and falls back to opening in a new tab.
 function msDownload(url, filename){
-  // Phones and tablets: open the save sheet so you can pick Files or Drive.
-  try{
-    const touch=window.matchMedia&&window.matchMedia("(pointer:coarse)").matches;
-    if(url&&touch&&navigator.canShare&&typeof File!=="undefined"){
-      const nm=String(filename||"InFuture.mp4").replace(/\.webm$/i,".mp4");
-      return (async()=>{
-        try{
-          const b=await (await fetch(url)).blob();
-          const f=new File([b],nm,{type:b.type&&b.type.startsWith("video")?"video/mp4":(b.type||"application/octet-stream")});
-          if(navigator.canShare({files:[f]})){await navigator.share({files:[f],title:nm});return;}
-        }catch(e){ if(e&&e.name==="AbortError")return; }
-        msDownloadPlain(url,nm);
-      })();
-    }
-  }catch(e){}
-  return msDownloadPlain(url,filename);
-}
-function msDownloadPlain(url, filename){
   try{
     if(!url){return;}
     const a=document.createElement("a");
@@ -678,7 +658,7 @@ const IMAGE_T = ["Text to Image","Prompt to Image","Image to Image","Image Upsca
 const VIDEO_T = ["Text to Video","Image to Video","Video to Video","AI Video Creator","AI Film Generator","Video Upscaler","AI Video Generator 4K","Set to Video","Video Colorizer","Color Grading Pro","Fast Look Generator","Film Restoration","Time Lapse Creator","Video Trimmer","Background Remover","Digital Human Video","Rotoscope Video","Animation Creator","Puppet Animator","Motion Capture","Character Animator","Video Stabilizer","Video Compressor","Cinematic LUT","Black & White Film","Film Texture","VHS Effect","Glitch Effect","Quick Film Creator","Opening Slate","Time Freeze","Bullet Time Effect","Rain Simulation","Snow Simulation","Smoke Generator","Fire Simulation","Particle System","AI Progressive Video","4K Upscaling"];
 const MOTION = ["AI 8K Upscaling","AI 4K Upscaling","Video Super Resolution","Frame Interpolation","Video Denoiser","Noise Reduction","Grain Remover","Artifact Remover","Scratch Remover","Video Sharpener","Clarity Booster","Detail Enhancer","Edge Enhancement","Texture Boost","White Balance AI","Color Correction","Auto Color Balance","Color Match Pro","Color Grading AI","Cinematic Color Grade","Film Stock Emulation","LUT Generator","Tone Mapping Pro","HDR Enhancement","Deep HDR Boost","Dynamic Range Expansion","Shadow Recovery","Highlight Recovery","Black Point Calibration","Gamma Correction","Contrast Enhancer","Brightness Optimizer","Saturation Booster","Smart Saturation","Face Enhancement","Face Retouch","Eye Enhancer","Teeth Whitener","Skin Tone Enhancer","Background Enhancer","Sky Enhancer","Landscape Enhancer","Night Video Enhancer","Low Light Clarity","Motion Stabilization","Shake Remover","Rolling Shutter Fix"];
 
-const NAV = [{p:1,l:"Home"},{p:2,l:"Platform"},{p:3,l:"Examples"},{p:4,l:"Login / Pricing"},{p:5,l:"Writing Tools"},{p:6,l:"Voice Tools"},{p:7,l:"Image Tools"},{p:8,l:"Video Tools"},{p:9,l:"Motion & VFX"},{p:10,l:"Enhancement"},{p:11,l:"Upload Media"},{p:12,l:"Editor Suite"},{p:13,l:"Timeline Editor"},{p:14,l:"Enhancement Studio"},{p:15,l:"Audio Mixer"},{p:16,l:"Render Engine"},{p:17,l:"Film Preview"},{p:18,l:"Export & Distribute"},{p:19,l:"Tutorials"},{p:20,l:"Terms & Disclaimer"},{p:21,l:"Agent Grok"},{p:22,l:"Community Hub"},{p:25,l:"Character Studio"},{p:23,l:"That's All Folks"}];
+const NAV = [{p:1,l:"Home"},{p:2,l:"Platform"},{p:3,l:"Examples"},{p:4,l:"Login / Pricing"},{p:5,l:"Writing Tools"},{p:6,l:"Voice Tools"},{p:7,l:"Image Tools"},{p:8,l:"Video Tools"},{p:9,l:"Motion & VFX"},{p:10,l:"Enhancement"},{p:11,l:"Upload Media"},{p:12,l:"Editor Suite"},{p:13,l:"Timeline Editor"},{p:14,l:"Enhancement Studio"},{p:15,l:"Audio Mixer"},{p:16,l:"Render Engine"},{p:17,l:"Film Preview"},{p:18,l:"Export & Distribute"},{p:19,l:"Tutorials"},{p:20,l:"Terms & Disclaimer"},{p:21,l:"Agent Grok"},{p:22,l:"Community Hub"},{p:24,l:"Character Studio"},{p:23,l:"That's All Folks"}];
 
 function ProjectHistoryModal({ onClose, onResume, initialTab }) {
   const [history,setHistory]=useState([]);
@@ -2417,12 +2397,11 @@ function P6Voice({ onSave, setMediaLib }) {
     const id="myvoice_"+Date.now();
     const url=URL.createObjectURL(file);
     const nv={id,name:(file.name||"My Voice").replace(/\.[^.]+$/,""),url,dbId:id,origin:"My Upload",gender:"—",age:"—",emoji:"🎙",style:"Your recorded voice",desc:"Your own voice — plays back exactly as recorded."};
-    // Show it straight away, then save in the background (a full iPad can stall the save).
+    try{await safeSaveClipToDB(id,file,nv.name,"audio/myvoice");}catch(e){}
     const upd=[nv,...myVoices];
     setMyVoices(upd);
     try{localStorage.setItem("ms_my_voices",JSON.stringify(upd.map(v=>({...v,url:undefined}))));}catch{}
     setSelVoice(id);
-    safeSaveClipToDB(id,file,nv.name,"audio/myvoice").catch(()=>{});
   };
   const startMyRecording=async()=>{
     try{
@@ -2738,7 +2717,7 @@ function P6Voice({ onSave, setMediaLib }) {
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search voices..." style={{...inp,padding:"6px 10px",fontSize:11,height:30}}/>
           </div>
           <div style={{flex:1,overflowY:"auto",padding:"6px 6px 80px"}}>
-            <input ref={myVoiceInputRef} type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.webm,.mp4" style={{display:"none"}} onChange={e=>{const f=e.target.files&&e.target.files[0];if(f)addMyVoice(f);e.target.value="";}}/>
+            <input ref={myVoiceInputRef} type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg" style={{display:"none"}} onChange={e=>{const f=e.target.files&&e.target.files[0];if(f)addMyVoice(f);e.target.value="";}}/>
             {recordingMine?(
               <div style={{display:"flex",alignItems:"center",gap:8,background:"#1C1410",border:"2px solid #C98A7A",padding:"9px 12px",marginBottom:6}}>
                 <div style={{width:10,height:10,borderRadius:"50%",background:"#C98A7A",boxShadow:"none"}}/>
@@ -3056,55 +3035,7 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
   useEffect(()=>{try{localStorage.setItem("ms_mmm_bed",mmmBgSound?"on":"off");localStorage.setItem("ms_mmm_bedvol",String(mmmBgVolume));}catch(e){}},[mmmBgSound,mmmBgVolume]);
   // Music bed for the Make My Movie player: the track picked in "Add background
   // music" if any, otherwise a calm cinematic default. Only when Music bed is ON.
-  // ── YOUR OWN MUSIC as the music bed (uploaded here, saved, picked up automatically) ──
-  const [mmmOwnMusic,setMmmOwnMusic]=useState({id:"",name:"",url:""});
-  useEffect(()=>{
-    let dead=false;
-    (async()=>{
-      try{
-        const all=await getAllClipsFromDB();
-        const mus=all.filter(x=>x&&x.blob&&String(x.id).startsWith("mmmmusic_"));
-        if(!mus.length||dead)return;
-        let pick=null; try{ const k=localStorage.getItem("ms_mmm_ownmusic"); if(k)pick=mus.find(x=>x.id===k); }catch(e){}
-        if(!pick)pick=mus.sort((a,b)=>String(b.id).localeCompare(String(a.id)))[0];
-        if(pick&&!dead)setMmmOwnMusic({id:pick.id,name:pick.name||"My music",url:URL.createObjectURL(pick.blob)});
-      }catch(e){}
-    })();
-    return ()=>{dead=true;};
-  },[]);
-  const mmmPickMusic=async(file)=>{
-    if(!file)return;
-    const id="mmmmusic_"+Date.now();
-    try{ await safeSaveClipToDB(id,file,file.name||"My music","audio/music"); }catch(e){}
-    try{ localStorage.setItem("ms_mmm_ownmusic",id); }catch(e){}
-    setMmmOwnMusic({id,name:file.name||"My music",url:URL.createObjectURL(file)});
-    setMmmBgSound(true);
-  };
-  // ── END SONG: plays once over the final picture after the narration finishes ──
-  const [mmmEndSong,setMmmEndSong]=useState({id:"",name:"",url:""});
-  const mmmEndRef=useRef(null);
-  useEffect(()=>{
-    let dead=false;
-    (async()=>{
-      try{
-        const all=await getAllClipsFromDB();
-        const es=all.filter(x=>x&&x.blob&&String(x.id).startsWith("mmmend_"));
-        if(!es.length||dead)return;
-        let pick=null; try{ const k=localStorage.getItem("ms_mmm_endsong"); if(k)pick=es.find(x=>x.id===k); }catch(e){}
-        if(!pick)pick=es.sort((a,b)=>String(b.id).localeCompare(String(a.id)))[0];
-        if(pick&&!dead)setMmmEndSong({id:pick.id,name:pick.name||"End song",url:URL.createObjectURL(pick.blob)});
-      }catch(e){}
-    })();
-    return ()=>{dead=true;};
-  },[]);
-  const mmmPickEndSong=async(file)=>{
-    if(!file)return;
-    const id="mmmend_"+Date.now();
-    try{ await safeSaveClipToDB(id,file,file.name||"End song","audio/music"); }catch(e){}
-    try{ localStorage.setItem("ms_mmm_endsong",id); }catch(e){}
-    setMmmEndSong({id,name:file.name||"End song",url:URL.createObjectURL(file)});
-  };
-  const mmmMusicSrc=mmmBgSound?(mmmOwnMusic.url||((MUSIC_LIBRARY.find(m=>m.id===musicTrack)||MUSIC_LIBRARY.find(m=>m.id==="ambient")||MUSIC_LIBRARY[0]||{}).url||"")):"";
+  const mmmMusicSrc=mmmBgSound?((MUSIC_LIBRARY.find(m=>m.id===musicTrack)||MUSIC_LIBRARY.find(m=>m.id==="ambient")||MUSIC_LIBRARY[0]||{}).url||""):"";
   const MMM_GRADES=[
     {id:"gold",label:"Gold & Amber"},
     {id:"cold",label:"Cold Blue"},
@@ -3453,24 +3384,19 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
     const v=mmmVideoRef.current; if(!v||!mmmDone)return;
     const onP=()=>setMmmSceneNo(mmmIdxRef.current+1);
     v.addEventListener("play",onP);
-    const n=mmmNarrRef.current; const onNE=()=>{
-      const es=mmmEndRef.current;
-      if(es){ try{ const m=mmmMusicRef.current; if(m)m.pause(); es.currentTime=0; es.volume=Math.max(0,Math.min(1,mmmVolume)); es.onended=()=>setMmmPlaying(false); es.play().catch(()=>setMmmPlaying(false)); return; }catch(e){} }
-      setMmmPlaying(false);
-    };
+    const n=mmmNarrRef.current; const onNE=()=>setMmmPlaying(false);
     if(n)n.addEventListener("ended",onNE);
     return ()=>{ v.removeEventListener("play",onP); if(n)n.removeEventListener("ended",onNE); };
-  },[mmmDone,mmmNarrUrl,mmmFilmUrl,mmmEndSong.url]);
+  },[mmmDone,mmmNarrUrl,mmmFilmUrl]);
   useEffect(()=>{ if(mmmDone&&!mmmNarrUrl&&mmmOwn.url&&!mmmOwnOff)setMmmNarrUrl(mmmOwn.url); },[mmmDone,mmmNarrUrl,mmmOwn.url,mmmOwnOff]);
   const mmmTogglePlay=()=>{
     const v=mmmVideoRef.current,n=mmmNarrRef.current,m=mmmMusicRef.current;
-    if(mmmPlaying){ try{v&&v.pause();}catch(e){} try{n&&n.pause();}catch(e){} try{m&&m.pause();}catch(e){} try{mmmEndRef.current&&mmmEndRef.current.pause();}catch(e){} setMmmPlaying(false); }
+    if(mmmPlaying){ try{v&&v.pause();}catch(e){} try{n&&n.pause();}catch(e){} try{m&&m.pause();}catch(e){} setMmmPlaying(false); }
     else{ try{v&&v.play().catch(()=>{});}catch(e){} try{n&&n.play().catch(()=>{});}catch(e){} try{m&&mmmBgSound&&m.play().catch(()=>{});}catch(e){} setMmmPlaying(true); }
   };
   const mmmRestart=()=>{
     const list=mmmListNow(); const v=mmmVideoRef.current,n=mmmNarrRef.current,m=mmmMusicRef.current;
     mmmIdxRef.current=0; setMmmSceneNo(1); setMmmClock(0);
-    try{ const es=mmmEndRef.current; if(es){es.pause();es.currentTime=0;} }catch(e){}
     try{ if(v&&list.length){v.src=list[0];} v&&v.play().catch(()=>{}); }catch(e){}
     try{ if(n){n.currentTime=0;n.play().catch(()=>{});} }catch(e){}
     try{ if(m&&mmmBgSound){m.currentTime=0;m.play().catch(()=>{});} }catch(e){}
@@ -3553,45 +3479,17 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
         const dw=vw*sc, dh=vh*sc; try{ ctx.drawImage(v,(W-dw)/2,(H-dh)/2,dw,dh); }catch(e){}
       };
       let lastFrameV=null;
-      // SEAMLESS STITCH: the next scene loads while this one plays, then the two
-      // blend over a short dissolve so the film runs as one continuous shot.
-      const XF=0.6;
-      const drawFit=(v,alpha)=>{
-        const vw=v.videoWidth||W, vh=v.videoHeight||H; const sc=Math.min(W/vw,H/vh);
-        const dw=vw*sc, dh=vh*sc; ctx.globalAlpha=alpha; try{ ctx.drawImage(v,(W-dw)/2,(H-dh)/2,dw,dh); }catch(e){} ctx.globalAlpha=1;
-      };
-      const loadV=(src)=>{
-        const v=document.createElement("video"); v.muted=true; v.playsInline=true; v.preload="auto"; v.src=src;
-        v._ready=new Promise(res=>{ v.onloadeddata=()=>res(true); v.onerror=()=>res(false); setTimeout(()=>res(v.readyState>=2),15000); });
-        return v;
-      };
-      let nextV=list.length?loadV(list[0]):null;
       for(let i=0;i<list.length&&!mmmExpCancel.current;i++){
         setMmmExp(x=>({...x,pct:Math.min(95,Math.round((i/list.length)*95)),msg:"Scene "+(i+1)+" of "+list.length+" · "+mmmFmtClock((Date.now()-t0)/1000)}));
-        const v=nextV; nextV=null;
-        const ok=await v._ready;
-        if(!ok){ if(i+1<list.length)nextV=loadV(list[i+1]); continue; }
-        if(v.paused){ try{ await v.play(); }catch(e){ if(i+1<list.length)nextV=loadV(list[i+1]); continue; } }
-        const upNext=(i+1<list.length)?loadV(list[i+1]):null;
-        let upReady=false; if(upNext)upNext._ready.then(r=>{upReady=r;});
-        let upStarted=false;
+        const v=document.createElement("video"); v.muted=true; v.playsInline=true; v.preload="auto"; v.src=list[i];
+        await new Promise(res=>{ v.onloadeddata=res; v.onerror=res; setTimeout(res,15000); });
+        try{ await v.play(); }catch(e){ continue; }
         await new Promise(res=>{
           let fin=false; const end=()=>{ if(!fin){fin=true;clearInterval(tm);res();} };
           v.onended=end; v.onerror=end;
-          const tm=setInterval(()=>{
-            if(mmmExpCancel.current){end();return;}
-            ctx.fillStyle="#000"; ctx.fillRect(0,0,W,H);
-            drawFit(v,1);
-            const dur=isFinite(v.duration)&&v.duration>0?v.duration:0;
-            const left=dur?dur-v.currentTime:99;
-            if(upNext&&upReady&&left<=XF){
-              if(!upStarted){ upStarted=true; upNext.play().catch(()=>{}); }
-              drawFit(upNext,Math.max(0,Math.min(1,1-left/XF)));
-            }
-          },33);
+          const tm=setInterval(()=>{ if(mmmExpCancel.current){end();return;} drawV(v); },33);
           setTimeout(end,((isFinite(v.duration)&&v.duration>0?v.duration:90)+5)*1000);
         });
-        nextV=upNext;
         lastFrameV=v;
       }
       // keep the last picture on screen until the voice has finished
@@ -3603,21 +3501,6 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
       }
       try{ narr&&narr.pause(); }catch(e){}
       try{ bed&&bed.src&&bed.src.stop(); }catch(e){}
-      // END SONG: plays once over the last picture, after the voice finishes
-      if(mmmEndSong.url&&!mmmExpCancel.current){
-        try{
-          setMmmExp(x=>({...x,pct:97,msg:"Adding the end song…"}));
-          const es=new Audio(); es.src=mmmEndSong.url; es.preload="auto";
-          const g=ac.createGain(); g.gain.value=Math.max(0,Math.min(1,mmmVolume));
-          ac.createMediaElementSource(es).connect(g); g.connect(dest);
-          await es.play();
-          await new Promise(res=>{
-            const tm=setInterval(()=>{ if(lastFrameV)drawV(lastFrameV); if(es.ended||es.paused||mmmExpCancel.current){clearInterval(tm);res();} },100);
-            es.onended=()=>{clearInterval(tm);res();};
-          });
-          try{ es.pause(); }catch(e){}
-        }catch(e){}
-      }
       try{ rec.state!=="inactive"&&rec.stop(); }catch(e){}
       await done;
       if(mmmExpCancel.current){ setMmmExp({busy:false,pct:0,msg:"Stopped.",url:"",name:""}); }
@@ -4398,16 +4281,6 @@ Write the drawFrame body now.`}]
         </div>
 
         <div style={{padding:10,border:"1px solid "+LINE,borderRadius:3,marginBottom:10}}>
-          <div style={{color:WHITE,fontSize:12,fontWeight:600,marginBottom:6}}>Music</div>
-          <div style={{color:mmmOwnMusic.url?"#fff":DIM,fontSize:12,marginBottom:8}}>{mmmOwnMusic.url?<>Using your music: <span style={{color:WHITE}}>{mmmOwnMusic.name}</span></>:"No music added. A soft music bed plays under the voice."}</div>
-          <button onClick={()=>{const i=document.getElementById("mmmMusicInput");if(i)i.click();}} style={{width:"100%",padding:9,background:GOLD,color:"#000",border:"none",borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>{mmmOwnMusic.url?"CHANGE MY MUSIC":"ADD MY MUSIC"}</button>
-          <input id="mmmMusicInput" type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.mp4" style={{display:"none"}} onChange={e=>{const f=e.target.files&&e.target.files[0];if(f)mmmPickMusic(f);e.target.value="";}}/>
-          <div style={{color:mmmEndSong.url?"#fff":DIM,fontSize:12,margin:"10px 0 8px"}}>{mmmEndSong.url?<>End song: <span style={{color:WHITE}}>{mmmEndSong.name}</span></>:"No end song. It plays once at the very end, after the voice."}</div>
-          <button onClick={()=>{const i=document.getElementById("mmmEndInput");if(i)i.click();}} style={{width:"100%",padding:9,background:GOLD,color:"#000",border:"none",borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>{mmmEndSong.url?"CHANGE END SONG":"ADD END SONG"}</button>
-          <input id="mmmEndInput" type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.mp4" style={{display:"none"}} onChange={e=>{const f=e.target.files&&e.target.files[0];if(f)mmmPickEndSong(f);e.target.value="";}}/>
-        </div>
-
-        <div style={{padding:10,border:"1px solid "+LINE,borderRadius:3,marginBottom:10}}>
           <div style={{color:WHITE,fontSize:12,fontWeight:600,marginBottom:6}}>Finishing touches</div>
           <div style={{color:WHITE,fontSize:11,marginBottom:4}}>Screen ratio</div>
           <div style={{display:"flex",gap:6,marginBottom:8}}>
@@ -4473,7 +4346,6 @@ Write the drawFrame body now.`}]
             {mmmTransport}
             {mmmNarrUrl&&<audio ref={mmmNarrRef} src={mmmNarrUrl} preload="auto" style={{display:"none"}}/>}
             {mmmBgSound&&mmmMusicSrc&&<audio ref={mmmMusicRef} src={mmmMusicSrc} loop preload="auto" style={{display:"none"}}/>}
-            {mmmEndSong.url&&<audio ref={mmmEndRef} src={mmmEndSong.url} preload="auto" style={{display:"none"}}/>}
             {mmmDone&&(<>
               <button onClick={mmmDownloadAll}
                 style={{width:"100%",padding:14,marginTop:10,background:GOLD,color:"#000",border:"none",fontWeight:600,fontSize:14,letterSpacing:0.2,borderRadius:3,cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>
@@ -5028,25 +4900,12 @@ function P3() {
         const d=JSON.parse(localStorage.getItem("ms_poc_descs")||'["","",""]');
         if(alive){setTitles(t);setDescs(d);}
       }catch{}
-      // Each film is saved in two places: this device AND your cloud. If the device
-      // copy is missing (storage full or cleared), the film loads from the cloud.
-      let cloud=[null,null,null];
-      try{ cloud=JSON.parse(localStorage.getItem("ms_poc_cloud")||"[null,null,null]"); }catch{}
       const next=[null,null,null];
       for(let i=0;i<3;i++){
         try{
           const rec=await loadClipFromDB("poc_"+i);
           if(rec&&rec.blob){
             next[i]={url:URL.createObjectURL(rec.blob),name:rec.name,type:rec.type,size:(rec.blob.size/1024/1024).toFixed(1)};
-          }else if(cloud[i]&&cloud[i].parts&&cloud[i].parts.length){
-            // Big film saved in parts — fetch every part, join them back into one film.
-            const bufs=[];
-            for(const u of cloud[i].parts){const r=await fetch(u);if(!r.ok)throw new Error("part");bufs.push(await r.blob());}
-            const blob=new Blob(bufs,{type:cloud[i].type||"video/mp4"});
-            next[i]={url:URL.createObjectURL(blob),name:cloud[i].name||("Film "+(i+1)),type:cloud[i].type||"video/mp4",size:cloud[i].size||"",cloud:false};
-            try{await saveClipToDB("poc_"+i,blob,cloud[i].name,cloud[i].type);}catch{}
-          }else if(cloud[i]&&cloud[i].url){
-            next[i]={url:cloud[i].url,name:cloud[i].name||("Film "+(i+1)),type:cloud[i].type||"video/mp4",size:cloud[i].size||"",cloud:true};
           }
         }catch{}
       }
@@ -5057,49 +4916,19 @@ function P3() {
 
   const saveTitles=(arr)=>{try{localStorage.setItem("ms_poc_titles",JSON.stringify(arr));}catch{}};
   const saveDescs=(arr)=>{try{localStorage.setItem("ms_poc_descs",JSON.stringify(arr));}catch{}};
-  const [saveMsg,setSaveMsg]=useState(["","",""]);
-  const setMsg=(i,m)=>setSaveMsg(p=>{const n=[...p];n[i]=m;return n;});
-  const setCloud=(i,v)=>{try{const c=JSON.parse(localStorage.getItem("ms_poc_cloud")||"[null,null,null]");c[i]=v;localStorage.setItem("ms_poc_cloud",JSON.stringify(c));}catch{}};
 
   const handleFile=async(i,e)=>{
     const f=e.target.files&&e.target.files[0];
     if(!f)return;
     const url=URL.createObjectURL(f);
-    const size=(f.size/1024/1024).toFixed(1);
-    setUploads(p=>{const n=[...p];if(n[i]&&!n[i].cloud)URL.revokeObjectURL(n[i].url);n[i]={url,name:f.name,type:f.type,size};return n;});
-    // 1 — this device
-    try{await saveClipToDB("poc_"+i,f,f.name,f.type);}catch(err){}
-    // 2 — your cloud, so it never disappears
-    setMsg(i,"Saving to your cloud…");
-    try{
-      const {data:{user}}=await supabase.auth.getUser();
-      if(!user){setMsg(i,"Saved on this device only. Log in to save it to your cloud.");return;}
-      // Cloud files max out at 50 MB each, so a big film is saved in 40 MB parts.
-      const PART=40*1024*1024;
-      const stamp=Date.now();
-      const total=Math.max(1,Math.ceil(f.size/PART));
-      const parts=[];
-      for(let k=0;k<total;k++){
-        setMsg(i,"Saving to your cloud… "+Math.round((k/total)*100)+"%");
-        const piece=f.slice(k*PART,Math.min(f.size,(k+1)*PART),f.type||"video/mp4");
-        const path=user.id+"/poc_"+i+"_"+stamp+"_part"+String(k).padStart(3,"0")+".mp4";
-        const {error:upErr}=await supabase.storage.from("media").upload(path,piece,{upsert:true,contentType:f.type||"video/mp4"});
-        if(upErr)throw upErr;
-        const {data:pub}=supabase.storage.from("media").getPublicUrl(path);
-        if(!pub||!pub.publicUrl)throw new Error("no link");
-        parts.push(pub.publicUrl);
-      }
-      setCloud(i,{parts,name:f.name,type:f.type,size});
-      setMsg(i,"✓ Saved to your cloud");
-    }catch(err){
-      setMsg(i,"Cloud save failed. Tap Replace and pick the film again.");
-    }
+    setUploads(p=>{const n=[...p];if(n[i])URL.revokeObjectURL(n[i].url);n[i]={url,name:f.name,type:f.type,size:(f.size/1024/1024).toFixed(1)};return n;});
+    // Persist the actual file to IndexedDB so it stays forever
+    try{await saveClipToDB("poc_"+i,f,f.name,f.type);}catch(err){alert("Could not save film "+(i+1)+" — storage may be full.");}
   };
   const removeUpload=async(i)=>{
-    setUploads(p=>{const n=[...p];if(n[i]&&!n[i].cloud)URL.revokeObjectURL(n[i].url);n[i]=null;return n;});
+    setUploads(p=>{const n=[...p];if(n[i])URL.revokeObjectURL(n[i].url);n[i]=null;return n;});
     setTitles(p=>{const n=[...p];n[i]="";saveTitles(n);return n;});
     setDescs(p=>{const n=[...p];n[i]="";saveDescs(n);return n;});
-    setCloud(i,null); setMsg(i,"");
     try{await deleteClipFromDB("poc_"+i);}catch{}
   };
 
@@ -5168,8 +4997,7 @@ function P3() {
                 </div>
               ):(
                 <div>
-                  <div style={{color:"#D4AF6A",fontSize:9,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>✓ {uploads[i].name.slice(0,28)}{uploads[i].size?" · "+uploads[i].size+"MB":""}</div>
-                  {saveMsg[i]&&<div style={{color:WHITE,fontSize:9,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>{saveMsg[i]}</div>}
+                  <div style={{color:"#D4AF6A",fontSize:9,fontWeight:600,letterSpacing:0.2,marginBottom:6}}>✓ {uploads[i].name.slice(0,28)} · {uploads[i].size}MB</div>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
                     <button onClick={()=>msDownload(uploads[i].url,uploads[i].name)}
                       style={{...G("gold",false),width:"100%",padding:"8px",fontSize:10,letterSpacing:0.2,cursor:"pointer",textAlign:"center",display:"block",boxSizing:"border-box"}}>
@@ -6773,16 +6601,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
             </div>
           </div>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          {done&&!rendering&&<div style={{color:"#D4AF6A",fontSize:11,fontWeight:600,letterSpacing:0.2}}>Render complete</div>}
-          {!rendering&&<button onClick={async()=>{
-            const n=(mediaLib||[]).length;
-            if(!n){alert("No clips to clear.");return;}
-            if(!window.confirm("Save all "+n+" clips to My Projects, then clear them from here? Nothing is deleted."))return;
-            try{const moved=onRendered?await onRendered():0; alert("Done. "+(moved||0)+" clips saved to My Projects. Render Engine is clear.");}
-            catch(e){alert("Could not clear. Your clips are untouched.");}
-          }} style={{background:"#0E0F12",border:"1px solid "+GOLD,color:WHITE,padding:"8px 14px",cursor:"pointer",fontSize:11,fontWeight:600,letterSpacing:0.2,fontFamily:"'Manrope',system-ui,sans-serif"}}>Save clips & clear</button>}
-        </div>
+        {done&&!rendering&&<div style={{color:"#D4AF6A",fontSize:11,fontWeight:600,letterSpacing:0.2}}>Render complete</div>}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 320px",minHeight:"calc(100vh - 120px)"}}>
         <div style={{padding:20,overflowY:"auto"}}>
@@ -8502,25 +8321,16 @@ function AppMain() {
         const {data}=await supabase.auth.getSession();
         const sess=data?.session;
         if(cancelled)return;
-        // Stay signed in: if the login server can't be reached (offline, or the
-        // server refusing requests), keep the saved account instead of signing out.
-        let serverUp=true;
-        try{ const h=await fetch(SUPABASE_URL+"/auth/v1/health",{headers:{apikey:SUPABASE_PUBLISHABLE_KEY}}); serverUp=h.ok; }catch(e){ serverUp=false; }
-        if(cancelled)return;
         if(!sess||!sess.user){
-          if(serverUp) setUser(u=>(u&&u.isAdmin)?{name:"Guest",plan:"Guest",isAdmin:false}:u);
+          setUser(u=>(u&&u.isAdmin)?{name:"Guest",plan:"Guest",isAdmin:false}:u);
           return;
         }
-        let saved=null; try{ saved=JSON.parse(localStorage.getItem("ms_user")||"null"); }catch(e){}
-        const same=saved&&saved.email&&String(saved.email).toLowerCase()===String(sess.user.email||"").toLowerCase();
-        let plan=same?(saved.plan||"Guest"):"Guest", isAdmin=same?!!saved.isAdmin:false;
+        let plan="Guest", isAdmin=false;
         try{
-          const {data:sub,error:subErr}=await supabase.from("subscriptions").select("plan_tier,status").eq("user_id",sess.user.id).maybeSingle();
-          const {data:role,error:roleErr}=await supabase.from("user_roles").select("role").eq("user_id",sess.user.id).maybeSingle();
-          if(!subErr&&!roleErr){
-            plan=(sub&&sub.status==="active"&&sub.plan_tier&&sub.plan_tier!=="none")?sub.plan_tier:"Guest";
-            isAdmin=!!(role&&role.role==="admin");
-          }
+          const {data:sub}=await supabase.from("subscriptions").select("plan_tier,status").eq("user_id",sess.user.id).maybeSingle();
+          if(sub&&sub.status==="active"&&sub.plan_tier&&sub.plan_tier!=="none") plan=sub.plan_tier;
+          const {data:role}=await supabase.from("user_roles").select("role").eq("user_id",sess.user.id).maybeSingle();
+          if(role&&role.role==="admin") isAdmin=true;
         }catch(e){}
         if(!cancelled) setUser({name:sess.user.email,email:sess.user.email,plan,isAdmin,uid:sess.user.id});
       }catch(e){}
@@ -8839,7 +8649,7 @@ function AppMain() {
       case 15: return <P15/>;
       case 16: return <P16 go={go} timeline={timeline} setRendered={setRendered} mediaLib={mediaLib} setMediaLib={setMediaLib} user={user} filmDuration={filmDuration} setFilmDuration={setFilmDuration} onRendered={async()=>{const n=await clearLibraryAfterExport();setTimeline({});return n;}}/>;
       case 17: return <P17 go={go} rendered={rendered} mediaLib={mediaLib}/>;
-      case 18: return <P18 rendered={rendered} mediaLib={mediaLib} onExported={async()=>{const n=await clearLibraryAfterExport();setTimeline({});return n;}}/>;
+      case 18: return <P18 rendered={rendered} mediaLib={mediaLib} onExported={clearLibraryAfterExport}/>;
       case 19: return <P19 go={go}/>;
       case 20: return <P20/>;
       case 21: return <P21/>;
