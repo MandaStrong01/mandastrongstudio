@@ -164,7 +164,7 @@ async function proxyFetch(body){
   const controller=new AbortController();
   const timeout=setTimeout(()=>controller.abort(),55000);
   try{
-    const res=await fetch("https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/claude-proxy",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),signal:controller.signal});
+    const res=await fetch("https://wvkqnrqcnoztajxxzyxc.supabase.co/functions/v1/claude-proxy",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),signal:controller.signal});
     clearTimeout(timeout);
     return res.json();
   }catch(e){clearTimeout(timeout);throw e;}
@@ -174,7 +174,7 @@ async function proxyFetch(body){
 // MANDASTRONG ENGINE — real photorealistic footage
 // Single shared client. Every studio page renders through this.
 // ══════════════════════════════════════════════════════════════════
-const ENGINE_URL="https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/generate-video";
+const ENGINE_URL="https://wvkqnrqcnoztajxxzyxc.supabase.co/functions/v1/generate-video";
 // Engine key is NOT held in the app. The Supabase engine authorises callers by
 // origin (only InFuture domains) plus sign-in + credit gate on every render.
 // engineHeaders replaced by engineAuthHeaders() — see top of file.
@@ -189,7 +189,7 @@ async function engineCall(body){
 
 // ── CINEMA VOICE ENGINE ──────────────────────────────────────────
 // Server-side speech. Same voice on every device — iPad, Galaxy, HP.
-const VOICE_URL="https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/generate-voice";
+const VOICE_URL="https://wvkqnrqcnoztajxxzyxc.supabase.co/functions/v1/generate-voice";
 let __msAudio=null;
 
 async function engineSpeak(text,meta){
@@ -933,7 +933,7 @@ function ToolPanel({ tool, onClose, onSave }) {
       } else {
         prompt = "You are a professional at InFuture Movie Studios cinema AI platform. Tool: tool.\n\nUser request: "+describe+"\n\nGenerate complete, detailed, professional, production-ready content.";
       }
-      const res = await fetch("https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/claude-proxy",{
+      const res = await fetch("https://wvkqnrqcnoztajxxzyxc.supabase.co/functions/v1/claude-proxy",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1500,
@@ -2874,7 +2874,7 @@ function MSUserCounter(){
   const [total,setTotal]=useState(()=>{try{return JSON.parse(localStorage.getItem("ms_user_count")||"0");}catch{return 0;}});
   useEffect(()=>{
     let alive=true;
-    const PRESENCE="https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/presence";
+    const PRESENCE="https://wvkqnrqcnoztajxxzyxc.supabase.co/functions/v1/presence";
     async function ping(){
       try{
         // one visitor id per browser
@@ -3148,7 +3148,7 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
 
   const mmmCanvasFallback=async(scenePrompt,secs)=>{
     try{
-      const res=await fetch("https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/claude-proxy",{
+      const res=await fetch("https://wvkqnrqcnoztajxxzyxc.supabase.co/functions/v1/claude-proxy",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:3000,
@@ -3594,7 +3594,7 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
         const vd=await vr.json(); audioDataUrl=vd&&(vd.audio||vd.url)?(vd.audio||vd.url):"";
       }catch(e){}
       if(!audioDataUrl){ setMmmError("Couldn't make the narration audio for lip sync."); setMmmLsBusy(false); return; }
-      const res=await fetch("https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/lip-sync",{
+      const res=await fetch("https://wvkqnrqcnoztajxxzyxc.supabase.co/functions/v1/lip-sync",{
         method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({image:face,audio:audioDataUrl})});
       const data=await res.json();
@@ -3784,7 +3784,7 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
       const photoNote=hasPhotos?"The user has uploaded "+loadedRefImages.length+" reference photo(s). The main photo will be drawn as the base layer already — your drawFrame should add atmosphere, lighting, overlays, and cinematic elements ON TOP of the photo base. Do NOT try to redraw the background from scratch.":"No reference photos. You must paint the entire scene from scratch using canvas drawing primitives — sky, ground, environment, people, objects, lighting. Make it look as photorealistic as possible using gradients, layering, and detail.";
       const composeController=new AbortController();
       const composeTimeout=setTimeout(()=>composeController.abort(),45000);
-      const res=await fetch("https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/claude-proxy",{
+      const res=await fetch("https://wvkqnrqcnoztajxxzyxc.supabase.co/functions/v1/claude-proxy",{
         signal:composeController.signal,
         method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
@@ -4693,7 +4693,7 @@ const pexelsCache = {};
 async function pexelsClip(query){
   if(pexelsCache[query]) return pexelsCache[query];
   try{
-    const r = await fetch("https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/pexels",
+    const r = await fetch("https://wvkqnrqcnoztajxxzyxc.supabase.co/functions/v1/pexels",
       { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ query }) });
     if(!r.ok) return null;
     const j = await r.json();
@@ -6289,7 +6289,7 @@ function P16({ go, timeline, setRendered, mediaLib, setMediaLib, user, filmDurat
         const scenePrompt=sceneName.replace(/\.[^.]+$/,"").replace(/_/g," ").replace(/\d+s$/,"").trim();
         log("  Regenerating: "+scenePrompt.slice(0,40)+"...");
         try{
-          const res=await fetch("https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/claude-proxy",{
+          const res=await fetch("https://wvkqnrqcnoztajxxzyxc.supabase.co/functions/v1/claude-proxy",{
             method:"POST",
             headers:{"Content-Type":"application/json"},
             body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:3000,
@@ -7103,7 +7103,7 @@ function P19({ go }) {
     // Stop any current narration before starting a new one
     try{window.speechSynthesis.cancel();}catch{}
     try{
-      const res=await fetch("https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/claude-proxy",{
+      const res=await fetch("https://wvkqnrqcnoztajxxzyxc.supabase.co/functions/v1/claude-proxy",{
         method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:4000,
           messages:[{role:"user",content:"Write a highly polished JavaScript canvas animation for a professional cinema-platform tutorial about \""+t.t+"\". This is for InFuture Movie Studios — the aesthetic must be premium: gold (#E6C98E) on deep black, glowing highlights, smooth eased motion using Math.sin() and clean easing curves, deep drop shadows, professional serif and sans typography. Animation should include: (1) an elegant animated LESSON "+t.n+" number card that fades in and settles, (2) the tutorial title \""+t.t+"\" appearing letter by letter with warm gold glow, (3) an animated diagram or visual metaphor that illustrates the topic conceptually — smooth transitions, layered shapes, glowing lines, not stick figures, (4) key concepts revealed one at a time with smooth fade-in, (5) subtle particle effects and ambient movement to avoid static frames. Every frame should look like a high-end motion graphics piece — think Apple keynote crossed with cinema title design. Use sec for continuous animation, t=0-1 for progress. W=canvas width, H=canvas height. Do not draw letterbox bars, watermarks, or vignettes — those are added separately. Return ONLY: function drawFrame(ctx,W,H,t,sec){"}]})
@@ -7528,7 +7528,7 @@ function P24CharacterStudio({ onSave, go }) {
     if(!lsAudio){setLsError("Record or upload the voice first.");return;}
     setLsBusy(true);setLsStage("Sending your avatar and voice to the lip-sync engine…");
     try{
-      const res=await fetch("https://njqfexhltjwpgvctmyaw.supabase.co/functions/v1/lip-sync",{
+      const res=await fetch("https://wvkqnrqcnoztajxxzyxc.supabase.co/functions/v1/lip-sync",{
         method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({image:photo,audio:lsAudio})
       });

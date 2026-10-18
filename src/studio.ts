@@ -4,7 +4,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 
-export const SUPABASE_URL="https://njqfexhltjwpgvctmyaw.supabase.co";
+export const SUPABASE_URL="https://wvkqnrqcnoztajxxzyxc.supabase.co";
 export const SUPABASE_PUBLISHABLE_KEY="sb_publishable_wqRnYf5pnp68Qo6-McfwyA_JNYrh2VC";
 export const supabase=createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{
   auth:{persistSession:true,autoRefreshToken:true,storageKey:"ms_auth"}

@@ -17,7 +17,7 @@ import { createClient } from "@supabase/supabase-js";
 
 // ---------- Supabase (set these in Bolt env or inline) ----------
 // WIRE: paste your project URL + anon key. Until then, DEMO mode runs.
-const SUPABASE_URL = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_SUPABASE_URL) || "https://njqfexhltjwpgvctmyaw.supabase.co";
+const SUPABASE_URL = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_SUPABASE_URL) || "https://wvkqnrqcnoztajxxzyxc.supabase.co";
 const SUPABASE_ANON = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) || "sb_publishable_wqRnYf5pnp68Qo6-McfwyA_JNYrh2VC";
 const LIVE = Boolean(SUPABASE_URL && SUPABASE_ANON);
 const sb = LIVE ? createClient(SUPABASE_URL, SUPABASE_ANON) : null;
