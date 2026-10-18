@@ -25,7 +25,7 @@ try{
 // by row-level security, and the render engine only spends credit for a
 // signed-in user it can identify from their login token.
 const SUPABASE_URL="https://wvkqnrqcnoztajxxzyxc.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY="sb_publishable_5hcJCP8NshazpVVLDNMDxlw_Ic5AOiyV-McfwyA_JNYrh2VC";
+const SUPABASE_PUBLISHABLE_KEY="sb_publishable_5hcJCP8NshazpVLDNMDxlw_Ic5AOiyV-McfwyA_JNYrh2VC";
 const supabase=createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{
   auth:{persistSession:true,autoRefreshToken:true,storageKey:"ms_auth"}
 });
