@@ -2986,7 +2986,6 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
   const [mmmError,setMmmError]=useState("");
   const mmmDropRef=useRef(null);
   const [mmmAddMsg,setMmmAddMsg]=useState("");
-  const [mmmVideos,setMmmVideos]=useState([]);
   const mmmTargetMin=filmDuration||30;
   const [mmmStudio,setMmmStudio]=useState(false);
   const [mmmStyle,setMmmStyle]=useState("cinematic");
@@ -3089,8 +3088,6 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
             if(small&&small.length<orig.length)setMmmImages(p=>p.map(x=>x.dataUrl===orig?{...x,dataUrl:small}:x));
           }catch(e){}
         }else failed.push(f.name||"file");
-      }else if((f.type||"").startsWith("video")||/\.(mp4|mov|m4v|webm)$/i.test(f.name||"")){
-        try{ const vu=URL.createObjectURL(f); setMmmVideos(p=>[...p,{name:f.name,url:vu,type:f.type||"video/mp4"}]); added++; }catch(e){ failed.push(f.name||"file"); }
       }else if(f.type.startsWith("text")||f.name.match(/\.(txt|md|fdx|fountain)$/i)){
         const text=await readAs(f,true);
         if(text){ setMmmText(p=>(p?p+"\n\n":"")+String(text||"")); added++; } else failed.push(f.name||"file");
@@ -3274,13 +3271,7 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
         // Feed one of YOUR uploaded images to each scene in turn (not just scene 1),
         // so your reference photos drive the whole film, not only the first shot.
         const sceneImg = mmmImages.length ? (mmmImages[i%mmmImages.length].dataUrl||"") : firstImg;
-        if(mmmVideos.length){
-          // Your own clips: used in order, repeating if the film is longer. No engine, no credit.
-          url=mmmVideos[i%mmmVideos.length].url;
-          setMmmStage("Scene "+(i+1)+" — using your clip "+mmmVideos[i%mmmVideos.length].name+"…");
-        }else{
-          url=await engineRender(sceneList[i],{duration:perSceneSec,image:sceneImg,aspect_ratio:mmmRatio});
-        }
+        url=await engineRender(sceneList[i],{duration:perSceneSec,image:sceneImg,aspect_ratio:mmmRatio});
       }catch(e){ url=""; }
       // Engine gave us nothing. Prefer YOUR real photo with documentary motion
       // (Ken Burns pan/zoom) over abstract gold shapes — real people, real footage.
@@ -4105,12 +4096,11 @@ Write the drawFrame body now.`}]
             <label htmlFor="mmmStudioFileInput" onDragOver={e=>{e.preventDefault();}}
               onDrop={e=>{e.preventDefault();mmmAddFiles(e.dataTransfer.files);}}
               style={{display:"block",textAlign:"center",border:"1px dashed "+GOLD+"77",borderRadius:3,padding:12,color:DIM,fontSize:12,letterSpacing:0,marginBottom:10,cursor:"pointer"}}>
-              DROP OR TAP TO ADD SCRIPT, IMAGES AND VIDEO CLIPS
-              <input id="mmmStudioFileInput" type="file" multiple accept="image/*,video/*,.mp4,.mov,.m4v,.webm,text/*,.txt,.md,.fdx,.fountain,.heic,.heif" style={{display:"none"}}
+              DROP OR TAP TO ADD SCRIPT AND IMAGES
+              <input id="mmmStudioFileInput" type="file" multiple accept="image/*,text/*,.txt,.md,.fdx,.fountain,.heic,.heif" style={{display:"none"}}
                 onChange={e=>{const fl=Array.from(e.target.files||[]);e.target.value="";mmmAddFiles(fl);}}/>
             </label>
-            {mmmAddMsg&&<div style={{color:WHITE,fontSize:11,textAlign:"center",marginBottom:8}}>{mmmAddMsg}{mmmImages.length>0?" · "+mmmImages.length+" photo"+(mmmImages.length>1?"s":"")+" ready":""}{mmmVideos.length>0?" · "+mmmVideos.length+" clip"+(mmmVideos.length>1?"s":"")+" ready":""}</div>}
-            {mmmVideos.length>0&&(<div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:10}}>{mmmVideos.map((v,i)=>(<div key={i} style={{border:"1px solid "+LINE,borderRadius:3,padding:"3px 8px",color:WHITE,fontSize:11,display:"flex",gap:8,alignItems:"center"}}><span>{i+1}. {v.name}</span><button onClick={()=>setMmmVideos(pp=>pp.filter((_,x)=>x!==i))} style={{background:"transparent",color:WHITE,border:"none",cursor:"pointer",padding:0,fontSize:12}}>x</button></div>))}</div>)}
+            {mmmAddMsg&&<div style={{color:WHITE,fontSize:11,textAlign:"center",marginBottom:8}}>{mmmAddMsg}{mmmImages.length>0?" · "+mmmImages.length+" photo"+(mmmImages.length>1?"s":"")+" ready":""}</div>}
             {mmmImages.length>0&&(
               <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:12}}>
                 {mmmImages.map((im,i)=>(
@@ -4265,12 +4255,11 @@ Write the drawFrame body now.`}]
           onDragOver={e=>{e.preventDefault();}}
           onDrop={e=>{e.preventDefault();mmmAddFiles(e.dataTransfer.files);}}
           style={{display:"block",textAlign:"center",border:"1px dashed "+GOLD+"77",borderRadius:3,padding:12,color:DIM,fontSize:12,letterSpacing:0,marginBottom:10,cursor:"pointer"}}>
-          DROP OR TAP TO ADD SCRIPT, IMAGES &amp; VIDEO CLIPS
-          <input id="mmmFileInput" type="file" multiple accept="image/*,video/*,.mp4,.mov,.m4v,.webm,text/*,.txt,.md,.fdx,.fountain,.heic,.heif" style={{display:"none"}}
+          DROP OR TAP TO ADD SCRIPT &amp; IMAGES
+          <input id="mmmFileInput" type="file" multiple accept="image/*,text/*,.txt,.md,.fdx,.fountain,.heic,.heif" style={{display:"none"}}
             onChange={e=>{const fl=Array.from(e.target.files||[]);e.target.value="";mmmAddFiles(fl);}}/>
         </label>
-        {mmmAddMsg&&<div style={{color:WHITE,fontSize:11,textAlign:"center",marginBottom:8}}>{mmmAddMsg}{mmmImages.length>0?" · "+mmmImages.length+" photo"+(mmmImages.length>1?"s":"")+" ready":""}{mmmVideos.length>0?" · "+mmmVideos.length+" clip"+(mmmVideos.length>1?"s":"")+" ready":""}</div>}
-        {mmmVideos.length>0&&(<div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:10}}>{mmmVideos.map((v,i)=>(<div key={i} style={{border:"1px solid "+LINE,borderRadius:3,padding:"3px 8px",color:WHITE,fontSize:11,display:"flex",gap:8,alignItems:"center"}}><span>{i+1}. {v.name}</span><button onClick={()=>setMmmVideos(pp=>pp.filter((_,x)=>x!==i))} style={{background:"transparent",color:WHITE,border:"none",cursor:"pointer",padding:0,fontSize:12}}>x</button></div>))}</div>)}
+        {mmmAddMsg&&<div style={{color:WHITE,fontSize:11,textAlign:"center",marginBottom:8}}>{mmmAddMsg}{mmmImages.length>0?" · "+mmmImages.length+" photo"+(mmmImages.length>1?"s":"")+" ready":""}</div>}
         {mmmImages.length>0&&(
           <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:10}}>
             {mmmImages.map((im,i)=>(
