@@ -353,6 +353,68 @@ function msSpokenOnly(text){
   return out.join("\n\n").trim();
 }
 
+// ── AUTO-CAST ─────────────────────────────────────────────────────────────
+// Reads "NAME: line" dialogue in the pasted script. Every character gets their
+// own voice, the same voice every time. Anything that is not a spoken line is
+// read by the narrator. Stage directions in ( ) or [ ] are never spoken.
+function msParseCast(text){
+  const rx=/^\s*([A-Za-z][A-Za-z0-9'’.\- ]{0,26}?)\s*(?:\([^)]*\)|\[[^\]]*\])?\s*:\s*(.+?)\s*$/;
+  const NARR=/^(narrator|narration|voice ?over|v\.?o\.?)$/i;
+  const rows=[];const counts={};
+  for(const ln of String(text||"").split(/\r?\n/)){
+    const t=ln.trim(); if(!t)continue;
+    if(/^[\(\[].*[\)\]]$/.test(t))continue;
+    const m=t.match(rx);
+    if(m&&m[1].trim().split(/\s+/).length<=3&&!NARR.test(m[1].trim())){
+      const label=m[1].trim(),key=label.toUpperCase();
+      rows.push({key,label,upper:label===label.toUpperCase(),t:m[2]});
+      counts[key]=(counts[key]||0)+1;
+    }else if(m&&NARR.test(m[1].trim())){ rows.push({key:null,t:m[2]}); }
+    else rows.push({key:null,t});
+  }
+  const ok=k=>k&&((counts[k]>=1&&rows.find(r=>r.key===k).upper)||counts[k]>=2);
+  const segs=[];const speakers=[];
+  for(const r of rows){
+    let key=ok(r.key)?r.key:null;
+    let tx=String(r.t||"");
+    if(!key&&r.key){ tx=r.label+": "+tx; }
+    if(key){ tx=tx.replace(/\([^)]*\)|\[[^\]]*\]/g,"").replace(/\s+/g," ").trim(); }
+    if(!tx)continue;
+    if(key&&!speakers.find(x=>x.key===key))speakers.push({key,label:r.label});
+    const last=segs[segs.length-1];
+    if(last&&last.sp===key)last.text+=(key?" ":"\n\n")+tx; else segs.push({sp:key,text:tx});
+  }
+  return {segments:segs,speakers};
+}
+function msCastVoices(speakers,narratorId){
+  const V=(typeof VOICE_CHARACTERS!=="undefined")?VOICE_CHARACTERS:[];
+  const byId=id=>V.find(v=>v.id===id);
+  const rules=[
+    [/\b(santa|kris kringle|father christmas|st\.? nick)\b/,"marcus"],
+    [/\b(grandma|granny|nana|gran)\b/,"grandma"],
+    [/\b(grandpa|grandad|grandfather)\b/,"frank"],
+    [/\b(mrs|mother|mom|mum|mama|mommy|mummy)\b/,"savannah"],
+    [/\b(mr|mister|father|dad|daddy|papa)\b/,"river"],
+    [/\b(jingle|elf|sprite)\b/,"brooklyn"],
+    [/\b(fizz|fairy|pixie)\b/,"sophia"],
+    [/\b(lily|girl|daughter|sister)\b/,"rosie"],
+    [/\b(max|boy|son|brother)\b/,"cooper"],
+  ];
+  const pool=["dakota","wade","aurora","edward","paddy","siobhan","fiona","ewan","marcus","river","cecily","dafydd","brooklyn","savannah"];
+  const used=new Set([narratorId]);const out={};
+  for(const sp of speakers){
+    const nm=sp.key.toLowerCase();let id="";
+    for(const [rx,vid] of rules){ if(rx.test(nm)&&!used.has(vid)&&byId(vid)){id=vid;break;} }
+    if(!id){
+      let h=0;for(const c of nm)h=(h*31+c.charCodeAt(0))>>>0;
+      for(let k=0;k<pool.length;k++){const c=pool[(h+k)%pool.length]; if(!used.has(c)&&byId(c)){id=c;break;}}
+    }
+    if(!id)id=narratorId;
+    used.add(id);out[sp.key]=byId(id)||{id,name:id};
+  }
+  return out;
+}
+
 // Turns an uploaded photo (blob/object URL) into a small JPEG data URL the engine can use as the
 // starting picture. Large phone photos are shrunk first so the request is never refused for size.
 async function photoToEngineImage(url,maxPx){
@@ -3324,8 +3386,26 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
         setMmmStage("MandaStrong Cinema Engine — narrating your script…");
         const _mv=(typeof VOICE_CHARACTERS!=="undefined")?VOICE_CHARACTERS.find(v=>v.id===mmmVoiceId):null;
         const meta={voice:_mv?.engineVoice||mmmVoiceId,gender:_mv?.gender||"",origin:_mv?.origin||"",speed:_mv?.rate||1};
-        const vr=await msVoiceText(msSpokenOnly(source),meta,(i,n)=>setMmmStage("MandaStrong Cinema Engine — narrating your script, part "+i+" of "+n+"…"));
-        const parts=vr.parts;
+        const _spoken=msSpokenOnly(source);
+        const _cast=msParseCast(_spoken);
+        let parts=[];
+        if(_cast.speakers.length>=2){
+          // Dialogue found: every character gets their own voice.
+          const cmap=msCastVoices(_cast.speakers,mmmVoiceId);
+          setMmmStage("Casting voices — "+_cast.speakers.map(x=>x.label+" = "+(cmap[x.key]&&cmap[x.key].name)).join(", "));
+          await new Promise(r=>setTimeout(r,1500));
+          for(let si=0;si<_cast.segments.length;si++){
+            const sg=_cast.segments[si];
+            const vc=sg.sp?cmap[sg.sp]:_mv;
+            const m2=sg.sp?{voice:(vc&&(vc.engineVoice||vc.id))||mmmVoiceId,gender:(vc&&vc.gender)||"",origin:(vc&&vc.origin)||"",speed:(vc&&vc.rate)||1}:meta;
+            const who=sg.sp?(_cast.speakers.find(x=>x.key===sg.sp)||{}).label:"Narrator";
+            const r2=await msVoiceText(sg.text,m2,()=>setMmmStage("Voicing "+who+" — "+(si+1)+" of "+_cast.segments.length));
+            for(const b of r2.parts)parts.push(b);
+          }
+        }else{
+          const vr=await msVoiceText(_spoken,meta,(i,n)=>setMmmStage("MandaStrong Cinema Engine — narrating your script, part "+i+" of "+n+"…"));
+          parts=vr.parts;
+        }
         if(parts.length){ narrUrl=URL.createObjectURL(new Blob(parts,{type:parts[0].type||"audio/mpeg"})); try{localStorage.setItem("ms_mmm_narr",narrUrl);}catch(e){} try{ const nb=new Blob(parts,{type:parts[0].type||"audio/mpeg"}); await Promise.race([safeSaveClipToDB("mmmnarr_"+Date.now(),nb,"MakeMyMovie_narration"+((nb.type||"").includes("mp4")?".m4a":".mp3"),nb.type||"audio/mpeg"),new Promise(r=>setTimeout(()=>r("t"),8000))]); }catch(e){} }
       }catch(e){}
     }
