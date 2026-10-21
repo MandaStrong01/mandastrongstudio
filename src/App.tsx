@@ -3098,6 +3098,9 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
   const [mmmText,setMmmText]=useState(()=>{try{return localStorage.getItem("ms_mmm_text")||"";}catch{return "";}});
   const [mmmImages,setMmmImages]=useState(()=>{try{return JSON.parse(localStorage.getItem("ms_mmm_images")||"[]");}catch{return [];}});
   useEffect(()=>{try{localStorage.setItem("ms_mmm_text",mmmText);}catch(e){}},[mmmText]);
+  // Top box: the words that are SPOKEN (narration). Box under it: script + producer directions.
+  const [mmmNarrText,setMmmNarrText]=useState(()=>{try{return localStorage.getItem("ms_mmm_narrtext")||"";}catch{return "";}});
+  useEffect(()=>{try{localStorage.setItem("ms_mmm_narrtext",mmmNarrText);}catch(e){}},[mmmNarrText]);
   useEffect(()=>{try{localStorage.setItem("ms_mmm_images",JSON.stringify(mmmImages));}catch(e){}},[mmmImages]);
   const [mmmBusy,setMmmBusy]=useState(false);
   const [mmmStage,setMmmStage]=useState("");
@@ -3345,7 +3348,8 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
   };
 
   const makeMyMovie=async()=>{
-    const source=mmmText.trim();
+    const source=[mmmNarrText.trim(),mmmText.trim()].filter(Boolean).join("\n\n");
+    const spokenSrc=mmmNarrText.trim()||msSpokenOnly(mmmText.trim());
     if(!source&&mmmImages.length===0){ setMmmError("Drop in your script, or some images, first."); return; }
     setMmmError(""); setMmmBusy(true); setMmmDone(false); setMmmFilmUrl(""); setMmmScenes([]); setMmmPct(0);
 
@@ -3454,12 +3458,12 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
     if(mmmOwn.url&&!mmmOwnOff){
       narrUrl=mmmOwn.url; setMmmStage("Using your own recording as the narration…");
       try{localStorage.setItem("ms_mmm_narr",narrUrl);}catch(e){}
-    }else if(msSpokenOnly(source)){
+    }else if(spokenSrc){
       try{
         setMmmStage("MandaStrong Cinema Engine — narrating your script…");
         const _mv=(typeof VOICE_CHARACTERS!=="undefined")?VOICE_CHARACTERS.find(v=>v.id===mmmVoiceId):null;
         const meta={voice:_mv?.engineVoice||mmmVoiceId,gender:_mv?.gender||"",origin:_mv?.origin||"",speed:_mv?.rate||1};
-        const _spoken=msSpokenOnly(source);
+        const _spoken=spokenSrc;
         const _cast=msParseCast(_spoken);
         let parts=[];
         if(_cast.speakers.length>=2){
@@ -3746,7 +3750,7 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
       try{
         const _mv=(typeof VOICE_CHARACTERS!=="undefined")?VOICE_CHARACTERS.find(v=>v.id===mmmVoiceId):null;
         const vr=await fetch(VOICE_URL,{method:"POST",headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({text:(mmmText||"").slice(0,1200),voice:_mv?.engineVoice||mmmVoiceId,gender:_mv?.gender||"",origin:_mv?.origin||"",speed:_mv?.rate||1})});
+          body:JSON.stringify({text:(mmmNarrText||mmmText||"").slice(0,1200),voice:_mv?.engineVoice||mmmVoiceId,gender:_mv?.gender||"",origin:_mv?.origin||"",speed:_mv?.rate||1})});
         const vd=await vr.json(); audioDataUrl=vd&&(vd.audio||vd.url)?(vd.audio||vd.url):"";
       }catch(e){}
       if(!audioDataUrl){ setMmmError("Couldn't make the narration audio for lip sync."); setMmmLsBusy(false); return; }
@@ -4245,8 +4249,11 @@ Write the drawFrame body now.`}]
               <button onClick={()=>setMmmStudio(false)} style={{background:"none",border:"1px solid "+LINE,color:WHITE,padding:"6px 14px",borderRadius:3,cursor:"pointer",fontSize:12,letterSpacing:0}}>Close</button>
             </div>
 
+            <textarea value={mmmNarrText} onChange={e=>setMmmNarrText(e.target.value)} rows={5}
+              placeholder="NARRATION — paste everything that is spoken here."
+              style={{width:"100%",boxSizing:"border-box",background:"#0E0F12",border:"1px solid "+LINE,borderRadius:3,color:"#fff",padding:11,fontSize:13,fontFamily:"'Manrope',system-ui,sans-serif",resize:"vertical",marginBottom:8}}/>
             <textarea value={mmmText} onChange={e=>setMmmText(e.target.value)} rows={5}
-              placeholder="Paste your whole film here. Nothing is lost when you leave this box."
+              placeholder="SCRIPT & PRODUCER DIRECTIONS — paste the script, characters, scenes and directions here."
               style={{width:"100%",boxSizing:"border-box",background:"#0E0F12",border:"1px solid "+LINE,borderRadius:3,color:"#fff",padding:11,fontSize:13,fontFamily:"'Manrope',system-ui,sans-serif",resize:"vertical",marginBottom:10}}/>
 
             <label htmlFor="mmmStudioFileInput" onDragOver={e=>{e.preventDefault();}}
@@ -4404,8 +4411,11 @@ Write the drawFrame body now.`}]
           <div style={{color:DIM,fontSize:11,letterSpacing:0.2,marginTop:3}}>Drop everything in · set the length · press go — it does the rest</div>
         </div>
 
+        <textarea value={mmmNarrText} onChange={e=>setMmmNarrText(e.target.value)} rows={4}
+          placeholder="NARRATION — paste everything that is spoken here."
+          style={{width:"100%",boxSizing:"border-box",background:"#0E0F12",border:"1px solid "+LINE,borderRadius:3,color:"#fff",padding:11,fontSize:13,fontFamily:"'Manrope',system-ui,sans-serif",resize:"vertical",marginBottom:8}}/>
         <textarea value={mmmText} onChange={e=>setMmmText(e.target.value)} rows={4}
-          placeholder="Paste your whole film here — script, producer instructions, prompts, notes. Or drag files onto the box below."
+          placeholder="SCRIPT & PRODUCER DIRECTIONS — paste the script, characters, scenes and directions here."
           style={{width:"100%",boxSizing:"border-box",background:"#0E0F12",border:"1px solid "+LINE,borderRadius:3,color:"#fff",padding:11,fontSize:13,fontFamily:"'Manrope',system-ui,sans-serif",resize:"vertical",marginBottom:8}}/>
 
         <label ref={mmmDropRef} htmlFor="mmmFileInput"
