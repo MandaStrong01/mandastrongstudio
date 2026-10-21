@@ -357,14 +357,40 @@ function msSpokenOnly(text){
 // Reads "NAME: line" dialogue in the pasted script. Every character gets their
 // own voice, the same voice every time. Anything that is not a spoken line is
 // read by the narrator. Stage directions in ( ) or [ ] are never spoken.
+function msScreenplayToCast(text){
+  const STOP=/^(THE END|END|EPILOGUE|PROLOGUE|FADE (IN|OUT|TO)|CUT TO|CONTINUOUS|CAST OF CHARACTERS|CAST|THEMES|SOUND|MUSIC|SFX|NOTE|NOTES|TITLE|MONTAGE|VARIOUS LOCATIONS.*|MERRY CHRISTMAS|FINAL IMAGE.*|ACT .*|SCENE .*|INT\b.*|EXT\b.*)$/;
+  const cueRx=/^([A-Z][A-Z0-9 .'’&\-]{0,30}?)\s*(\((?:CONT'?D|V\.?O\.?|O\.?S\.?|O\.?C\.?)\))?$/;
+  const lines=String(text||"").split(/\r?\n/).map(l=>l.trim());
+  const isCue=l=>{const m=l.match(cueRx);if(!m)return null;const n=m[1].trim();if(!/[A-Z]{2}/.test(n)||n.split(/\s+/).length>4||STOP.test(n))return null;return n;};
+  const isDir=l=>/^[\(\[].*[\)\]]$/.test(l);
+  const out=[];let found=0;
+  for(let i=0;i<lines.length;i++){
+    const l=lines[i];
+    const c=l&&isCue(l);
+    if(c){
+      let j=i+1;while(j<lines.length&&isDir(lines[j]))j++;
+      if(j<lines.length&&lines[j]&&!isCue(lines[j])&&!/^(SOUND|MUSIC|SFX):/.test(lines[j])){
+        let d=lines[j];
+        while(!/[.?!…"”'’)]$/.test(d)&&j+1<lines.length&&lines[j+1]&&!isCue(lines[j+1])&&!isDir(lines[j+1])){j++;d+=" "+lines[j];}
+        out.push(c+": "+d);found++;i=j;continue;
+      }
+    }
+    out.push(l);
+  }
+  return found>=2?out.join("\n"):String(text||"");
+}
 function msParseCast(text){
+  text=String(text||"").split(/^\s*PRODUCTION NOTES\s*$/m)[0];
+  text=msScreenplayToCast(text);
   const rx=/^\s*([A-Za-z][A-Za-z0-9'’.\- ]{0,26}?)\s*(?:\([^)]*\)|\[[^\]]*\])?\s*:\s*(.+?)\s*$/;
   const NARR=/^(narrator|narration|voice ?over|v\.?o\.?)$/i;
   const rows=[];const counts={};
   for(const ln of String(text||"").split(/\r?\n/)){
     const t=ln.trim(); if(!t)continue;
     if(/^[\(\[].*[\)\]]$/.test(t))continue;
+    if(/^(INT|EXT)[. ]/.test(t))continue;
     const m=t.match(rx);
+    if(m&&/^(act [a-z0-9]+|scene [a-z0-9]+|final image|fade to|sound|music|sfx|note|notes|title|runtime|lighting|snow|visual style|themes?|belief|kindness|community|second chances|growing up)$/i.test(m[1].trim()))continue;
     if(m&&m[1].trim().split(/\s+/).length<=3&&!NARR.test(m[1].trim())){
       const label=m[1].trim(),key=label.toUpperCase();
       rows.push({key,label,upper:label===label.toUpperCase(),t:m[2]});
