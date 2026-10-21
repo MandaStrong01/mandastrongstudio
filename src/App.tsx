@@ -412,7 +412,30 @@ function msParseCast(text){
   }
   return {segments:segs,speakers};
 }
-function msCastVoices(speakers,narratorId){
+function msProfile(label,text){
+  const first=String(label||"").toLowerCase().split(/\s+/)[0].replace(/[^a-z']/g,"");
+  const r={gender:"",age:""};if(!first||first.length<2)return r;
+  const nameRx=new RegExp("(^|[^a-z])"+first.replace(/[^a-z]/g,"")+"([^a-z]|$)","i");
+  const F=/\b(girl|woman|lady|she|her|hers|mother|mom|mum|mrs|ms|miss|daughter|sister|grandma|granny|nana|queen|aunt|female|wife)\b/i;
+  const M=/\b(boy|man|gentleman|he|his|him|father|dad|mr|mister|son|brother|grandpa|grandad|king|uncle|male|husband)\b/i;
+  let line="";
+  for(const l of String(text||"").split(/\r?\n/)){
+    const t=l.trim().replace(/^[\u2022*\-\u2013]\s*/,"");
+    if(t.length>220||t.length<4)continue;
+    if(nameRx.test(t.slice(0,40))&&(/\bage[d]?\b|\byears?[- ]old\b|\(\s*\d{1,3}\s*[,)]|\(\d{1,3}\)|[,\-\u2013:]\s*(?:\w+\s+){0,2}(girl|boy|woman|man|mother|father|child|teen|elderly|old)/i.test(t))){line=t;break;}
+  }
+  if(!line)return r;
+  const f=F.test(line),m=M.test(line);
+  if(f&&!m)r.gender="Female";else if(m&&!f)r.gender="Male";
+  let n=0;const a=line.match(/\bage[d]?\s*(\d{1,3})\b|\b(\d{1,3})[- ]years?[- ]old\b|\((\d{1,3})\)|\((?:[^)]*?,\s*)?(\d{1,3})\s*\)/i);
+  if(a)n=parseInt(a[1]||a[2]||a[3]||a[4],10)||0;
+  if(n>0&&n<=110)r.age=n<=12?"Child":n<=19?"Teen":n>=65?"Elderly":"Adult";
+  else if(/\b(child|kid|little|boy|girl|young boy|young girl)\b/i.test(line)&&!/\b(man|woman)\b/i.test(line))r.age="Child";
+  else if(/\bteen/i.test(line))r.age="Teen";
+  else if(/\b(elderly|old man|old woman|grand(ma|pa|ad)|granny|nana)\b/i.test(line))r.age="Elderly";
+  return r;
+}
+function msCastVoices(speakers,narratorId,fullText){
   const V=(typeof VOICE_CHARACTERS!=="undefined")?VOICE_CHARACTERS:[];
   const byId=id=>V.find(v=>v.id===id);
   const rules=[
@@ -428,9 +451,23 @@ function msCastVoices(speakers,narratorId){
   ];
   const pool=["dakota","wade","aurora","edward","paddy","siobhan","fiona","ewan","marcus","river","cecily","dafydd","brooklyn","savannah"];
   const used=new Set([narratorId]);const out={};
+  const mine={};const taken=new Set();
+  for(const sp of speakers){const n=sp.key.toLowerCase();for(const [rx,vid] of rules){if(rx.test(n)&&!taken.has(vid)&&byId(vid)){mine[sp.key]=vid;taken.add(vid);break;}}}
   for(const sp of speakers){
     const nm=sp.key.toLowerCase();let id="";
-    for(const [rx,vid] of rules){ if(rx.test(nm)&&!used.has(vid)&&byId(vid)){id=vid;break;} }
+    const pr=msProfile(sp.label,fullText);
+    if(pr.gender||pr.age){
+      const fit=(v,g,a)=>v.id!=="amanda"&&!used.has(v.id)&&(mine[sp.key]===v.id||!taken.has(v.id))&&(!g||v.gender===g)&&(!a||v.age===a);
+      let cands=V.filter(v=>fit(v,pr.gender,pr.age));
+      if(!cands.length&&pr.age)cands=V.filter(v=>fit(v,pr.gender,""));
+      if(!cands.length&&pr.gender)cands=V.filter(v=>fit(v,"",pr.age));
+      if(cands.length){
+        const hint=cands.find(v=>rules.some(([rx,vid])=>rx.test(nm)&&vid===v.id));
+        if(hint)id=hint.id;
+        else{let h=0;for(const c of nm)h=(h*31+c.charCodeAt(0))>>>0;id=cands[h%cands.length].id;}
+      }
+    }
+    if(!id)for(const [rx,vid] of rules){ if(rx.test(nm)&&!used.has(vid)&&byId(vid)){id=vid;break;} }
     if(!id){
       let h=0;for(const c of nm)h=(h*31+c.charCodeAt(0))>>>0;
       for(let k=0;k<pool.length;k++){const c=pool[(h+k)%pool.length]; if(!used.has(c)&&byId(c)){id=c;break;}}
@@ -3417,7 +3454,7 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
         let parts=[];
         if(_cast.speakers.length>=2){
           // Dialogue found: every character gets their own voice.
-          const cmap=msCastVoices(_cast.speakers,mmmVoiceId);
+          const cmap=msCastVoices(_cast.speakers,mmmVoiceId,source);
           setMmmStage("Casting voices — "+_cast.speakers.map(x=>x.label+" = "+(cmap[x.key]&&cmap[x.key].name)).join(", "));
           await new Promise(r=>setTimeout(r,1500));
           for(let si=0;si<_cast.segments.length;si++){
