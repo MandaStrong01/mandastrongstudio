@@ -81,6 +81,7 @@ function sizeFor(ratio, quality) {
   return [Math.round(W / 2) * 2, Math.round(H / 2) * 2];
 }
 // Records a moving picture from a still: slow push-in and drift (used for photos and as a backup).
+const isStill = s => /image|photo|still/.test((s && s.source) || "");
 async function stillToClip(src, secs, idx) {
   return new Promise((resolve) => {
     const img = new Image(); img.crossOrigin = "anonymous";
@@ -454,7 +455,7 @@ export default function Studio() {
     const iv = setInterval(() => {
       const c = (Date.now() - t0) / 1000; setClock(c);
       const k = Math.min(ready.length - 1, Math.floor(c / sceneLen));
-      if (k !== curRef.current && ready[k]) { curRef.current = k; setCur(k); const v = vRef.current; if (v) { v.src = ready[k].url; v.loop = true; v.play().catch(() => { }); } }
+      if (k !== curRef.current && ready[k]) { curRef.current = k; const v = vRef.current; if (v) { v.style.opacity = 0; setTimeout(() => { setCur(k); v.src = ready[k].url; v.loop = !isStill(ready[k]); v.play().catch(() => { }); setTimeout(() => { v.style.opacity = 1; }, 120); }, 450); } else setCur(k); }
       const m = mRef.current; if (m) m.volume = Math.max(0, Math.min(1, mVol * (duck && activeNarr && nRef.current && !nRef.current.paused ? 0.45 : 1)));
       if (c >= total) { setPlaying(false); try { nRef.current && nRef.current.pause(); mRef.current && mRef.current.pause(); vRef.current && vRef.current.pause(); } catch (e) { } }
     }, 200);
@@ -465,7 +466,7 @@ export default function Studio() {
     const v = vRef.current, n = nRef.current, m = mRef.current;
     if (playing) { [v, n, m].forEach(x => { try { x && x.pause(); } catch (e) { } }); setPlaying(false); return; }
     if (clock >= total) { setClock(0); setCur(0); if (v) v.src = ready[0].url; if (n) n.currentTime = 0; if (m) m.currentTime = 0; }
-    if (v) { if (!v.src) v.src = ready[cur].url; v.loop = true; v.muted = !ready[cur] || ready[cur].source !== "your clip"; v.volume = cVol; v.play().catch(() => { }); }
+    if (v) { if (!v.src) v.src = ready[cur].url; v.loop = !isStill(ready[cur]); v.muted = !ready[cur] || ready[cur].source !== "your clip"; v.volume = cVol; v.play().catch(() => { }); }
     if (n && activeNarr) { n.volume = vVol; n.play().catch(() => { }); }
     if (m && musicUrl) { m.loop = true; m.play().catch(() => { }); }
     setPlaying(true);
@@ -506,10 +507,13 @@ export default function Studio() {
     const caps = opts.trailer ? [] : splitCaptions(opts.track === "main" ? narrText : (dubTracks[opts.track] || {}).text, narrSecs || total);
     const len = opts.trailer ? Math.min(opts.trailer / Math.max(1, ready.length), 3) : sceneLen;
     const count = opts.trailer ? Math.min(ready.length, Math.ceil(opts.trailer / len)) : ready.length;
-    const draw = (v, tSec) => {
+    const frame = (v, p, a) => {
+      const vw = v.videoWidth || W, vh = v.videoHeight || H, sc = Math.max(W / vw, H / vh) * (1.02 + 0.06 * Math.min(1, p)), dw = vw * sc, dh = vh * sc;
+      ctx.globalAlpha = Math.max(0, Math.min(1, a)); try { ctx.drawImage(v, (W - dw) / 2, (H - dh) / 2, dw, dh); } catch (e) { } ctx.globalAlpha = 1;
+    };
+    const draw = (v, tSec, p, prev, fa) => {
       ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
-      const vw = v.videoWidth || W, vh = v.videoHeight || H, sc = Math.max(W / vw, H / vh) * 1.02, dw = vw * sc, dh = vh * sc;
-      try { ctx.drawImage(v, (W - dw) / 2, (H - dh) / 2, dw, dh); } catch (e) { }
+      if (prev && fa < 1) { frame(prev, 1, 1); frame(v, p, fa); } else frame(v, p, 1);
       ctx.fillStyle = tint; ctx.fillRect(0, 0, W, H);
       if (subs && !opts.trailer) { const c = caps.find(x => tSec >= x.start && tSec < x.end); if (c) { ctx.font = "600 " + Math.round(H * 0.036) + "px Manrope, sans-serif"; ctx.textAlign = "center"; const lines = wrapText(ctx, c.text, W * 0.86); lines.forEach((ln, k) => { const y = H * 0.92 - (lines.length - 1 - k) * H * 0.048; ctx.lineWidth = 5; ctx.strokeStyle = "rgba(0,0,0,.8)"; ctx.strokeText(ln, W / 2, y); ctx.fillStyle = "#fff"; ctx.fillText(ln, W / 2, y); }); } }
       if (logoImg) { const lw = W * 0.1, lh = lw * logoImg.height / logoImg.width; ctx.globalAlpha = 0.8; ctx.drawImage(logoImg, W - lw - W * 0.03, H * 0.03, lw, lh); ctx.globalAlpha = 1; }
@@ -522,15 +526,20 @@ export default function Studio() {
     if (title) { const tEnd = Date.now() + 3000; while (Date.now() < tEnd && !stopExp.current) { card([title, kind], true); await sleep(33); } }
     if (nEl) try { await nEl.play(); } catch (e) { }
     const tStart = Date.now();
-    for (let i = 0; i < count && !stopExp.current; i++) {
-      const v = document.createElement("video"); v.src = ready[i].url; v.muted = ready[i].source !== "your clip"; v.loop = true; v.playsInline = true;
+    const mkV = s => { const v = document.createElement("video"); v.src = s.url; v.muted = s.source !== "your clip"; v.loop = !isStill(s); v.playsInline = true; v.preload = "auto";
       if (!v.muted) { try { const cg = ac.createGain(); cg.gain.value = cVol; ac.createMediaElementSource(v).connect(cg); cg.connect(dest); } catch (e) { v.muted = true; } }
-      await new Promise(res => { v.onloadeddata = res; v.onerror = res; setTimeout(res, 15000); }); try { await v.play(); } catch (e) { }
-      const end = Date.now() + len * 1000;
-      while (Date.now() < end && !stopExp.current) { draw(v, (Date.now() - tStart) / 1000); await sleep(33); }
-      try { v.pause(); v.src = ""; } catch (e) { }
+      v._ok = new Promise(res => { v.onloadeddata = res; v.onerror = res; setTimeout(res, 15000); }); return v; };
+    const FADE = Math.min(1.2, len * 0.3);
+    let prevV = null, nextV = count ? mkV(ready[0]) : null;
+    for (let i = 0; i < count && !stopExp.current; i++) {
+      const v = nextV; await v._ok; try { await v.play(); } catch (e) { }
+      nextV = i + 1 < count ? mkV(ready[i + 1]) : null;
+      const s0 = Date.now(), end = s0 + len * 1000;
+      while (Date.now() < end && !stopExp.current) { const el = (Date.now() - s0) / 1000; draw(v, (Date.now() - tStart) / 1000, el / len, prevV, el / FADE); if (prevV && el >= FADE) { try { prevV.pause(); prevV.src = ""; } catch (e) { } prevV = null; } await sleep(33); }
+      if (prevV) { try { prevV.pause(); prevV.src = ""; } catch (e) { } } prevV = v;
       opts.onProgress && opts.onProgress((i + 1) / count, (Date.now() - t0) / 1000);
     }
+    if (prevV) { try { prevV.pause(); prevV.src = ""; } catch (e) { } }
     // credits
     if (credits && !opts.trailer && !stopExp.current) {
       if (endEl) try { endEl.play(); } catch (e) { }
@@ -725,7 +734,7 @@ export default function Studio() {
         <div className="out">
           <div>
             <div ref={wrapRef} className="pv" style={{ aspectRatio: (RATIOS[ratio] || [16, 9]).join("/"), maxHeight: ratio === "9:16" ? 620 : undefined, margin: ratio === "9:16" ? "0 auto" : undefined }}>
-              <video ref={vRef} playsInline loop muted={!ready[cur] || ready[cur].source !== "your clip"} src={ready[cur] ? ready[cur].url : undefined} />
+              <video ref={vRef} playsInline loop={!isStill(ready[cur])} style={{ transition: "opacity .45s ease, transform .3s linear", transform: "scale(" + (1 + 0.06 * Math.min(1, (clock % sceneLen) / sceneLen)) + ")" }} muted={!ready[cur] || ready[cur].source !== "your clip"} src={ready[cur] ? ready[cur].url : undefined} />
               {!ready.length && <div style={{ position: "absolute", color: "var(--dim)", fontSize: 13 }}>Your movie plays here</div>}
               {caption && <div className="cap">{caption}</div>}
             </div>
