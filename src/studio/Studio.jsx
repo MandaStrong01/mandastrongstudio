@@ -337,7 +337,11 @@ export default function Studio() {
     const setS = (patch) => setScenes(p => p.map((s, k) => k === i ? { ...s, ...patch } : s));
     setS({ status: "making" });
     let blob = null, source = "engine", note = "";
-    if (clips[i]) { blob = clips[i].blob; source = "your clip"; }
+    // A clip named with a scene number (e.g. "Scene_17.mp4") goes on that scene; unnumbered clips fill scenes in order.
+    const numbered = clips.filter(c => /\d/.test(String(c.name || "")));
+    const byNum = numbered.find(c => { const mm = String(c.name).match(/0*(\d{1,3})(?=\D*$)/); return mm && Number(mm[1]) === i + 1; });
+    const cl = byNum || (numbered.length ? null : clips[i]);
+    if (cl) { blob = cl.blob; source = "your clip"; }
     const free = () => freeMode || noCredit.current;
     if (!blob && !free() && i === 0 && lipSync && photo && list.firstVoice) {
       try { const r = await fetch(LIPSYNC, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: photo, audio: list.firstVoice }) }); const d = await r.json(); if (d.video) { blob = await toBlob(d.video); source = "lip sync"; } else note = d.error || ""; } catch (e) { }
