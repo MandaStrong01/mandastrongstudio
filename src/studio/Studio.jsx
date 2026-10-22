@@ -410,6 +410,11 @@ export default function Studio() {
 
   // ── export: one file with picture, voice, music, captions, logo and credits ──
   const [exp, setExp] = useState({ busy: false, pct: 0, msg: "", files: [] });
+  // Every finished film is kept on this device and listed under "My saved films", even after a reload.
+  const [savedFilms, setSavedFilms] = useState([]);
+  const loadSaved = async () => { const all = await dbAll(); setSavedFilms(all.filter(x => String(x.id).includes("_final_") && x.blob).sort((a, b) => String(b.id).localeCompare(String(a.id))).map(x => ({ id: x.id, name: (x.meta && x.meta.name) || "My film", blob: x.blob }))); };
+  useEffect(() => { loadSaved(); }, []);
+  const deleteSaved = async (id) => { try { const db = await idb(); const tx = db.transaction("f", "readwrite"); tx.objectStore("f").delete(id); await new Promise(res => { tx.oncomplete = res; tx.onerror = res; }); } catch (e) { } loadSaved(); };
   const stopExp = useRef(false);
   async function renderFile(opts) {
     const r = opts.ratio, [W, H] = sizeFor(r, quality);
@@ -489,6 +494,7 @@ export default function Studio() {
     }
     try { wl && wl.release(); } catch (e) { }
     setExp({ busy: false, pct: 100, msg: stopExp.current ? "Stopped." : "Ready. Tap a file to save it.", files });
+    loadSaved();
   };
   const saveFile = async (f, toPhotos) => {
     try { const file = new File([f.blob], f.name, { type: f.blob.type }); if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: f.name }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
@@ -512,7 +518,7 @@ export default function Studio() {
     await dbPut(projectId.current + "_project", blob, {});
     await saveFile({ blob, name: (title || "My_Film").replace(/[^\w]+/g, "_") + "_Project.json", url: URL.createObjectURL(blob) });
   };
-  const newFilm = async () => { await dbClear(projectId.current); setScenes([]); setDone(false); setNarrUrl(""); setMusicUrl(""); setExp({ busy: false, pct: 0, msg: "", files: [] }); setStage(""); setPct(0); setClock(0); setCur(0); };
+  const newFilm = async () => { const all = await dbAll(); const db = await idb(); const tx = db.transaction("f", "readwrite"); for (const x of all) if (String(x.id).startsWith(projectId.current) && !String(x.id).includes("_final_")) tx.objectStore("f").delete(x.id); await new Promise(res => { tx.oncomplete = res; tx.onerror = res; }); setScenes([]); setDone(false); setNarrUrl(""); setMusicUrl(""); setExp({ busy: false, pct: 0, msg: "", files: [] }); setStage(""); setPct(0); setClock(0); setCur(0); };
 
   // ── page ──
   const Chips = ({ items, value, onPick }) => <div className="row">{items.map(x => { const id = x.id || x, lb = x.label || x; return <button key={id} className={"c" + (value === id ? " on" : "")} onClick={() => onPick(id)}>{lb}</button>; })}</div>;
@@ -679,6 +685,15 @@ export default function Studio() {
         </div>
         {(exp.busy || exp.msg) && <div className="msg">{exp.msg}<div className="pb"><i style={{ width: exp.pct + "%" }} /></div></div>}
         {exp.files.length > 0 && <div className="row" style={{ marginTop: 8 }}>{exp.files.map(f => <button key={f.name} className="b s" onClick={() => saveFile(f)}>⬇ {f.name}</button>)}</div>}
+
+        <div className="tl">
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", color: "var(--gold)", marginBottom: 6 }}>MY SAVED FILMS · TAP TO SAVE TO PHOTOS OR FILES</div>
+          {savedFilms.length === 0 ? <div className="msg">Your finished films appear here and stay here, even if the page reloads.</div> :
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{savedFilms.map(f => <div key={f.id} className="row" style={{ alignItems: "center" }}>
+              <button className="b g" style={{ padding: "9px 14px", textAlign: "left", flex: 1 }} onClick={() => saveFile({ blob: f.blob, name: f.name, url: URL.createObjectURL(f.blob) })}>⬇ {f.name} · {Math.round(f.blob.size / 1048576)} MB</button>
+              <button className="c" onClick={() => deleteSaved(f.id)}>Delete</button>
+            </div>)}</div>}
+        </div>
 
         <div className="tl">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
