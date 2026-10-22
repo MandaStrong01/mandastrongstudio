@@ -56,7 +56,7 @@ async function dbClear(prefix) { try { const all = await dbAll(); const db = awa
 async function se(body) { const r = await fetch(SE, { method: "POST", headers: await engineAuthHeaders(), body: JSON.stringify(body) }); return r.json(); }
 async function seRun(body, maxMin) {
   const s = await se(body);
-  if (s.error) throw new Error(s.error);
+  if (s.error) { const e = new Error(s.error); e.nocredit = !!s.nocredit || /credit/i.test(s.error); throw e; }
   if (s.url) return s.url;
   if (!s.id) throw new Error("The engine did not start the job");
   const end = Date.now() + (maxMin || 12) * 60000;
@@ -114,6 +114,19 @@ function splitCaptions(text, total) {
   const chars = sents.reduce((a, s) => a + s.length, 0) || 1; let t = 0;
   return sents.map(s => { const d = total * s.length / chars; const c = { start: t, end: t + d, text: s }; t += d; return c; });
 }
+// Reads "SCENE 1 / SCENE 2 ..." blocks exactly as pasted. No AI needed.
+function parseScenes(text) {
+  const t = String(text || ""); const re = /^\s*SCENE\s+(\d+)\s*[:.\-—]?\s*(.*)$/gim; const marks = []; let m;
+  while ((m = re.exec(t))) marks.push({ n: Number(m[1]), at: m.index, head: m[2] || "", end: re.lastIndex });
+  if (marks.length < 2) return [];
+  return marks.map((mk, k) => { const body = t.slice(mk.end, k + 1 < marks.length ? marks[k + 1].at : t.length).trim(); const txt = (mk.head + " " + body).replace(/\s+/g, " ").trim(); return txt; }).filter(Boolean);
+}
+const STOP = new Set("a an the and or of in on at to for with from by into onto over under above below beside behind between through across along around toward towards as is are was were be been being it its this that these those their his her them they he she we you your our one two each every all some any no not only just very slow slowly fast camera shot shots frame framing push pull dolly track tracking pan tilt crane static locked off wide close up close-up macro aerial lens light lit lighting grade graded warm cold cool gold golden amber blue teal orange black white sepia grain film cinematic documentary photorealistic shallow depth field bokeh soft deep heavy single continuous composed divided vertically centre center left right half halves interior exterior scene still stillness quiet gentle long held beat feels necessary hopeful serious respectful tender comic deadpan dust haze flare highlights glow glowing screen".split(" "));
+function stockQuery(text) {
+  const words = String(text || "").toLowerCase().replace(/[^a-z0-9\s'-]/g, " ").split(/\s+/).filter(w => w.length > 2 && !STOP.has(w));
+  return words.slice(0, 4).join(" ") || "landscape";
+}
+
 function wrapText(ctx, text, maxW) { const words = String(text).split(" "); const lines = []; let cur = ""; for (const w of words) { const n = cur ? cur + " " + w : w; if (ctx.measureText(n).width > maxW && cur) { lines.push(cur); cur = w; } else cur = n; } if (cur) lines.push(cur); return lines; }
 
 const CSS = `
@@ -208,10 +221,18 @@ export default function Studio() {
   const [credits, setCredits] = useState(() => load("credits", true));
   const [watermark, setWatermark] = useState(() => load("watermark", true));
   const [creditNames, setCreditNames] = useState(() => load("creditNames", ""));
+  // Free mode: build every scene from YOUR images first, then free stock pictures. Uses no engine credit.
+  const [freeMode, setFreeMode] = useState(() => load("freeMode", false));
+  useEffect(() => { save("freeMode", freeMode); }, [freeMode]);
+  const noCredit = useRef(false);
+  const planRef = useRef([]);
   useEffect(() => { const o = { kind, title, narr, script, voiceMode, narrator, charVoices, lipSync, speed, spoken, subs, dubs, musicMode, mood, musicPrompt, style, grade, enhance, duck, cleanVoice, minutes, ratio, quality, vVol, mVol, cVol, allRatios, credits, watermark, creditNames, plan }; for (const k in o) save(k, o[k]); });
 
   // ── files ──
   const [photos, setPhotos] = useState([]); // {name,dataUrl}
+  const photosLoaded = useRef(false);
+  useEffect(() => { (async () => { try { const all = await dbAll(); const x = all.find(y => y.id === "mfs_photos"); if (x && x.blob) setPhotos(JSON.parse(await x.blob.text())); } catch (e) { } photosLoaded.current = true; })(); }, []);
+  useEffect(() => { if (photosLoaded.current) dbPut("mfs_photos", new Blob([JSON.stringify(photos)], { type: "application/json" }), {}); }, [photos]);
   const [clips, setClips] = useState([]);   // {name,url,blob}
   const [myRec, setMyRec] = useState(null); // {name,blob,url}
   const [mySong, setMySong] = useState(null);
@@ -295,23 +316,61 @@ export default function Studio() {
     return { blob: new Blob(parts, { type: parts[0].type || "audio/mpeg" }), text: t };
   }
 
+  // Turns a picture (your photo or a stock photo) into a moving shot.
+  async function stockScene(plan, i) {
+    if (plan && plan.photo >= 0 && photos[plan.photo]) { const b = await stillToClip(photos[plan.photo].dataUrl, 7, i); if (b) return { blob: b, source: "your image" }; }
+    const q = (plan && plan.query) || "cinematic landscape";
+    try {
+      const st = await se({ kind: "stock", query: q });
+      if (st && st.url) {
+        if (st.type === "video") { const b = await toBlob(st.url); if (b && b.size > 10000) return { blob: b, source: "stock video" }; }
+        else { const b = await stillToClip(st.url, 7, i); if (b) return { blob: b, source: "stock photo" }; }
+      }
+    } catch (e) { }
+    return null;
+  }
+
   async function makeScene(i, text, list) {
     const look = style + " style, " + (GRADES.find(g => g.id === grade) || GRADES[0]).prompt + (enhance ? ", photorealistic, 35mm film grain, sharp detail" : "") + ", no on-screen text";
-    const photo = photos.length ? photos[i % photos.length].dataUrl : "";
+    const plan = planRef.current[i] || null;
+    const photo = plan && plan.photo >= 0 && photos[plan.photo] ? photos[plan.photo].dataUrl : "";
     const setS = (patch) => setScenes(p => p.map((s, k) => k === i ? { ...s, ...patch } : s));
     setS({ status: "making" });
     let blob = null, source = "engine", note = "";
     if (clips[i]) { blob = clips[i].blob; source = "your clip"; }
-    if (!blob && i === 0 && lipSync && photo && list.firstVoice) {
+    const free = () => freeMode || noCredit.current;
+    if (!blob && !free() && i === 0 && lipSync && photo && list.firstVoice) {
       try { const r = await fetch(LIPSYNC, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: photo, audio: list.firstVoice }) }); const d = await r.json(); if (d.video) { blob = await toBlob(d.video); source = "lip sync"; } else note = d.error || ""; } catch (e) { }
     }
-    if (!blob) { try { blob = await toBlob(await seRun({ kind: "video", prompt: text + "\n" + look, image: photo })); } catch (e) { note = e.message; } }
-    if (!blob) { try { const im = await seRun({ kind: "image", prompt: text + "\n" + look, aspect_ratio: ratio }, 4); blob = await stillToClip(im, 6, i); source = "engine still"; } catch (e) { } }
-    if (!blob && photo) { blob = await stillToClip(photo, 6, i); source = "your photo"; }
+    if (!blob && !free()) { try { blob = await toBlob(await seRun({ kind: "video", prompt: text + "\n" + look, image: photo })); } catch (e) { note = e.message; if (e.nocredit) { noCredit.current = true; setStage("Engine is out of credit — switching to your images and free stock."); } } }
+    if (!blob && !free()) { try { const im = await seRun({ kind: "image", prompt: text + "\n" + look, aspect_ratio: ratio }, 4); blob = await stillToClip(im, 6, i); source = "engine still"; } catch (e) { if (e.nocredit) noCredit.current = true; } }
+    if (!blob) { const r2 = await stockScene(plan, i); if (r2) { blob = r2.blob; source = r2.source; } }
     if (!blob) { setS({ status: "failed", note: note || "No picture came back" }); return null; }
     await dbPut(projectId.current + "_scene_" + i, blob, { i, text, source });
     setS({ status: "done", blob, url: URL.createObjectURL(blob), source, note });
     return blob;
+  }
+
+  // Matches each scene to one of YOUR images (by looking at them), and writes a stock search for the rest.
+  async function planScenes(list) {
+    const n = list.length;
+    let plan = list.map(t => ({ photo: -1, query: "" }));
+    try {
+      const pics = photos.slice(0, 40);
+      const thumbs = [];
+      for (const p of pics) { const t = await shrinkPhoto(p.dataUrl, 320); thumbs.push(t.split(",")[1] || ""); }
+      const content = [];
+      thumbs.forEach((d, k) => { content.push({ type: "text", text: "IMAGE " + k + ":" }); content.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: d } }); });
+      content.push({ type: "text", text: "Here are " + n + " film scenes in order:\n" + list.map((t, k) => (k + 1) + ". " + t).join("\n") + "\n\nFor EACH scene: if one of the images above clearly shows what the scene describes, give its IMAGE number, otherwise -1. An image may be used for more than one scene only if it truly fits. Also give a short 2 to 5 word stock-photo search for the scene's main subject (real things, places, people or objects; no style words).\nReturn ONLY a JSON array of " + n + " objects like {\"photo\":-1,\"query\":\"cave paintings\"}." });
+      const d = await proxyFetch({ model: "claude-sonnet-4-20250514", max_tokens: 8000, messages: [{ role: "user", content }] });
+      const raw = (d && d.content ? d.content.filter(x => x.type === "text").map(x => x.text).join("") : "").replace(/```json|```/g, "");
+      const arr = JSON.parse(raw.slice(raw.indexOf("["), raw.lastIndexOf("]") + 1));
+      plan = list.map((t, k) => { const a = arr[k] || {}; const ph = Number.isInteger(a.photo) && a.photo >= 0 && a.photo < pics.length ? a.photo : -1; return { photo: ph, query: String(a.query || "").slice(0, 80) || t.split(/\s+/).slice(0, 4).join(" ") }; });
+    } catch (e) { plan = list.map(t => ({ photo: -1, query: stockQuery(t) })); }
+    // Your own images named with a scene number (e.g. "Scene 12.jpg", "12.png") always go on that scene.
+    photos.forEach((p, k) => { const mm = String(p.name || "").match(/(?:scene|sc|clip)?[\s_-]*0*(\d{1,3})(?=\D*$)/i); if (mm) { const idx = Number(mm[1]) - 1; if (idx >= 0 && idx < plan.length) plan[idx].photo = k; } });
+    planRef.current = plan;
+    return plan;
   }
 
   const makeMovie = async () => {
@@ -325,8 +384,9 @@ export default function Studio() {
       // 1 — scene list
       setStage("Reading your script and writing the scenes…");
       const n = Math.max(sceneCount, clips.length);
-      let list = [];
-      try {
+      let list = parseScenes(script);
+      if (list.length) { setStage("Using your " + list.length + " scenes exactly as written…"); }
+      else try {
         const ask = "You are a film director making a " + kind + (title ? (' called "' + title + '"') : "") + ". Write an ordered shot list of EXACTLY " + n + " scenes for a " + minutes + "-minute film.\nLOOK for every scene: " + style + ", " + (GRADES.find(g => g.id === grade) || GRADES[0]).prompt + ". Keep the same characters looking the same in every scene.\nEach scene is one vivid visual paragraph (setting, who is there, light, camera move). No dialogue, no numbering.\nFollow the producer directions exactly.\n\nNARRATION:\n" + (narr || "(none)") + "\n\nSCRIPT AND PRODUCER DIRECTIONS:\n" + (script || "(none — build it from the narration and photos)") + "\n\nReturn ONLY a JSON array of " + n + " strings.";
         const d = await proxyFetch({ model: "claude-sonnet-4-20250514", max_tokens: 8000, messages: [{ role: "user", content: ask }] });
         const raw = (d && d.content ? d.content.filter(x => x.type === "text").map(x => x.text).join("") : "").replace(/```json|```/g, "");
@@ -335,8 +395,7 @@ export default function Studio() {
         const paras = (script || narr).split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
         list = paras.length ? paras : ["Opening establishing shot, cinematic light."];
       }
-      while (list.length < n) list.push(list[list.length % Math.max(1, list.length)]);
-      list = list.slice(0, n);
+      if (!parseScenes(script).length) { while (list.length < n) list.push(list[list.length % Math.max(1, list.length)]); list = list.slice(0, n); }
       setScenes(list.map(t => ({ text: t, status: "waiting" }))); setPct(6);
 
       // 2 — narration (yours or the engine), translated if asked
@@ -360,6 +419,9 @@ export default function Studio() {
       else if (musicMode === "library") mUrl = (MOODS.find(m => m.id === mood) || MOODS[0]).url;
       setMusicUrl(mUrl); setPct(24);
 
+      // 3b — match your images to scenes and plan free stock for the rest
+      setStage("Matching your images to the scenes…"); noCredit.current = false;
+      await planScenes(list);
       // 4 — scenes, three at a time
       let next = 0, finished = 0;
       const worker = async () => { while (next < list.length) { const i = next++; setStage("MandaStrong Engine — making scene " + (i + 1) + " of " + list.length + "…"); await makeScene(i, list[i], { firstVoice }); finished++; setPct(24 + Math.round(finished / list.length * 74)); } };
@@ -643,6 +705,7 @@ export default function Studio() {
           {fileBtn("mfs-logo", "image/*", async f => setLogo(await shrinkPhoto(await readAsDataURL(f), 512)), logo ? "My logo ✓" : "Add my logo")}
           <Toggle on={watermark} set={setWatermark}>Watermark on Starter</Toggle>
           <button className="c on">Never lose a render</button>
+          <Toggle on={freeMode} set={setFreeMode}>Free mode: my images + stock</Toggle>
         </div>
         {credits && <textarea id="mfs-credits" className="ta" style={{ minHeight: 70, marginTop: 8 }} value={creditNames} onChange={e => setCreditNames(e.target.value)} placeholder={"Credits, one per line\nDirected by …\nNarrated by …"} />}
 
