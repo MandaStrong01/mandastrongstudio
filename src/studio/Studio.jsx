@@ -246,7 +246,7 @@ export default function Studio() {
       const t = f.type || ""; const nm = f.name || "file";
       if (t.startsWith("image") || /\.(jpe?g|png|webp|heic|heif|gif)$/i.test(nm)) { const d = await readAsDataURL(f); if (d) { const s = await shrinkPhoto(d, 1280); setPhotos(p => [...p, { name: nm, dataUrl: s }]); n++; } }
       else if (t.startsWith("video") || /\.(mp4|mov|m4v|webm)$/i.test(nm)) { setClips(p => [...p, { name: nm, url: URL.createObjectURL(f), blob: f }]); n++; }
-      else if (t.startsWith("audio") || /\.(mp3|wav|m4a|aac|ogg)$/i.test(nm)) { setMySong({ name: nm, blob: f, url: URL.createObjectURL(f) }); setMusicMode("mine"); n++; }
+      else if (t.startsWith("audio") || /\.(mp3|wav|m4a|aac|ogg)$/i.test(nm)) { setMyRec({ name: nm, blob: f, url: URL.createObjectURL(f) }); setVoiceMode("mine"); n++; }
       else if (t.startsWith("text") || /\.(txt|md|fountain|fdx)$/i.test(nm)) { const tx = await f.text(); setScript(p => (p ? p + "\n\n" : "") + tx); n++; }
     }
     setAddMsg(n + " added");
@@ -497,7 +497,7 @@ export default function Studio() {
     }
     let bed = null; const mg = ac.createGain(); mg.gain.value = mVol * (duck && nSrc ? 0.45 : 1); mg.connect(dest);
     if (musicUrl) { try { const buf = await ac.decodeAudioData(await (await fetch(musicUrl)).arrayBuffer()); bed = ac.createBufferSource(); bed.buffer = buf; bed.loop = true; bed.connect(mg); } catch (e) { bed = msBedSource(ac, mg, 0.6).src; } }
-    let endEl = null; if (endSong && !opts.trailer) { endEl = new Audio(endSong.url); const eg = ac.createGain(); eg.gain.value = mVol; ac.createMediaElementSource(endEl).connect(eg); eg.connect(dest); }
+    let endEl = null;
     const logoImg = logo ? await new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = logo; }) : null;
     const stream = cv.captureStream(30); dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
     const mime = pickMime(true); const rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: quality === "720p" ? 5000000 : 9000000, audioBitsPerSecond: 192000 } : {});
@@ -677,7 +677,7 @@ export default function Studio() {
         <div className="g3" style={{ marginTop: 8 }}>
           <div><span className="lbl">MOOD</span><select id="mfs-mood" className="in" value={mood} onChange={e => setMood(e.target.value)}>{MOODS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}</select></div>
           <div><span className="lbl">DESCRIBE THE MUSIC (FOR MAKE MY MUSIC)</span><input id="mfs-mp" className="in" value={musicPrompt} onChange={e => setMusicPrompt(e.target.value)} placeholder="e.g. soft piano and strings, hopeful" /></div>
-          <div><span className="lbl">MY SONG / END SONG</span><div className="row">{fileBtn("mfs-song", "audio/*,.mp3,.m4a,.wav", f => { setMySong({ name: f.name, blob: f, url: URL.createObjectURL(f) }); setMusicMode("mine"); }, mySong ? "Song ✓" : "My song")}{fileBtn("mfs-end", "audio/*,.mp3,.m4a,.wav", f => setEndSong({ name: f.name, url: URL.createObjectURL(f) }), endSong ? "End song ✓" : "End song")}</div></div>
+          <div><span className="lbl">MY OWN SONG</span><div className="row">{fileBtn("mfs-song", "audio/*,.mp3,.m4a,.wav", f => { setMySong({ name: f.name, blob: f, url: URL.createObjectURL(f) }); setMusicMode("mine"); }, mySong ? "Song ✓" : "My song")}</div></div>
         </div>
 
         <div className="lab">8 · LOOK</div>
