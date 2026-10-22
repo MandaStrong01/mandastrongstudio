@@ -528,7 +528,7 @@ export default function Studio() {
           <div className="eng" style={{ position: "absolute", top: 32 }}>POWERED BY THE MANDASTRONG ENGINE</div>
           <div className="brand">Mandas Film<br />&amp; Music Studio</div>
           <div style={{ width: 200, height: 1, background: "rgba(230,201,142,.4)", margin: "26px 0 16px" }} />
-          <div style={{ fontSize: 15, letterSpacing: ".04em", color: "#B9B1A0", maxWidth: 560, lineHeight: 1.5 }}>Welcome to your one-stop, all-in-one movie and music app.</div>
+          <div style={{ fontSize: 16, letterSpacing: ".06em", color: "#B9B1A0", lineHeight: 1.5 }}>One Shot · One Page · Everything In · Everything Out</div>
           <button className="b" style={{ marginTop: 46, padding: "15px 44px" }}>TAP TO ENTER</button>
           <div style={{ position: "absolute", bottom: 30, fontSize: 13, color: "#9A927F" }}>{SITE}</div>
         </div>
