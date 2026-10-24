@@ -7,8 +7,28 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
   supabase, engineAuthHeaders, msVoiceText, proxyFetch, translateText,
-  msSpokenOnly, msParseCast, msCastVoices, VOICE_CHARACTERS, msBedSource, msBlobSeconds
+  msSpokenOnly, msParseCast, msCastVoices, VOICE_CHARACTERS, msBedSource, msBlobSeconds, engineCloneVoice
 } from "./engine.js";
+
+// Fast length of a recording (reads only the header, so a 60-minute file never has to be decoded).
+const audioSecs = (blob) => new Promise(res => { try { const a = new Audio(); const u = URL.createObjectURL(blob); let done = false; const fin = (v) => { if (done) return; done = true; URL.revokeObjectURL(u); res(v); }; a.preload = "metadata"; a.onloadedmetadata = () => { if (isFinite(a.duration) && a.duration > 0) fin(a.duration); else { a.currentTime = 1e7; a.ontimeupdate = () => { a.ontimeupdate = null; fin(isFinite(a.duration) ? a.duration : 0); }; } }; a.onerror = () => fin(0); setTimeout(() => fin(0), 20000); a.src = u; } catch (e) { res(0); } });
+const sentencesOf = (t) => (String(t || "").replace(/\s+/g, " ").match(/[^.!?]+[.!?]+["\u2019\u201D)]*\s*|[^.!?]+$/g) || []).map(x => x.trim()).filter(Boolean);
+const wordsIn = (t) => (String(t || "").match(/\S+/g) || []).length;
+// Professional voice chain: rumble cut, less mud, presence, air, gentle compression, limiter. Output is stereo.
+function proVoice(ac, input) {
+  const hp = ac.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 80; hp.Q.value = 0.7;
+  const mud = ac.createBiquadFilter(); mud.type = "peaking"; mud.frequency.value = 280; mud.Q.value = 1; mud.gain.value = -3;
+  const warm = ac.createBiquadFilter(); warm.type = "lowshelf"; warm.frequency.value = 140; warm.gain.value = 1.5;
+  const pres = ac.createBiquadFilter(); pres.type = "peaking"; pres.frequency.value = 3200; pres.Q.value = 0.9; pres.gain.value = 3;
+  const ess = ac.createBiquadFilter(); ess.type = "peaking"; ess.frequency.value = 7000; ess.Q.value = 3; ess.gain.value = -2.5;
+  const air = ac.createBiquadFilter(); air.type = "highshelf"; air.frequency.value = 10000; air.gain.value = 2.5;
+  const comp = ac.createDynamicsCompressor(); comp.threshold.value = -22; comp.knee.value = 8; comp.ratio.value = 3.5; comp.attack.value = 0.008; comp.release.value = 0.2;
+  const make = ac.createGain(); make.gain.value = 1.5;
+  const lim = ac.createDynamicsCompressor(); lim.threshold.value = -3; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.1;
+  const st = ac.createGain(); st.channelCount = 2; st.channelCountMode = "explicit"; st.channelInterpretation = "speakers";
+  input.connect(hp); hp.connect(mud); mud.connect(warm); warm.connect(pres); pres.connect(ess); ess.connect(air); air.connect(comp); comp.connect(make); make.connect(lim); lim.connect(st);
+  return st;
+}
 
 const SB = "https://wvkqnrqcnoztajxxzyxc.supabase.co/functions/v1/";
 const SE = SB + "studio-engine";
@@ -236,6 +256,50 @@ export default function Studio() {
   useEffect(() => { if (photosLoaded.current) dbPut("mfs_photos", new Blob([JSON.stringify(photos)], { type: "application/json" }), {}); }, [photos]);
   const [clips, setClips] = useState([]);   // {name,url,blob}
   const [myRec, setMyRec] = useState(null); // {name,blob,url}
+  // ── ENGINE TO COMPLETE NARRATION: your recording plays first, the engine reads the rest ──
+  const [tail, setTail] = useState(null); // {blob,url,secs,text,start}
+  const [comp, setComp] = useState(null); // {recSecs, sents, idx, busy, msg}
+  useEffect(() => { (async () => { const all = await dbAll(); const t = all.find(x => x.id === "mfs_tail"); if (t && t.blob) setTail({ blob: t.blob, url: URL.createObjectURL(t.blob), secs: t.meta.secs || 0, text: t.meta.text || "", start: t.meta.start || "" }); })(); }, []);
+  const tailEndRef = useRef(null);
+  const openComplete = async () => {
+    const txt = (narr || "").trim();
+    if (!myRec) { setComp({ msg: "Upload or record your narration first." }); return; }
+    if (!txt) { setComp({ msg: "Paste the full narration into box 2 first." }); return; }
+    setComp({ msg: "Reading your recording…", busy: true });
+    const recSecs = await audioSecs(myRec.blob);
+    const sents = sentencesOf(txt);
+    // Your pace with natural pauses: about 98 words a minute. Pick the sentence nearest where the recording stops.
+    const est = recSecs * 1.63; let acc = 0, idx = sents.length;
+    for (let i = 0; i < sents.length; i++) { if (acc + wordsIn(sents[i]) / 2 >= est) { idx = i; break; } acc += wordsIn(sents[i]); }
+    setComp({ recSecs, sents, idx, msg: "" });
+  };
+  const hearEnd = () => { try { const a = tailEndRef.current || new Audio(); tailEndRef.current = a; a.src = myRec.url; a.onloadedmetadata = () => { try { a.currentTime = Math.max(0, (a.duration || comp.recSecs) - 20); a.play(); } catch (e) { } }; a.load(); } catch (e) { } };
+  const makeRest = async () => {
+    const rest = comp.sents.slice(comp.idx).join(" ").trim();
+    if (!rest) { setComp({ ...comp, msg: "Your recording already covers the whole narration." }); return; }
+    try { tailEndRef.current && tailEndRef.current.pause(); } catch (e) { }
+    setComp({ ...comp, busy: true, msg: "Copying your voice…" });
+    let meta = null, which = "your voice";
+    try {
+      const head = myRec.blob.slice(0, 1500000, myRec.blob.type || "audio/mpeg");
+      const uri = await readAsDataURL(head);
+      const vid = await engineCloneVoice(uri);
+      if (vid) meta = { voice: vid, speed: Number(speed) || 1 };
+    } catch (e) { }
+    if (!meta) { meta = voiceMeta(narrator); which = "the " + ((VOICE_CHARACTERS.find(v => v.id === narrator) || {}).name || "narrator") + " voice (your voice couldn't be copied)"; }
+    try {
+      const r = await msVoiceText(rest, meta, (i, n) => setComp(c => ({ ...c, msg: "Engine reading the rest — part " + i + " of " + n + "…" })));
+      if (!r.parts.length) throw new Error("the engine returned no audio — check it has credit");
+      const blob = new Blob(r.parts, { type: r.parts[0].type || "audio/mpeg" });
+      const secs = await audioSecs(blob);
+      await dbPut("mfs_tail", blob, { secs, text: rest, start: comp.sents[comp.idx] });
+      setTail({ blob, url: URL.createObjectURL(blob), secs, text: rest, start: comp.sents[comp.idx] });
+      setVoiceMode("mine"); if (musicMode === "off") setMusicMode("library");
+      if (narrUrl && myRec && narrUrl === myRec.url) { setNarrSecs(comp.recSecs + secs); setNarrText((narr || "").trim()); }
+      setComp({ ...comp, busy: false, msg: "Done. Your recording plays first, then the engine finishes in " + which + "." + (r.failed ? " " + r.failed + " of " + r.total + " parts failed — press again to redo." : "") });
+    } catch (e) { setComp({ ...comp, busy: false, msg: "Could not finish the narration: " + e.message }); }
+  };
+  const clearTail = async () => { setTail(null); try { const db = await idb(); const tx = db.transaction("f", "readwrite"); tx.objectStore("f").delete("mfs_tail"); } catch (e) { } };
   const [mySong, setMySong] = useState(null);
   const [endSong, setEndSong] = useState(null);
   const [logo, setLogo] = useState(null);   // dataUrl
@@ -406,7 +470,7 @@ export default function Studio() {
       // 2 — narration (yours or the engine), translated if asked
       let nUrl = "", nText = "", nSecs = 0, firstVoice = "";
       const spokenText = narr.trim() || msSpokenOnly(script);
-      if (voiceMode === "mine" && myRec) { nUrl = myRec.url; nText = spokenText; nSecs = await msBlobSeconds(myRec.blob); await dbPut(projectId.current + "_narr", myRec.blob, { text: nText, secs: nSecs }); }
+      if (voiceMode === "mine" && myRec) { nUrl = myRec.url; nText = spokenText; nSecs = (await audioSecs(myRec.blob)) || (await msBlobSeconds(myRec.blob)); await dbPut(projectId.current + "_narr", myRec.blob, { text: nText, secs: nSecs }); if (tail) nSecs += tail.secs; }
       else if (spokenText) {
         try { const v = await voiceIt(spokenText, spoken); nUrl = URL.createObjectURL(v.blob); nText = v.text; nSecs = await msBlobSeconds(v.blob); await dbPut(projectId.current + "_narr", v.blob, { text: nText, secs: nSecs }); if (lipSync) firstVoice = await readAsDataURL(v.blob.slice(0, 600000, v.blob.type)); }
         catch (e) { setErr("Voice: " + e.message + ". The film will be made without narration."); }
@@ -440,12 +504,13 @@ export default function Studio() {
   const removeScene = (i) => setScenes(p => p.filter((_, k) => k !== i));
 
   // ── preview player (picture + voice + music together) ──
-  const vRef = useRef(null), nRef = useRef(null), mRef = useRef(null), wrapRef = useRef(null);
+  const vRef = useRef(null), nRef = useRef(null), mRef = useRef(null), tRef = useRef(null), wrapRef = useRef(null);
   const [playing, setPlaying] = useState(false); const [clock, setClock] = useState(0); const [cur, setCur] = useState(0); const [track, setTrack] = useState("main");
   const ready = scenes.filter(s => s.url);
   const total = Math.max(narrSecs || 0, minutes * 60 * (narrSecs ? 0 : 1), ready.length * 6);
   const sceneLen = ready.length ? total / ready.length : 6;
   const activeNarr = track === "main" ? narrUrl : (dubTracks[track] || {}).url;
+  const useTail = !!(tail && track === "main" && myRec && narrUrl === myRec.url);
   const activeText = track === "main" ? narrText : (dubTracks[track] || {}).text;
   const captions = splitCaptions(activeText, narrSecs || total);
   const curRef = useRef(0); useEffect(() => { curRef.current = cur; }, [cur]);
@@ -456,22 +521,22 @@ export default function Studio() {
       const c = (Date.now() - t0) / 1000; setClock(c);
       const k = Math.min(ready.length - 1, Math.floor(c / sceneLen));
       if (k !== curRef.current && ready[k]) { curRef.current = k; const v = vRef.current; if (v) { v.style.opacity = 0; setTimeout(() => { setCur(k); v.src = ready[k].url; v.loop = !isStill(ready[k]); v.play().catch(() => { }); setTimeout(() => { v.style.opacity = 1; }, 120); }, 450); } else setCur(k); }
-      const m = mRef.current; if (m) m.volume = Math.max(0, Math.min(1, mVol * (duck && activeNarr && nRef.current && !nRef.current.paused ? 0.45 : 1)));
-      if (c >= total) { setPlaying(false); try { nRef.current && nRef.current.pause(); mRef.current && mRef.current.pause(); vRef.current && vRef.current.pause(); } catch (e) { } }
+      const m = mRef.current; const talking = (nRef.current && !nRef.current.paused) || (tRef.current && !tRef.current.paused); if (m) m.volume = Math.max(0, Math.min(1, mVol * (duck && activeNarr && talking ? 0.45 : 1)));
+      if (c >= total) { setPlaying(false); try { nRef.current && nRef.current.pause(); tRef.current && tRef.current.pause(); mRef.current && mRef.current.pause(); vRef.current && vRef.current.pause(); } catch (e) { } }
     }, 200);
     return () => clearInterval(iv);
   }, [playing, ready.length, sceneLen, total, duck, mVol, activeNarr]);
   const play = () => {
     if (!ready.length) return;
     const v = vRef.current, n = nRef.current, m = mRef.current;
-    if (playing) { [v, n, m].forEach(x => { try { x && x.pause(); } catch (e) { } }); setPlaying(false); return; }
-    if (clock >= total) { setClock(0); setCur(0); if (v) v.src = ready[0].url; if (n) n.currentTime = 0; if (m) m.currentTime = 0; }
+    if (playing) { [v, n, m, tRef.current].forEach(x => { try { x && x.pause(); } catch (e) { } }); setPlaying(false); return; }
+    if (clock >= total) { setClock(0); setCur(0); if (v) v.src = ready[0].url; if (n) n.currentTime = 0; if (m) m.currentTime = 0; if (tRef.current) { tRef.current.pause(); tRef.current.currentTime = 0; } }
     if (v) { if (!v.src) v.src = ready[cur].url; v.loop = !isStill(ready[cur]); v.muted = !ready[cur] || ready[cur].source !== "your clip"; v.volume = cVol; v.play().catch(() => { }); }
-    if (n && activeNarr) { n.volume = vVol; n.play().catch(() => { }); }
+    if (n && activeNarr) { const t = tRef.current; if (useTail && t && n.ended && t.currentTime > 0) { t.volume = vVol; t.play().catch(() => { }); } else { n.volume = vVol; n.play().catch(() => { }); } }
     if (m && musicUrl) { m.loop = true; m.play().catch(() => { }); }
     setPlaying(true);
   };
-  const restart = () => { [vRef.current, nRef.current, mRef.current].forEach(x => { try { if (x) { x.pause(); x.currentTime = 0; } } catch (e) { } }); setClock(0); setCur(0); setPlaying(false); if (vRef.current && ready[0]) vRef.current.src = ready[0].url; setTimeout(play, 50); };
+  const restart = () => { [vRef.current, nRef.current, mRef.current, tRef.current].forEach(x => { try { if (x) { x.pause(); x.currentTime = 0; } } catch (e) { } }); setClock(0); setCur(0); setPlaying(false); if (vRef.current && ready[0]) vRef.current.src = ready[0].url; setTimeout(play, 50); };
   const fullScreen = () => { const el = wrapRef.current; const v = vRef.current; try { (el.requestFullscreen || el.webkitRequestFullscreen).call(el); } catch (e) { try { v.webkitEnterFullscreen(); } catch (_) { } } };
   const caption = subs ? (captions.find(c => clock >= c.start && clock < c.end) || {}).text : "";
 
@@ -487,13 +552,16 @@ export default function Studio() {
     const r = opts.ratio, [W, H] = sizeFor(r, quality);
     const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const ctx = cv.getContext("2d");
     const AC = window.AudioContext || window.webkitAudioContext; const ac = new AC(); try { await ac.resume(); } catch (e) { }
-    const dest = ac.createMediaStreamDestination();
-    let nEl = null;
+    const dest = ac.createMediaStreamDestination(); try { dest.channelCount = 2; dest.channelCountMode = "explicit"; } catch (e) { }
+    let nEl = null, tEl = null;
     const nSrc = opts.trailer ? "" : (opts.track === "main" ? narrUrl : (dubTracks[opts.track] || {}).url);
     if (nSrc) {
       nEl = new Audio(nSrc); nEl.preload = "auto";
-      let node = ac.createMediaElementSource(nEl);
-      if (cleanVoice) { const hp = ac.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 85; const comp = ac.createDynamicsCompressor(); comp.threshold.value = -24; comp.ratio.value = 3; node.connect(hp); hp.connect(comp); node = comp; }
+      const mixIn = ac.createGain();
+      ac.createMediaElementSource(nEl).connect(mixIn);
+      if (opts.track === "main" && useTail) { tEl = new Audio(tail.url); tEl.preload = "auto"; ac.createMediaElementSource(tEl).connect(mixIn); nEl.addEventListener("ended", () => { try { tEl.play(); } catch (e) { } }); }
+      let node = mixIn;
+      if (cleanVoice) node = proVoice(ac, mixIn);
       const g = ac.createGain(); g.gain.value = vVol; node.connect(g); g.connect(dest);
     }
     let bed = null; const mg = ac.createGain(); mg.gain.value = mVol * (duck && nSrc ? 0.45 : 1); mg.connect(dest);
@@ -548,7 +616,7 @@ export default function Studio() {
       while (Date.now() < cEnd && !stopExp.current) { card([title || "The End", ...names.slice(0, 8), "Made with Mandas Film & Music Studio"]); await sleep(33); }
     }
     if (opts.trailer && title) { const e2 = Date.now() + 2500; while (Date.now() < e2) { card([title, "Coming soon"], true); await sleep(33); } }
-    try { nEl && nEl.pause(); endEl && endEl.pause(); bed && bed.stop(); } catch (e) { }
+    try { nEl && nEl.pause(); tEl && tEl.pause(); endEl && endEl.pause(); bed && bed.stop(); } catch (e) { }
     try { rec.stop(); } catch (e) { } await stopped; try { ac.close(); } catch (e) { }
     const type = (mime || "video/webm").split(";")[0]; const ext = type.includes("mp4") ? ".mp4" : ".webm";
     const blob = new Blob(ch, { type }); const name = (title || "My_Film").replace(/[^\w]+/g, "_") + (opts.trailer ? "_Trailer" + opts.trailer + "s" : "") + "_" + r.replace(":", "x") + (opts.track !== "main" && !opts.trailer ? "_" + opts.track : "") + ext;
@@ -649,6 +717,24 @@ export default function Studio() {
           <button className={"c" + (voiceMode === "engine" ? " on" : "")} onClick={() => setVoiceMode(voiceMode === "engine" && myRec ? "mine" : "engine")}>{voiceMode === "engine" ? "USING ENGINE VOICE" : "USE ENGINE VOICE"}</button>
         </div>
         {myRec && <div className="msg">Your recording: {myRec.name} {voiceMode === "mine" ? "· in use" : "· not in use"} <audio src={myRec.url} controls style={{ verticalAlign: "middle", height: 30, maxWidth: "100%" }} /></div>}
+        <div className="row" style={{ marginTop: 8 }}>
+          <button className="b g" style={{ padding: "9px 18px" }} onClick={openComplete} disabled={comp && comp.busy}>ENGINE TO COMPLETE NARRATION</button>
+          <Toggle on={cleanVoice} set={setCleanVoice}>Enhance my recording — professional stereo</Toggle>
+        </div>
+        {comp && <div className="msg">
+          {comp.sents && !comp.busy && !tail && <div>
+            <div>Your recording is {Math.floor(comp.recSecs / 60)} min {Math.round(comp.recSecs % 60)} sec. The engine will start reading at:</div>
+            <div style={{ color: "#E6C98E", margin: "6px 0" }}>"{comp.sents[comp.idx] || "(the end — nothing left to read)"}"</div>
+            <div className="row">
+              <button className="c" onClick={() => setComp({ ...comp, idx: Math.max(0, comp.idx - 1) })}>◀ EARLIER</button>
+              <button className="c" onClick={() => setComp({ ...comp, idx: Math.min(comp.sents.length, comp.idx + 1) })}>LATER ▶</button>
+              <button className="c" onClick={hearEnd}>HEAR MY LAST 20 SECONDS</button>
+              <button className="b g" style={{ padding: "9px 18px" }} onClick={makeRest}>FINISH IT</button>
+            </div>
+          </div>}
+          {comp.msg && <div style={{ marginTop: 6 }}>{comp.msg}</div>}
+        </div>}
+        {tail && <div className="msg">Engine finish ready — starts at "{tail.start}" · {Math.round(tail.secs / 60)} min <audio src={tail.url} controls style={{ verticalAlign: "middle", height: 30, maxWidth: "100%" }} /> <button className="c" onClick={() => { clearTail(); setComp(null); }}>REDO</button></div>}
 
         <div className="lab">3 · SCRIPT &amp; PRODUCER DIRECTIONS</div>
         <textarea id="mfs-script" className="ta" value={script} onChange={e => setScript(e.target.value)} placeholder="Paste the script, characters, scenes and directions here. The engine builds the characters, their voices and the scenes from this." />
@@ -738,7 +824,8 @@ export default function Studio() {
               {!ready.length && <div style={{ position: "absolute", color: "var(--dim)", fontSize: 13 }}>Your movie plays here</div>}
               {caption && <div className="cap">{caption}</div>}
             </div>
-            {activeNarr && <audio ref={nRef} src={activeNarr} preload="auto" />}
+            {activeNarr && <audio ref={nRef} src={activeNarr} preload="auto" onEnded={() => { if (useTail && tRef.current) { tRef.current.volume = vVol; tRef.current.currentTime = 0; tRef.current.play().catch(() => { }); } }} />}
+            {useTail && <audio ref={tRef} src={tail.url} preload="auto" />}
             {musicUrl && <audio ref={mRef} src={musicUrl} preload="auto" loop />}
             <div className="row" style={{ marginTop: 8, alignItems: "center" }}>
               <button className="b g" style={{ padding: "9px 22px" }} onClick={play} disabled={!ready.length}>{playing ? "PAUSE" : "PLAY"}</button>

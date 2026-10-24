@@ -537,4 +537,4 @@ function msBedSource(ac,dest,vol){
   const g=ac.createGain(); g.gain.value=vol; src.connect(g); g.connect(dest);
   return {src,gain:g};
 }
-export { supabase, authToken, engineAuthHeaders, msVoiceText, msVoiceGroups, proxyFetch, engineSpeak, translateText, LANGUAGES, msSpokenOnly, msParseCast, msCastVoices, VOICE_CHARACTERS, msBedSource, msBlobSeconds };
+export { engineCloneVoice, supabase, authToken, engineAuthHeaders, msVoiceText, msVoiceGroups, proxyFetch, engineSpeak, translateText, LANGUAGES, msSpokenOnly, msParseCast, msCastVoices, VOICE_CHARACTERS, msBedSource, msBlobSeconds };
