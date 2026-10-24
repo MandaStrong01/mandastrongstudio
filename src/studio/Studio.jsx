@@ -708,6 +708,11 @@ export default function Studio() {
         <div className="lab">1 · WHAT ARE YOU MAKING?</div>
         <Chips items={KINDS} value={kind} onPick={setKind} />
         <input id="mfs-title" className="in" style={{ marginTop: 10 }} placeholder="Title (used for the title card, poster and credits)" value={title} onChange={e => setTitle(e.target.value)} />
+        <div style={{ marginTop: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}><span>FILM LENGTH — up to 3 hours</span><b>{minutes >= 60 ? (Math.floor(minutes / 60) + " hr " + (minutes % 60 ? minutes % 60 + " min" : "")) : minutes + " min"}</b></div>
+          <input type="range" className="rng" min={1} max={180} value={minutes} onChange={e => setMinutes(Number(e.target.value))} />
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--dim)" }}><span>1 min</span><span>1 hr</span><span>2 hr</span><span>3 hr</span></div>
+        </div>
 
         <div className="lab">2 · NARRATION — EVERYTHING SPOKEN</div>
         <textarea id="mfs-narr" className="ta" value={narr} onChange={e => setNarr(e.target.value)} placeholder="Paste the narration here. Every word in this box is spoken." />
@@ -783,9 +788,6 @@ export default function Studio() {
         <div className="row"><button className="c on">Stereo</button><Toggle on={duck} set={setDuck}>Music dips when someone speaks</Toggle><Toggle on={cleanVoice} set={setCleanVoice}>Clean up my voice</Toggle></div>
 
         <div className="lab">10 · FORMAT</div>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span>Length</span><b>{minutes >= 60 ? (Math.floor(minutes / 60) + " hr " + (minutes % 60 ? minutes % 60 + " min" : "")) : minutes + " min"}</b></div>
-        <input type="range" className="rng" min={1} max={180} value={minutes} onChange={e => setMinutes(Number(e.target.value))} />
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--dim)" }}><span>1 min</span><span>1 hr</span><span>2 hr</span><span>3 hr</span></div>
         <div className="row" style={{ marginTop: 10, justifyContent: "space-between" }}>
           <Chips items={Object.keys(RATIOS)} value={ratio} onPick={setRatio} />
           <Chips items={["720p", "1080p"]} value={quality} onPick={setQuality} />
