@@ -675,7 +675,9 @@ export default function Studio() {
       const addBlob = (base, blob) => { const names = []; if (blob.size <= piece) { const n = base + "." + extOf(blob); files.push({ n, b: blob }); names.push(n); } else { for (let o = 0, k = 0; o < blob.size; o += piece, k++) { const n = base + "." + extOf(blob) + ".part" + String(k).padStart(3, "0"); files.push({ n, b: blob.slice(o, o + piece) }); names.push(n); } } return names; };
       const sc = ready.map((x, i) => { const names = addBlob("scene_" + String(i).padStart(3, "0"), x.blob); return { file: names[0], still: isStill(x), audio: x.source === "your clip" }; });
       let narrNames = [], tailNames = [];
-      if (narrUrl) { try { narrNames = addBlob("narr", await (await fetch(narrUrl)).blob()); } catch (e) { } }
+      // The recording chosen right now wins (e.g. a cleaned-up copy uploaded after the scenes were made).
+      if (voiceMode === "mine" && myRec && myRec.blob) narrNames = addBlob("narr", myRec.blob);
+      else if (narrUrl) { try { narrNames = addBlob("narr", await (await fetch(narrUrl)).blob()); } catch (e) { } }
       if (useTail && tail && tail.blob) tailNames = addBlob("tail", tail.blob);
       let music = null;
       if (musicUrl) { if (/^blob:/.test(musicUrl)) { try { music = { files: addBlob("music", await (await fetch(musicUrl)).blob()) }; } catch (e) { } } else music = { url: musicUrl }; }
