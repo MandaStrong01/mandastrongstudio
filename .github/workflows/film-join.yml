@@ -1,0 +1,31 @@
+name: Film joiner
+
+# Joins the scenes people make in Mandas Film & Music Studio into one film file.
+# It checks for new films every few minutes and does nothing when there are none.
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write   # lets this workflow prove to the app server that it is this repository
+
+concurrency:
+  group: film-join
+  cancel-in-progress: false
+
+jobs:
+  join:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-dejavu-core > /dev/null
+      - name: Join waiting films
+        run: python3 scripts/film_join.py
