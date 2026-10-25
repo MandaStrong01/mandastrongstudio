@@ -106,6 +106,192 @@ async function msBlobSeconds(blob){
   }catch(e){return 0;}
   finally{try{if(ctx)ctx.close();}catch(e){}}
 }
+// ── LONG-RECORDING HELPERS ───────────────────────────────────────
+// A user can upload a recording of any length (an hour is fine). These find
+// where the person is actually speaking, so the app can:
+//  • send the engine a short clean sample to clone from (not the whole file),
+//  • work out exactly where the recording stops in the script,
+//  • drop dead air / chatter after the last scripted line from the film.
+// Map of where speech is: [[startSec,endSec],...]
+function msSpeechRegions(samples,sr){
+  const fl=Math.max(1,Math.round(sr*0.02)); // 20ms frames
+  const n=Math.floor(samples.length/fl);
+  if(n<1)return [];
+  const rms=new Float32Array(n);
+  for(let i=0;i<n;i++){let s=0;const o=i*fl;for(let k=0;k<fl;k++){const v=samples[o+k];s+=v*v;}rms[i]=Math.sqrt(s/fl);}
+  const sorted=Array.from(rms).sort((a,b)=>a-b);
+  const floor=sorted[Math.floor(n*0.1)]||0;
+  const loud=sorted[Math.floor(n*0.95)]||0;
+  let thr=Math.max(0.004,floor*3);
+  if(loud>0)thr=Math.min(thr,loud*0.25);
+  const hang=Math.round(0.25/0.02);
+  const regs=[];let start=-1,last=-1;
+  for(let i=0;i<n;i++){
+    if(rms[i]>thr){if(start<0)start=i;last=i;}
+    else if(start>=0&&i-last>hang){regs.push([start,last+1]);start=-1;}
+  }
+  if(start>=0)regs.push([start,last+1]);
+  // drop clicks shorter than 0.15s
+  return regs.filter(r=>r[1]-r[0]>=8).map(r=>[Math.max(0,r[0]*0.02-0.05),Math.min(samples.length/sr,r[1]*0.02+0.05)]);
+}
+// Joins speech regions into one clip, long pauses shortened to maxGap.
+// Returns {pcm, map:[[clipStart,origStart,len],...]} so clip times map back.
+function msJoinRegions(samples,sr,regs,maxGap){
+  const plan=[];
+  for(let i=0;i<regs.length;i++){
+    const a=Math.max(0,Math.floor(regs[i][0]*sr)),b=Math.min(samples.length,Math.floor(regs[i][1]*sr));
+    if(b>a)plan.push([a,b]);
+  }
+  let total=0;
+  for(let i=0;i<plan.length;i++){total+=plan[i][1]-plan[i][0];if(i<plan.length-1)total+=Math.min(Math.floor(maxGap*sr),Math.max(0,plan[i+1][0]-plan[i][1]));}
+  const pcm=new Float32Array(total);const map=[];let w=0;
+  for(let i=0;i<plan.length;i++){
+    const [a,b]=plan[i];
+    map.push([w/sr,a/sr,(b-a)/sr]);
+    pcm.set(samples.subarray(a,b),w);w+=b-a;
+    if(i<plan.length-1){const nextA=plan[i+1][0];const g=Math.min(Math.floor(maxGap*sr),Math.max(0,nextA-b));
+      // keep the real room tone of the pause, not digital silence
+      pcm.set(samples.subarray(b,b+g),w);w+=g;}
+  }
+  return {pcm:pcm.subarray(0,w),map};
+}
+// Picks regions totalling up to maxSec of speech, from the start or the end.
+function msTakeSpeech(regs,maxSec,fromEnd){
+  const out=[];let acc=0;
+  const list=fromEnd?regs.slice().reverse():regs;
+  for(const r of list){
+    if(acc>=maxSec)break;
+    let [a,b]=r;const need=maxSec-acc;
+    if(b-a>need){if(fromEnd)a=b-need;else b=a+need;}
+    out.push([a,b]);acc+=b-a;
+  }
+  return fromEnd?out.reverse():out;
+}
+// Clip time -> original recording time.
+function msClipToOrig(map,t){
+  let best=map[0];
+  for(const m of map){if(m[0]<=t)best=m;else break;}
+  if(!best)return t;
+  return best[1]+Math.min(best[2],Math.max(0,t-best[0]));
+}
+// Float samples -> 16-bit mono WAV blob bytes.
+function msWavBytes(pcm,sr){
+  const n=pcm.length;const buf=new ArrayBuffer(44+n*2);const v=new DataView(buf);
+  const ws=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  ws(0,"RIFF");v.setUint32(4,36+n*2,true);ws(8,"WAVE");ws(12,"fmt ");v.setUint32(16,16,true);
+  v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);
+  v.setUint16(32,2,true);v.setUint16(34,16,true);ws(36,"data");v.setUint32(40,n*2,true);
+  let o=44;for(let i=0;i<n;i++){let s=pcm[i];s=s<-1?-1:s>1?1:s;v.setInt16(o,s<0?s*0x8000:s*0x7FFF,true);o+=2;}
+  return buf;
+}
+// Words for matching: lower case, letters/digits only, numbers spelled out.
+const MS_NUM={"0":"zero","1":"one","2":"two","3":"three","4":"four","5":"five","6":"six","7":"seven","8":"eight","9":"nine","10":"ten","20":"twenty","30":"thirty","40":"forty","50":"fifty","60":"sixty","100":"hundred","1000":"thousand"};
+function msNormWord(w){
+  w=String(w||"").toLowerCase().replace(/[’']/g,"").replace(/[^a-z0-9]/g,"");
+  return MS_NUM[w]||w;
+}
+// Words of the script with their character offsets.
+function msScriptWords(txt){
+  const out=[];const re=/\S+/g;let m;
+  while((m=re.exec(txt))){const n=msNormWord(m[0]);if(n)out.push({w:n,end:m.index+m[0].length});}
+  return out;
+}
+// Finds the furthest point in the script the transcript reaches.
+// tWords: [{w,seg}]  Returns {wordIdx, seg} or null.
+function msFindCut(sWords,tWords){
+  const W=6,NEED=5,SPAN=10;let best=null;
+  for(let t=0;t+W<=tWords.length;t++){
+    const win=tWords.slice(t,t+W);
+    for(let j=0;j<sWords.length;j++){
+      if(sWords[j].w!==win[0].w&&sWords[j].w!==win[1].w)continue;
+      let k=j,hit=0,lastS=-1,lastT=-1;
+      for(let q=0;q<W;q++){
+        for(let p=k;p<Math.min(sWords.length,j+SPAN);p++){
+          if(sWords[p].w===win[q].w){hit++;lastS=p;lastT=t+q;k=p+1;break;}
+        }
+      }
+      if(hit>=NEED&&(!best||lastS>best.wordIdx))best={wordIdx:lastS,seg:tWords[lastT].seg};
+    }
+  }
+  return best;
+}
+// Decodes a recording to mono at a low rate (22.05k), so even an hour-long
+// file fits in iPad memory. Returns {x:Float32Array, sr}.
+async function msDecodeMono(blob,sr){
+  sr=sr||22050;
+  const OAC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
+  const ctx=new OAC(1,Math.max(1,sr),sr);
+  const ab=await blob.arrayBuffer();
+  const buf=await new Promise((res,rej)=>{try{const p=ctx.decodeAudioData(ab,res,rej);if(p&&p.then)p.then(res,rej);}catch(e){rej(e);}});
+  const ch=buf.numberOfChannels;const x=new Float32Array(buf.length);
+  for(let c=0;c<ch;c++){const d=buf.getChannelData(c);for(let i=0;i<d.length;i++)x[i]+=d[i]/ch;}
+  return {x,sr:buf.sampleRate};
+}
+const msBlobToDataUri=(blob)=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(blob);});
+// A short clean sample (about a minute of speech) for the engine to clone from.
+async function msCloneSampleFromBlob(blob){
+  const {x,sr}=await msDecodeMono(blob);
+  const regs=msSpeechRegions(x,sr);
+  const pick=msTakeSpeech(regs.length?regs:[[0,x.length/sr]],60,false);
+  const j=msJoinRegions(x,sr,pick,0.4);
+  return msBlobToDataUri(new Blob([msWavBytes(j.pcm,sr)],{type:"audio/wav"}));
+}
+// Engine speech-to-text. Returns [{start,end,text}] or [].
+async function engineTranscribe(sample){
+  try{
+    const res=await fetch(VOICE_URL,{method:"POST",headers:await engineAuthHeaders(),body:JSON.stringify({transcribe:true,sample:String(sample||"")})});
+    const d=await res.json();
+    if(d&&Array.isArray(d.segments))return d.segments;
+    if(d&&d.id){
+      for(let i=0;i<60;i++){
+        await new Promise(r=>setTimeout(r,2000));
+        const p=await fetch(VOICE_URL,{method:"POST",headers:await engineAuthHeaders(),body:JSON.stringify({id:d.id})});
+        const pd=await p.json();
+        if(pd&&Array.isArray(pd.segments))return pd.segments;
+        if(pd&&(pd.status==="failed"||pd.status==="canceled"))return [];
+      }
+    }
+  }catch(e){}
+  return [];
+}
+// For a LONG recording (any length): finds exactly where the person stopped
+// in the script, builds a clean copy of their recording up to that point
+// (dead air and after-chatter removed), and a short sample to clone from.
+// Returns {cloneUri, remainder, leadBlob, exact}.
+async function msAnalyseRecording(blob,script,onStep){
+  const {x,sr}=await msDecodeMono(blob);
+  const regs=msSpeechRegions(x,sr);
+  if(!regs.length)throw new Error("no speech");
+  const cj=msJoinRegions(x,sr,msTakeSpeech(regs,60,false),0.4);
+  const cloneUri=await msBlobToDataUri(new Blob([msWavBytes(cj.pcm,sr)],{type:"audio/wav"}));
+  if(onStep)onStep("Finding where your recording stops in the script…");
+  const tail=msJoinRegions(x,sr,msTakeSpeech(regs,80,true),0.4);
+  const segs=await engineTranscribe(await msBlobToDataUri(new Blob([msWavBytes(tail.pcm,sr)],{type:"audio/wav"})));
+  let remainder="",leadEnd=0,exact=false;
+  if(segs.length){
+    const tw=[];segs.forEach((s,i)=>String(s.text||"").split(/\s+/).forEach(w=>{const n=msNormWord(w);if(n)tw.push({w:n,seg:i});}));
+    const sw=msScriptWords(script);
+    const cut=msFindCut(sw,tw);
+    if(cut){
+      remainder=script.slice(sw[cut.wordIdx].end).trim();
+      leadEnd=msClipToOrig(tail.map,Number(segs[cut.seg].end)||0)+0.15;
+      exact=true;
+    }
+  }
+  if(!exact){
+    // Engine couldn't hear the end — estimate from how long you actually spoke.
+    const spoke=regs.reduce((a,r)=>a+r[1]-r[0],0);
+    const est=spoke*2.3;const units=msSentences(script);
+    let acc=0,best=0,bestDiff=Infinity;
+    for(let i=0;i<units.length;i++){acc+=msWordCount(units[i]);const d=Math.abs(acc-est);if(d<bestDiff){bestDiff=d;best=i+1;}}
+    remainder=units.slice(Math.max(1,best)).join(" ").trim();
+    leadEnd=regs[regs.length-1][1];
+  }
+  const keep=regs.filter(r=>r[0]<leadEnd).map(r=>[r[0],Math.min(r[1],leadEnd)]);
+  const lead=msJoinRegions(x,sr,keep,0.8);
+  const leadBlob=new Blob([msWavBytes(lead.pcm,sr)],{type:"audio/wav"});
+  return {cloneUri,remainder,leadBlob,exact};
+}
 // Voices a whole text through the engine, piece by piece. Returns the audio
 // pieces in order plus how many pieces failed, so nothing is silently lost.
 async function msVoiceText(text,meta,onStep){
@@ -268,6 +454,11 @@ async function translateText(text, language){
 // in the cloned voice. Provider is never surfaced.
 async function engineCloneVoice(sample){
   try{
+    // A long recording is far too big to clone from (that crashed the engine).
+    // Send about a minute of clean speech instead.
+    if(typeof sample==="string"&&sample.length>4000000){
+      try{sample=await msCloneSampleFromBlob(await (await fetch(sample)).blob());}catch(e){return "";}
+    }
     const res=await fetch(VOICE_URL,{method:"POST",headers:await engineAuthHeaders(),body:JSON.stringify({clone:true,sample:String(sample||"")})});
     let d=await res.json();
     if(d&&d.voice_id) return d.voice_id;
@@ -2621,26 +2812,41 @@ function P6Voice({ onSave, setMediaLib }) {
       try{const st=await loadClipFromDB(mine.dbId||mine.id);if(st&&st.blob)blob=st.blob;}catch(e){}
       if(!blob&&mine.url){try{blob=await (await fetch(mine.url)).blob();}catch(e){}}
       if(!blob){setNarrBusy(false);setNarrStep("");alert("Could not find that recording's audio — record it again.");return;}
-      const recSecs=await msBlobSeconds(blob);
+      // LONG recording (over 2 minutes, e.g. a full read-through that stops
+      // part way): find exactly where it stops, clone from a short clean
+      // sample, and keep a clean copy of the recording without dead air.
+      let longRec=null;
+      if(blob.size>2000000){
+        try{
+          longRec=await msAnalyseRecording(blob,script,setNarrStep);
+        }catch(e){longRec=null;}
+      }
+      const recSecs=longRec?0:await msBlobSeconds(blob);
       let vid=mine.clonedVoiceId;
       if(!vid){
         setNarrStep("Cloning your voice…");
-        const dataUri=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(blob);});
+        const dataUri=longRec?longRec.cloneUri:await msBlobToDataUri(blob);
         vid=await engineCloneVoice(dataUri);
         if(!vid){setNarrBusy(false);setNarrStep("");alert("Voice clone did not complete. Nothing was saved. Check the voice engine has credit, then try again.");return;}
         const upd=myVoices.map(v=>v.id===mine.id?{...v,clonedVoiceId:vid,engineVoice:vid}:v);
         setMyVoices(upd);
         try{localStorage.setItem("ms_my_voices",JSON.stringify(upd.map(v=>({...v,url:undefined}))));}catch{}
       }
-      const remainder=msRemainderAfterRecording(script,recSecs);
+      const remainder=longRec?longRec.remainder:msRemainderAfterRecording(script,recSecs);
       if(!remainder){setNarrBusy(false);setNarrStep("");alert("Your recording already covers the whole script — the render will use it as it is.");return;}
+      // Clean copy of your recording (up to where you stopped) leads the film.
+      let leadId=mine.dbId||mine.id;
+      if(longRec&&longRec.leadBlob){
+        const lid="narr_lead_"+Date.now();
+        try{await safeSaveClipToDB(lid,longRec.leadBlob,"Your recording (cleaned)","audio/wav");const chk=await loadClipFromDB(lid);if(chk&&chk.blob)leadId=lid;}catch(e){}
+      }
       const res=await msVoiceText(remainder,{voice:vid},(i,n)=>setNarrStep("Engine reading the rest — part "+i+" of "+n+"…"));
       if(!res.parts.length){setNarrBusy(false);setNarrStep("");alert("The engine returned no audio. Nothing was saved. Check the voice engine has credit, then try again.");return;}
       setNarrStep("Saving…");
       const id="narr_myvoice_full_"+Date.now();
       for(let i=0;i<res.parts.length;i++){ try{await saveClipToDB(id+"_p"+i,res.parts[i],"narration part "+(i+1),"audio/mpeg");}catch(e){} }
       try{await safeSaveClipToDB(id,new Blob(res.parts,{type:res.parts[0].type||"audio/mpeg"}),"Full Narration","audio/myvoice");}catch(e){}
-      const asset={id,name:"Full Narration (you + engine) - "+new Date().toLocaleTimeString(),type:"audio/myvoice",dbId:id,clonedVoiceId:vid,engineVoice:vid,narrText:script,remainderText:remainder,leadRecordingId:mine.dbId||mine.id,partCount:res.parts.length,stitched:true,date:new Date().toISOString()};
+      const asset={id,name:"Full Narration (you + engine) - "+new Date().toLocaleTimeString(),type:"audio/myvoice",dbId:id,clonedVoiceId:vid,engineVoice:vid,narrText:script,remainderText:remainder,leadRecordingId:leadId,partCount:res.parts.length,stitched:true,date:new Date().toISOString()};
       if(onSave)onSave(asset);
       if(setMediaLib)setMediaLib(p=>[...p,asset]);
       setNarrBusy(false);setNarrStep("");

@@ -492,10 +492,14 @@ export default function Studio() {
       setStage("Matching your images to the scenes…"); noCredit.current = false;
       await planScenes(list);
       // 4 — scenes, three at a time
-      let next = 0, finished = 0;
-      const worker = async () => { while (next < list.length) { const i = next++; setStage("MandaStrong Engine — making scene " + (i + 1) + " of " + list.length + "…"); await makeScene(i, list[i], { firstVoice }); finished++; setPct(24 + Math.round(finished / list.length * 74)); } };
+      let next = 0, finished = 0; const failed = [];
+      const worker = async () => { while (next < list.length) { const i = next++; setStage("MandaStrong Engine — making scene " + (i + 1) + " of " + list.length + "…"); const b = await makeScene(i, list[i], { firstVoice }); if (!b) failed.push(i); finished++; setPct(24 + Math.round(finished / list.length * 74)); } };
       await Promise.all([worker(), worker(), worker()]);
-      setPct(100); setStage("Your film is ready. Press play, then Download or Export."); setDone(true);
+      // Any scene that came back empty gets one more try before the film is joined.
+      for (const i of failed) { setStage("Trying scene " + (i + 1) + " again…"); await makeScene(i, list[i], { firstVoice }); }
+      // Then every scene is joined into ONE film file automatically.
+      autoJoin.current = true;
+      setPct(100); setStage("All scenes made. Joining them into one film — keep this tab open."); setDone(true);
     } catch (e) { setErr("Something stopped the film: " + e.message); }
     try { wl && wl.release(); } catch (e) { }
     setBusy(false);
@@ -639,6 +643,9 @@ export default function Studio() {
     setExp({ busy: false, pct: 100, msg: stopExp.current ? "Stopped." : "Ready. Tap a file to save it.", files });
     loadSaved();
   };
+  // When the scenes finish, the whole film is joined into one file without pressing anything.
+  const autoJoin = useRef(false);
+  useEffect(() => { if (done && !busy && autoJoin.current && ready.length && !exp.busy) { autoJoin.current = false; runExport("one"); } }, [done, busy, ready.length]);
   const saveFile = async (f, toPhotos) => {
     try { const file = new File([f.blob], f.name, { type: f.blob.type }); if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: f.name }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
     const a = document.createElement("a"); a.href = f.url; a.download = f.name; document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 1500);
