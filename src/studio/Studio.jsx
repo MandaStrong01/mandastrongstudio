@@ -645,7 +645,72 @@ export default function Studio() {
   };
   // When the scenes finish, the whole film is joined into one file without pressing anything.
   const autoJoin = useRef(false);
-  useEffect(() => { if (done && !busy && autoJoin.current && ready.length && !exp.busy) { autoJoin.current = false; runExport("one"); } }, [done, busy, ready.length]);
+  useEffect(() => { if (done && !busy && autoJoin.current && ready.length && !join.busy) { autoJoin.current = false; serverJoin(); } }, [done, busy, ready.length]);
+  // ── JOIN ON THE SERVER: the iPad sends the scenes once; a film server joins them into ONE file ──
+  // Recording a whole film live in the browser drops the start on long films (iPad). The server
+  // never does: it joins everything with ffmpeg and gives back a normal download link.
+  const JOIN = SB + "film-join";
+  const [join, setJoin] = useState({ busy: false, msg: "", pct: 0, urls: [], fileName: "" });
+  const joinCall = async (body) => { const r = await fetch(JOIN, { method: "POST", headers: await engineAuthHeaders(), body: JSON.stringify(body) }); const d = await r.json(); if (d.error) throw new Error(d.error); return d; };
+  const pollJoin = async (jobId) => {
+    for (;;) {
+      let d = null; try { d = await joinCall({ action: "status", jobId }); } catch (e) { if (/wasn't found|Log in/i.test(e.message)) { save("joinjob", ""); setJoin(j => ({ ...j, busy: false, msg: e.message })); return; } }
+      if (d && d.status === "done") { save("joinjob", ""); setJoin({ busy: false, msg: "Your film is ready. Tap DOWNLOAD MY FILM.", pct: 100, urls: d.urls || [], fileName: d.fileName || "My_Film.mp4" }); return; }
+      if (d && d.status === "failed") { save("joinjob", ""); setJoin({ busy: false, msg: "The film server couldn't join it: " + (d.error || "unknown problem") + ". Press DOWNLOAD to try again.", pct: 0, urls: [], fileName: "" }); return; }
+      if (d) setJoin(j => ({ ...j, busy: true, msg: (d.progress || "Waiting for the film server") + " — you can close this page and come back.", pct: d.status === "running" ? 60 : 40 }));
+      await sleep(20000);
+    }
+  };
+  useEffect(() => { const j = load("joinjob", ""); if (j) { setJoin(x => ({ ...x, busy: true, msg: "Checking on your film…" })); pollJoin(j); } }, []);
+  const serverJoin = async () => {
+    if (!ready.length || join.busy) return;
+    if (!user) { setJoin({ busy: false, msg: "Log in first, at the top of the page.", pct: 0, urls: [], fileName: "" }); return; }
+    try { [vRef.current, nRef.current, mRef.current].forEach(x => x && x.pause()); } catch (e) { } setPlaying(false);
+    let wl = null; try { wl = await navigator.wakeLock.request("screen"); } catch (e) { }
+    try {
+      setJoin({ busy: true, msg: "Getting your film ready to send…", pct: 2, urls: [], fileName: "" });
+      const extOf = (b) => { const t = (b && b.type) || ""; return t.includes("webm") ? "webm" : t.includes("quicktime") ? "mov" : t.includes("mpeg") ? "mp3" : t.includes("wav") ? "wav" : t.includes("ogg") ? "ogg" : t.includes("audio") ? "m4a" : "mp4"; };
+      // every file to send, big ones in 45 MB pieces (the storage takes pieces up to 50 MB)
+      const files = []; const piece = 45 * 1048576;
+      const addBlob = (base, blob) => { const names = []; if (blob.size <= piece) { const n = base + "." + extOf(blob); files.push({ n, b: blob }); names.push(n); } else { for (let o = 0, k = 0; o < blob.size; o += piece, k++) { const n = base + "." + extOf(blob) + ".part" + String(k).padStart(3, "0"); files.push({ n, b: blob.slice(o, o + piece) }); names.push(n); } } return names; };
+      const sc = ready.map((x, i) => { const names = addBlob("scene_" + String(i).padStart(3, "0"), x.blob); return { file: names[0], still: isStill(x), audio: x.source === "your clip" }; });
+      let narrNames = [], tailNames = [];
+      if (narrUrl) { try { narrNames = addBlob("narr", await (await fetch(narrUrl)).blob()); } catch (e) { } }
+      if (useTail && tail && tail.blob) tailNames = addBlob("tail", tail.blob);
+      let music = null;
+      if (musicUrl) { if (/^blob:/.test(musicUrl)) { try { music = { files: addBlob("music", await (await fetch(musicUrl)).blob()) }; } catch (e) { } } else music = { url: musicUrl }; }
+      const { jobId } = await joinCall({ action: "start" });
+      const { urls } = await joinCall({ action: "upload_urls", jobId, names: files.map(f => f.n) });
+      const totalBytes = files.reduce((a, f) => a + f.b.size, 0) || 1; let sent = 0;
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i]; let ok = false;
+        for (let a = 0; a < 3 && !ok; a++) { try { const r = await fetch(urls[f.n], { method: "PUT", headers: { "x-upsert": "true", "Content-Type": f.b.type || "application/octet-stream" }, body: f.b }); ok = r.ok; if (!ok) await sleep(3000); } catch (e) { await sleep(3000); } }
+        if (!ok) throw new Error("Sending " + f.n + " failed — check the internet connection and press DOWNLOAD again");
+        sent += f.b.size;
+        setJoin(j => ({ ...j, pct: 2 + Math.round(sent / totalBytes * 36), msg: "Sending your film to the film server — " + Math.round(sent / 1048576) + " of " + Math.round(totalBytes / 1048576) + " MB. Keep this page open until it's sent." }));
+      }
+      const [W, H] = sizeFor(ratio, quality);
+      const tm = ((GRADES.find(g => g.id === grade) || GRADES[0]).tint.match(/[\d.]+/g) || [0, 0, 0, 0]).map(Number);
+      const jp = {
+        fileName: (title || "My_Film").replace(/[^\w]+/g, "_") + "_" + ratio.replace(":", "x") + ".mp4",
+        W, H, fps: 30, title, kind, scenes: sc, narr: narrNames, tail: tailNames, music,
+        vVol, mVol, cVol, duck, tint: tm, minutes, compact: true,
+        watermark: !!(watermark && plan === "starter"),
+        credits: { on: !!credits, title, lines: creditNames.split("\n").map(x => x.trim()).filter(Boolean) },
+        subs: !!subs, subsText: narrText || "",
+      };
+      await joinCall({ action: "submit", jobId, plan: jp });
+      save("joinjob", jobId);
+      setJoin(j => ({ ...j, pct: 40, msg: "Sent. The film server is joining it into one film. You can close this page and come back." }));
+      try { wl && wl.release(); } catch (e) { }
+      pollJoin(jobId);
+    } catch (e) { try { wl && wl.release(); } catch (_) { } setJoin({ busy: false, msg: "Couldn't send the film: " + e.message, pct: 0, urls: [], fileName: "" }); }
+  };
+  // A film that came back in pieces is put back together on this device, then saved.
+  const getJoined = async () => {
+    if (join.urls.length === 1) return;
+    try { setJoin(j => ({ ...j, msg: "Downloading your film…" })); const parts = []; for (const u of join.urls) parts.push(await (await fetch(u)).blob()); const blob = new Blob(parts, { type: "video/mp4" }); await saveFile({ blob, name: join.fileName, url: URL.createObjectURL(blob) }); setJoin(j => ({ ...j, msg: "Your film is ready." })); } catch (e) { setJoin(j => ({ ...j, msg: "Download failed — try again." })); }
+  };
   const saveFile = async (f, toPhotos) => {
     try { const file = new File([f.blob], f.name, { type: f.blob.type }); if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: f.name }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
     const a = document.createElement("a"); a.href = f.url; a.download = f.name; document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 1500);
@@ -844,9 +909,9 @@ export default function Studio() {
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <button className="b g" onClick={() => runExport("one")} disabled={!ready.length || exp.busy}>DOWNLOAD</button>
+            <button className="b g" onClick={serverJoin} disabled={!ready.length || join.busy}>{join.busy ? "JOINING…" : "DOWNLOAD"}</button>
             <button className="b" onClick={() => runExport("all")} disabled={!ready.length || exp.busy}>EXPORT</button>
-            <button className="b s" onClick={() => exp.files[0] ? saveFile(exp.files[0], true) : runExport("one")} disabled={!ready.length || exp.busy}>SAVE TO PHOTOS</button>
+            <button className="b s" onClick={() => exp.files[0] ? saveFile(exp.files[0], true) : serverJoin()} disabled={!ready.length || exp.busy || join.busy}>SAVE TO PHOTOS</button>
             <button className="b s" onClick={shareFilm} disabled={!ready.length}>SHARE</button>
             <button className="b s" onClick={fullScreen} disabled={!ready.length}>FULL SCREEN</button>
             <button className="b s" onClick={saveProject}>SAVE PROJECT</button>
@@ -856,6 +921,8 @@ export default function Studio() {
           </div>
         </div>
         {(exp.busy || exp.msg) && <div className="msg">{exp.msg}<div className="pb"><i style={{ width: exp.pct + "%" }} /></div></div>}
+        {(join.busy || join.msg) && <div className="msg">{join.msg}<div className="pb"><i style={{ width: join.pct + "%" }} /></div></div>}
+        {join.urls.length > 0 && <div className="row" style={{ marginTop: 8 }}>{join.urls.length === 1 ? <a className="b g" style={{ textDecoration: "none", padding: "13px 22px" }} href={join.urls[0]} download={join.fileName}>⬇ DOWNLOAD MY FILM · {join.fileName}</a> : <button className="b g" onClick={getJoined}>⬇ DOWNLOAD MY FILM · {join.fileName}</button>}</div>}
         {exp.files.length > 0 && <div className="row" style={{ marginTop: 8 }}>{exp.files.map(f => <button key={f.name} className="b s" onClick={() => saveFile(f)}>⬇ {f.name}</button>)}</div>}
 
         <div className="tl">

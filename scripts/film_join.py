@@ -273,6 +273,10 @@ def process(job):
         progress("Collecting your scenes")
         for n, u in job["inputs"].items():
             download(u, os.path.join(ind, n))
+        if (job.get("plan") or {}).get("selftest"):
+            # a tiny made-up film, used to check the whole path works
+            ff("-f", "lavfi", "-i", "testsrc=s=1280x720:r=24:d=5", "-c:v", "libx264", "-pix_fmt", "yuv420p", os.path.join(ind, "scene_000.mp4"))
+            ff("-f", "lavfi", "-i", "sine=f=330:d=12", "-c:a", "aac", os.path.join(ind, "narr.m4a"))
         film = build(job.get("plan") or {}, ind, work, progress)
         progress("Saving your film")
         if upload(call("runner_upload", jobId=jid, name="film.mp4")["url"], film):
