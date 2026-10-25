@@ -195,6 +195,24 @@ select.in{appearance:auto}
 @media (prefers-reduced-motion: reduce){.ovl{transition:none}.pb i{transition:none}}
 `;
 
+// ── one .zip with every scene + the narration, so a film can be joined anywhere ──
+const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC_T[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+async function makeZip(entries, onStep) {
+  const parts = [], central = []; let off = 0;
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i]; if (onStep) onStep(i + 1, entries.length);
+    const data = new Uint8Array(await e.blob.arrayBuffer()); const crc = crc32(data); const nm = new TextEncoder().encode(e.name);
+    const h = new DataView(new ArrayBuffer(30)); h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint32(14, crc, true); h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, nm.length, true);
+    parts.push(h.buffer, nm, new Blob([data]));
+    const c = new DataView(new ArrayBuffer(46)); c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint32(16, crc, true); c.setUint32(20, data.length, true); c.setUint32(24, data.length, true); c.setUint16(28, nm.length, true); c.setUint32(42, off, true);
+    central.push(c.buffer, nm); off += 30 + nm.length + data.length;
+  }
+  const csize = central.reduce((a, x) => a + (x.byteLength || x.length), 0);
+  const end = new DataView(new ArrayBuffer(22)); end.setUint32(0, 0x06054b50, true); end.setUint16(8, entries.length, true); end.setUint16(10, entries.length, true); end.setUint32(12, csize, true); end.setUint32(16, off, true);
+  return new Blob([...parts, ...central, end.buffer], { type: "application/zip" });
+}
+
 export default function Studio() {
   // ── entry overlay ──
   const [entered, setEntered] = useState(() => { try { return sessionStorage.getItem("mfs_in") === "1"; } catch (e) { return false; } });
@@ -645,11 +663,13 @@ export default function Studio() {
   };
   // When the scenes finish, the whole film is joined into one file without pressing anything.
   const autoJoin = useRef(false);
-  useEffect(() => { if (done && !busy && autoJoin.current && ready.length && !join.busy) { autoJoin.current = false; serverJoin(); } }, [done, busy, ready.length]);
+  useEffect(() => { if (done && !busy && autoJoin.current && ready.length && !join.busy) { autoJoin.current = false; SERVER_JOIN ? serverJoin() : runExport("one"); } }, [done, busy, ready.length]);
   // ── JOIN ON THE SERVER: the iPad sends the scenes once; a film server joins them into ONE file ──
   // Recording a whole film live in the browser drops the start on long films (iPad). The server
   // never does: it joins everything with ffmpeg and gives back a normal download link.
   const JOIN = SB + "film-join";
+  // The film server is switched off until its GitHub account is unlocked; until then DOWNLOAD records in the browser.
+  const SERVER_JOIN = false;
   const [join, setJoin] = useState({ busy: false, msg: "", pct: 0, urls: [], fileName: "" });
   const joinCall = async (body) => { const r = await fetch(JOIN, { method: "POST", headers: await engineAuthHeaders(), body: JSON.stringify(body) }); const d = await r.json(); if (d.error) throw new Error(d.error); return d; };
   const pollJoin = async (jobId) => {
@@ -707,6 +727,25 @@ export default function Studio() {
       try { wl && wl.release(); } catch (e) { }
       pollJoin(jobId);
     } catch (e) { try { wl && wl.release(); } catch (_) { } setJoin({ busy: false, msg: "Couldn't send the film: " + e.message, pct: 0, urls: [], fileName: "" }); }
+  };
+  // Packs every finished scene + the narration + music into ONE .zip to send for joining.
+  const [packMsg, setPackMsg] = useState("");
+  const packFiles = async () => {
+    if (!ready.length) return;
+    try {
+      setPackMsg("Packing your film files…");
+      const extOf = (b) => { const t = (b && b.type) || ""; return t.includes("webm") ? "webm" : t.includes("quicktime") ? "mov" : t.includes("mpeg") ? "mp3" : t.includes("wav") ? "wav" : t.includes("audio") ? "m4a" : "mp4"; };
+      const entries = ready.map((x, i) => ({ name: "scene_" + String(i + 1).padStart(3, "0") + (isStill(x) ? "_still" : "") + (x.source === "your clip" ? "_ownsound" : "") + "." + extOf(x.blob), blob: x.blob }));
+      let nb = null; if (voiceMode === "mine" && myRec && myRec.blob) nb = myRec.blob; else if (narrUrl) { try { nb = await (await fetch(narrUrl)).blob(); } catch (e) { } }
+      if (nb) entries.push({ name: "narration." + extOf(nb), blob: nb });
+      if (useTail && tail && tail.blob) entries.push({ name: "narration_ending." + extOf(tail.blob), blob: tail.blob });
+      if (musicUrl && /^blob:/.test(musicUrl)) { try { const mb = await (await fetch(musicUrl)).blob(); entries.push({ name: "music." + extOf(mb), blob: mb }); } catch (e) { } }
+      const info = { title, kind, ratio, quality, grade, music: musicUrl && !/^blob:/.test(musicUrl) ? musicUrl : "", vVol, mVol, duck, subs, credits, creditNames, scenes: ready.map(x => x.text || ""), narrText: narrText || "" };
+      entries.push({ name: "film.json", blob: new Blob([JSON.stringify(info, null, 1)], { type: "application/json" }) });
+      const zip = await makeZip(entries, (i, n) => setPackMsg("Packing file " + i + " of " + n + "…"));
+      setPackMsg("Packed: " + Math.round(zip.size / 1048576) + " MB. Choose Save to Files.");
+      await saveFile({ blob: zip, name: (title || "My_Film").replace(/[^\w]+/g, "_") + "_film_files.zip", url: URL.createObjectURL(zip) });
+    } catch (e) { setPackMsg("Couldn't pack the files: " + e.message); }
   };
   // A film that came back in pieces is put back together on this device, then saved.
   const getJoined = async () => {
@@ -911,18 +950,20 @@ export default function Studio() {
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <button className="b g" onClick={serverJoin} disabled={!ready.length || join.busy}>{join.busy ? "JOINING…" : "DOWNLOAD"}</button>
+            <button className="b g" onClick={() => SERVER_JOIN ? serverJoin() : runExport("one")} disabled={!ready.length || join.busy || exp.busy}>{join.busy ? "JOINING…" : "DOWNLOAD"}</button>
             <button className="b" onClick={() => runExport("all")} disabled={!ready.length || exp.busy}>EXPORT</button>
-            <button className="b s" onClick={() => exp.files[0] ? saveFile(exp.files[0], true) : serverJoin()} disabled={!ready.length || exp.busy || join.busy}>SAVE TO PHOTOS</button>
+            <button className="b s" onClick={() => exp.files[0] ? saveFile(exp.files[0], true) : (SERVER_JOIN ? serverJoin() : runExport("one"))} disabled={!ready.length || exp.busy || join.busy}>SAVE TO PHOTOS</button>
             <button className="b s" onClick={shareFilm} disabled={!ready.length}>SHARE</button>
             <button className="b s" onClick={fullScreen} disabled={!ready.length}>FULL SCREEN</button>
             <button className="b s" onClick={saveProject}>SAVE PROJECT</button>
             <button className="b s" onClick={() => runExport("trailer")} disabled={!ready.length || exp.busy}>TRAILER 30s + 60s</button>
             <button className="b s" onClick={poster} disabled={!ready.length}>POSTER</button>
+            <button className="b s" onClick={packFiles} disabled={!ready.length}>PACK FILM FILES (.zip)</button>
             {exp.busy && <button className="b s" onClick={() => { stopExp.current = true; }}>STOP</button>}
           </div>
         </div>
         {(exp.busy || exp.msg) && <div className="msg">{exp.msg}<div className="pb"><i style={{ width: exp.pct + "%" }} /></div></div>}
+        {packMsg && <div className="msg">{packMsg}</div>}
         {(join.busy || join.msg) && <div className="msg">{join.msg}<div className="pb"><i style={{ width: join.pct + "%" }} /></div></div>}
         {join.urls.length > 0 && <div className="row" style={{ marginTop: 8 }}>{join.urls.length === 1 ? <a className="b g" style={{ textDecoration: "none", padding: "13px 22px" }} href={join.urls[0]} download={join.fileName}>⬇ DOWNLOAD MY FILM · {join.fileName}</a> : <button className="b g" onClick={getJoined}>⬇ DOWNLOAD MY FILM · {join.fileName}</button>}</div>}
         {exp.files.length > 0 && <div className="row" style={{ marginTop: 8 }}>{exp.files.map(f => <button key={f.name} className="b s" onClick={() => saveFile(f)}>⬇ {f.name}</button>)}</div>}

@@ -2,13 +2,11 @@ name: Film joiner
 
 # Joins the scenes people make in Mandas Film & Music Studio into one film file.
 # It checks for new films every few minutes and does nothing when there are none.
+# OFF until the GitHub account's billing lock is cleared. To switch on, put back:
+#   schedule:
+#     - cron: "*/5 * * * *"
 on:
-  schedule:
-    - cron: "*/5 * * * *"
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths: [scripts/film_join.py, .github/workflows/film-join.yml]
 
 permissions:
   contents: read
