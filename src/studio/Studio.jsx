@@ -400,9 +400,10 @@ export default function Studio() {
   }
 
   // Turns a picture (your photo or a stock photo) into a moving shot.
-  async function stockScene(plan, i) {
+  async function stockScene(plan, i, text) {
     if (plan && plan.photo >= 0 && photos[plan.photo]) { const b = await stillToClip(photos[plan.photo].dataUrl, 7, i); if (b) return { blob: b, source: "your image" }; }
-    const q = (plan && plan.query) || "cinematic landscape";
+    // after a reload the scene plan is gone, so the scene's own words are used for the search
+    const q = (plan && plan.query) || stockQuery(text) || "cinematic landscape";
     try {
       const st = await se({ kind: "stock", query: q });
       if (st && st.url) {
@@ -431,7 +432,7 @@ export default function Studio() {
     }
     if (!blob && !free()) { try { blob = await toBlob(await seRun({ kind: "video", prompt: text + "\n" + look, image: photo })); } catch (e) { note = e.message; if (e.nocredit) { noCredit.current = true; setStage("Engine is out of credit — switching to your images and free stock."); } } }
     if (!blob && !free()) { try { const im = await seRun({ kind: "image", prompt: text + "\n" + look, aspect_ratio: ratio }, 4); blob = await stillToClip(im, 6, i); source = "engine still"; } catch (e) { if (e.nocredit) noCredit.current = true; } }
-    if (!blob) { const r2 = await stockScene(plan, i); if (r2) { blob = r2.blob; source = r2.source; } }
+    if (!blob) { const r2 = await stockScene(plan, i, text); if (r2) { blob = r2.blob; source = r2.source; } }
     if (!blob) { setS({ status: "failed", note: note || "No picture came back" }); return null; }
     await dbPut(projectId.current + "_scene_" + i, blob, { i, text, source });
     setS({ status: "done", blob, url: URL.createObjectURL(blob), source, note });
