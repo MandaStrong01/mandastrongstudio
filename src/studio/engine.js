@@ -79,14 +79,28 @@ function msRemainderAfterRecording(script,recSecs){
   return units.slice(best).join(" ").trim();
 }
 // Length in seconds of an audio blob (decoded once, then released).
+// Reads the length from the file's header first (no unpacking). Only small files are
+// unpacked; a long recording is never unpacked here, because on iPad that runs out of
+// memory and the page reloads back to page one.
 async function msBlobSeconds(blob){
-  let ctx=null;
-  try{
-    ctx=new (window.AudioContext||window.webkitAudioContext)();
-    const buf=await ctx.decodeAudioData(await blob.arrayBuffer());
-    return buf.duration||0;
-  }catch(e){return 0;}
-  finally{try{if(ctx)ctx.close();}catch(e){}}
+  if(!blob)return 0;
+  const tag=await new Promise(res=>{
+    try{
+      const a=document.createElement("audio");const u=URL.createObjectURL(blob);let done=false;
+      const fin=v=>{if(done)return;done=true;try{URL.revokeObjectURL(u);}catch(e){}res(v||0);};
+      a.preload="metadata";
+      a.onloadedmetadata=()=>{if(isFinite(a.duration)&&a.duration>0)fin(a.duration);else{a.currentTime=1e7;a.ontimeupdate=()=>{a.ontimeupdate=null;fin(isFinite(a.duration)?a.duration:0);};}};
+      a.onerror=()=>fin(0);setTimeout(()=>fin(0),15000);a.src=u;
+    }catch(e){res(0);}
+  });
+  if(tag>0)return tag;
+  if(blob.size<15000000){
+    let ctx=null;
+    try{ctx=new (window.AudioContext||window.webkitAudioContext)();const buf=await ctx.decodeAudioData(await blob.arrayBuffer());return buf.duration||0;}
+    catch(e){}
+    finally{try{if(ctx)ctx.close();}catch(e){}}
+  }
+  return blob.size*8/128000; // big file: estimate from its size (about 128 kbps)
 }
 // Voices a whole text through the engine, piece by piece. Returns the audio
 // pieces in order plus how many pieces failed, so nothing is silently lost.
