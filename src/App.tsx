@@ -3553,6 +3553,18 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
     }catch(e){ return ""; }
   };
 
+  // Your own "SCENE 1 / SCENE 2 ..." prompts, used exactly as written - one scene each, in order.
+  // Each prompt is the paragraph under its SCENE heading (text after a blank line, like the narration, is not part of it).
+  const msExactScenes=(text)=>{
+    const t=String(text||""); const re=/^[ \t]*SCENE[ \t]+(\d+)[ \t]*[:.\-\u2014]?[ \t]*(.*)$/gim; const marks=[]; let m;
+    while((m=re.exec(t)))marks.push({at:m.index,head:(m[2]||"").trim(),end:re.lastIndex});
+    if(marks.length<2)return [];
+    return marks.map((mk,k)=>{
+      let body=t.slice(mk.end,k+1<marks.length?marks[k+1].at:t.length); if(!mk.head)body=body.replace(/^[ \t]*\r?\n/,"");
+      body=body.split(/\n\s*\n/)[0]||"";
+      return (mk.head+" "+body).replace(/\s+/g," ").trim();
+    }).filter(Boolean);
+  };
   const makeMyMovie=async()=>{
     const source=[mmmNarrText.trim(),mmmText.trim()].filter(Boolean).join("\n\n");
     const spokenSrc=mmmNarrText.trim()||msSpokenOnly(mmmText.trim());
@@ -3566,8 +3578,9 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
     // 1 ─ Write the full scene list to length
     setMmmStage("Reading what you gave me and writing the scene list…");
     setMmmPct(4);
-    let sceneList=[];
-    try{
+    let sceneList=msExactScenes(source);
+    if(sceneList.length){ setMmmStage("Using your "+sceneList.length+" scene prompts exactly as written…"); }
+    else try{
       const brief=(()=>{try{const b=JSON.parse(localStorage.getItem("ms_render_brief")||"null");return b&&b.brief?b.brief:"";}catch(e){return "";}})();
       const ask=
         "You are a film director. Turn the material below into an ordered shot list of EXACTLY "+targetScenes+" scenes for a "+targetMin+"-minute film"+(mmmGenre?(" in the "+mmmGenre+" genre"):"")+".\n"+
