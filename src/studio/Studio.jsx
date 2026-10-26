@@ -224,6 +224,16 @@ export default function Studio() {
   const [email, setEmail] = useState(""); const [pw, setPw] = useState(""); const [authMsg, setAuthMsg] = useState("");
   const [plan, setPlan] = useState(() => load("plan", "creator"));
   useEffect(() => { supabase.auth.getSession().then(({ data }) => setUser(data?.session?.user || null)); const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setUser(s?.user || null)); return () => { try { sub.subscription.unsubscribe(); } catch (e) { } }; }, []);
+  // Owner / admin (and paid Studio accounts) always get the Studio plan with everything on, no watermark.
+  useEffect(() => { (async () => {
+    if (!user) return;
+    try {
+      const { data: role } = await supabase.from("user_roles").select("role").eq("user_id", user.id).maybeSingle();
+      const { data: sub } = await supabase.from("subscriptions").select("plan_tier,status").eq("user_id", user.id).maybeSingle();
+      const tier = sub && sub.status === "active" ? sub.plan_tier : "";
+      if ((role && role.role === "admin") || tier === "owner" || tier === "studio") setPlan("studio");
+    } catch (e) { }
+  })(); }, [user]);
   const logIn = async () => { setAuthMsg("Logging in…"); const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: pw }); setAuthMsg(error ? error.message : ""); };
   const signUp = async () => { setAuthMsg("Creating your account…"); const { error } = await supabase.auth.signUp({ email: email.trim(), password: pw }); setAuthMsg(error ? error.message : "Account created. Check your email if asked to confirm, then log in."); };
   const logOut = async () => { await supabase.auth.signOut(); };
