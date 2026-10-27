@@ -222,8 +222,8 @@ export default function Studio() {
   // ── account + plan ──
   const [user, setUser] = useState(null);
   const [email, setEmail] = useState(""); const [pw, setPw] = useState(""); const [authMsg, setAuthMsg] = useState("");
-  const [plan, setPlan] = useState(() => load("plan", "creator"));
-  useEffect(() => { supabase.auth.getSession().then(({ data }) => setUser(data?.session?.user || null)); const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setUser(s?.user || null)); return () => { try { sub.subscription.unsubscribe(); } catch (e) { } }; }, []);
+  const [plan, setPlan] = useState("studio");
+  useEffect(() => { supabase.auth.getSession().then(({ data }) => setUser(data?.session?.user || null)); const { data: sub } = supabase.auth.onAuthStateChange((ev, s) => { if (s && s.user) setUser(s.user); else if (ev === "SIGNED_OUT") setUser(null); }); return () => { try { sub.subscription.unsubscribe(); } catch (e) { } }; }, []);
   // Owner / admin (and paid Studio accounts) always get the Studio plan with everything on, no watermark.
   useEffect(() => { (async () => {
     if (!user) return;
@@ -473,7 +473,9 @@ export default function Studio() {
 
   const makeMovie = async () => {
     setErr("");
-    if (!user) { setErr("Log in first, at the top of the page."); return; }
+    let who = user;
+    if (!who) { try { const { data } = await supabase.auth.getSession(); who = data && data.session && data.session.user; if (!who) { const r = await supabase.auth.refreshSession(); who = r && r.data && r.data.session && r.data.session.user; } if (who) setUser(who); } catch (e) { } }
+    if (!who) { setErr("Log in first, at the top of the page."); return; }
     if (!narr.trim() && !script.trim() && !photos.length && !clips.length) { setErr("Add your narration, script, photos or clips first."); return; }
     setBusy(true); setDone(false); setPct(2);
     let wl = null; try { wl = await navigator.wakeLock.request("screen"); } catch (e) { }
@@ -826,8 +828,8 @@ export default function Studio() {
         )}
 
         <div className="lab">CHOOSE YOUR PLAN</div>
-        <div className="g3">{PLANS.map(p => <button key={p.id} className={"plan" + (plan === p.id ? " on" : "")} onClick={() => setPlan(p.id)}><h3>{p.name}<span className="tick">{plan === p.id ? "✓" : ""}</span></h3><span style={{ fontSize: 12, color: "#B9B1A0" }}>{p.line}</span></button>)}</div>
-        <button className="b g" style={{ width: "100%", marginTop: 10 }} onClick={pay}>PAY FOR {(PLANS.find(p => p.id === plan) || PLANS[1]).name.toUpperCase()} — SECURE CHECKOUT</button>
+        <div className="g3">{PLANS.map(p => p.id !== "studio" ? <div key={p.id} className="plan" style={{ position: "relative", opacity: 0.45, cursor: "not-allowed", overflow: "hidden" }}><h3>{p.name}</h3><span style={{ fontSize: 12, color: "#B9B1A0" }}>{p.line}</span><svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}><line x1="4" y1="4" x2="96" y2="96" stroke="#e5484d" strokeWidth="5" vectorEffect="non-scaling-stroke" /><line x1="96" y1="4" x2="4" y2="96" stroke="#e5484d" strokeWidth="5" vectorEffect="non-scaling-stroke" /></svg></div> : <button key={p.id} className="plan on" onClick={() => setPlan("studio")}><h3>{p.name}<span className="tick">✓</span></h3><span style={{ fontSize: 12, color: "#B9B1A0" }}>{p.line}</span></button>)}</div>
+        <button className="b g" style={{ width: "100%", marginTop: 10 }} onClick={() => { setPlan("studio"); const p = PLANS[2]; const em = (user && user.email) || email; window.open(p.link + (em ? "?prefilled_email=" + encodeURIComponent(em) : ""), "_blank", "noopener"); }}>PAY FOR STUDIO — SECURE CHECKOUT</button>
 
         <div className="lab">1 · WHAT ARE YOU MAKING?</div>
         <Chips items={KINDS} value={kind} onPick={setKind} />
@@ -977,11 +979,12 @@ export default function Studio() {
         {packMsg && <div className="msg">{packMsg}</div>}
         {(join.busy || join.msg) && <div className="msg">{join.msg}<div className="pb"><i style={{ width: join.pct + "%" }} /></div></div>}
         {join.urls.length > 0 && <div className="row" style={{ marginTop: 8 }}>{join.urls.length === 1 ? <a className="b g" style={{ textDecoration: "none", padding: "13px 22px" }} href={join.urls[0]} download={join.fileName}>⬇ DOWNLOAD MY FILM · {join.fileName}</a> : <button className="b g" onClick={getJoined}>⬇ DOWNLOAD MY FILM · {join.fileName}</button>}</div>}
+        {(exp.files.length > 0 || join.urls.length > 0 || (done && !busy && savedFilms.length > 0 && !exp.busy && !join.busy)) && (() => { const f = exp.files[0] || (savedFilms[0] && { blob: savedFilms[0].blob, name: savedFilms[0].name, url: URL.createObjectURL(savedFilms[0].blob) }); const nm = (title && title.trim()) || (f && f.name) || (join.fileName || "My film"); const go = () => { if (exp.files[0]) saveFile(exp.files[0]); else if (join.urls.length > 1) getJoined(); else if (join.urls.length === 1) { const a = document.createElement("a"); a.href = join.urls[0]; a.download = join.fileName; document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 1500); } else if (f) saveFile(f); }; return <div style={{ marginTop: 14, padding: 16, borderRadius: 6, background: "linear-gradient(135deg,#ffe08a,#ffb938)", color: "#000", textAlign: "center", boxShadow: "0 0 24px rgba(255,200,80,.55)" }}><div style={{ fontSize: 13, fontWeight: 800, letterSpacing: ".1em" }}>YOUR FILM IS READY</div><div style={{ fontSize: 22, fontWeight: 800, margin: "6px 0 12px", wordBreak: "break-word" }}>{nm}</div><button onClick={go} style={{ width: "100%", padding: "16px 10px", fontSize: 18, fontWeight: 800, border: "3px solid #000", borderRadius: 6, background: "#000", color: "#ffd45e", cursor: "pointer" }}>⬇ PRESS HERE TO SAVE YOUR FILM</button></div>; })()}
         {exp.files.length > 0 && <div className="row" style={{ marginTop: 8 }}>{exp.files.map(f => <button key={f.name} className="b s" onClick={() => saveFile(f)}>⬇ {f.name}</button>)}</div>}
 
         <div className="tl">
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", color: "var(--gold)", marginBottom: 6 }}>MY SAVED FILMS · TAP TO SAVE TO PHOTOS OR FILES</div>
-          {savedFilms.length === 0 ? <div className="msg">Your finished films appear here and stay here, even if the page reloads.</div> :
+          {savedFilms.length === 0 ? <div className="msg">No film saved yet. When your film is ready, a bright gold box appears above with its name and a button to press.</div> :
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{savedFilms.map(f => <div key={f.id} className="row" style={{ alignItems: "center" }}>
               <button className="b g" style={{ padding: "9px 14px", textAlign: "left", flex: 1 }} onClick={() => saveFile({ blob: f.blob, name: f.name, url: URL.createObjectURL(f.blob) })}>⬇ {f.name} · {Math.round(f.blob.size / 1048576)} MB</button>
               <button className="c" onClick={() => deleteSaved(f.id)}>Delete</button>
