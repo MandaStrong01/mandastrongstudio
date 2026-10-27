@@ -3581,6 +3581,7 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
     const spokenSrc=mmmNarrText.trim()||msSpokenOnly(mmmText.trim());
     if(!source&&mmmImages.length===0){ setMmmError("Drop in your script, or some images, first."); return; }
     setMmmError(""); setMmmBusy(true); setMmmDone(false); setMmmFilmUrl(""); setMmmScenes([]); setMmmPct(0);
+    mmmFileRef.current=null; mmmAutoExp.current=false; setMmmExp({busy:false,pct:0,msg:"",url:"",name:""});
 
     const targetMin=mmmTargetMin;
     const targetScenes=Math.max(1,Math.round(targetMin));   // ~1 scene per minute
@@ -3728,6 +3729,7 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
     setMmmFilmUrl(clipUrls[0]);   // player starts on scene 1 and advances through the list
     setMmmPct(100);
     setMmmStage("Your movie is ready.");
+    mmmAutoExp.current=true;
     setMmmDone(true);
     setMmmBusy(false);
   };
@@ -3816,11 +3818,14 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
   // ── One-shot page: EXPORT the whole film as ONE file (picture + voice + music, chosen ratio) ──
   const [mmmExp,setMmmExp]=useState({busy:false,pct:0,msg:"",url:"",name:""});
   const mmmExpCancel=useRef(false);
+  const mmmFileRef=useRef(null);      // the finished film file, once it is made
+  const mmmAutoExp=useRef(false);     // true right after a new film is made: build the one file by itself
   const mmmExportFilm=async()=>{
     const list=mmmListNow(); if(!list.length||mmmExp.busy)return;
     try{ mmmVideoRef.current&&mmmVideoRef.current.pause(); mmmNarrRef.current&&mmmNarrRef.current.pause(); mmmMusicRef.current&&mmmMusicRef.current.pause(); }catch(e){}
     setMmmPlaying(false);
     mmmExpCancel.current=false;
+    mmmFileRef.current=null;
     setMmmExp({busy:true,pct:1,msg:"Getting ready…",url:"",name:""});
     let wl=null; try{ wl=await navigator.wakeLock.request("screen"); }catch(e){}
     let ac=null;
@@ -3916,8 +3921,8 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
         const name="InFuture_Movie_"+mmmRatio.replace(":","x")+ext;
         const url=URL.createObjectURL(blob);
         try{ await Promise.race([safeSaveClipToDB("mmmfinal_"+Date.now(),blob,"MakeMyMovie_FINAL"+ext,type),new Promise(r=>setTimeout(()=>r("t"),8000))]); }catch(e){}
-        setMmmExp({busy:false,pct:100,msg:"Your film is ready.",url,name});
-        try{ const a=document.createElement("a"); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); }catch(e){}
+        mmmFileRef.current={blob,name,url};
+        setMmmExp({busy:false,pct:100,msg:"Your film is ready. Tap SAVE MY FILM.",url,name});
       }
     }catch(e){
       setMmmExp({busy:false,pct:0,msg:"Export problem: "+(e&&e.message?e.message:e)+". Try again with this tab in front.",url:"",name:""});
@@ -3925,6 +3930,37 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
     try{ ac&&ac.close(); }catch(e){}
     try{ wl&&wl.release(); }catch(e){}
   };
+  const mmmExportLatest=useRef(null); mmmExportLatest.current=mmmExportFilm;
+  // The finished film opens the iPad's save sheet (Files / Photos); on a computer it just downloads.
+  const mmmSaveFile=async()=>{
+    const f=mmmFileRef.current; if(!f)return;
+    try{ const file=new File([f.blob],f.name,{type:f.blob.type}); if(navigator.canShare&&navigator.canShare({files:[file]})){ await navigator.share({files:[file],title:f.name}); return; } }catch(e){ if(e&&e.name==="AbortError")return; }
+    const a=document.createElement("a"); a.href=f.url; a.download=f.name; document.body.appendChild(a); a.click(); setTimeout(()=>a.remove(),1500);
+  };
+  // One button: builds the film file if it isn't built yet, then saves it.
+  const mmmDownloadFilm=()=>{ if(mmmFileRef.current){ mmmSaveFile(); } else if(!mmmExp.busy){ mmmExportFilm(); } };
+  // A film made at one screen ratio is not valid for another: build it again.
+  useEffect(()=>{ mmmFileRef.current=null; setMmmExp(x=>x.busy?x:{busy:false,pct:0,msg:"",url:"",name:""}); },[mmmRatio]);
+  // As soon as the scenes are made, the one film file is built without pressing anything.
+  useEffect(()=>{
+    if(!mmmDone||!mmmAutoExp.current||mmmExp.busy)return;
+    mmmAutoExp.current=false;
+    const t=setTimeout(()=>{ mmmExportLatest.current&&mmmExportLatest.current(); },900);
+    return ()=>clearTimeout(t);
+  },[mmmDone]);
+  // Scenes along the bottom: each one shows its picture as soon as it is made.
+  const mmmStrip=mmmScenes.length>0?(
+    <div style={{marginTop:12,display:"flex",gap:8,overflowX:"auto",paddingBottom:6,WebkitOverflowScrolling:"touch"}}>
+      {mmmScenes.map((s,i)=>(
+        <div key={i} style={{flex:"0 0 118px",border:"1px solid "+(s.status==="rendering"?"#fff":s.status==="skipped"?"#D9A79A":s.url?GOLD:LINE),borderRadius:3,background:"#0E0F12",padding:3}}>
+          {s.url
+            ?<video src={s.url+"#t=0.1"} muted playsInline preload="metadata" style={{width:"100%",aspectRatio:mmmAR,objectFit:"cover",display:"block",background:"#15171B",borderRadius:2}}/>
+            :<div style={{width:"100%",aspectRatio:mmmAR,background:"#15171B",borderRadius:2,display:"flex",alignItems:"center",justifyContent:"center",color:s.status==="skipped"?"#D9A79A":DIM,fontSize:10,textAlign:"center"}}>{s.status==="rendering"?"making…":s.status==="skipped"?"skipped":"waiting"}</div>}
+          <div style={{color:s.url?GOLD:DIM,fontSize:10,marginTop:3,textAlign:"center",whiteSpace:"nowrap"}}>Scene {i+1}</div>
+        </div>
+      ))}
+    </div>
+  ):null;
   const mmmTransport=mmmDone?(
     <div style={{marginTop:10,padding:10,border:"1px solid "+LINE,borderRadius:3,background:"#0E0F12"}}>
       <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
@@ -3949,16 +3985,16 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
         ))}
       </div>
       <div style={{marginTop:10,padding:10,border:"1px solid "+GOLD,borderRadius:3}}>
-        <button onClick={mmmExp.busy?()=>{mmmExpCancel.current=true;}:mmmExportFilm}
-          style={{width:"100%",padding:13,background:mmmExp.busy?"#0E0F12":GOLD,color:mmmExp.busy?GOLD:"#000",border:mmmExp.busy?"1px solid "+LINE:"none",borderRadius:3,fontWeight:600,fontSize:14,cursor:"pointer"}}>
-          {mmmExp.busy?"STOP EXPORT":"EXPORT FINAL FILM — ONE FILE"}
+        <button onClick={mmmDownloadFilm} disabled={mmmExp.busy}
+          style={{width:"100%",padding:14,background:mmmExp.busy?"#0E0F12":GOLD,color:mmmExp.busy?GOLD:"#000",border:mmmExp.busy?"1px solid "+LINE:"none",borderRadius:3,fontWeight:600,fontSize:15,cursor:mmmExp.busy?"default":"pointer"}}>
+          {mmmExp.busy?"MAKING YOUR FILM… "+mmmExp.pct+"%":(mmmExp.url?"SAVE MY FILM":"DOWNLOAD MY FILM")}
         </button>
-        <div style={{color:DIM,fontSize:11,marginTop:6,textAlign:"center"}}>Picture, voice and music in one file, at the ratio you picked. Keep this tab in front while it runs.</div>
+        {mmmExp.busy&&<button onClick={()=>{mmmExpCancel.current=true;}} style={{width:"100%",padding:8,marginTop:6,background:"#0E0F12",color:WHITE,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>STOP</button>}
         {(mmmExp.busy||mmmExp.msg)&&<div style={{marginTop:8}}>
           <div style={{background:"#0E0F12",height:8,border:"1px solid "+LINE,borderRadius:3,overflow:"hidden"}}><div style={{background:GOLD,height:"100%",width:mmmExp.pct+"%",transition:"width .3s"}}/></div>
           <div style={{color:"#fff",fontSize:11,marginTop:4,textAlign:"center"}}>{mmmExp.msg}</div>
         </div>}
-        {mmmExp.url&&<a href={mmmExp.url} download={mmmExp.name} style={{display:"block",marginTop:8,padding:12,background:GOLD,color:"#000",borderRadius:3,fontWeight:600,fontSize:14,textAlign:"center",textDecoration:"none"}}>DOWNLOAD FINAL FILM</a>}
+        {!mmmExp.busy&&!mmmExp.url&&!mmmExp.msg&&<div style={{color:DIM,fontSize:11,marginTop:6,textAlign:"center"}}>Picture, voice and music in one file, at the ratio you picked. Keep this tab in front while it is made.</div>}
       </div>
       <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:10}}>
         <button onClick={()=>{try{const e=mmmVideoRef.current;(e.requestFullscreen||e.webkitEnterFullscreen||e.webkitRequestFullscreen).call(e);}catch(_){}}} style={{flex:"1 1 45%",padding:10,background:"#0E0F12",color:WHITE,border:"1px solid "+LINE,borderRadius:3,fontWeight:600,fontSize:12,cursor:"pointer"}}>FULL SCREEN</button>
@@ -4601,16 +4637,7 @@ Write the drawFrame body now.`}]
               </div>
             )}
 
-            {mmmScenes.length>0&&(
-              <div style={{marginTop:12,maxHeight:140,overflowY:"auto",fontSize:11}}>
-                {mmmScenes.map((s,i)=>(
-                  <div key={i} style={{display:"flex",gap:6,padding:"2px 0",color:s.status==="done"?GOLD:s.status==="rendering"?"#fff":s.status==="skipped"?"#D9A79A":DIM}}>
-                    <span>{s.status==="done"?"OK":s.status==="rendering"?">":s.status==="skipped"?"x":"o"}</span>
-                    <span style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>Scene {i+1}: {s.text}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+            {mmmStrip}
 
             {(mmmDone||mmmFilmUrl)&&(
               <div style={{marginTop:16}}>
@@ -4618,16 +4645,6 @@ Write the drawFrame body now.`}]
                 <MsVideo ref={mmmVideoRef} src={mmmFilmUrl} controls autoPlay playsInline
                   style={{width:"100%",borderRadius:3,border:"1px solid "+LINE,background:"#0E0F12",aspectRatio:mmmAR,objectFit:"contain"}}/>
                 {mmmTransport}
-                {mmmDone&&(<div style={{display:"flex",gap:10,marginTop:12}}>
-                  <button onClick={mmmDownloadAll}
-                    style={{flex:1,padding:14,background:GOLD,color:"#000",border:"none",fontWeight:600,fontSize:15,letterSpacing:0.2,borderRadius:3,cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>
-                    DOWNLOAD
-                  </button>
-                  <button onClick={()=>{try{navigator.share?navigator.share({title:"My Movie",url:mmmFilmUrl}):window.open(mmmFilmUrl,"_blank");}catch(e){window.open(mmmFilmUrl,"_blank");}}}
-                    style={{flex:1,padding:14,background:"#0E0F12",color:WHITE,border:"1px solid "+LINE,fontWeight:600,fontSize:15,letterSpacing:0.2,borderRadius:3,cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>
-                    EXPORT
-                  </button>
-                </div>)}
               </div>
             )}
           </div>
@@ -4741,16 +4758,7 @@ Write the drawFrame body now.`}]
           </div>
         )}
 
-        {mmmScenes.length>0&&(
-          <div style={{marginTop:10,maxHeight:120,overflowY:"auto",fontSize:11}}>
-            {mmmScenes.map((s,i)=>(
-              <div key={i} style={{display:"flex",gap:6,padding:"2px 0",color:s.status==="done"?GOLD:s.status==="rendering"?"#fff":s.status==="skipped"?"#D9A79A":DIM}}>
-                <span>{s.status==="done"?"✓":s.status==="rendering"?"●":s.status==="skipped"?"✕":"○"}</span>
-                <span style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>Scene {i+1}: {s.text}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        {mmmStrip}
 
         {!(mmmDone||mmmFilmUrl)&&(
           <div style={{marginTop:14}}>
@@ -4767,10 +4775,6 @@ Write the drawFrame body now.`}]
             {mmmNarrUrl&&<audio ref={mmmNarrRef} src={mmmNarrUrl} preload="auto" style={{display:"none"}}/>}
             {mmmBgSound&&mmmMusicSrc&&<audio ref={mmmMusicRef} src={mmmMusicSrc} loop preload="auto" style={{display:"none"}}/>}
             {mmmDone&&(<>
-              <button onClick={mmmDownloadAll}
-                style={{width:"100%",padding:14,marginTop:10,background:GOLD,color:"#000",border:"none",fontWeight:600,fontSize:14,letterSpacing:0.2,borderRadius:3,cursor:"pointer",fontFamily:"'Manrope',system-ui,sans-serif"}}>
-                Download my movie
-              </button>
               <div style={{textAlign:"center",marginTop:8}}>
                 <a href={STRIPE.studio} target="_blank" rel="noreferrer" style={{color:DIM,fontSize:11,letterSpacing:0,textDecoration:"underline"}}>Need more length? Purchase usage credits</a>
               </div>
@@ -5108,17 +5112,25 @@ function Frame({ seed, local, vid, localVid, query, label, sub, dur, h=160, onCl
   const src = chain[i];
   const [pex,setPex] = useState(null);
   useEffect(()=>{ let ok=true; if(query){ pexelsClip(query).then(u=>{ if(ok&&u) setPex(u); }); } return ()=>{ok=false;}; },[query]);
-  const vchain = [localVid?("frames/"+localVid):null, pex, vid?CLIP(vid):null].filter(Boolean);
+  // Last stop is a clip that ships inside the app itself, so a card never ends up black.
+  const vchain = [localVid?("frames/"+localVid):null, pex, vid?CLIP(vid):null, "/background.mp4"].filter(Boolean);
   const [vi,setVi] = useState(0);
   const [vdead,setVdead] = useState(false);
   const vsrc = vdead ? null : vchain[vi];
+  const vEl = useRef(null);
+  // A link that hangs without ever failing would leave the card black: if nothing has loaded in 8 seconds, move to the next one.
+  useEffect(()=>{
+    if(!vsrc) return;
+    const t = setTimeout(()=>{ const el=vEl.current; if(el && el.readyState<2){ if(vi+1<vchain.length) setVi(v=>v+1); else setVdead(true); } },8000);
+    return ()=>clearTimeout(t);
+  },[vsrc,vi]);
   return (
     <div style={{position:"relative",height:h,borderRadius:3,overflow:"hidden",background:PANEL,border:"1px solid "+LINE}}>
       <style>{"@keyframes msfpan{0%{transform:scale(1.05)}100%{transform:scale(1.15) translate3d(-2%,-2%,0)}}"}</style>
       {src&&!vsrc&&<img src={src} alt={label||"Example frame"} loading="lazy" onError={()=>setI(v=>v+1)}
         style={{width:"100%",height:"100%",objectFit:"cover",display:"block",animation:"msfpan 20s ease-in-out infinite alternate",filter:"brightness(1.18) contrast(1.06) saturate(1.08)"}}/>}
       {vsrc&&<video key={vsrc} src={vsrc} autoPlay muted loop playsInline controls preload="auto"
-        ref={el=>{ if(el){ el.muted=true; const kick=()=>{ el.play().catch(()=>{}); }; el.onloadeddata=kick; el.oncanplay=kick; kick(); } }}
+        ref={el=>{ vEl.current=el; if(el){ el.muted=true; const kick=()=>{ el.play().catch(()=>{}); }; el.onloadeddata=kick; el.oncanplay=kick; kick(); } }}
         onError={()=>{ if(vi+1<vchain.length) setVi(vi+1); else setVdead(true); }}
         onClick={e=>e.stopPropagation()}
         style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",display:"block",filter:"brightness(1.18) contrast(1.06) saturate(1.08)"}}/>}
@@ -8296,18 +8308,26 @@ function Landing({ onEnter }){
   const LAND = [
     "frames/landing.mp4",
     CLIP("TearsOfSteel.mp4"),
-    CLIP("ForBiggerEscapes.mp4")
+    CLIP("ForBiggerEscapes.mp4"),
+    "/background.mp4"
   ];
   const [li,setLi]=useState(0);
   const [ldead,setLdead]=useState(false);
   const lsrc=LAND[li];
+  const lEl=useRef(null);
+  useEffect(()=>{
+    if(ldead||!lsrc) return;
+    const t=setTimeout(()=>{ const el=lEl.current; if(el&&el.readyState<2){ if(li<LAND.length-1)setLi(v=>v+1); else setLdead(true); } },8000);
+    return ()=>clearTimeout(t);
+  },[lsrc,li,ldead]);
   return (
     <div style={{position:"fixed",inset:0,zIndex:1000,background:"#0A0B0D",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center"}}>
       {!ldead&&lsrc&&(
         <video
           key={lsrc}
+          ref={lEl}
           src={lsrc}
-          autoPlay muted loop playsInline preload="metadata"
+          autoPlay muted loop playsInline preload="auto"
           onError={()=>{ if(li<LAND.length-1){setLi(li+1);} else {setLdead(true);} }}
           style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",opacity:0.55}}
         />
