@@ -3454,7 +3454,7 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
   const mmmKenBurns=async(dataUrl,secs,idx)=>{
     return new Promise((resolve)=>{
       try{
-        const img=new Image();
+        const img=new Image(); img.crossOrigin="anonymous";
         img.onload=()=>{
           const W=1280,H=720,fps=24;
           const cv=document.createElement("canvas");cv.width=W;cv.height=H;
@@ -3564,6 +3564,23 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
     }catch(e){ return ""; }
   };
 
+  // FREE STOCK for a scene when the engine gives nothing (no credit, error): searches by the scene's own words.
+  const msStockWords=(text)=>{
+    const STOP=new Set("a an the and or of in on at to for with from by into onto over under above below beside behind between through across along around toward towards as is are was were be been being it its this that these those their his her them they he she we you your our one two each every all some any while then than slow slowly camera shot static frame warm gold amber grade grain film light lit natural cinematic photorealistic documentary letterbox continuous push pull pan tilt tracking lateral wide close extreme macro single left right half divided vertically down centre center locked off".split(" "));
+    const w=String(text||"").toLowerCase().replace(/[^a-z0-9\s'-]/g," ").split(/\s+/).filter(x=>x.length>2&&!STOP.has(x));
+    return w.slice(0,4).join(" ")||"landscape";
+  };
+  const mmmStockScene=async(text,secs,idx)=>{
+    try{
+      const r=await fetch("https://wvkqnrqcnoztajxxzyxc.supabase.co/functions/v1/studio-engine",{method:"POST",headers:await engineAuthHeaders(),body:JSON.stringify({kind:"stock",query:msStockWords(text)})});
+      const st=await r.json();
+      if(st&&st.url){
+        if(st.type==="video"){ const b=await (await fetch(st.url)).blob(); if(b&&b.size>10000)return URL.createObjectURL(b); }
+        else{ const u=await mmmKenBurns(st.url,secs,idx); if(u)return u; }
+      }
+    }catch(e){}
+    return "";
+  };
   // Your own "SCENE 1 / SCENE 2 ..." prompts, used exactly as written - one scene each, in order.
   // Each prompt is the paragraph under its SCENE heading (text after a blank line, like the narration, is not part of it).
   const msExactScenes=(text)=>{
@@ -3643,18 +3660,18 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
           url=await engineRender(sceneList[i],{duration:perSceneSec,image:sceneImg,aspect_ratio:mmmRatio});
         }
       }catch(e){ url=""; }
-      // Engine gave us nothing. Prefer YOUR real photo with documentary motion
-      // (Ken Burns pan/zoom) over abstract gold shapes — real people, real footage.
+      // Engine gave us nothing (no credit, error). Use free stock for the scene's own words,
+      // then YOUR photo with slow motion. Never gold shapes.
+      if(!url){
+        setMmmStage("Scene "+(i+1)+" — using free stock footage…");
+        url=await mmmStockScene(sceneList[i],perSceneSec,i);
+        usedFallback=!!url;
+      }
       if(!url){
         const sImg = mmmImages.length ? (mmmImages[i%mmmImages.length].dataUrl||"") : firstImg;
         if(sImg){
           setMmmStage("Scene "+(i+1)+" — using your photo with documentary motion…");
           url=await mmmKenBurns(sImg,perSceneSec,i);
-          usedFallback=!!url;
-        }
-        if(!url){
-          setMmmStage("Scene "+(i+1)+" — drawing on this device…");
-          url=await mmmCanvasFallback(sceneList[i],perSceneSec);
           usedFallback=!!url;
         }
       }
@@ -3667,10 +3684,10 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
         // Save each scene into the Media Library / timeline exactly like the engine does
         try{
           const autoId="mmm_"+Date.now()+"_"+i;
-          const ext=usedFallback?".webm":".mp4";
-          const mt=usedFallback?"video/webm":"video/mp4";
-          const autoName="MakeMyMovie_scene"+(i+1)+ext;
           const vb=await (await fetch(url)).blob();
+          const mt=(vb.type&&vb.type.startsWith("video"))?vb.type.split(";")[0]:(usedFallback?"video/webm":"video/mp4");
+          const ext=mt.includes("webm")?".webm":".mp4";
+          const autoName="MakeMyMovie_scene"+(i+1)+ext;
           await Promise.race([safeSaveClipToDB(autoId,vb,autoName,mt),new Promise(r=>setTimeout(()=>r("t"),8000))]);
           if(onSave)onSave({id:autoId,name:autoName,type:mt,url,file:new File([vb],autoName,{type:mt}),dbId:autoId});
         }catch(e){}
@@ -3680,7 +3697,7 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
       setMmmPct(10+Math.round(((i+1)/sceneList.length)*80));
     }
 
-    if(!clipUrls.length){ setMmmError("No footage came back — the engine had no credit and the on-device renderer couldn't draw either. Check you're in Chrome with this tab in front, then run it again."); setMmmBusy(false); return; }
+    if(!clipUrls.length){ setMmmError("No footage came back — the engine had no credit and no free stock could be found. Check the internet connection, keep this tab in front, then run it again."); setMmmBusy(false); return; }
 
     // 3 ─ FULL NARRATION over the film. Render your ENTIRE script (chunked, never
     // truncated) into one audio track and lay it over the movie, so your voice
