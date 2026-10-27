@@ -543,6 +543,8 @@ export default function Studio() {
   const vRef = useRef(null), nRef = useRef(null), mRef = useRef(null), tRef = useRef(null), wrapRef = useRef(null);
   const [playing, setPlaying] = useState(false); const [clock, setClock] = useState(0); const [cur, setCur] = useState(0); const [track, setTrack] = useState("main");
   const ready = scenes.filter(s => s.url);
+  // Footage already made + your recording uploaded afterwards: your voice replaces the old voice, nothing is re-made.
+  useEffect(() => { (async () => { if (busy || !myRec || voiceMode !== "mine" || !scenes.some(s => s.url)) return; if (narrUrl === myRec.url) return; const secs = (await audioSecs(myRec.blob)) || (await msBlobSeconds(myRec.blob)); setNarrUrl(myRec.url); setNarrSecs(secs + (tail ? tail.secs : 0)); setNarrText((narr || msSpokenOnly(script) || "").trim()); setStage("Your recording is now the voice. Your footage was kept. Press DOWNLOAD."); })(); }, [myRec, voiceMode, scenes.length, busy]);
   const total = Math.max(narrSecs || 0, minutes * 60 * (narrSecs ? 0 : 1), ready.length * 6);
   const sceneLen = ready.length ? total / ready.length : 6;
   const activeNarr = track === "main" ? narrUrl : (dubTracks[track] || {}).url;
