@@ -473,6 +473,7 @@ export default function Studio() {
 
   const makeMovie = async () => {
     setErr("");
+    if (voiceMode === "mine" && !myRec) { setErr("Your recording is not loaded. Press UPLOAD MY RECORDING, choose your file, then press Make again. I will not use another voice."); return; }
     let who = user;
     if (!who) { try { const { data } = await supabase.auth.getSession(); who = data && data.session && data.session.user; if (!who) { const r = await supabase.auth.refreshSession(); who = r && r.data && r.data.session && r.data.session.user; } if (who) setUser(who); } catch (e) { } }
     if (!who) { setErr("Log in first, at the top of the page."); return; }
