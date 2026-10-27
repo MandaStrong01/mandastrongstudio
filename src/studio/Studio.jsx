@@ -379,8 +379,13 @@ export default function Studio() {
   // Bring back scenes from a render that was stopped or a reload.
   useEffect(() => {
     (async () => {
-      const all = await dbAll(); const pre = projectId.current + "_scene_";
-      const sc = all.filter(x => String(x.id).startsWith(pre)).sort((a, b) => a.meta.i - b.meta.i);
+      const all = await dbAll();
+      // Find the project with the MOST finished scenes. A newer, emptier project never hides your real footage.
+      const counts = {}; all.forEach(x => { const m = /^(.*)_scene_\d+$/.exec(String(x.id)); if (m && x.blob) counts[m[1]] = (counts[m[1]] || 0) + 1; });
+      const best = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+      if (best && best !== projectId.current && (counts[best] || 0) > (counts[projectId.current] || 0)) { projectId.current = best; save("pid", best); }
+      const pre = projectId.current + "_scene_";
+      const sc = all.filter(x => String(x.id).startsWith(pre) && x.blob).sort((a, b) => a.meta.i - b.meta.i);
       if (!sc.length) return;
       setScenes(sc.map(x => ({ text: x.meta.text || "", status: "done", blob: x.blob, url: URL.createObjectURL(x.blob), source: x.meta.source })));
       const n = all.find(x => x.id === projectId.current + "_narr"); if (n) { setNarrUrl(URL.createObjectURL(n.blob)); setNarrText(n.meta.text || ""); setNarrSecs(n.meta.secs || 0); }
