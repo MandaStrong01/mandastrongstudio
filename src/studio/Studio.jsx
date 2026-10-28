@@ -637,20 +637,22 @@ export default function Studio() {
     if (title) { const tEnd = Date.now() + 3000; while (Date.now() < tEnd && !stopExp.current) { card([title, kind], true); await sleep(33); } }
     if (nEl) try { await nEl.play(); } catch (e) { }
     const tStart = Date.now();
-    const mkV = s => { const v = document.createElement("video"); v.src = s.url; v.muted = s.source !== "your clip"; v.loop = !isStill(s); v.playsInline = true; v.preload = "auto";
+    const mkV = s => { const v = document.createElement("video"); v.src = s.url; v.muted = s.source !== "your clip"; v.loop = !isStill(s); v.playsInline = true; v.preload = "auto"; v.setAttribute("playsinline", ""); v.setAttribute("webkit-playsinline", ""); v.style.cssText = "position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1"; try { document.body.appendChild(v); } catch (e) { }
       if (!v.muted) { try { const cg = ac.createGain(); cg.gain.value = cVol; ac.createMediaElementSource(v).connect(cg); cg.connect(dest); } catch (e) { v.muted = true; } }
-      v._ok = new Promise(res => { v.onloadeddata = res; v.onerror = res; setTimeout(res, 15000); }); return v; };
+      v._ok = new Promise(res => { v.onloadeddata = res; v.oncanplay = res; v.onerror = res; setTimeout(res, 8000); }); return v; };
     const FADE = Math.min(1.2, len * 0.3);
+    const rmV = x => { try { x.pause(); x.removeAttribute("src"); x.load(); x.remove(); } catch (e) { } };
+    const goPlay = async x => { try { await Promise.race([x.play(), sleep(4000)]); } catch (e) { } };
     let prevV = null, nextV = count ? mkV(ready[0]) : null;
     for (let i = 0; i < count && !stopExp.current; i++) {
-      const v = nextV; await v._ok; try { await v.play(); } catch (e) { }
+      const v = nextV; await v._ok; await goPlay(v);
       nextV = i + 1 < count ? mkV(ready[i + 1]) : null;
-      const s0 = Date.now(), end = s0 + len * 1000;
-      while (Date.now() < end && !stopExp.current) { const el = (Date.now() - s0) / 1000; draw(v, (Date.now() - tStart) / 1000, el / len, prevV, el / FADE); if (prevV && el >= FADE) { try { prevV.pause(); prevV.src = ""; } catch (e) { } prevV = null; } await sleep(33); }
-      if (prevV) { try { prevV.pause(); prevV.src = ""; } catch (e) { } } prevV = v;
+      const s0 = Date.now(), end = s0 + len * 1000; let nudge = s0, lastP = 0;
+      while (Date.now() < end && !stopExp.current) { const el = (Date.now() - s0) / 1000; if (v.paused && !isStill(ready[i]) && Date.now() - nudge > 1500) { nudge = Date.now(); try { v.play().catch(() => { }); } catch (e) { } } draw(v, (Date.now() - tStart) / 1000, el / len, prevV, el / FADE); if (prevV && el >= FADE) { rmV(prevV); prevV = null; } if (Date.now() - lastP > 1000) { lastP = Date.now(); opts.onProgress && opts.onProgress(Math.min(1, (i + el / len) / count), (Date.now() - t0) / 1000); } await sleep(33); }
+      if (prevV) rmV(prevV); prevV = v;
       opts.onProgress && opts.onProgress((i + 1) / count, (Date.now() - t0) / 1000);
     }
-    if (prevV) { try { prevV.pause(); prevV.src = ""; } catch (e) { } }
+    if (prevV) rmV(prevV);
     // credits
     if (credits && !opts.trailer && !stopExp.current) {
       if (endEl) try { endEl.play(); } catch (e) { }
