@@ -188,11 +188,11 @@ select.in{appearance:auto}
 .tl{border:1px solid var(--line);border-radius:3px;padding:10px;margin-top:12px}
 .sc{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}.scn{flex:0 0 120px;border:1px solid var(--line);border-radius:3px;padding:6px;font-size:11px;color:var(--dim)}
 .scn.cur{border-color:var(--gold)}.scn video{width:100%;aspect-ratio:16/9;background:#000;object-fit:cover;display:block;margin-bottom:4px}
-.msg{font-size:12px;color:#B9B1A0;margin-top:6px}.err{color:#E3A08F}
+.msg{font-size:12px;color:#B9B1A0;margin-top:6px}.prow{display:flex;align-items:center;gap:12px;margin-top:8px;font-size:14px;color:#F3EDE2}.spin{flex:none;width:30px;height:30px;border-radius:50%;border:4px solid rgba(230,201,142,.2);border-top-color:#F5BC45;border-right-color:#F5BC45;box-shadow:0 0 14px rgba(245,188,69,.5);animation:mfsspin .9s linear infinite}@keyframes mfsspin{to{transform:rotate(360deg)}}.livebox{position:relative;max-width:480px;margin-top:6px;border-radius:8px;overflow:hidden;background:#000}.livebox canvas{display:block;width:100%;height:auto}.livetag{position:absolute;top:8px;left:8px;background:#C62828;color:#fff;font-weight:800;font-size:11px;letter-spacing:1px;padding:3px 8px;border-radius:5px}.err{color:#E3A08F}
 .rng{width:100%;accent-color:var(--gold)}
 .ovl{position:fixed;inset:0;z-index:50;background:radial-gradient(ellipse at 50% 42%,#2b2416 0%,#0E0F12 62%);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;transition:opacity .6s}
 .ovl .brand{font-size:clamp(56px,11vw,120px)}
-@media (prefers-reduced-motion: reduce){.ovl{transition:none}.pb i{transition:none}}
+@media (prefers-reduced-motion: reduce){.ovl{transition:none}.pb i{transition:none}.spin{animation-duration:2.4s}}
 `;
 
 // ── one .zip with every scene + the narration, so a film can be joined anywhere ──
@@ -590,7 +590,7 @@ export default function Studio() {
   const loadSaved = async () => { const all = await dbAll(); setSavedFilms(all.filter(x => String(x.id).includes("_final_") && x.blob).sort((a, b) => String(b.id).localeCompare(String(a.id))).map(x => ({ id: x.id, name: (x.meta && x.meta.name) || "My film", blob: x.blob }))); };
   useEffect(() => { loadSaved(); }, []);
   const deleteSaved = async (id) => { try { const db = await idb(); const tx = db.transaction("f", "readwrite"); tx.objectStore("f").delete(id); await new Promise(res => { tx.oncomplete = res; tx.onerror = res; }); } catch (e) { } loadSaved(); };
-  const stopExp = useRef(false);
+  const stopExp = useRef(false); const pvRef = useRef(null);
   async function renderFile(opts) {
     const r = opts.ratio, [W, H] = sizeFor(r, quality);
     const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const ctx = cv.getContext("2d");
@@ -618,6 +618,7 @@ export default function Studio() {
     const caps = opts.trailer ? [] : splitCaptions(opts.track === "main" ? narrText : (dubTracks[opts.track] || {}).text, narrSecs || total);
     const len = opts.trailer ? Math.min(opts.trailer / Math.max(1, ready.length), 3) : sceneLen;
     const count = opts.trailer ? Math.min(ready.length, Math.ceil(opts.trailer / len)) : ready.length;
+    let lastPv = 0; const showPv = () => { const pv = opts.preview && opts.preview.current; if (!pv || Date.now() - lastPv < 150) return; lastPv = Date.now(); try { if (pv.width !== 480) { pv.width = 480; pv.height = Math.round(480 * H / W); } pv.getContext("2d").drawImage(cv, 0, 0, pv.width, pv.height); } catch (e) { } };
     const frame = (v, p, a) => {
       const vw = v.videoWidth || W, vh = v.videoHeight || H, sc = Math.max(W / vw, H / vh) * (1.02 + 0.06 * Math.min(1, p)), dw = vw * sc, dh = vh * sc;
       ctx.globalAlpha = Math.max(0, Math.min(1, a)); try { ctx.drawImage(v, (W - dw) / 2, (H - dh) / 2, dw, dh); } catch (e) { } ctx.globalAlpha = 1;
@@ -629,8 +630,9 @@ export default function Studio() {
       if (subs && !opts.trailer) { const c = caps.find(x => tSec >= x.start && tSec < x.end); if (c) { ctx.font = "600 " + Math.round(H * 0.036) + "px Manrope, sans-serif"; ctx.textAlign = "center"; const lines = wrapText(ctx, c.text, W * 0.86); lines.forEach((ln, k) => { const y = H * 0.92 - (lines.length - 1 - k) * H * 0.048; ctx.lineWidth = 5; ctx.strokeStyle = "rgba(0,0,0,.8)"; ctx.strokeText(ln, W / 2, y); ctx.fillStyle = "#fff"; ctx.fillText(ln, W / 2, y); }); } }
       if (logoImg) { const lw = W * 0.1, lh = lw * logoImg.height / logoImg.width; ctx.globalAlpha = 0.8; ctx.drawImage(logoImg, W - lw - W * 0.03, H * 0.03, lw, lh); ctx.globalAlpha = 1; }
       if (watermark && plan === "starter") { ctx.font = Math.round(H * 0.03) + "px Manrope"; ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.textAlign = "left"; ctx.fillText("Mandas Film & Music Studio", W * 0.03, H * 0.96); }
+      showPv();
     };
-    const card = (lines, big) => { ctx.fillStyle = "#0E0F12"; ctx.fillRect(0, 0, W, H); ctx.textAlign = "center"; ctx.fillStyle = "#E6C98E"; ctx.font = Math.round(H * (big ? 0.11 : 0.06)) + "px 'Great Vibes', cursive"; ctx.fillText(lines[0] || "", W / 2, H * 0.42); ctx.fillStyle = "#F3EDE2"; ctx.font = Math.round(H * 0.032) + "px Manrope, sans-serif"; lines.slice(1).forEach((l, k) => ctx.fillText(l, W / 2, H * 0.55 + k * H * 0.05)); };
+    const card = (lines, big) => { ctx.fillStyle = "#0E0F12"; ctx.fillRect(0, 0, W, H); ctx.textAlign = "center"; ctx.fillStyle = "#E6C98E"; ctx.font = Math.round(H * (big ? 0.11 : 0.06)) + "px 'Great Vibes', cursive"; ctx.fillText(lines[0] || "", W / 2, H * 0.42); ctx.fillStyle = "#F3EDE2"; ctx.font = Math.round(H * 0.032) + "px Manrope, sans-serif"; lines.slice(1).forEach((l, k) => ctx.fillText(l, W / 2, H * 0.55 + k * H * 0.05)); showPv(); };
     rec.start(1000); if (bed) try { bed.start(0); } catch (e) { }
     const t0 = Date.now();
     // opening title card
@@ -677,7 +679,7 @@ export default function Studio() {
     const files = [];
     for (let j = 0; j < jobs.length && !stopExp.current; j++) {
       setExp({ busy: true, pct: 1, msg: "Making file " + (j + 1) + " of " + jobs.length + " — keep this tab open", files });
-      try { const f = await renderFile({ ...jobs[j], onProgress: (p, s) => setExp(x => ({ ...x, pct: Math.round(p * 100), msg: "File " + (j + 1) + " of " + jobs.length + " · " + Math.round(p * 100) + "% · " + fmt(s) })) }); files.push(f); await dbPut(projectId.current + "_final_" + f.name, f.blob, { name: f.name }); }
+      try { const f = await renderFile({ ...jobs[j], preview: pvRef, onProgress: (p, s) => setExp(x => ({ ...x, pct: Math.round(p * 100), msg: "File " + (j + 1) + " of " + jobs.length + " · " + Math.round(p * 100) + "% · " + fmt(s) })) }); files.push(f); await dbPut(projectId.current + "_final_" + f.name, f.blob, { name: f.name }); }
       catch (e) { setExp(x => ({ ...x, msg: "Export problem: " + e.message })); }
     }
     try { wl && wl.release(); } catch (e) { }
@@ -985,7 +987,7 @@ export default function Studio() {
             {exp.busy && <button className="b s" onClick={() => { stopExp.current = true; }}>STOP</button>}
           </div>
         </div>
-        {(exp.busy || exp.msg) && <div className="msg">{exp.msg}<div className="pb"><i style={{ width: exp.pct + "%" }} /></div></div>}
+        {(exp.busy || exp.msg) && <div className="msg">{exp.busy && <div className="livebox"><canvas ref={pvRef} /><span className="livetag">● LIVE</span></div>}<div className="prow">{exp.busy && <span className="spin" aria-hidden="true" />}<span>{exp.msg}</span></div><div className="pb"><i style={{ width: exp.pct + "%" }} /></div></div>}
         {packMsg && <div className="msg">{packMsg}</div>}
         {(join.busy || join.msg) && <div className="msg">{join.msg}<div className="pb"><i style={{ width: join.pct + "%" }} /></div></div>}
         {join.urls.length > 0 && <div className="row" style={{ marginTop: 8 }}>{join.urls.length === 1 ? <a className="b g" style={{ textDecoration: "none", padding: "13px 22px" }} href={join.urls[0]} download={join.fileName}>⬇ DOWNLOAD MY FILM · {join.fileName}</a> : <button className="b g" onClick={getJoined}>⬇ DOWNLOAD MY FILM · {join.fileName}</button>}</div>}
