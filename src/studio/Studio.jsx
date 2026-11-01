@@ -510,7 +510,10 @@ export default function Studio() {
       if (voiceMode === "mine" && myRec) { nUrl = myRec.url; nText = spokenText; nSecs = (await audioSecs(myRec.blob)) || (await msBlobSeconds(myRec.blob)); await dbPut(projectId.current + "_narr", myRec.blob, { text: nText, secs: nSecs }); if (tail) nSecs += tail.secs; }
       else if (spokenText) {
         try { const v = await voiceIt(spokenText, spoken); nUrl = URL.createObjectURL(v.blob); nText = v.text; nSecs = await msBlobSeconds(v.blob); await dbPut(projectId.current + "_narr", v.blob, { text: nText, secs: nSecs }); if (lipSync) firstVoice = await readAsDataURL(v.blob.slice(0, 600000, v.blob.type)); }
-        catch (e) { setErr("Voice: " + e.message + ". The film will be made without narration."); }
+        catch (e) {
+          if (myRec) { nUrl = myRec.url; nText = spokenText; nSecs = (await audioSecs(myRec.blob)) || (await msBlobSeconds(myRec.blob)); await dbPut(projectId.current + "_narr", myRec.blob, { text: nText, secs: nSecs }); if (tail) nSecs += tail.secs; setStage("Engine has no credit. Using your own recording as the voice."); }
+          else setErr("Voice: " + e.message + ". The film will be made without narration.");
+        }
       }
       setNarrUrl(nUrl); setNarrText(nText); setNarrSecs(nSecs); setPct(14);
       // dubbed versions
