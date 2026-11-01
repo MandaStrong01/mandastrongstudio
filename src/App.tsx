@@ -3734,6 +3734,11 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
         if(parts.length){ narrUrl=URL.createObjectURL(new Blob(parts,{type:parts[0].type||"audio/mpeg"})); try{localStorage.setItem("ms_mmm_narr",narrUrl);}catch(e){} try{ const nb=new Blob(parts,{type:parts[0].type||"audio/mpeg"}); await Promise.race([safeSaveClipToDB("mmmnarr_"+Date.now(),nb,"MakeMyMovie_narration"+((nb.type||"").includes("mp4")?".m4a":".mp3"),nb.type||"audio/mpeg"),new Promise(r=>setTimeout(()=>r("t"),8000))]); }catch(e){} }
       }catch(e){}
     }
+    // Engine gave no audio (no credit): play the person's own recording instead of going silent.
+    if(!narrUrl&&mmmOwn.url){
+      narrUrl=mmmOwn.url; setMmmStage("Engine has no credit. Using your own recording as the narration…");
+      try{localStorage.setItem("ms_mmm_narr",narrUrl);}catch(e){}
+    }
     setMmmNarrUrl(narrUrl);
 
     // 4 ─ Stitch into one film (concatenated playback) — stays on this page
