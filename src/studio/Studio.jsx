@@ -73,10 +73,19 @@ async function dbAll() { try { const db = await idb(); return await new Promise(
 async function dbClear(prefix) { try { const all = await dbAll(); const db = await idb(); const tx = db.transaction("f", "readwrite"); for (const x of all) if (String(x.id).startsWith(prefix)) tx.objectStore("f").delete(x.id); await new Promise(r => { tx.oncomplete = r; tx.onerror = r; }); } catch (e) { } }
 
 // ── MandaStrong Engine (video / music / image) ──
-async function se(body) { const r = await fetch(SE, { method: "POST", headers: await engineAuthHeaders(), body: JSON.stringify(body) }); return r.json(); }
+// A throttled request is NOT a failure and NOT "out of credit": wait out the limit and send it again by itself.
+async function se(body) {
+  for (let a = 0; a < 14; a++) {
+    const r = await fetch(SE, { method: "POST", headers: await engineAuthHeaders(), body: JSON.stringify(body) });
+    let j = null; try { j = await r.json(); } catch (e) { j = { error: "The engine sent a bad reply" }; }
+    const msg = String((j && j.error) || "");
+    if ((r.status === 429 || /throttl|rate limit/i.test(msg)) && a < 13) { const m = msg.match(/resets in ~?(\d+)\s*s/i); await sleep(((m ? Number(m[1]) : 10) + 2) * 1000); continue; }
+    return j;
+  }
+}
 async function seRun(body, maxMin) {
   const s = await se(body);
-  if (s.error) { const e = new Error(s.error); e.nocredit = !!s.nocredit || /credit/i.test(s.error); throw e; }
+  if (s.error) { const e = new Error(s.error); e.nocredit = !!s.nocredit || (/credit/i.test(s.error) && !/throttl|rate limit/i.test(s.error)); throw e; }
   if (s.url) return s.url;
   if (!s.id) throw new Error("The engine did not start the job");
   const end = Date.now() + (maxMin || 12) * 60000;
@@ -506,7 +515,10 @@ export default function Studio() {
 
       // 2 — narration (yours or the engine), translated if asked
       let nUrl = "", nText = "", nSecs = 0, firstVoice = "";
-      const spokenText = narr.trim() || msSpokenOnly(script);
+      // Your own clips carry their own voices. With clips and no narration, the engine does not voice the script at all.
+      const clipVoices = clips.length > 0 && !narr.trim() && voiceMode !== "mine";
+      const spokenText = clipVoices ? "" : (narr.trim() || msSpokenOnly(script));
+      if (clipVoices) setStage("Using the voices in your clips.");
       if (voiceMode === "mine" && myRec) { nUrl = myRec.url; nText = spokenText; nSecs = (await audioSecs(myRec.blob)) || (await msBlobSeconds(myRec.blob)); await dbPut(projectId.current + "_narr", myRec.blob, { text: nText, secs: nSecs }); if (tail) nSecs += tail.secs; }
       else if (spokenText) {
         try { const v = await voiceIt(spokenText, spoken); nUrl = URL.createObjectURL(v.blob); nText = v.text; nSecs = await msBlobSeconds(v.blob); await dbPut(projectId.current + "_narr", v.blob, { text: nText, secs: nSecs }); if (lipSync) firstVoice = await readAsDataURL(v.blob.slice(0, 600000, v.blob.type)); }
@@ -531,10 +543,10 @@ export default function Studio() {
       // 3b — match your images to scenes and plan free stock for the rest
       setStage("Matching your images to the scenes…"); noCredit.current = false;
       await planScenes(list);
-      // 4 — scenes, three at a time
+      // 4 — scenes, ONE at a time (the engine limit allows one request at a time; throttled ones wait and retry by themselves)
       let next = 0, finished = 0; const failed = [];
       const worker = async () => { while (next < list.length) { const i = next++; setStage("MandaStrong Engine — making scene " + (i + 1) + " of " + list.length + "…"); const b = await makeScene(i, list[i], { firstVoice }); if (!b) failed.push(i); finished++; setPct(24 + Math.round(finished / list.length * 74)); } };
-      await Promise.all([worker(), worker(), worker()]);
+      await worker();
       // Any scene that came back empty gets one more try before the film is joined.
       for (const i of failed) { setStage("Trying scene " + (i + 1) + " again…"); await makeScene(i, list[i], { firstVoice }); }
       // Then every scene is joined into ONE film file automatically.
