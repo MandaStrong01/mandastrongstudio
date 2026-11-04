@@ -5376,8 +5376,19 @@ function P3() {
     if(!f)return;
     const url=URL.createObjectURL(f);
     setUploads(p=>{const n=[...p];if(n[i])URL.revokeObjectURL(n[i].url);n[i]={url,name:f.name,type:f.type,size:(f.size/1024/1024).toFixed(1)};return n;});
-    // Persist the actual file to IndexedDB so it stays forever
-    try{await saveClipToDB("poc_"+i,f,f.name,f.type);}catch(err){alert("Could not save film "+(i+1)+" — storage may be full.");}
+    // Persist the actual file to IndexedDB so it stays forever.
+    // saveClipToDB swallows its own errors, so the old catch never fired and a failed save
+    // looked like a good one. Store a real copy of the bytes (a picked File can lose its link
+    // on iPad), then read it back to prove it is there.
+    try{ if(navigator.storage&&navigator.storage.persist){ await navigator.storage.persist(); } }catch{}
+    let ok=false;
+    try{
+      const copy=new Blob([await f.arrayBuffer()],{type:f.type});
+      await saveClipToDB("poc_"+i,copy,f.name,f.type);
+      const back=await loadClipFromDB("poc_"+i);
+      ok=!!(back&&back.blob&&back.blob.size===copy.size);
+    }catch(err){ok=false;}
+    if(!ok){alert("Film "+(i+1)+" did NOT save. It will be gone when you leave. Free some space or try a smaller file, then upload it again.");}
   };
   const removeUpload=async(i)=>{
     setUploads(p=>{const n=[...p];if(n[i])URL.revokeObjectURL(n[i].url);n[i]=null;return n;});
