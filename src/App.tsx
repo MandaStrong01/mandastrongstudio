@@ -835,9 +835,9 @@ const LIVE = "#FF5A4E";
 const TOTAL = 25;
 
 const STRIPE = {
-  basic:"https://buy.stripe.com/cNi8wRe8a9ZtcZh7YeafS05",
+  basic:"https://buy.stripe.com/00wcN7fcefjNgbtceuafS03",
   pro:"https://buy.stripe.com/cNi8wRe8a3B52kDceuafS04",
-  studio:"https://buy.stripe.com/00wcN7fcefjNgbtceuafS03",
+  studio:"https://buy.stripe.com/cNi8wRe8a9ZtcZh7YeafS05",
 };
 
 const G = (v, sm) => ({
@@ -5531,7 +5531,7 @@ function P4({ go, setUser }) {
       // New accounts start on the trial checkout. Their render credit is set by the
       // subscription their payment creates — the engine will not spend beyond it.
       setUser({name:name||re,email:re,plan:"Studio Trial",isAdmin:false,uid:data?.user?.id||""});
-      window.open(STRIPE.studio,"_blank");
+      window.open(STRIPE.pro,"_blank");
       go(5);
     }catch(e){ setBusy(false); alert("Could not create account. Please try again."); }
   };
@@ -5565,7 +5565,7 @@ function P4({ go, setUser }) {
             <div style={{fontSize:36,marginBottom:10}}></div>
             <h2 style={{...H1,fontSize:16,marginBottom:10}}>Explore first</h2>
             <p style={{color:WHITE,fontSize:14,lineHeight:1.7,marginBottom:20}}>Browse 200+ AI tools before committing. No account required.</p>
-            <button onClick={()=>{window.open(STRIPE.basic,"_blank");alert("Start your free 7-day trial to access InFuture Movie Studios. No commitment required.");}} style={{...G("out",false),width:"100%"}}>Browse as guest — start free trial</button>
+            <button onClick={()=>{window.open(STRIPE.pro,"_blank");alert("Start your free 7-day trial to access InFuture Movie Studios. No commitment required.");}} style={{...G("out",false),width:"100%"}}>Browse as guest — start free trial</button>
           </div>
         </div>
         <div style={{textAlign:"center",marginBottom:24,display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>

@@ -164,9 +164,9 @@ export const LIVE="#FF5A4E";
 export const TOTAL=25;
 
 export const STRIPE={
-  basic:"https://buy.stripe.com/cNi8wRe8a9ZtcZh7YeafS05",
+  basic:"https://buy.stripe.com/00wcN7fcefjNgbtceuafS03",
   pro:"https://buy.stripe.com/cNi8wRe8a3B52kDceuafS04",
-  studio:"https://buy.stripe.com/00wcN7fcefjNgbtceuafS03",
+  studio:"https://buy.stripe.com/cNi8wRe8a9ZtcZh7YeafS05",
 };
 
 export const G=(v,sm)=>({

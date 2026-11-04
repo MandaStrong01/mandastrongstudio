@@ -35,9 +35,9 @@ const SE = SB + "studio-engine";
 const LIPSYNC = SB + "lip-sync";
 const SITE = "mandasfilmandmusicstudio.bolt.host";
 const PLANS = [
-  { id: "starter", name: "Starter", line: "Short clips · watermark", link: "https://buy.stripe.com/cNi8wRe8a9ZtcZh7YeafS05" },
+  { id: "starter", name: "Starter", line: "Short clips · watermark", link: "https://buy.stripe.com/00wcN7fcefjNgbtceuafS03" },
   { id: "creator", name: "Creator", line: "Films up to 1 hour · no watermark", link: "https://buy.stripe.com/cNi8wRe8a3B52kDceuafS04" },
-  { id: "studio", name: "Studio", line: "Up to 3 hours · every extra · dubbing", link: "https://buy.stripe.com/00wcN7fcefjNgbtceuafS03" },
+  { id: "studio", name: "Studio", line: "Up to 3 hours · every extra · dubbing", link: "https://buy.stripe.com/cNi8wRe8a9ZtcZh7YeafS05" },
 ];
 const KINDS = ["Movie", "Documentary", "Music video", "Short clip", "Animation", "Ad / promo"];
 const STYLES = ["Cinematic", "Documentary", "Animated", "Vintage film", "Noir"];
