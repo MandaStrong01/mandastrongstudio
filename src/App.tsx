@@ -5337,11 +5337,20 @@ function P2({ go }) {
   );
 }
 
+// Page 3 titles and descriptions: kept in localStorage AND in their own small database,
+// so if one is wiped by the browser the other brings them back.
+const pocMetaDB=()=>new Promise((res,rej)=>{const r=indexedDB.open("ms_poc_meta",1);r.onupgradeneeded=e=>e.target.result.createObjectStore("m",{keyPath:"id"});r.onsuccess=e=>res(e.target.result);r.onerror=rej;});
+const pocMetaSave=async(titles,descs)=>{try{const db=await pocMetaDB();const tx=db.transaction("m","readwrite");tx.objectStore("m").put({id:"meta",titles,descs});await new Promise((r,j)=>{tx.oncomplete=r;tx.onerror=j;});}catch(e){}};
+const pocMetaLoad=async()=>{try{const db=await pocMetaDB();return await new Promise((res)=>{const q=db.transaction("m","readonly").objectStore("m").get("meta");q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null);});}catch(e){return null;}};
 function P3() {
   const [uploads, setUploads] = useState([null,null,null]);
   const [titles, setTitles] = useState(["","",""]);
   const [descs, setDescs] = useState(["","",""]);
   const [loaded, setLoaded] = useState(false);
+  const titlesRef=useRef(["","",""]);
+  const descsRef=useRef(["","",""]);
+  titlesRef.current=titles;
+  descsRef.current=descs;
   const refs = [useRef(null),useRef(null),useRef(null)];
   const videoRefs = [useRef(null),useRef(null),useRef(null)];
 
@@ -5350,8 +5359,17 @@ function P3() {
     let alive=true;
     (async()=>{
       try{
-        const t=JSON.parse(localStorage.getItem("ms_poc_titles")||'["","",""]');
-        const d=JSON.parse(localStorage.getItem("ms_poc_descs")||'["","",""]');
+        try{ if(navigator.storage&&navigator.storage.persist){ await navigator.storage.persist(); } }catch{}
+        let t=JSON.parse(localStorage.getItem("ms_poc_titles")||'["","",""]');
+        let d=JSON.parse(localStorage.getItem("ms_poc_descs")||'["","",""]');
+        const has=(a)=>Array.isArray(a)&&a.some(x=>x&&String(x).trim());
+        if(!has(t)&&!has(d)){
+          const m=await pocMetaLoad();
+          if(m&&(has(m.titles)||has(m.descs))){
+            t=m.titles||t;d=m.descs||d;
+            try{localStorage.setItem("ms_poc_titles",JSON.stringify(t));localStorage.setItem("ms_poc_descs",JSON.stringify(d));}catch{}
+          }
+        }
         if(alive){setTitles(t);setDescs(d);}
       }catch{}
       const next=[null,null,null];
@@ -5368,8 +5386,8 @@ function P3() {
     return ()=>{alive=false;};
   },[]);
 
-  const saveTitles=(arr)=>{try{localStorage.setItem("ms_poc_titles",JSON.stringify(arr));}catch{}};
-  const saveDescs=(arr)=>{try{localStorage.setItem("ms_poc_descs",JSON.stringify(arr));}catch{}};
+  const saveTitles=(arr)=>{try{localStorage.setItem("ms_poc_titles",JSON.stringify(arr));}catch{} titlesRef.current=arr; pocMetaSave(arr,descsRef.current);};
+  const saveDescs=(arr)=>{try{localStorage.setItem("ms_poc_descs",JSON.stringify(arr));}catch{} descsRef.current=arr; pocMetaSave(titlesRef.current,arr);};
 
   const handleFile=async(i,e)=>{
     const f=e.target.files&&e.target.files[0];
