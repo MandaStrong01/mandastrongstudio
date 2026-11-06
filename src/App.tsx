@@ -3332,6 +3332,8 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
   const mmmDropRef=useRef(null);
   const [mmmAddMsg,setMmmAddMsg]=useState("");
   const [mmmVideos,setMmmVideos]=useState([]);
+  // Your uploaded clips are kept on this device, so they are still here when you come back.
+  useEffect(()=>{(async()=>{try{const all=await getAllClipsFromDB(true);const mine=all.filter(c=>c&&c.blob&&String(c.id||"").startsWith("mmmup_")).sort((x,y)=>String(x.id).localeCompare(String(y.id)));if(mine.length)setMmmVideos(p=>p.length?p:mine.map(c=>({name:c.name,url:URL.createObjectURL(c.blob),type:c.type||"video/mp4",dbId:c.id})));}catch(e){}})();},[]);
   const mmmTargetMin=filmDuration||30;
   const [mmmStudio,setMmmStudio]=useState(false);
   const [mmmStyle,setMmmStyle]=useState("cinematic");
@@ -3435,7 +3437,7 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
           }catch(e){}
         }else failed.push(f.name||"file");
       }else if((f.type||"").startsWith("video")||/\.(mp4|mov|m4v|webm)$/i.test(f.name||"")){
-        try{ const vu=URL.createObjectURL(f); setMmmVideos(p=>[...p,{name:f.name,url:vu,type:f.type||"video/mp4"}]); added++; }catch(e){ failed.push(f.name||"file"); }
+        try{ const vu=URL.createObjectURL(f); const did="mmmup_"+Date.now()+"_"+String(fi).padStart(3,"0"); setMmmVideos(p=>[...p,{name:f.name,url:vu,type:f.type||"video/mp4",dbId:did}]); added++; await saveClipToDB(did,f,f.name,f.type||"video/mp4"); }catch(e){ failed.push(f.name||"file"); }
       }else if(f.type.startsWith("text")||f.name.match(/\.(txt|md|fdx|fountain)$/i)){
         const text=await readAs(f,true);
         if(text){ setMmmText(p=>(p?p+"\n\n":"")+String(text||"")); added++; } else failed.push(f.name||"file");
@@ -4552,7 +4554,7 @@ Write the drawFrame body now.`}]
                 onChange={e=>{const fl=Array.from(e.target.files||[]);e.target.value="";mmmAddFiles(fl);}}/>
             </label>
             {mmmAddMsg&&<div style={{color:WHITE,fontSize:11,textAlign:"center",marginBottom:8}}>{mmmAddMsg}{mmmImages.length>0?" · "+mmmImages.length+" photo"+(mmmImages.length>1?"s":"")+" ready":""}{mmmVideos.length>0?" · "+mmmVideos.length+" clip"+(mmmVideos.length>1?"s":"")+" ready":""}</div>}
-            {mmmVideos.length>0&&(<div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:10}}>{mmmVideos.map((v,i)=>(<div key={i} style={{border:"1px solid "+LINE,borderRadius:3,padding:"3px 8px",color:WHITE,fontSize:11,display:"flex",gap:8,alignItems:"center"}}><span>{i+1}. {v.name}</span><button onClick={()=>setMmmVideos(pp=>pp.filter((_,x)=>x!==i))} style={{background:"transparent",color:WHITE,border:"none",cursor:"pointer",padding:0,fontSize:12}}>x</button></div>))}</div>)}
+            {mmmVideos.length>0&&(<div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:10}}>{mmmVideos.map((v,i)=>(<div key={i} style={{border:"1px solid "+LINE,borderRadius:3,padding:"3px 8px",color:WHITE,fontSize:11,display:"flex",gap:8,alignItems:"center"}}><span>{i+1}. {v.name}</span><button onClick={()=>{if(v&&v.dbId)deleteClipFromDB(v.dbId);setMmmVideos(pp=>pp.filter((_,x)=>x!==i));}} style={{background:"transparent",color:WHITE,border:"none",cursor:"pointer",padding:0,fontSize:12}}>x</button></div>))}</div>)}
             {mmmImages.length>0&&(
               <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:12}}>
                 {mmmImages.map((im,i)=>(
@@ -4696,7 +4698,7 @@ Write the drawFrame body now.`}]
             onChange={e=>{const fl=Array.from(e.target.files||[]);e.target.value="";mmmAddFiles(fl);}}/>
         </label>
         {mmmAddMsg&&<div style={{color:WHITE,fontSize:11,textAlign:"center",marginBottom:8}}>{mmmAddMsg}{mmmImages.length>0?" · "+mmmImages.length+" photo"+(mmmImages.length>1?"s":"")+" ready":""}{mmmVideos.length>0?" · "+mmmVideos.length+" clip"+(mmmVideos.length>1?"s":"")+" ready":""}</div>}
-        {mmmVideos.length>0&&(<div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:10}}>{mmmVideos.map((v,i)=>(<div key={i} style={{border:"1px solid "+LINE,borderRadius:3,padding:"3px 8px",color:WHITE,fontSize:11,display:"flex",gap:8,alignItems:"center"}}><span>{i+1}. {v.name}</span><button onClick={()=>setMmmVideos(pp=>pp.filter((_,x)=>x!==i))} style={{background:"transparent",color:WHITE,border:"none",cursor:"pointer",padding:0,fontSize:12}}>x</button></div>))}</div>)}
+        {mmmVideos.length>0&&(<div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:10}}>{mmmVideos.map((v,i)=>(<div key={i} style={{border:"1px solid "+LINE,borderRadius:3,padding:"3px 8px",color:WHITE,fontSize:11,display:"flex",gap:8,alignItems:"center"}}><span>{i+1}. {v.name}</span><button onClick={()=>{if(v&&v.dbId)deleteClipFromDB(v.dbId);setMmmVideos(pp=>pp.filter((_,x)=>x!==i));}} style={{background:"transparent",color:WHITE,border:"none",cursor:"pointer",padding:0,fontSize:12}}>x</button></div>))}</div>)}
         {mmmImages.length>0&&(
           <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:10}}>
             {mmmImages.map((im,i)=>(
