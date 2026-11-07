@@ -59,6 +59,23 @@ const MOODS = [
 const LANGS = ["English", "French", "Spanish", "German", "Italian", "Portuguese", "Dutch", "Polish", "Russian", "Arabic", "Hindi", "Mandarin Chinese", "Japanese", "Korean", "Turkish", "Greek"];
 const RATIOS = { "16:9": [16, 9], "9:16": [9, 16], "1:1": [1, 1], "21:9": [21, 9] };
 
+
+// Library track: if it will not load (blocked or offline), a soft built-in music bed is used so there is always music under the voice.
+async function bedBlob() {
+  const sr = 22050, oc = new OfflineAudioContext(2, sr * 32, sr);
+  const b = msBedSource(oc, oc.destination, 0.5); b.src.loop = false; b.src.start(0);
+  const buf = await oc.startRendering(); const n = buf.length, out = new DataView(new ArrayBuffer(44 + n * 4));
+  const w = (o, t) => { for (let k = 0; k < t.length; k++) out.setUint8(o + k, t.charCodeAt(k)); };
+  w(0, "RIFF"); out.setUint32(4, 36 + n * 4, true); w(8, "WAVEfmt "); out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 2, true); out.setUint32(24, sr, true); out.setUint32(28, sr * 4, true); out.setUint16(32, 4, true); out.setUint16(34, 16, true); w(36, "data"); out.setUint32(40, n * 4, true);
+  const L = buf.getChannelData(0), R = buf.getChannelData(1);
+  for (let k = 0; k < n; k++) { out.setInt16(44 + k * 4, Math.max(-1, Math.min(1, L[k])) * 32767, true); out.setInt16(46 + k * 4, Math.max(-1, Math.min(1, R[k])) * 32767, true); }
+  return new Blob([out], { type: "audio/wav" });
+}
+async function libraryMusic(url) {
+  try { const r = await fetch(url); if (r.ok) { const b = await r.blob(); if (b.size > 20000) return URL.createObjectURL(b); } } catch (e) { }
+  try { return URL.createObjectURL(await bedBlob()); } catch (e) { return url; }
+}
+
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const fmt = (t) => { t = Math.max(0, Math.floor(t || 0)); const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60; return (h ? h + ":" + (m < 10 ? "0" : "") : "") + m + ":" + (s < 10 ? "0" : "") + s; };
 const load = (k, d) => { try { const v = localStorage.getItem("mfs_" + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
@@ -453,12 +470,13 @@ export default function Studio() {
     const cl = byNum || (numbered.length ? null : clips[i]);
     if (cl) { blob = cl.blob; source = "your clip"; }
     const free = () => freeMode || noCredit.current;
+    // Footage order: your clip, your image, Pexels stock, and only then the engine (last resort).
+    if (!blob) { const r2 = await stockScene(plan, i, text); if (r2) { blob = r2.blob; source = r2.source; } }
     if (!blob && !free() && i === 0 && lipSync && photo && list.firstVoice) {
       try { const r = await fetch(LIPSYNC, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: photo, audio: list.firstVoice }) }); const d = await r.json(); if (d.video) { blob = await toBlob(d.video); source = "lip sync"; } else note = d.error || ""; } catch (e) { }
     }
     if (!blob && !free()) { try { blob = await toBlob(await seRun({ kind: "video", prompt: text + "\n" + look, image: photo })); } catch (e) { note = e.message; if (e.nocredit) { noCredit.current = true; setStage("Engine is out of credit — switching to your images and free stock."); } } }
     if (!blob && !free()) { try { const im = await seRun({ kind: "image", prompt: text + "\n" + look, aspect_ratio: ratio }, 4); blob = await stillToClip(im, 6, i); source = "engine still"; } catch (e) { if (e.nocredit) noCredit.current = true; } }
-    if (!blob) { const r2 = await stockScene(plan, i, text); if (r2) { blob = r2.blob; source = r2.source; } }
     if (!blob) { setS({ status: "failed", note: note || "No picture came back" }); return null; }
     await dbPut(projectId.current + "_scene_" + i, blob, { i, text, source });
     setS({ status: "done", blob, url: URL.createObjectURL(blob), source, note });
@@ -538,8 +556,8 @@ export default function Studio() {
       // 3 — music
       let mUrl = "";
       if (musicMode === "mine" && mySong) mUrl = mySong.url;
-      else if (musicMode === "make") { try { setStage("MandaStrong Engine — composing your music…"); const u = await seRun({ kind: "music", prompt: (musicPrompt || (style + " " + kind + " score, " + (MOODS.find(m => m.id === mood) || MOODS[0]).label)) + ", instrumental", duration: 30 }, 6); const b = await toBlob(u); await dbPut(projectId.current + "_music", b, {}); mUrl = URL.createObjectURL(b); } catch (e) { setErr("Music: " + e.message + ". Using the library track instead."); mUrl = (MOODS.find(m => m.id === mood) || MOODS[0]).url; } }
-      else if (musicMode === "library") mUrl = (MOODS.find(m => m.id === mood) || MOODS[0]).url;
+      else if (musicMode === "make") { try { setStage("MandaStrong Engine — composing your music…"); const u = await seRun({ kind: "music", prompt: (musicPrompt || (style + " " + kind + " score, " + (MOODS.find(m => m.id === mood) || MOODS[0]).label)) + ", instrumental", duration: 30 }, 6); const b = await toBlob(u); await dbPut(projectId.current + "_music", b, {}); mUrl = URL.createObjectURL(b); } catch (e) { setErr("Music: " + e.message + ". Using the library track instead."); mUrl = await libraryMusic((MOODS.find(m => m.id === mood) || MOODS[0]).url); } }
+      else if (musicMode === "library") mUrl = await libraryMusic((MOODS.find(m => m.id === mood) || MOODS[0]).url);
       setMusicUrl(mUrl); setPct(24);
 
       // 3b — match your images to scenes and plan free stock for the rest
