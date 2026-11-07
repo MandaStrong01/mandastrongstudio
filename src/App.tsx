@@ -3654,25 +3654,33 @@ function P8VideoGenerator({ onSave, user, filmDuration, setFilmDuration, go }) {
         // so your reference photos drive the whole film, not only the first shot.
         const sceneImg = mmmImages.length ? (mmmImages[i%mmmImages.length].dataUrl||"") : firstImg;
         if(mmmVideos.length){
-          // Your own clips: used in order, repeating if the film is longer. No engine, no credit.
+          // 1 - your own clips, used in order, repeating if the film is longer. No engine, no credit.
           url=mmmVideos[i%mmmVideos.length].url;
           try{ (window.__mmmUserClips=window.__mmmUserClips||new Set()).add(url); }catch(e){}
-          setMmmStage("Scene "+(i+1)+" — using your clip "+mmmVideos[i%mmmVideos.length].name+"…");
-        }else{
-          url=await engineRender(sceneList[i],{duration:perSceneSec,image:sceneImg,aspect_ratio:mmmRatio});
+          setMmmStage("Scene "+(i+1)+" - using your clip "+mmmVideos[i%mmmVideos.length].name+"...");
+        }else if(i<mmmImages.length&&mmmImages[i].dataUrl){
+          // 2 - your own image for this scene, with slow documentary motion.
+          setMmmStage("Scene "+(i+1)+" - using your image...");
+          url=await mmmKenBurns(mmmImages[i].dataUrl,perSceneSec,i);
+          usedFallback=!!url;
         }
-      }catch(e){ url=""; }
-      // Engine gave us nothing (no credit, error). Use free stock for the scene's own words,
-      // then YOUR photo with slow motion. Never gold shapes.
-      if(!url){
-        setMmmStage("Scene "+(i+1)+" — using free stock footage…");
-        url=await mmmStockScene(sceneList[i],perSceneSec,i);
-        usedFallback=!!url;
-      }
+        // 3 - free Pexels stock for the scene's own words.
+        if(!url){
+          setMmmStage("Scene "+(i+1)+" - using free stock footage...");
+          url=await mmmStockScene(sceneList[i],perSceneSec,i);
+          usedFallback=!!url;
+        }
+        // 4 - the engine, last resort only.
+        if(!url){
+          url=await engineRender(sceneList[i],{duration:perSceneSec,image:sceneImg,aspect_ratio:mmmRatio});
+          usedFallback=false;
+        }
+      }catch(e){ if(!url)url=""; }
+      // Nothing yet: your photo (cycled) with slow motion. Never gold shapes.
       if(!url){
         const sImg = mmmImages.length ? (mmmImages[i%mmmImages.length].dataUrl||"") : firstImg;
         if(sImg){
-          setMmmStage("Scene "+(i+1)+" — using your photo with documentary motion…");
+          setMmmStage("Scene "+(i+1)+" - using your photo with documentary motion...");
           url=await mmmKenBurns(sImg,perSceneSec,i);
           usedFallback=!!url;
         }
