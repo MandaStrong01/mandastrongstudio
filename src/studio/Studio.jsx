@@ -979,6 +979,7 @@ export default function Studio() {
           {fileBtn("mfs-logo", "image/*", async f => setLogo(await shrinkPhoto(await readAsDataURL(f), 512)), logo ? "My logo ✓" : "Add my logo")}
           <Toggle on={watermark} set={setWatermark}>Watermark on Starter</Toggle>
           <button className="c on">Never lose a render</button>
+          <Toggle on={freeMode} set={setFreeMode}>Free mode: my images + stock</Toggle>
         </div>
         {credits && <textarea id="mfs-credits" className="ta" style={{ minHeight: 70, marginTop: 8 }} value={creditNames} onChange={e => setCreditNames(e.target.value)} placeholder={"Credits, one per line\nDirected by …\nNarrated by …"} />}
 
@@ -986,7 +987,6 @@ export default function Studio() {
           <span>Before you start: {minutes} min · {Math.max(sceneCount, clips.length)} scenes · {Math.max(1, castNames)} voice{castNames > 1 ? "s" : ""} · {langCount} language{langCount > 1 ? "s" : ""}</span>
           <span style={{ color: "var(--gold)", fontWeight: 700 }}>About {est} min to make</span>
         </div>
-        <div className="row" style={{ marginTop: 12 }}><Toggle on={freeMode} set={setFreeMode}>Free mode: my images + stock</Toggle></div>
         <button className="go" onClick={makeMovie} disabled={busy}>{busy ? "MAKING YOUR MOVIE…" : "MAKE MY MOVIE"}</button>
         {(busy || stage) && <div className="msg">{stage}<div className="pb"><i style={{ width: pct + "%" }} /></div></div>}
         {err && <div className="msg err">{err}</div>}
