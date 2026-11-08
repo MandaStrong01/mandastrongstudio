@@ -8373,7 +8373,7 @@ function Landing({ onEnter }){
     "/background.mp4"
   ];
   const [li,setLi]=useState(0);
-  const [ldead,setLdead]=useState(false);
+  const [ldead,setLdead]=useState(true); // opening-screen video removed: plain dark background only
   const lsrc=LAND[li];
   const lEl=useRef(null);
   useEffect(()=>{
