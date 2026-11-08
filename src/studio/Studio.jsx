@@ -33,7 +33,7 @@ function proVoice(ac, input) {
 const SB = "https://wvkqnrqcnoztajxxzyxc.supabase.co/functions/v1/";
 const SE = SB + "studio-engine";
 const LIPSYNC = SB + "lip-sync";
-const SITE = "mandasfilmmusicstudios.bolt.host";
+const SITE = "mandasfilmmusicstudioshtml.bolt.host";
 const PLANS = [
   { id: "starter", name: "Starter", line: "Short clips · watermark", link: "https://buy.stripe.com/00wcN7fcefjNgbtceuafS03" },
   { id: "creator", name: "Creator", line: "Films up to 1 hour · no watermark", link: "https://buy.stripe.com/cNi8wRe8a3B52kDceuafS04" },
