@@ -5263,7 +5263,7 @@ function P1({ go }) {
             // REAL DOWNLOAD: save a standalone launcher file to the user's computer.
             // Double-clicking it opens InFuture Movie Studios full-screen in their browser.
             try{
-              const APP_URL="https://ifuture1.bolt.host";
+              const APP_URL="https://ifuture.bolt.host";
               const launcher='<!doctype html><html><head><meta charset="utf-8"><title>InFuture Movie Studios</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;background:#000}iframe{border:0;width:100vw;height:100vh;display:block}</style></head><body><iframe src="'+APP_URL+'" allow="camera;microphone;autoplay;fullscreen;clipboard-write" allowfullscreen></iframe><script>try{if(location.protocol==="file:"){location.href="'+APP_URL+'";}}catch(e){location.href="'+APP_URL+'";}<\\/script></body></html>';
               const blob=new Blob([launcher],{type:"text/html"});
               const url=URL.createObjectURL(blob);
@@ -7762,7 +7762,7 @@ function P20() {
             {sec("CHANGES TO THIS DISCLAIMER",<>{p("InFuture Movie Studios reserves the right to update this disclaimer at any time. Continued use of the platform following any update constitutes your acceptance of the revised terms.")}</>)}
 
             <div style={{background:"#07080A",border:"1px solid "+LINE,padding:"12px 16px",marginTop:8}}>
-              <p style={{color:GOLDDIM,fontSize:11,margin:0,letterSpacing:0}}>— Amanda Woolley · Founder · InFuture Movie Studios · March 2026 · ifuture1.bolt.host</p>
+              <p style={{color:GOLDDIM,fontSize:11,margin:0,letterSpacing:0}}>— Amanda Woolley · Founder · InFuture Movie Studios · March 2026 · ifuture.bolt.host</p>
             </div>
           </div>
         )}
@@ -7888,7 +7888,7 @@ function P22() {
 function HowToGuide() {
   const [open,setOpen]=useState(null);
   const SECTIONS=[
-    {t:"Welcome — how to read this book",c:"This is more than a how-to. It is a complete guide to making films with AI on InFuture Movie Studios (ifuture1.bolt.host) AND a plain-English education in what AI actually is, so you are never at its mercy. Read Part One to understand the machine you are working with. Read Part Two to master the studio page by page. Read Part Three for the craft — prompting, voice, story, and ethics. You do not need any technical background. Every idea here is explained the way you would explain it to a friend across a kitchen table."},
+    {t:"Welcome — how to read this book",c:"This is more than a how-to. It is a complete guide to making films with AI on InFuture Movie Studios (ifuture.bolt.host) AND a plain-English education in what AI actually is, so you are never at its mercy. Read Part One to understand the machine you are working with. Read Part Two to master the studio page by page. Read Part Three for the craft — prompting, voice, story, and ethics. You do not need any technical background. Every idea here is explained the way you would explain it to a friend across a kitchen table."},
 
     {t:"Part one · What AI actually is",c:"AI does not think, feel, or know things the way you do. A large language model — the kind of AI behind most creative tools — is a very powerful pattern machine. It has read an enormous amount of human writing and images and learned which words and shapes tend to follow which. When you ask it for something, it is not looking up an answer; it is predicting, piece by piece, the most likely continuation of your request. That is why it can sound confident and still be wrong. Understanding this one fact changes how you use it: you are the director, it is the crew. It is fast and tireless and knows a thousand styles, but it has no judgement about YOUR story. That judgement is yours, and it always will be."},
 
@@ -7898,9 +7898,9 @@ function HowToGuide() {
 
     {t:"Part one · AI and you — staying in charge",c:"AI is a tool, like a camera or a pen. It amplifies whoever holds it. It has no taste of its own, so your taste is the whole game. Never let a machine talk you out of a creative instinct, and never assume its confident answer is correct without checking. Keep your own copies of everything important. Understand that what you type may be processed on servers you don't control, so don't paste anything you'd be uncomfortable sharing. And remember the deeper point behind this whole studio: AI should widen the door to creativity, not replace the human standing in it. You are not being replaced. You are being equipped."},
 
-    {t:"Part two · Getting started",c:"Open ifuture1.bolt.host. Log in with your credentials or start a free trial. Use the hamburger menu top left to jump to any of the 24 pages. AUTOSAVE ON is real — your work saves automatically every time you change page, generate a clip, or update your timeline. Hit SAVE PROJECT to create a named restore point you can return to from MY PROJECTS. Your plan and remaining usage are always visible from your account panel — tap the avatar top right."},
+    {t:"Part two · Getting started",c:"Open ifuture.bolt.host. Log in with your credentials or start a free trial. Use the hamburger menu top left to jump to any of the 24 pages. AUTOSAVE ON is real — your work saves automatically every time you change page, generate a clip, or update your timeline. Hit SAVE PROJECT to create a named restore point you can return to from MY PROJECTS. Your plan and remaining usage are always visible from your account panel — tap the avatar top right."},
 
-    {t:"Part two · Page 1 — home & install",c:"The front door of ifuture1.bolt.host. The DOWNLOAD APP button installs the studio to your device like a real app, using your browser's built-in install prompt — on iPhone and iPad use Share then Add to Home Screen, as Apple does not allow one-tap install. The whole page is built to fit any screen, phone or laptop. From here, enter the studio and begin."},
+    {t:"Part two · Page 1 — home & install",c:"The front door of ifuture.bolt.host. The DOWNLOAD APP button installs the studio to your device like a real app, using your browser's built-in install prompt — on iPhone and iPad use Share then Add to Home Screen, as Apple does not allow one-tap install. The whole page is built to fit any screen, phone or laptop. From here, enter the studio and begin."},
 
     {t:"Part two · Page 4 — plans & usage credits",c:"Three plans: Basic $20, Pro $30, Studio $50 — pick the one that fits how much you create. At the very bottom is PURCHASE USAGE CREDITS: a one-time top-up for extra renders and generations when you need more than your plan includes. Credits never expire. All payments run through Stripe's secure checkout — the studio never sees your card details."},
 
@@ -7924,7 +7924,7 @@ function HowToGuide() {
 
     {t:"Part three · Ethics & responsibility",c:"With these tools you can make almost anything, which means the responsibility is yours. Don't put real people's faces or voices into films they never agreed to. Be honest when something is AI-generated if presenting it as real could mislead. Respect others' work rather than copying a living artist's style wholesale and calling it your own. And remember InFuture's founding mission — these tools exist to spread kindness, understanding, and hope, with proceeds supporting veterans' mental health and anti-bullying work. Make things that would make that mission proud."},
 
-    {t:"SAVING, RECOVERING & GETTING HELP",c:"AUTOSAVE ON saves as you work. SAVE PROJECT creates a named session — name it meaningfully. MY PROJECTS shows your history; CONTINUE PROJECT restores a session including all clips. An emergency save fires if the tab closes or crashes, so work is never permanently lost. Stuck? Agent Grok on Page 21 is your 24/7 production consultant with full knowledge of every page and workflow. This guide lives on your closing page at ifuture1.bolt.host and is updated as the studio grows."},
+    {t:"SAVING, RECOVERING & GETTING HELP",c:"AUTOSAVE ON saves as you work. SAVE PROJECT creates a named session — name it meaningfully. MY PROJECTS shows your history; CONTINUE PROJECT restores a session including all clips. An emergency save fires if the tab closes or crashes, so work is never permanently lost. Stuck? Agent Grok on Page 21 is your 24/7 production consultant with full knowledge of every page and workflow. This guide lives on your closing page at ifuture.bolt.host and is updated as the studio grows."},
 
     {t:"Part two · Make My Movie — the one-shot page",c:"Page 8 has a one-shot route. Everything is on the one page. 1) Paste your story or script. 2) Add your own photos. 3) Pick Style, Genre, Colour grade and Narration voice. 4) Pick the Screen ratio: 16:9 for film, 9:16 for phones, 1:1 for squares, 21:9 for wide. 5) Set Music bed ON or OFF. 6) Hit MAKE MY MOVIE. The engine builds each scene. If the engine has no credit, your own photos are used with slow camera motion. Your narration is made from the whole script. When it is ready the viewer starts. PLAY, PAUSE and RESTART control the picture, the voice and the music together. Voice and Music sliders change the mix live. Change the ratio any time. FULL SCREEN fills the screen. DOWNLOAD saves every scene. SHARE sends the link. RENDER FINAL FILM opens Page 16. EXPORT PAGE opens Page 18. Scenes you already made come back when you return to the page."},
 
@@ -7932,7 +7932,7 @@ function HowToGuide() {
 
     {t:"Troubleshooting · when a video will not play",c:"Every player in the studio now helps itself. It retries once. If the browser blocks autoplay you see a ▶ button — tap it. If the browser cannot play the file you see a Download it link — save it and play it from your device. A timer stuck on 0:00 or infinity fixes itself after the first play. Use Chrome, or Safari 15 or newer. Keep the tab in front while rendering. If a render looks wrong, hit RESTART, then try Page 17 to preview the finished film."},
 
-    {t:"Recommended workflow — start to finish",c:"Page 5 fill Script to Movie's Producer, Describe, Production boxes WIRE INTO RENDER. Page 6 choose a voice PREPARE TO SPEAK SAVE TO MEDIA LIBRARY. Page 8 upload a reference photo generate each scene (your brief drives them) add background music and stereo if you like. Page 13 SYNC ALL TRACKS. Page 15 set the mix. Page 16 choose quality render. Page 17 preview. Page 18 export and share. That is a finished film, made by you, at ifuture1.bolt.host."},
+    {t:"Recommended workflow — start to finish",c:"Page 5 fill Script to Movie's Producer, Describe, Production boxes WIRE INTO RENDER. Page 6 choose a voice PREPARE TO SPEAK SAVE TO MEDIA LIBRARY. Page 8 upload a reference photo generate each scene (your brief drives them) add background music and stereo if you like. Page 13 SYNC ALL TRACKS. Page 15 set the mix. Page 16 choose quality render. Page 17 preview. Page 18 export and share. That is a finished film, made by you, at ifuture.bolt.host."},
   ];
   return(
     <div style={{padding:"20px 32px 40px",maxWidth:860,margin:"0 auto"}}>
@@ -8523,7 +8523,7 @@ function IntroDoors({ onEnter }){
           boxShadow:"none",borderRadius:3}}>
           Enter
         </button>
-        <div style={{color:GOLDDIM,fontSize:11,letterSpacing:0.2,marginTop:16}}>ifuture1.bolt.host</div>
+        <div style={{color:GOLDDIM,fontSize:11,letterSpacing:0.2,marginTop:16}}>ifuture.bolt.host</div>
       </div>
     </div>
   );
@@ -8531,8 +8531,8 @@ function IntroDoors({ onEnter }){
 
 // Keep existing clients: anyone who opens an OLD address is sent to the current
 // live site, so bookmarks and shared links never break.
-const CURRENT_SITE="https://ifuture1.bolt.host";
-const OLD_HOSTS=["ifuture.bolt.host","in-future1.bolt.host","infuture1.bolt.host","infutura1.bolt.host","infutura.bolt.host","infutura-1.bolt.host","infuturem0viestudi0s.bolt.host","infuturem0viestudi0.bolt.host","infuturemoviestudios.bolt.host","infuturemoviestudio.bolt.host","mandastrongmovies-101.bolt.host","mandastrongmovies101.bolt.host","mandastrongstudio2026.bolt.host","mandastrong-01.bolt.host","mandastrong01.bolt.host"];
+const CURRENT_SITE="https://ifuture.bolt.host";
+const OLD_HOSTS=["in-future1.bolt.host","infuture1.bolt.host","infutura1.bolt.host","infutura.bolt.host","infutura-1.bolt.host","infuturem0viestudi0s.bolt.host","infuturem0viestudi0.bolt.host","infuturemoviestudios.bolt.host","infuturemoviestudio.bolt.host","mandastrongmovies-101.bolt.host","mandastrongmovies101.bolt.host","mandastrongstudio2026.bolt.host","mandastrong-01.bolt.host","mandastrong01.bolt.host"];
 // ── RESCUE: your work is saved in the browser UNDER THE ADDRESS you used. ──
 // Work done on an old address stays filed under that address. The old
 // redirect sent you away before you could reach it, so My Projects looked
@@ -8558,7 +8558,7 @@ if(typeof window!=="undefined"){
         try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith("ms_"))ls[k]=localStorage.getItem(k);}}catch(x){}
         let clips=[];try{clips=await getAllClipsFromDB();}catch(x){}
         let count=0;try{count=JSON.parse(localStorage.getItem("ms_project_history")||"[]").length;}catch(x){}
-        for(const o of [CURRENT_SITE,"https://ifuture.bolt.host","https://infuture1.bolt.host","https://in-future1.bolt.host"]){try{window.opener.postMessage({type:"ms_transfer",ls,clips,count},o);}catch(x){}}
+        for(const o of [CURRENT_SITE,"https://infuture1.bolt.host","https://in-future1.bolt.host"]){try{window.opener.postMessage({type:"ms_transfer",ls,clips,count},o);}catch(x){}}
       })();
     } else
     if(OLD_HOSTS.includes(h)){
@@ -8630,7 +8630,7 @@ async function msMergeTransfer(d){
   return {projects,clips:clipsIn};
 }
 // Every address the studio has ever lived on. FIND MY WORK checks them all.
-const FIND_HOSTS=["ifuture.bolt.host","in-future1.bolt.host","infuture1.bolt.host","infutura1.bolt.host","infutura.bolt.host","infutura-1.bolt.host","infuturem0viestudi0s.bolt.host","infuturem0viestudi0.bolt.host","infuturemoviestudios.bolt.host","infuturemoviestudio.bolt.host","mandsstrongmovie.bolt.host","mandastrongmovie.bolt.host","mandastrongmovies.bolt.host","mandastrongmovies-101.bolt.host","mandastrongmovies101.bolt.host","mandastrongstudio2026.bolt.host","mandastrong-01.bolt.host","mandastrong01.bolt.host"];
+const FIND_HOSTS=["in-future1.bolt.host","infuture1.bolt.host","infutura1.bolt.host","infutura.bolt.host","infutura-1.bolt.host","infuturem0viestudi0s.bolt.host","infuturem0viestudi0.bolt.host","infuturemoviestudios.bolt.host","infuturemoviestudio.bolt.host","mandsstrongmovie.bolt.host","mandastrongmovie.bolt.host","mandastrongmovies.bolt.host","mandastrongmovies-101.bolt.host","mandastrongmovies101.bolt.host","mandastrongstudio2026.bolt.host","mandastrong-01.bolt.host","mandastrong01.bolt.host"];
 // Opens each old address in ONE helper tab, one after another. Each old
 // address sends back whatever work it holds, and it is merged in here.
 async function msFindMyWork(onStep){
@@ -8670,7 +8670,7 @@ function RescueScreen(){
   const moveIt=()=>{
     const w=window.open(CURRENT_SITE+"/?receive=1","_blank");
     if(!w){setMsg("Your browser blocked the new tab. Tap OPEN MY WORK HERE instead — nothing is lost.");return;}
-    setState("moving");setMsg("Opening ifuture1.bolt.host and copying your work…");
+    setState("moving");setMsg("Opening ifuture.bolt.host and copying your work…");
     let sent=false;
     const onMsg=async(e)=>{
       if(e.origin!==CURRENT_SITE)return;
@@ -8687,7 +8687,7 @@ function RescueScreen(){
         window.removeEventListener("message",onMsg);
         try{localStorage.setItem("ms_moved_to_infutura","1");}catch(x){}
         setState("done");
-        setMsg("Done — "+d.projects+" project(s) and "+d.clips+" file(s) are now on ifuture1.bolt.host. Your copy here is kept too.");
+        setMsg("Done — "+d.projects+" project(s) and "+d.clips+" file(s) are now on ifuture.bolt.host. Your copy here is kept too.");
       }
     };
     window.addEventListener("message",onMsg);
