@@ -392,9 +392,9 @@ export default function Studio() {
   const addFiles = async (list) => {
     const arr = Array.from(list || []); let n = 0;
     const auds = arr.filter(f => (f.type || "").startsWith("audio") || /\.(mp3|wav|m4a|aac|ogg)$/i.test(f.name || ""));
-    if (auds.length >= 2) { addCharRecs(auds); n += auds.length; }
+    if (auds.length) { addCharRecs(auds); n += auds.length; }
     for (const f of arr) {
-      if (auds.length >= 2 && auds.includes(f)) continue;
+      if (auds.includes(f)) continue;
       const t = f.type || ""; const nm = f.name || "file";
       if (t.startsWith("image") || /\.(jpe?g|png|webp|heic|heif|gif)$/i.test(nm)) { const d = await readAsDataURL(f); if (d) { const s = await shrinkPhoto(d, 1280); setPhotos(p => [...p, { name: nm, dataUrl: s }]); n++; } }
       else if (t.startsWith("video") || /\.(mp4|mov|m4v|webm)$/i.test(nm)) { { const did = "mfs_clip_" + Date.now() + "_" + String(n).padStart(3, "0"); setClips(p => [...p, { name: nm, url: URL.createObjectURL(f), blob: f, dbId: did }]); dbPut(did, f, { name: nm }); } n++; }
@@ -927,10 +927,6 @@ export default function Studio() {
           {fileBtn("mfs-rec", "audio/*,.mp3,.m4a,.wav", f => { setMyRec({ name: f.name, blob: f, url: URL.createObjectURL(f) }); setVoiceMode("mine"); }, "UPLOAD MY RECORDING")}
           <button className={"c" + (voiceMode === "engine" ? " on" : "")} onClick={() => setVoiceMode(voiceMode === "engine" && myRec ? "mine" : "engine")}>{voiceMode === "engine" ? "USING ENGINE VOICE" : "USE ENGINE VOICE"}</button>
         </div>
-        <div className="row" style={{ marginTop: 8 }}>
-          <label className="c" htmlFor="mfs-cvoices" style={{ display: "inline-block" }}>UPLOAD CHARACTER VOICES (MORE THAN ONE)<input id="mfs-cvoices" type="file" multiple accept="audio/*,.mp3,.m4a,.wav" style={{ display: "none" }} onChange={e => { const f = Array.from(e.target.files || []); e.target.value = ""; addCharRecs(f); }} /></label>
-        </div>
-        {charRecs.length > 0 && <div className="msg">Character voices ({charRecs.length}): {charRecs.map((r, i) => <span key={r.dbId} style={{ marginRight: 10, whiteSpace: "nowrap" }}>{r.name} <button aria-label="Remove" style={{ background: "transparent", border: "none", color: "inherit", cursor: "pointer" }} onClick={() => { dbClear(r.dbId); setCharRecs(x => x.filter((_, k) => k !== i)); }}>×</button></span>)} — each goes to the characters you give it in your directions, spoken in script order.</div>}
         {myRec && <div className="msg">Your recording: {myRec.name} {voiceMode === "mine" ? "· in use" : "· not in use"} <audio src={myRec.url} controls style={{ verticalAlign: "middle", height: 30, maxWidth: "100%" }} /></div>}
         <div className="row" style={{ marginTop: 8 }}>
           <button className="b g" style={{ padding: "9px 18px" }} onClick={openComplete} disabled={comp && comp.busy}>ENGINE TO COMPLETE NARRATION</button>
@@ -965,6 +961,7 @@ export default function Studio() {
           {clips.map((c, i) => <div key={"c" + i} className="th"><video src={c.url} muted playsInline /><button aria-label="Remove" onClick={() => { if (c.dbId) dbClear(c.dbId); setClips(x => x.filter((_, k) => k !== i)); }}>×</button></div>)}
         </div>}
         {(photos.length > 0 || clips.length > 0) && <div className="msg">Photos keep the same faces in every scene. Clips are used as your first scenes, in order.</div>}
+        {charRecs.length > 0 && <div className="msg">Character voices ({charRecs.length}): {charRecs.map((r, i) => <span key={r.dbId} style={{ marginRight: 10, whiteSpace: "nowrap" }}>{r.name} <button aria-label="Remove" style={{ background: "transparent", border: "none", color: "inherit", cursor: "pointer" }} onClick={() => { dbClear(r.dbId); setCharRecs(x => x.filter((_, k) => k !== i)); }}>×</button></span>)} — each goes to the characters you give it in your directions, spoken in script order.</div>}
 
         <div className="lab">5 · VOICES</div>
         <div className="g3">
