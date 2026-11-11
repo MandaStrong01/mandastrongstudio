@@ -312,6 +312,34 @@ export default function Studio() {
   // Your uploaded clips are kept on this device, so they are still here when you come back.
   useEffect(() => { (async () => { try { const all = await dbAll(); const mine = all.filter(x => String(x.id).startsWith("mfs_clip_") && x.blob).sort((x, y) => String(x.id).localeCompare(String(y.id))); if (mine.length) setClips(p => p.length ? p : mine.map(x => ({ name: (x.meta && x.meta.name) || "clip", url: URL.createObjectURL(x.blob), blob: x.blob, dbId: x.id }))); } catch (e) { } })(); }, []);
   const [myRec, setMyRec] = useState(null); // {name,blob,url}
+  // ── CHARACTER VOICES YOU UPLOAD (e.g. Doxy, Lily, Ethan): kept on this device, one per file ──
+  const [charRecs, setCharRecs] = useState([]); // {name,blob,url,dbId,cloneId}
+  useEffect(() => { (async () => { try { const all = await dbAll(); const mine = all.filter(x => String(x.id).startsWith("mfs_cvoice_") && x.blob).sort((x, y) => String(x.id).localeCompare(String(y.id))); if (mine.length) setCharRecs(p => p.length ? p : mine.map(x => ({ name: (x.meta && x.meta.name) || "voice", blob: x.blob, url: URL.createObjectURL(x.blob), dbId: x.id, cloneId: (x.meta && x.meta.cloneId) || "" }))); } catch (e) { } })(); }, []);
+  const addCharRecs = (files) => { Array.from(files || []).forEach((f, k) => { const nm = String(f.name || "voice").replace(/\.[a-z0-9]+$/i, ""); const did = "mfs_cvoice_" + Date.now() + "_" + String(k).padStart(3, "0"); setCharRecs(p => [...p, { name: nm, blob: f, url: URL.createObjectURL(f), dbId: did, cloneId: "" }]); dbPut(did, f, { name: nm }); }); };
+  // Which uploaded voice each character uses. Read from the boxes:
+  //   "DOXY'S VOICE:" heading, then "Santa: ..." lines under it   — or —   "Santa: use Doxy's saved voice"
+  // A character with the same name as an uploaded voice (e.g. Lily) uses it too.
+  const charVoiceMap = (speakers) => {
+    const out = {}; if (!charRecs.length) return out;
+    const findRec = (w) => { w = String(w || "").toLowerCase().trim(); if (!w) return null; return charRecs.find(r => r.name.toLowerCase() === w) || charRecs.find(r => r.name.toLowerCase().includes(w)) || null; };
+    const norm = (x) => String(x || "").toUpperCase().replace(/\s+/g, " ").trim();
+    let cur = null;
+    for (const ln of String((script || "") + "\n" + (narr || "")).split(/\r?\n/)) {
+      const t = ln.trim(); if (!t) { continue; }
+      const h = t.match(/^([A-Za-z][A-Za-z .'-]{0,30}?)['’]S VOICE\s*:?\s*$/i); if (h) { cur = findRec(h[1]); continue; }
+      const m = t.match(/^([A-Za-z][A-Za-z0-9 .'-]{0,30}?)\s*:\s*(.*)$/); if (!m) continue;
+      const u = m[2].match(/use\s+([A-Za-z][A-Za-z .'-]{0,30}?)['’]s\s+(?:saved\s+|uploaded\s+|own\s+)?voice/i);
+      const r = u ? findRec(u[1]) : cur;
+      if (r && !out[norm(m[1])]) out[norm(m[1])] = r;
+    }
+    for (const sp of speakers) { const k = norm(sp.label || sp.key); if (!out[k]) { const r = findRec(sp.label || sp.key); if (r && r.name.toLowerCase() === String(sp.label || sp.key).toLowerCase()) out[k] = r; } }
+    const res = {}; for (const sp of speakers) { const r = out[norm(sp.label || sp.key)]; if (r) res[sp.key] = r; } return res;
+  };
+  const cloneOf = async (r) => {
+    if (r.cloneId) return r.cloneId;
+    try { const uri = await readAsDataURL(r.blob.slice(0, 1500000, r.blob.type || "audio/mpeg")); const vid = await engineCloneVoice(uri); if (vid) { r.cloneId = vid; dbPut(r.dbId, r.blob, { name: r.name, cloneId: vid }); return vid; } } catch (e) { }
+    return "";
+  };
   // ── ENGINE TO COMPLETE NARRATION: your recording plays first, the engine reads the rest ──
   const [tail, setTail] = useState(null); // {blob,url,secs,text,start}
   const [comp, setComp] = useState(null); // {recSecs, sents, idx, busy, msg}
@@ -363,7 +391,10 @@ export default function Studio() {
   const [addMsg, setAddMsg] = useState("");
   const addFiles = async (list) => {
     const arr = Array.from(list || []); let n = 0;
+    const auds = arr.filter(f => (f.type || "").startsWith("audio") || /\.(mp3|wav|m4a|aac|ogg)$/i.test(f.name || ""));
+    if (auds.length >= 2) { addCharRecs(auds); n += auds.length; }
     for (const f of arr) {
+      if (auds.length >= 2 && auds.includes(f)) continue;
       const t = f.type || ""; const nm = f.name || "file";
       if (t.startsWith("image") || /\.(jpe?g|png|webp|heic|heif|gif)$/i.test(nm)) { const d = await readAsDataURL(f); if (d) { const s = await shrinkPhoto(d, 1280); setPhotos(p => [...p, { name: nm, dataUrl: s }]); n++; } }
       else if (t.startsWith("video") || /\.(mp4|mov|m4v|webm)$/i.test(nm)) { { const did = "mfs_clip_" + Date.now() + "_" + String(n).padStart(3, "0"); setClips(p => [...p, { name: nm, url: URL.createObjectURL(f), blob: f, dbId: did }]); dbPut(did, f, { name: nm }); } n++; }
@@ -427,12 +458,14 @@ export default function Studio() {
   async function voiceIt(text, lang) {
     let t = text; if (lang && lang !== "English") t = await translateText(text, lang);
     const cast = msParseCast(t); let parts = [];
-    if (charVoices && cast.speakers.length >= 2) {
+    if ((charVoices || charRecs.length) && cast.speakers.length >= 2) {
       const cmap = msCastVoices(cast.speakers, narrator, t);
+      const umap = charVoiceMap(cast.speakers); const uid = {};
+      for (const k of Object.keys(umap)) { setStage("Copying " + umap[k].name + "'s voice for " + ((cast.speakers.find(x => x.key === k) || {}).label || k) + "…"); uid[k] = await cloneOf(umap[k]); }
       for (let i = 0; i < cast.segments.length; i++) {
         const sg = cast.segments[i]; const vc = sg.sp ? cmap[sg.sp] : null;
         setStage("Voicing " + (sg.sp ? (cast.speakers.find(x => x.key === sg.sp) || {}).label : "narrator") + " — " + (i + 1) + " of " + cast.segments.length);
-        const meta = vc ? { voice: vc.engineVoice || vc.id, gender: vc.gender || "", origin: vc.origin || "", speed: Number(speed) || 1 } : voiceMeta(narrator);
+        const meta = (sg.sp && uid[sg.sp]) ? { voice: uid[sg.sp], speed: Number(speed) || 1 } : vc ? { voice: vc.engineVoice || vc.id, gender: vc.gender || "", origin: vc.origin || "", speed: Number(speed) || 1 } : voiceMeta(narrator);
         const r = await msVoiceText(sg.text, { ...meta, language: lang && lang !== "English" ? lang : "" }); parts.push(...r.parts);
       }
     } else {
@@ -894,6 +927,10 @@ export default function Studio() {
           {fileBtn("mfs-rec", "audio/*,.mp3,.m4a,.wav", f => { setMyRec({ name: f.name, blob: f, url: URL.createObjectURL(f) }); setVoiceMode("mine"); }, "UPLOAD MY RECORDING")}
           <button className={"c" + (voiceMode === "engine" ? " on" : "")} onClick={() => setVoiceMode(voiceMode === "engine" && myRec ? "mine" : "engine")}>{voiceMode === "engine" ? "USING ENGINE VOICE" : "USE ENGINE VOICE"}</button>
         </div>
+        <div className="row" style={{ marginTop: 8 }}>
+          <label className="c" htmlFor="mfs-cvoices" style={{ display: "inline-block" }}>UPLOAD CHARACTER VOICES (MORE THAN ONE)<input id="mfs-cvoices" type="file" multiple accept="audio/*,.mp3,.m4a,.wav" style={{ display: "none" }} onChange={e => { const f = Array.from(e.target.files || []); e.target.value = ""; addCharRecs(f); }} /></label>
+        </div>
+        {charRecs.length > 0 && <div className="msg">Character voices ({charRecs.length}): {charRecs.map((r, i) => <span key={r.dbId} style={{ marginRight: 10, whiteSpace: "nowrap" }}>{r.name} <button aria-label="Remove" style={{ background: "transparent", border: "none", color: "inherit", cursor: "pointer" }} onClick={() => { dbClear(r.dbId); setCharRecs(x => x.filter((_, k) => k !== i)); }}>×</button></span>)} — each goes to the characters you give it in your directions, spoken in script order.</div>}
         {myRec && <div className="msg">Your recording: {myRec.name} {voiceMode === "mine" ? "· in use" : "· not in use"} <audio src={myRec.url} controls style={{ verticalAlign: "middle", height: 30, maxWidth: "100%" }} /></div>}
         <div className="row" style={{ marginTop: 8 }}>
           <button className="b g" style={{ padding: "9px 18px" }} onClick={openComplete} disabled={comp && comp.busy}>ENGINE TO COMPLETE NARRATION</button>
