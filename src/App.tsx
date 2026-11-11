@@ -5145,7 +5145,7 @@ function Frame({ seed, local, vid, localVid, query, label, sub, dur, h=160, onCl
   const [pex,setPex] = useState(null);
   useEffect(()=>{ let ok=true; if(query){ pexelsClip(query).then(u=>{ if(ok&&u) setPex(u); }); } return ()=>{ok=false;}; },[query]);
   // Last stop is a clip that ships inside the app itself, so a card never ends up black.
-  const vchain = [localVid?("frames/"+localVid):null, pex, vid?CLIP(vid):null, "/background.mp4"].filter(Boolean);
+  const vchain = [localVid?("frames/"+localVid):null, pex, vid?CLIP(vid):null].filter(Boolean); // never the That's All Folks file (background.mp4) — if no clip plays, the card shows its picture
   const [vi,setVi] = useState(0);
   const [vdead,setVdead] = useState(false);
   const vsrc = vdead ? null : vchain[vi];
