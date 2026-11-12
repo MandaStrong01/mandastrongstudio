@@ -377,6 +377,8 @@ function msScreenplayToCast(text){
 }
 function msParseCast(text){
   text=String(text||"").split(/^\s*PRODUCTION NOTES\s*$/m)[0];
+  // "[LILY] line" means LILY is speaking — same as "LILY: line".
+  text=text.replace(/^(\s*)\[\s*([A-Za-z][A-Za-z0-9'’.&\- ]{0,30}?)\s*\]\s*:?\s*(?=\S)/gm,"$1$2: ");
   text=msScreenplayToCast(text);
   const rx=/^\s*([A-Za-z][A-Za-z0-9'’.\- ]{0,26}?)\s*(?:\([^)]*\)|\[[^\]]*\])?\s*:\s*(.+?)\s*$/;
   const NARR=/^(narrator|narration|voice ?over|v\.?o\.?)$/i;
