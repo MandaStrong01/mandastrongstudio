@@ -5352,11 +5352,53 @@ function P2({ go }) {
 const pocMetaDB=()=>new Promise((res,rej)=>{const r=indexedDB.open("ms_poc_meta",1);r.onupgradeneeded=e=>e.target.result.createObjectStore("m",{keyPath:"id"});r.onsuccess=e=>res(e.target.result);r.onerror=rej;});
 const pocMetaSave=async(titles,descs)=>{try{const db=await pocMetaDB();const tx=db.transaction("m","readwrite");tx.objectStore("m").put({id:"meta",titles,descs});await new Promise((r,j)=>{tx.oncomplete=r;tx.onerror=j;});}catch(e){}};
 const pocMetaLoad=async()=>{try{const db=await pocMetaDB();return await new Promise((res)=>{const q=db.transaction("m","readonly").objectStore("m").get("meta");q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null);});}catch(e){return null;}};
+// ── Proof of concept: a cloud copy in your own folder, so films stay on every device and after the iPad clears its storage ──
+const POC_BUCKET="films", POC_PART=40*1024*1024, POC_CAP=900*1024*1024;
+const pocUid=async()=>{try{const {data}=await supabase.auth.getUser();return data&&data.user?data.user.id:"";}catch(e){return "";}};
+const pocList=async(uid)=>{try{const {data}=await supabase.storage.from(POC_BUCKET).list(uid,{limit:1000,search:"poc_"});return data||[];}catch(e){return [];}};
+const pocCloudSave=async(i,blob,name,type,onPct)=>{
+  const uid=await pocUid(); if(!uid) return "login";
+  const all=await pocList(uid);
+  const mine=all.filter(o=>o.name.startsWith("poc_"+i+"_"));
+  const others=all.filter(o=>!o.name.startsWith("poc_"+i+"_")).reduce((t,o)=>t+((o.metadata&&o.metadata.size)||0),0);
+  if(others+blob.size>POC_CAP) return "full";
+  const stamp=Date.now(), total=Math.max(1,Math.ceil(blob.size/POC_PART));
+  for(let k=0;k<total;k++){
+    if(onPct)onPct(Math.round(k/total*100));
+    const piece=blob.slice(k*POC_PART,Math.min(blob.size,(k+1)*POC_PART),type||"video/mp4");
+    const {error}=await supabase.storage.from(POC_BUCKET).upload(uid+"/poc_"+i+"_"+stamp+"_part"+String(k).padStart(3,"0"),piece,{upsert:true,contentType:type||"video/mp4"});
+    if(error) return "error";
+  }
+  const info=new Blob([JSON.stringify({name,type,size:blob.size,parts:total,stamp})],{type:"application/json"});
+  const {error:e2}=await supabase.storage.from(POC_BUCKET).upload(uid+"/poc_"+i+"_"+stamp+"_info.json",info,{upsert:true,contentType:"application/json"});
+  if(e2) return "error";
+  // only now remove the older copy of this film
+  if(mine.length){try{await supabase.storage.from(POC_BUCKET).remove(mine.map(o=>uid+"/"+o.name));}catch(e){}}
+  return "ok";
+};
+const pocCloudLoad=async(i)=>{
+  const uid=await pocUid(); if(!uid) return null;
+  const infos=(await pocList(uid)).filter(o=>o.name.startsWith("poc_"+i+"_")&&o.name.endsWith("_info.json")).sort((a,b)=>a.name<b.name?1:-1);
+  if(!infos.length) return null;
+  try{
+    const {data:ib}=await supabase.storage.from(POC_BUCKET).download(uid+"/"+infos[0].name); if(!ib) return null;
+    const info=JSON.parse(await ib.text()); const bufs=[];
+    for(let k=0;k<info.parts;k++){const {data:pb,error}=await supabase.storage.from(POC_BUCKET).download(uid+"/poc_"+i+"_"+info.stamp+"_part"+String(k).padStart(3,"0"));if(error||!pb)return null;bufs.push(pb);}
+    return {blob:new Blob(bufs,{type:info.type||"video/mp4"}),name:info.name,type:info.type};
+  }catch(e){return null;}
+};
+const pocCloudRemove=async(i)=>{const uid=await pocUid();if(!uid)return;const mine=(await pocList(uid)).filter(o=>o.name.startsWith("poc_"+i+"_"));if(mine.length){try{await supabase.storage.from(POC_BUCKET).remove(mine.map(o=>uid+"/"+o.name));}catch(e){}}};
+const pocCloudMetaSave=async(titles,descs)=>{const uid=await pocUid();if(!uid)return;try{await supabase.storage.from(POC_BUCKET).upload(uid+"/poc_meta.json",new Blob([JSON.stringify({titles,descs})],{type:"application/json"}),{upsert:true,contentType:"application/json"});}catch(e){}};
+const pocCloudMetaLoad=async()=>{const uid=await pocUid();if(!uid)return null;try{const {data}=await supabase.storage.from(POC_BUCKET).download(uid+"/poc_meta.json");return data?JSON.parse(await data.text()):null;}catch(e){return null;}};
+
 function P3() {
   const [uploads, setUploads] = useState([null,null,null]);
   const [titles, setTitles] = useState(["","",""]);
   const [descs, setDescs] = useState(["","",""]);
   const [loaded, setLoaded] = useState(false);
+  const [cloudMsg, setCloudMsg] = useState(["","",""]);
+  const setMsg=(i,m)=>setCloudMsg(p=>{const n=[...p];n[i]=m;return n;});
+  const metaTimer=useRef(null);
   const titlesRef=useRef(["","",""]);
   const descsRef=useRef(["","",""]);
   titlesRef.current=titles;
@@ -5374,7 +5416,7 @@ function P3() {
         let d=JSON.parse(localStorage.getItem("ms_poc_descs")||'["","",""]');
         const has=(a)=>Array.isArray(a)&&a.some(x=>x&&String(x).trim());
         if(!has(t)&&!has(d)){
-          const m=await pocMetaLoad();
+          const m=(await pocMetaLoad())||(await pocCloudMetaLoad());
           if(m&&(has(m.titles)||has(m.descs))){
             t=m.titles||t;d=m.descs||d;
             try{localStorage.setItem("ms_poc_titles",JSON.stringify(t));localStorage.setItem("ms_poc_descs",JSON.stringify(d));}catch{}
@@ -5388,6 +5430,12 @@ function P3() {
           const rec=await loadClipFromDB("poc_"+i);
           if(rec&&rec.blob){
             next[i]={url:URL.createObjectURL(rec.blob),name:rec.name,type:rec.type,size:(rec.blob.size/1024/1024).toFixed(1)};
+          }else{
+            const c=await pocCloudLoad(i);
+            if(c&&c.blob){
+              next[i]={url:URL.createObjectURL(c.blob),name:c.name,type:c.type,size:(c.blob.size/1024/1024).toFixed(1)};
+              try{await saveClipToDB("poc_"+i,c.blob,c.name,c.type);}catch{}
+            }
           }
         }catch{}
       }
@@ -5396,8 +5444,9 @@ function P3() {
     return ()=>{alive=false;};
   },[]);
 
-  const saveTitles=(arr)=>{try{localStorage.setItem("ms_poc_titles",JSON.stringify(arr));}catch{} titlesRef.current=arr; pocMetaSave(arr,descsRef.current);};
-  const saveDescs=(arr)=>{try{localStorage.setItem("ms_poc_descs",JSON.stringify(arr));}catch{} descsRef.current=arr; pocMetaSave(titlesRef.current,arr);};
+  const saveTitles=(arr)=>{try{localStorage.setItem("ms_poc_titles",JSON.stringify(arr));}catch{} titlesRef.current=arr; pocMetaSave(arr,descsRef.current); try{cloudMeta();}catch{}};
+  const saveDescs=(arr)=>{try{localStorage.setItem("ms_poc_descs",JSON.stringify(arr));}catch{} descsRef.current=arr; pocMetaSave(titlesRef.current,arr); try{cloudMeta();}catch{}};
+  const cloudMeta=()=>{try{clearTimeout(metaTimer.current);}catch{} metaTimer.current=setTimeout(()=>pocCloudMetaSave(titlesRef.current,descsRef.current),2000);};
 
   const handleFile=async(i,e)=>{
     const f=e.target.files&&e.target.files[0];
@@ -5416,13 +5465,20 @@ function P3() {
       const back=await loadClipFromDB("poc_"+i);
       ok=!!(back&&back.blob&&back.blob.size===copy.size);
     }catch(err){ok=false;}
-    if(!ok){alert("Film "+(i+1)+" did NOT save. It will be gone when you leave. Free some space or try a smaller file, then upload it again.");}
+    if(!ok){alert("Film "+(i+1)+" did NOT save on this device. Trying your cloud copy now.");}
+    setMsg(i,"Saving to your cloud…");
+    const r=await pocCloudSave(i,f,f.name,f.type,pct=>setMsg(i,"Saving to your cloud… "+pct+"%"));
+    setMsg(i, r==="ok"?"✓ Saved to your cloud — it stays on every device":
+              r==="login"?"Log in so this film is also kept in your cloud":
+              r==="full"?"Cloud space is full — this film is on this device only":
+              "Cloud save didn't finish — upload it again to keep it everywhere");
   };
   const removeUpload=async(i)=>{
     setUploads(p=>{const n=[...p];if(n[i])URL.revokeObjectURL(n[i].url);n[i]=null;return n;});
     setTitles(p=>{const n=[...p];n[i]="";saveTitles(n);return n;});
     setDescs(p=>{const n=[...p];n[i]="";saveDescs(n);return n;});
     try{await deleteClipFromDB("poc_"+i);}catch{}
+    try{await pocCloudRemove(i);}catch{} setMsg(i,"");
   };
 
   const inp={width:"100%",background:"#0E0F12",border:"1px solid "+LINE,padding:"8px 10px",color:WHITE,fontSize:12,outline:"none",fontFamily:"'Manrope',system-ui,sans-serif",boxSizing:"border-box"};
@@ -5465,6 +5521,7 @@ function P3() {
               </div>
 
               <input ref={refs[i]} type="file" accept="video/*,image/*" style={{display:"none"}} onChange={e=>handleFile(i,e)}/>
+              {cloudMsg[i]&&<div style={{color:cloudMsg[i].startsWith("✓")?"#D4AF6A":WHITE,fontSize:11,marginTop:8}}>{cloudMsg[i]}</div>}
 
               {/* Title */}
               <div style={{color:WHITE,fontSize:9,letterSpacing:0.2,fontWeight:600,marginBottom:4}}>Film title</div>
