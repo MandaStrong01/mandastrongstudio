@@ -391,7 +391,12 @@ export default function Studio() {
   const [addMsg, setAddMsg] = useState("");
   const addFiles = async (list) => {
     const arr = Array.from(list || []); let n = 0;
-    const auds = arr.filter(f => (f.type || "").startsWith("audio") || /\.(mp3|wav|m4a|aac|ogg)$/i.test(f.name || ""));
+    // A voice file can arrive from Drive or Files with an odd type: audio types, audio file endings,
+    // or any file whose name is a voice named in your directions (e.g. "DOXY'S VOICE:") or contains "voice".
+    const vNames = (() => { const out = new Set(); for (const ln of String((script || "") + "\n" + (narr || "")).split(/\r?\n/)) { const h = ln.trim().match(/^([A-Za-z][A-Za-z .'-]{0,30}?)['’]S\s+VOICE\b/i) || ln.match(/use\s+(?:my\s+)?(?:uploaded\s+)?([A-Za-z][A-Za-z .'-]{0,30}?)['’]?s?\s+(?:saved\s+|uploaded\s+|own\s+)?voice/i); if (h) out.add(h[1].trim().toLowerCase()); } return out; })();
+    const base = f => String(f.name || "").replace(/\.[a-z0-9]+$/i, "").trim().toLowerCase();
+    const isVoice = f => (f.type || "").startsWith("audio") || /\.(mp3|wav|m4a|aac|ogg|opus|flac|weba|caf|aif|aiff|amr)$/i.test(f.name || "") || /voice/i.test(f.name || "") || vNames.has(base(f).replace(/[\s_-]*(\d+|copy|final|new)$/i, ""));
+    const auds = arr.filter(isVoice);
     if (auds.length) { addCharRecs(auds); n += auds.length; }
     for (const f of arr) {
       if (auds.includes(f)) continue;
@@ -498,9 +503,16 @@ export default function Studio() {
     setS({ status: "making" });
     let blob = null, source = "engine", note = "";
     // A clip named with a scene number (e.g. "Scene_17.mp4") goes on that scene; unnumbered clips fill scenes in order.
-    const numbered = clips.filter(c => /\d/.test(String(c.name || "")));
-    const byNum = numbered.find(c => { const mm = String(c.name).match(/0*(\d{1,3})(?=\D*$)/); return mm && Number(mm[1]) === i + 1; });
-    const cl = byNum || (numbered.length ? null : clips[i]);
+    // Every clip is used: a clip whose name ends in a scene number (1..number of scenes) goes on that scene;
+    // all the other clips (IMG_4567, 45_minute_movie…) fill the remaining scenes in the order you added them.
+    const total = (list && list.length) || Math.max(sceneCount, clips.length);
+    const numOf = c => { const mm = String(c.name || "").replace(/\.[a-z0-9]+$/i, "").match(/(?:scene|sc|clip|part)?[\s_-]*0*(\d{1,3})\s*$/i); const k = mm ? Number(mm[1]) : 0; return k >= 1 && k <= total ? k : 0; };
+    const byNum = clips.find(c => numOf(c) === i + 1);
+    const taken = new Set(clips.map(numOf).filter(Boolean));
+    const free_ = clips.filter(c => !numOf(c));
+    const openSlots = []; for (let k = 1; k <= total; k++) if (!taken.has(k)) openSlots.push(k);
+    const slot = openSlots.indexOf(i + 1);
+    const cl = byNum || (slot >= 0 && slot < free_.length ? free_[slot] : null);
     if (cl) { blob = cl.blob; source = "your clip"; }
     const free = () => freeMode || noCredit.current;
     // Footage order: your clip, your image, Pexels stock, and only then the engine (last resort).
