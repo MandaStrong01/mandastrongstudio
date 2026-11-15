@@ -515,13 +515,14 @@ export default function Studio() {
     const cl = byNum || (slot >= 0 && slot < free_.length ? free_[slot] : null);
     if (cl) { blob = cl.blob; source = "your clip"; }
     const free = () => freeMode || noCredit.current;
-    // Footage order: your clip, your image, Pexels stock, and only then the engine (last resort).
-    if (!blob) { const r2 = await stockScene(plan, i, text); if (r2) { blob = r2.blob; source = r2.source; } }
+    // Footage order: your clip first, then the engine makes moving footage (your matched image is its starting picture),
+    // and only if the engine cannot deliver (or Free mode is on) your image as a still, then stock.
     if (!blob && !free() && i === 0 && lipSync && photo && list.firstVoice) {
       try { const r = await fetch(LIPSYNC, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: photo, audio: list.firstVoice }) }); const d = await r.json(); if (d.video) { blob = await toBlob(d.video); source = "lip sync"; } else note = d.error || ""; } catch (e) { }
     }
     if (!blob && !free()) { try { blob = await toBlob(await seRun({ kind: "video", prompt: text + "\n" + look, image: photo })); } catch (e) { note = e.message; if (e.nocredit) { noCredit.current = true; setStage("Engine is out of credit — switching to your images and free stock."); } } }
     if (!blob && !free()) { try { const im = await seRun({ kind: "image", prompt: text + "\n" + look, aspect_ratio: ratio }, 4); blob = await stillToClip(im, 6, i); source = "engine still"; } catch (e) { if (e.nocredit) noCredit.current = true; } }
+    if (!blob) { const r2 = await stockScene(plan, i, text); if (r2) { blob = r2.blob; source = r2.source; } }
     if (!blob) { setS({ status: "failed", note: note || "No picture came back" }); return null; }
     await dbPut(projectId.current + "_scene_" + i, blob, { i, text, source });
     setS({ status: "done", blob, url: URL.createObjectURL(blob), source, note });
