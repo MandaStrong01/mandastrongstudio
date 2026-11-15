@@ -33,7 +33,7 @@ function proVoice(ac, input) {
 const SB = "https://wvkqnrqcnoztajxxzyxc.supabase.co/functions/v1/";
 const SE = SB + "studio-engine";
 const LIPSYNC = SB + "lip-sync";
-const SITE = "mandasfilmmusicstudioshtml.bolt.host";
+const SITE = "mandasfilmmusicstudios.bolt.host";
 const PLANS = [
   { id: "starter", name: "Starter", line: "Short clips · watermark", link: "https://buy.stripe.com/00wcN7fcefjNgbtceuafS03" },
   { id: "creator", name: "Creator", line: "Films up to 1 hour · no watermark", link: "https://buy.stripe.com/cNi8wRe8a3B52kDceuafS04" },
@@ -481,8 +481,10 @@ export default function Studio() {
   }
 
   // Turns a picture (your photo or a stock photo) into a moving shot.
-  async function stockScene(plan, i, text) {
+  async function stockScene(plan, i, text, allowStock) {
     if (plan && plan.photo >= 0 && photos[plan.photo]) { const b = await stillToClip(photos[plan.photo].dataUrl, 7, i); if (b) return { blob: b, source: "your image" }; }
+    // stock only when Free mode is on — never otherwise
+    if (!allowStock) return null;
     // after a reload the scene plan is gone, so the scene's own words are used for the search
     const q = (plan && plan.query) || stockQuery(text) || "cinematic landscape";
     try {
@@ -516,13 +518,13 @@ export default function Studio() {
     if (cl) { blob = cl.blob; source = "your clip"; }
     const free = () => freeMode || noCredit.current;
     // Footage order: your clip first, then the engine makes moving footage (your matched image is its starting picture),
-    // and only if the engine cannot deliver (or Free mode is on) your image as a still, then stock.
+    // and only if the engine cannot deliver (or Free mode is on) your image as a still. Stock only when Free mode is on.
     if (!blob && !free() && i === 0 && lipSync && photo && list.firstVoice) {
       try { const r = await fetch(LIPSYNC, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: photo, audio: list.firstVoice }) }); const d = await r.json(); if (d.video) { blob = await toBlob(d.video); source = "lip sync"; } else note = d.error || ""; } catch (e) { }
     }
-    if (!blob && !free()) { try { blob = await toBlob(await seRun({ kind: "video", prompt: text + "\n" + look, image: photo })); } catch (e) { note = e.message; if (e.nocredit) { noCredit.current = true; setStage("Engine is out of credit — switching to your images and free stock."); } } }
+    if (!blob && !free()) { try { blob = await toBlob(await seRun({ kind: "video", prompt: text + "\n" + look, image: photo })); } catch (e) { note = e.message; if (e.nocredit) { noCredit.current = true; setStage("Engine is out of credit — switching to your own images."); } } }
     if (!blob && !free()) { try { const im = await seRun({ kind: "image", prompt: text + "\n" + look, aspect_ratio: ratio }, 4); blob = await stillToClip(im, 6, i); source = "engine still"; } catch (e) { if (e.nocredit) noCredit.current = true; } }
-    if (!blob) { const r2 = await stockScene(plan, i, text); if (r2) { blob = r2.blob; source = r2.source; } }
+    if (!blob) { const r2 = await stockScene(plan, i, text, freeMode); if (r2) { blob = r2.blob; source = r2.source; } }
     if (!blob) { setS({ status: "failed", note: note || "No picture came back" }); return null; }
     await dbPut(projectId.current + "_scene_" + i, blob, { i, text, source });
     setS({ status: "done", blob, url: URL.createObjectURL(blob), source, note });
