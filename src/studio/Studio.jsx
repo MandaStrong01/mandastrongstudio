@@ -327,12 +327,15 @@ export default function Studio() {
     for (const ln of String((script || "") + "\n" + (narr || "")).split(/\r?\n/)) {
       const t = ln.trim(); if (!t) { continue; }
       const h = t.match(/^([A-Za-z][A-Za-z .'-]{0,30}?)['’]S VOICE\s*:?\s*$/i); if (h) { cur = findRec(h[1]); continue; }
+      // One-line form: "DOXY'S VOICE: Santa, Max, Mr. Thompson and Pepper."
+      const h1 = t.match(/^([A-Za-z][A-Za-z .'-]{0,30}?)['’]S VOICE\s*:\s*(\S.*)$/i);
+      if (h1) { const rec = findRec(h1[1]); cur = null; if (rec) h1[2].replace(/[.;]+\s*$/, "").split(/\s*(?:,|&|\band\b)\s*/i).forEach(nm => { const k = norm(nm); if (k && !out[k]) out[k] = rec; }); continue; }
       const m = t.match(/^([A-Za-z][A-Za-z0-9 .'-]{0,30}?)\s*:\s*(.*)$/); if (!m) continue;
       const u = m[2].match(/use\s+([A-Za-z][A-Za-z .'-]{0,30}?)['’]s\s+(?:saved\s+|uploaded\s+|own\s+)?voice/i);
       const r = u ? findRec(u[1]) : cur;
       if (r && !out[norm(m[1])]) out[norm(m[1])] = r;
     }
-    for (const sp of speakers) { const k = norm(sp.label || sp.key); if (!out[k]) { const r = findRec(sp.label || sp.key); if (r && r.name.toLowerCase() === String(sp.label || sp.key).toLowerCase()) out[k] = r; } }
+    for (const sp of speakers) { const k = norm(sp.label || sp.key); if (!out[k]) { const r = findRec(sp.label || sp.key); const lb = String(sp.label || sp.key).toLowerCase().replace(/[^a-z]/g, ""); if (r && lb && new RegExp("(^|[^a-z])" + lb + "([^a-z]|$)", "i").test(r.name)) out[k] = r; } }
     const res = {}; for (const sp of speakers) { const r = out[norm(sp.label || sp.key)]; if (r) res[sp.key] = r; } return res;
   };
   const cloneOf = async (r) => {
