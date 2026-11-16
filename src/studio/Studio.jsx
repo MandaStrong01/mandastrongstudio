@@ -34,6 +34,7 @@ const SB = "https://wvkqnrqcnoztajxxzyxc.supabase.co/functions/v1/";
 const SE = SB + "studio-engine";
 const LIPSYNC = SB + "lip-sync";
 const SITE = "mandasfilmmusicstudioshtml.bolt.host";
+const SITE2 = "mandasfilmmusicstudios.bolt.host";
 const PLANS = [
   { id: "starter", name: "Starter", line: "Short clips · watermark", link: "https://buy.stripe.com/00wcN7fcefjNgbtceuafS03" },
   { id: "creator", name: "Creator", line: "Films up to 1 hour · no watermark", link: "https://buy.stripe.com/cNi8wRe8a3B52kDceuafS04" },
@@ -1103,7 +1104,7 @@ export default function Studio() {
               <div className="row" style={{ gap: 4, marginTop: 4 }}><button className="c" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => redoScene(i)} disabled={busy}>Redo</button><button className="c" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => removeScene(i)}>Remove</button></div>
             </div>)}</div>}
         </div>
-        <div style={{ textAlign: "center", fontSize: 11, color: "var(--dim)", marginTop: 26 }}>Mandas Film &amp; Music Studio · Powered by the MandaStrong Engine · {SITE}</div>
+        <div style={{ textAlign: "center", fontSize: 11, color: "var(--dim)", marginTop: 26 }}>Mandas Film &amp; Music Studio · Powered by the MandaStrong Engine · {SITE} · {SITE2}</div>
       </div>
     </div>
   );
