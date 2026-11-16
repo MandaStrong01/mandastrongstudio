@@ -927,7 +927,168 @@ export default function Studio() {
         )}
 
         <div className="lab">CHOOSE YOUR PLAN</div>
-        <div className="g3">{PLANS.map(p => <button key={p.id} className={"plan" + (plan === p.id ? " on" : "")} onClick={() => setPlan(p.id)}><h3>{p.name}{plan === p.id && <span className="tick">✓</span>}</h3><span style={{ fontSize: 12, color: "#B9B1A0" }}>{p.line}</span></button>)}</div>}
+        <div className="g3">{PLANS.map(p => p.id !== "studio" ? <div key={p.id} className="plan" style={{ position: "relative", opacity: 0.45, cursor: "not-allowed", overflow: "hidden" }}><h3>{p.name}</h3><span style={{ fontSize: 12, color: "#B9B1A0" }}>{p.line}</span><svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}><line x1="4" y1="4" x2="96" y2="96" stroke="#e5484d" strokeWidth="5" vectorEffect="non-scaling-stroke" /><line x1="96" y1="4" x2="4" y2="96" stroke="#e5484d" strokeWidth="5" vectorEffect="non-scaling-stroke" /></svg></div> : <button key={p.id} className="plan on" onClick={() => setPlan("studio")}><h3>{p.name}<span className="tick">✓</span></h3><span style={{ fontSize: 12, color: "#B9B1A0" }}>{p.line}</span></button>)}</div>
+        <button className="b g" style={{ width: "100%", marginTop: 10 }} onClick={() => { setPlan("studio"); const p = PLANS[2]; const em = (user && user.email) || email; window.open(p.link + (em ? "?prefilled_email=" + encodeURIComponent(em) : ""), "_blank", "noopener"); }}>PAY FOR STUDIO — SECURE CHECKOUT</button>
+
+        <div className="lab">1 · WHAT ARE YOU MAKING?</div>
+        <Chips items={KINDS} value={kind} onPick={setKind} />
+        <input id="mfs-title" className="in" style={{ marginTop: 10 }} placeholder="Title (used for the title card, poster and credits)" value={title} onChange={e => setTitle(e.target.value)} />
+        <div style={{ marginTop: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}><span>FILM LENGTH — up to 3 hours</span><b>{minutes >= 60 ? (Math.floor(minutes / 60) + " hr " + (minutes % 60 ? minutes % 60 + " min" : "")) : minutes + " min"}</b></div>
+          <input type="range" className="rng" min={1} max={180} value={minutes} onChange={e => setMinutes(Number(e.target.value))} />
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--dim)" }}><span>1 min</span><span>1 hr</span><span>2 hr</span><span>3 hr</span></div>
+        </div>
+
+        <div className="lab">2 · NARRATION — EVERYTHING SPOKEN</div>
+        <textarea id="mfs-narr" className="ta" value={narr} onChange={e => setNarr(e.target.value)} placeholder="Paste the narration here. Every word in this box is spoken." />
+        <div className="g3" style={{ marginTop: 8 }}>
+          <button className={"c" + (recording ? " on" : "")} onClick={toggleRecord}>{recording ? "■ STOP RECORDING" : "● RECORD MY VOICE"}</button>
+          {fileBtn("mfs-rec", "audio/*,.mp3,.m4a,.wav", f => { setMyRec({ name: f.name, blob: f, url: URL.createObjectURL(f) }); setVoiceMode("mine"); }, "UPLOAD MY RECORDING")}
+          <button className={"c" + (voiceMode === "engine" ? " on" : "")} onClick={() => setVoiceMode(voiceMode === "engine" && myRec ? "mine" : "engine")}>{voiceMode === "engine" ? "USING ENGINE VOICE" : "USE ENGINE VOICE"}</button>
+        </div>
+        {myRec && <div className="msg">Your recording: {myRec.name} {voiceMode === "mine" ? "· in use" : "· not in use"} <audio src={myRec.url} controls style={{ verticalAlign: "middle", height: 30, maxWidth: "100%" }} /></div>}
+        <div className="row" style={{ marginTop: 8 }}>
+          <button className="b g" style={{ padding: "9px 18px" }} onClick={openComplete} disabled={comp && comp.busy}>ENGINE TO COMPLETE NARRATION</button>
+          <Toggle on={cleanVoice} set={setCleanVoice}>Enhance my recording — professional stereo</Toggle>
+        </div>
+        {comp && <div className="msg">
+          {comp.sents && !comp.busy && !tail && <div>
+            <div>Your recording is {Math.floor(comp.recSecs / 60)} min {Math.round(comp.recSecs % 60)} sec. The engine will start reading at:</div>
+            <div style={{ color: "#E6C98E", margin: "6px 0" }}>"{comp.sents[comp.idx] || "(the end — nothing left to read)"}"</div>
+            <div className="row">
+              <button className="c" onClick={() => setComp({ ...comp, idx: Math.max(0, comp.idx - 1) })}>◀ EARLIER</button>
+              <button className="c" onClick={() => setComp({ ...comp, idx: Math.min(comp.sents.length, comp.idx + 1) })}>LATER ▶</button>
+              <button className="c" onClick={hearEnd}>HEAR MY LAST 20 SECONDS</button>
+              <button className="b g" style={{ padding: "9px 18px" }} onClick={makeRest}>FINISH IT</button>
+            </div>
+          </div>}
+          {comp.msg && <div style={{ marginTop: 6 }}>{comp.msg}</div>}
+        </div>}
+        {tail && <div className="msg">Engine finish ready — starts at "{tail.start}" · {Math.round(tail.secs / 60)} min <audio src={tail.url} controls style={{ verticalAlign: "middle", height: 30, maxWidth: "100%" }} /> <button className="c" onClick={() => { clearTail(); setComp(null); }}>REDO</button></div>}
+
+        <div className="lab">3 · SCRIPT &amp; PRODUCER DIRECTIONS</div>
+        <textarea id="mfs-script" className="ta" value={script} onChange={e => setScript(e.target.value)} placeholder="Paste the script, characters, scenes and directions here. The engine builds the characters, their voices and the scenes from this." />
+
+        <div className="lab">4 · PHOTOS, CLIPS &amp; AUDIO</div>
+        <label htmlFor="mfs-files" className={"drop" + (over ? " over" : "")} onDragOver={e => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)} onDrop={e => { e.preventDefault(); setOver(false); if (e.dataTransfer.files && e.dataTransfer.files.length) addFiles(e.dataTransfer.files); else dropLink(e); }}>
+          DROP, DRAG OR TAP TO ADD PHOTOS, CLIPS AND CHARACTER VOICES (AS MANY AS YOU LIKE) FROM ANYWHERE
+          <input id="mfs-files" type="file" multiple accept="image/*,video/*,audio/*,.heic,.heif,.mp4,.mov,.mp3,.m4a,.wav,.txt" style={{ display: "none" }} onChange={e => { const f = Array.from(e.target.files || []); e.target.value = ""; addFiles(f); }} />
+        </label>
+        {addMsg && <div className="msg">{addMsg}</div>}
+        {(photos.length > 0 || clips.length > 0) && <div className="thumbs">
+          {photos.map((p, i) => <div key={"p" + i} className="th"><img src={p.dataUrl} alt={p.name} /><button aria-label="Remove" onClick={() => setPhotos(x => x.filter((_, k) => k !== i))}>×</button></div>)}
+          {clips.map((c, i) => <div key={"c" + i} className="th"><video src={c.url} muted playsInline /><button aria-label="Remove" onClick={() => { if (c.dbId) dbClear(c.dbId); setClips(x => x.filter((_, k) => k !== i)); }}>×</button></div>)}
+        </div>}
+        {(photos.length > 0 || clips.length > 0) && <div className="msg">Photos keep the same faces in every scene. Clips are used as your first scenes, in order.</div>}
+        {charRecs.length > 0 && <div className="msg">Character voices ({charRecs.length}): {charRecs.map((r, i) => <span key={r.dbId} style={{ marginRight: 10, whiteSpace: "nowrap" }}>{r.name} <button aria-label="Remove" style={{ background: "transparent", border: "none", color: "inherit", cursor: "pointer" }} onClick={() => { dbClear(r.dbId); setCharRecs(x => x.filter((_, k) => k !== i)); }}>×</button></span>)} — each goes to the characters you give it in your directions, spoken in script order.</div>}
+
+        <div className="lab">5 · VOICES</div>
+        <div className="g3">
+          <div><span className="lbl">NARRATOR</span><select id="mfs-narrator" className="in" value={narrator} onChange={e => setNarrator(e.target.value)}>{VOICE_CHARACTERS.filter(v => !v.isOwner).map(v => <option key={v.id} value={v.id}>{v.name} — {v.origin} {String(v.gender).toLowerCase()}</option>)}</select></div>
+          <div><span className="lbl">CHARACTER VOICES</span><button className={"c" + (charVoices ? " on" : "")} style={{ width: "100%" }} onClick={() => setCharVoices(!charVoices)}>{charVoices ? "Auto-cast from script" : "Narrator only"}</button></div>
+          <div><span className="lbl">VOICE SPEED {Number(speed).toFixed(1)}×</span><input type="range" className="rng" min={0.7} max={1.3} step={0.05} value={speed} onChange={e => setSpeed(Number(e.target.value))} /></div>
+        </div>
+        <div className="row" style={{ marginTop: 8 }}><Toggle on={lipSync} set={setLipSync}>Lip sync {lipSync ? "ON" : "OFF"}</Toggle>{lipSync && !photos.length && <span className="msg">Add a face photo for lip sync.</span>}</div>
+
+        <div className="lab">6 · LANGUAGE</div>
+        <div className="g3">
+          <div><span className="lbl">SPOKEN LANGUAGE</span><select id="mfs-lang" className="in" value={spoken} onChange={e => setSpoken(e.target.value)}>{LANGS.map(l => <option key={l}>{l}</option>)}</select></div>
+          <div><span className="lbl">SUBTITLES</span><button className={"c" + (subs ? " on" : "")} style={{ width: "100%" }} onClick={() => setSubs(!subs)}>{subs ? "Subtitles ON" : "Subtitles OFF"}</button></div>
+          <div><span className="lbl">ALSO DUB INTO</span><select id="mfs-dub" className="in" value="" onChange={e => { const l = e.target.value; if (l && !dubs.includes(l)) setDubs([...dubs, l]); }}><option value="">Add a language…</option>{LANGS.filter(l => l !== spoken && !dubs.includes(l)).map(l => <option key={l}>{l}</option>)}</select></div>
+        </div>
+        {dubs.length > 0 && <div className="row" style={{ marginTop: 8 }}>{dubs.map(l => <button key={l} className="c on" onClick={() => setDubs(dubs.filter(x => x !== l))}>{l} ×</button>)}</div>}
+
+        <div className="lab">7 · MUSIC</div>
+        <Chips items={[{ id: "library", label: "Music library" }, { id: "make", label: "Make my music" }, { id: "mine", label: "My own song" }, { id: "off", label: "No music" }]} value={musicMode} onPick={setMusicMode} />
+        <div className="g3" style={{ marginTop: 8 }}>
+          <div><span className="lbl">MOOD</span><select id="mfs-mood" className="in" value={mood} onChange={e => setMood(e.target.value)}>{MOODS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}</select></div>
+          <div><span className="lbl">DESCRIBE THE MUSIC (FOR MAKE MY MUSIC)</span><input id="mfs-mp" className="in" value={musicPrompt} onChange={e => setMusicPrompt(e.target.value)} placeholder="e.g. soft piano and strings, hopeful" /></div>
+          <div><span className="lbl">MY OWN SONG</span><div className="row">{fileBtn("mfs-song", "audio/*,.mp3,.m4a,.wav", f => { setMySong({ name: f.name, blob: f, url: URL.createObjectURL(f) }); setMusicMode("mine"); }, mySong ? "Song ✓" : "My song")}</div></div>
+        </div>
+
+        <div className="lab">8 · LOOK</div>
+        <Chips items={STYLES} value={style} onPick={setStyle} />
+        <div className="row" style={{ marginTop: 6 }}>{GRADES.map(g => <button key={g.id} className={"c" + (grade === g.id ? " on" : "")} onClick={() => setGrade(g.id)}>{g.label}</button>)}<Toggle on={enhance} set={setEnhance}>Enhance {enhance ? "ON" : "OFF"}</Toggle></div>
+
+        <div className="lab">9 · SOUND</div>
+        <div className="row"><button className="c on">Stereo</button><Toggle on={duck} set={setDuck}>Music dips when someone speaks</Toggle><Toggle on={cleanVoice} set={setCleanVoice}>Clean up my voice</Toggle></div>
+
+        <div className="lab">10 · FORMAT</div>
+        <div className="row" style={{ marginTop: 10, justifyContent: "space-between" }}>
+          <Chips items={Object.keys(RATIOS)} value={ratio} onPick={setRatio} />
+          <Chips items={["720p", "1080p"]} value={quality} onPick={setQuality} />
+        </div>
+        <div className="g3" style={{ marginTop: 10, fontSize: 12 }}>
+          <div>Voice {Math.round(vVol * 100)}%<input type="range" className="rng" min={0} max={1} step={0.05} value={vVol} onChange={e => { setVVol(Number(e.target.value)); if (nRef.current) nRef.current.volume = Number(e.target.value); }} /></div>
+          <div>Music {Math.round(mVol * 100)}%<input type="range" className="rng" min={0} max={1} step={0.05} value={mVol} onChange={e => setMVol(Number(e.target.value))} /></div>
+          <div>Clip sound {Math.round(cVol * 100)}%<input type="range" className="rng" min={0} max={1} step={0.05} value={cVol} onChange={e => setCVol(Number(e.target.value))} /></div>
+        </div>
+
+        <div className="lab">11 · EXTRAS</div>
+        <div className="row">
+          <button className="c on">Same faces every scene</button>
+          <Toggle on={allRatios} set={setAllRatios}>Export 16:9 + 9:16 + square</Toggle>
+          <Toggle on={credits} set={setCredits}>Credits at the end</Toggle>
+          {fileBtn("mfs-logo", "image/*", async f => setLogo(await shrinkPhoto(await readAsDataURL(f), 512)), logo ? "My logo ✓" : "Add my logo")}
+          <Toggle on={watermark} set={setWatermark}>Watermark on Starter</Toggle>
+          <button className="c on">Never lose a render</button>
+          <Toggle on={freeMode} set={setFreeMode}>Free mode: my images + stock</Toggle>
+        </div>
+        {credits && <textarea id="mfs-credits" className="ta" style={{ minHeight: 70, marginTop: 8 }} value={creditNames} onChange={e => setCreditNames(e.target.value)} placeholder={"Credits, one per line\nDirected by …\nNarrated by …"} />}
+
+        <div style={{ marginTop: 18, border: "1px solid var(--line)", borderRadius: 3, padding: 12, display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", fontSize: 13 }}>
+          <span>Before you start: {minutes} min · {Math.max(sceneCount, clips.length)} scenes · {Math.max(1, castNames)} voice{castNames > 1 ? "s" : ""} · {langCount} language{langCount > 1 ? "s" : ""}</span>
+          <span style={{ color: "var(--gold)", fontWeight: 700 }}>About {est} min to make</span>
+        </div>
+        <button className="go" onClick={makeMovie} disabled={busy}>{busy ? "MAKING YOUR MOVIE…" : "MAKE MY MOVIE"}</button>
+        {(busy || stage) && <div className="msg">{stage}<div className="pb"><i style={{ width: pct + "%" }} /></div></div>}
+        {err && <div className="msg err">{err}</div>}
+
+        <div className="lab">12 · PREVIEW</div>
+        <div className="out">
+          <div>
+            <div ref={wrapRef} className="pv" style={{ aspectRatio: (RATIOS[ratio] || [16, 9]).join("/"), maxHeight: ratio === "9:16" ? 620 : undefined, margin: ratio === "9:16" ? "0 auto" : undefined }}>
+              <video ref={vRef} playsInline loop={!isStill(ready[cur])} style={{ transition: "opacity .45s ease, transform .3s linear", transform: "scale(" + (1 + 0.06 * Math.min(1, (clock % sceneLen) / sceneLen)) + ")" }} muted={!ready[cur] || ready[cur].source !== "your clip"} src={ready[cur] ? ready[cur].url : undefined} />
+              {!ready.length && <div style={{ position: "absolute", color: "var(--dim)", fontSize: 13 }}>Your movie plays here</div>}
+              {caption && <div className="cap">{caption}</div>}
+            </div>
+            {activeNarr && <audio ref={nRef} src={activeNarr} preload="auto" onEnded={() => { if (useTail && tRef.current) { tRef.current.volume = vVol; tRef.current.currentTime = 0; tRef.current.play().catch(() => { }); } }} />}
+            {useTail && <audio ref={tRef} src={tail.url} preload="auto" />}
+            {musicUrl && <audio ref={mRef} src={musicUrl} preload="auto" loop />}
+            <div className="row" style={{ marginTop: 8, alignItems: "center" }}>
+              <button className="b g" style={{ padding: "9px 22px" }} onClick={play} disabled={!ready.length}>{playing ? "PAUSE" : "PLAY"}</button>
+              <button className="b s" style={{ padding: "9px 16px" }} onClick={restart} disabled={!ready.length}>RESTART</button>
+              {Object.keys(dubTracks).length > 0 && <select id="mfs-track" className="in" style={{ width: "auto" }} value={track} onChange={e => setTrack(e.target.value)}><option value="main">{spoken}</option>{Object.keys(dubTracks).map(l => <option key={l} value={l}>{l}</option>)}</select>}
+              <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--dim)" }}>Scene {ready.length ? cur + 1 : 0} of {ready.length} · {fmt(clock)} / {fmt(total)}</span>
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <button className="b g" onClick={() => SERVER_JOIN ? serverJoin() : runExport("one")} disabled={!ready.length || join.busy || exp.busy}>{join.busy ? "JOINING…" : "DOWNLOAD"}</button>
+            <button className="b" onClick={() => runExport("all")} disabled={!ready.length || exp.busy}>EXPORT</button>
+            <button className="b s" onClick={() => exp.files[0] ? saveFile(exp.files[0], true) : (SERVER_JOIN ? serverJoin() : runExport("one"))} disabled={!ready.length || exp.busy || join.busy}>SAVE TO PHOTOS</button>
+            <button className="b s" onClick={shareFilm} disabled={!ready.length}>SHARE</button>
+            <button className="b s" onClick={fullScreen} disabled={!ready.length}>FULL SCREEN</button>
+            <button className="b s" onClick={saveProject}>SAVE PROJECT</button>
+            <button className="b s" onClick={() => runExport("trailer")} disabled={!ready.length || exp.busy}>TRAILER 30s + 60s</button>
+            <button className="b s" onClick={poster} disabled={!ready.length}>POSTER</button>
+            <button className="b s" onClick={packFiles} disabled={!ready.length}>PACK FILM FILES (.zip)</button>
+            {exp.busy && <button className="b s" onClick={() => { stopExp.current = true; }}>STOP</button>}
+          </div>
+        </div>
+        {(exp.busy || exp.msg) && <div className="msg">{exp.busy && <div className="livebox"><canvas ref={pvRef} /><span className="livetag">● LIVE</span></div>}<div className="prow">{exp.busy && <span className="spin" aria-hidden="true" />}<span>{exp.msg}</span></div><div className="pb"><i style={{ width: exp.pct + "%" }} /></div></div>}
+        {packMsg && <div className="msg">{packMsg}</div>}
+        {(join.busy || join.msg) && <div className="msg">{join.msg}<div className="pb"><i style={{ width: join.pct + "%" }} /></div></div>}
+        {join.urls.length > 0 && <div className="row" style={{ marginTop: 8 }}>{join.urls.length === 1 ? <a className="b g" style={{ textDecoration: "none", padding: "13px 22px" }} href={join.urls[0]} download={join.fileName}>⬇ DOWNLOAD MY FILM · {join.fileName}</a> : <button className="b g" onClick={getJoined}>⬇ DOWNLOAD MY FILM · {join.fileName}</button>}</div>}
+        {(exp.files.length > 0 || join.urls.length > 0 || (done && !busy && savedFilms.length > 0 && !exp.busy && !join.busy)) && (() => { const f = exp.files[0] || (savedFilms[0] && { blob: savedFilms[0].blob, name: savedFilms[0].name, url: URL.createObjectURL(savedFilms[0].blob) }); const nm = (title && title.trim()) || (f && f.name) || (join.fileName || "My film"); const go = () => { if (exp.files[0]) saveFile(exp.files[0]); else if (join.urls.length > 1) getJoined(); else if (join.urls.length === 1) { const a = document.createElement("a"); a.href = join.urls[0]; a.download = join.fileName; document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 1500); } else if (f) saveFile(f); }; return <div style={{ marginTop: 14, padding: 16, borderRadius: 6, background: "linear-gradient(135deg,#ffe08a,#ffb938)", color: "#000", textAlign: "center", boxShadow: "0 0 24px rgba(255,200,80,.55)" }}><div style={{ fontSize: 13, fontWeight: 800, letterSpacing: ".1em" }}>YOUR FILM IS READY</div><div style={{ fontSize: 22, fontWeight: 800, margin: "6px 0 12px", wordBreak: "break-word" }}>{nm}</div><button onClick={go} style={{ width: "100%", padding: "16px 10px", fontSize: 18, fontWeight: 800, border: "3px solid #000", borderRadius: 6, background: "#000", color: "#ffd45e", cursor: "pointer" }}>⬇ PRESS HERE TO SAVE YOUR FILM</button></div>; })()}
+        {exp.files.length > 0 && <div className="row" style={{ marginTop: 8 }}>{exp.files.map(f => <button key={f.name} className="b s" onClick={() => saveFile(f)}>⬇ {f.name}</button>)}</div>}
+
+        <div className="tl">
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", color: "var(--gold)", marginBottom: 6 }}>MY SAVED FILMS · TAP TO SAVE TO PHOTOS OR FILES</div>
+          {savedFilms.length === 0 ? <div className="msg">No film saved yet. When your film is ready, a bright gold box appears above with its name and a button to press.</div> :
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{savedFilms.map(f => <div key={f.id} className="row" style={{ alignItems: "center" }}>
+              <button className="b g" style={{ padding: "9px 14px", textAlign: "left", flex: 1 }} onClick={() => saveFile({ blob: f.blob, name: f.name, url: URL.createObjectURL(f.blob) })}>⬇ {f.name} · {Math.round(f.blob.size / 1048576)} MB</button>
+              <button className="c" onClick={() => deleteSaved(f.id)}>Delete</button>
+            </div>)}</div>}
         </div>
 
         <div className="tl">
