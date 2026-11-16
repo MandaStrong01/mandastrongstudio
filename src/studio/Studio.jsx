@@ -971,7 +971,7 @@ export default function Studio() {
 
         <div className="lab">4 · PHOTOS, CLIPS &amp; AUDIO</div>
         <label htmlFor="mfs-files" className={"drop" + (over ? " over" : "")} onDragOver={e => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)} onDrop={e => { e.preventDefault(); setOver(false); if (e.dataTransfer.files && e.dataTransfer.files.length) addFiles(e.dataTransfer.files); else dropLink(e); }}>
-          DROP, DRAG OR TAP TO ADD PHOTOS, CLIPS AND AUDIO FROM ANYWHERE
+          DROP, DRAG OR TAP TO ADD PHOTOS, CLIPS AND CHARACTER VOICES (AS MANY AS YOU LIKE) FROM ANYWHERE
           <input id="mfs-files" type="file" multiple accept="image/*,video/*,audio/*,.heic,.heif,.mp4,.mov,.mp3,.m4a,.wav,.txt" style={{ display: "none" }} onChange={e => { const f = Array.from(e.target.files || []); e.target.value = ""; addFiles(f); }} />
         </label>
         {addMsg && <div className="msg">{addMsg}</div>}
