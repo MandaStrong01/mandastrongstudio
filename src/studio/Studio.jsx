@@ -271,6 +271,10 @@ export default function Studio() {
   const [title, setTitle] = useState(() => load("title", ""));
   const [narr, setNarr] = useState(() => load("narr", ""));
   const [script, setScript] = useState(() => load("script", ""));
+  // Pasted text is also kept in the device database (no size limit), so big pastes stay exactly as pasted.
+  const textLoaded = useRef(false);
+  useEffect(() => { (async () => { try { const all = await dbAll(); const x = all.find(y => y.id === "mfs_text" && y.blob); if (x) { const o = JSON.parse(await x.blob.text()); if (o.narr && o.narr.length > narr.length) setNarr(o.narr); if (o.script && o.script.length > script.length) setScript(o.script); if (o.title && !title) setTitle(o.title); } } catch (e) { } textLoaded.current = true; })(); }, []);
+  useEffect(() => { if (!textLoaded.current) return; const t = setTimeout(() => dbPut("mfs_text", new Blob([JSON.stringify({ narr, script, title })], { type: "application/json" }), {}), 400); return () => clearTimeout(t); }, [narr, script, title]);
   const [voiceMode, setVoiceMode] = useState(() => load("voiceMode", "engine")); // engine | mine
   const [narrator, setNarrator] = useState(() => load("narrator", "james"));
   const [charVoices, setCharVoices] = useState(() => load("charVoices", true));
