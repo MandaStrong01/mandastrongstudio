@@ -310,11 +310,9 @@ export default function Studio() {
   useEffect(() => { (async () => { try { const all = await dbAll(); const x = all.find(y => y.id === "mfs_photos"); if (x && x.blob) setPhotos(JSON.parse(await x.blob.text())); } catch (e) { } photosLoaded.current = true; })(); }, []);
   useEffect(() => { if (photosLoaded.current) dbPut("mfs_photos", new Blob([JSON.stringify(photos)], { type: "application/json" }), {}); }, [photos]);
   const [clips, setClips] = useState([]);   // {name,url,blob}
-  useEffect(() => { try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { } }, []);
   // Your uploaded clips are kept on this device, so they are still here when you come back.
   useEffect(() => { (async () => { try { const all = await dbAll(); const mine = all.filter(x => String(x.id).startsWith("mfs_clip_") && x.blob).sort((x, y) => String(x.id).localeCompare(String(y.id))); if (mine.length) setClips(p => p.length ? p : mine.map(x => ({ name: (x.meta && x.meta.name) || "clip", url: URL.createObjectURL(x.blob), blob: x.blob, dbId: x.id }))); } catch (e) { } })(); }, []);
   const [myRec, setMyRec] = useState(null); // {name,blob,url}
-  useEffect(() => { (async () => { try { const all = await dbAll(); const x = all.find(y => y.id === "mfs_myrec" && y.blob); if (x) setMyRec(p => p || { name: (x.meta && x.meta.name) || "audio", blob: x.blob, url: URL.createObjectURL(x.blob) }); } catch (e) { } })(); }, []);
   // ── CHARACTER VOICES YOU UPLOAD (e.g. Doxy, Lily, Ethan): kept on this device, one per file ──
   const [charRecs, setCharRecs] = useState([]); // {name,blob,url,dbId,cloneId}
   useEffect(() => { (async () => { try { const all = await dbAll(); const mine = all.filter(x => String(x.id).startsWith("mfs_cvoice_") && x.blob).sort((x, y) => String(x.id).localeCompare(String(y.id))); if (mine.length) setCharRecs(p => p.length ? p : mine.map(x => ({ name: (x.meta && x.meta.name) || "voice", blob: x.blob, url: URL.createObjectURL(x.blob), dbId: x.id, cloneId: (x.meta && x.meta.cloneId) || "" }))); } catch (e) { } })(); }, []);
@@ -409,7 +407,7 @@ export default function Studio() {
       const t = f.type || ""; const nm = f.name || "file";
       if (t.startsWith("image") || /\.(jpe?g|png|webp|heic|heif|gif)$/i.test(nm)) { const d = await readAsDataURL(f); if (d) { const s = await shrinkPhoto(d, 1280); setPhotos(p => [...p, { name: nm, dataUrl: s }]); n++; } }
       else if (t.startsWith("video") || /\.(mp4|mov|m4v|webm)$/i.test(nm)) { { const did = "mfs_clip_" + Date.now() + "_" + String(n).padStart(3, "0"); setClips(p => [...p, { name: nm, url: URL.createObjectURL(f), blob: f, dbId: did }]); dbPut(did, f, { name: nm }); } n++; }
-      else if (t.startsWith("audio") || /\.(mp3|wav|m4a|aac|ogg)$/i.test(nm)) { setMyRec({ name: nm, blob: f, url: URL.createObjectURL(f) }); dbPut("mfs_myrec", f, { name: nm }); setVoiceMode("mine"); n++; }
+      else if (t.startsWith("audio") || /\.(mp3|wav|m4a|aac|ogg)$/i.test(nm)) { setMyRec({ name: nm, blob: f, url: URL.createObjectURL(f) }); setVoiceMode("mine"); n++; }
       else if (t.startsWith("text") || /\.(txt|md|fountain|fdx)$/i.test(nm)) { const tx = await f.text(); setScript(p => (p ? p + "\n\n" : "") + tx); n++; }
     }
     setAddMsg(n + " added");
