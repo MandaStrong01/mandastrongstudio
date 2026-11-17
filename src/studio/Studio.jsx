@@ -400,7 +400,8 @@ export default function Studio() {
     // or any file whose name is a voice named in your directions (e.g. "DOXY'S VOICE:") or contains "voice".
     const vNames = (() => { const out = new Set(); for (const ln of String((script || "") + "\n" + (narr || "")).split(/\r?\n/)) { const h = ln.trim().match(/^([A-Za-z][A-Za-z .'-]{0,30}?)['’]S\s+VOICE\b/i) || ln.match(/use\s+(?:my\s+)?(?:uploaded\s+)?([A-Za-z][A-Za-z .'-]{0,30}?)['’]?s?\s+(?:saved\s+|uploaded\s+|own\s+)?voice/i); if (h) out.add(h[1].trim().toLowerCase()); } return out; })();
     const base = f => String(f.name || "").replace(/\.[a-z0-9]+$/i, "").trim().toLowerCase();
-    const isVoice = f => (f.type || "").startsWith("audio") || /\.(mp3|wav|m4a|aac|ogg|opus|flac|weba|caf|aif|aiff|amr)$/i.test(f.name || "") || /voice/i.test(f.name || "") || vNames.has(base(f).replace(/[\s_-]*(\d+|copy|final|new)$/i, ""));
+    const isVisual = f => (f.type || "").startsWith("image") || (f.type || "").startsWith("video") || /\.(jpe?g|png|webp|heic|heif|gif|mp4|mov|m4v|webm)$/i.test(f.name || "");
+    const isVoice = f => !isVisual(f) && ((f.type || "").startsWith("audio") || /\.(mp3|wav|m4a|aac|ogg|opus|flac|weba|caf|aif|aiff|amr)$/i.test(f.name || "") || /voice/i.test(f.name || "") || vNames.has(base(f).replace(/[\s_-]*(\d+|copy|final|new)$/i, "")));
     const auds = arr.filter(isVoice);
     if (auds.length) { addCharRecs(auds); n += auds.length; }
     for (const f of arr) {
