@@ -930,8 +930,8 @@ export default function Studio() {
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--dim)" }}><span>1 min</span><span>1 hr</span><span>2 hr</span><span>3 hr</span></div>
         </div>
 
-        <div className="lab">2 · NARRATION — EVERYTHING SPOKEN</div>
-        <textarea id="mfs-narr" className="ta" value={narr} onChange={e => setNarr(e.target.value)} placeholder="Paste the narration here. Every word in this box is spoken." />
+        <div className="lab">2 · SPOKEN LINES — NARRATION AND EVERY CHARACTER</div>
+        <textarea id="mfs-narr" className="ta" value={narr} onChange={e => setNarr(e.target.value)} placeholder={"Paste every spoken line here, in script order.\nPut the speaker's name in square brackets:\n[LILY] Come on! We have to go look!\n[SANTA] Merry Christmas!\nLines with no name are read by the narrator.\nEvery word in this box is spoken."} />
         <div className="g3" style={{ marginTop: 8 }}>
           <button className={"c" + (recording ? " on" : "")} onClick={toggleRecord}>{recording ? "■ STOP RECORDING" : "● RECORD MY VOICE"}</button>
           {fileBtn("mfs-rec", "audio/*,.mp3,.m4a,.wav", f => { setMyRec({ name: f.name, blob: f, url: URL.createObjectURL(f) }); setVoiceMode("mine"); }, "UPLOAD MY RECORDING")}
@@ -957,12 +957,12 @@ export default function Studio() {
         </div>}
         {tail && <div className="msg">Engine finish ready — starts at "{tail.start}" · {Math.round(tail.secs / 60)} min <audio src={tail.url} controls style={{ verticalAlign: "middle", height: 30, maxWidth: "100%" }} /> <button className="c" onClick={() => { clearTail(); setComp(null); }}>REDO</button></div>}
 
-        <div className="lab">3 · SCRIPT &amp; PRODUCER DIRECTIONS</div>
-        <textarea id="mfs-script" className="ta" value={script} onChange={e => setScript(e.target.value)} placeholder="Paste the script, characters, scenes and directions here. The engine builds the characters, their voices and the scenes from this." />
+        <div className="lab">3 · DIRECTIONS, DESCRIPTION &amp; VOICES</div>
+        <textarea id="mfs-script" className="ta" value={script} onChange={e => setScript(e.target.value)} placeholder={"Paste your directions here: length, footage order, weather, sound, description, and who uses which voice.\nExample:\nDOXY'S VOICE:\nSanta: older man. Deeper, warm.\nLILY'S VOICE:\nLily: girl, age 10.\nThe engine builds the scenes and gives each character their voice from this."} />
 
-        <div className="lab">4 · PHOTOS, CLIPS &amp; AUDIO</div>
+        <div className="lab">4 · PHOTOS, CLIPS &amp; CHARACTER VOICES</div>
         <label htmlFor="mfs-files" className={"drop" + (over ? " over" : "")} onDragOver={e => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)} onDrop={e => { e.preventDefault(); setOver(false); if (e.dataTransfer.files && e.dataTransfer.files.length) addFiles(e.dataTransfer.files); else dropLink(e); }}>
-          DROP, DRAG OR TAP TO ADD PHOTOS, CLIPS AND CHARACTER VOICES (AS MANY AS YOU LIKE) FROM ANYWHERE
+          DROP, DRAG OR TAP TO ADD PHOTOS, CLIPS AND CHARACTER VOICES (AS MANY AS YOU LIKE). NAME EACH VOICE FILE, LIKE LILY, DOXY OR ETHAN.
           <input id="mfs-files" type="file" multiple accept="image/*,video/*,audio/*,.heic,.heif,.mp4,.mov,.mp3,.m4a,.wav,.txt" style={{ display: "none" }} onChange={e => { const f = Array.from(e.target.files || []); e.target.value = ""; addFiles(f); }} />
         </label>
         {addMsg && <div className="msg">{addMsg}</div>}
