@@ -242,9 +242,6 @@ async function makeZip(entries, onStep) {
 
 export default function Studio() {
   // ── entry overlay ──
-  const [entered, setEntered] = useState(() => { try { return sessionStorage.getItem("mfs_in") === "1"; } catch (e) { return false; } });
-  const [fade, setFade] = useState(false);
-  const enter = () => { setFade(true); setTimeout(() => { setEntered(true); try { sessionStorage.setItem("mfs_in", "1"); } catch (e) { } }, 550); };
 
   // ── account + plan ──
   const [user, setUser] = useState(null);
@@ -901,16 +898,6 @@ export default function Studio() {
   return (
     <div>
       <style>{CSS}</style>
-      {!entered && (
-        <div className="ovl" style={{ opacity: fade ? 0 : 1 }} onClick={enter} role="button" tabIndex={0} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") enter(); }}>
-          <div className="eng" style={{ position: "absolute", top: 32 }}>POWERED BY THE MANDASTRONG ENGINE</div>
-          <div className="brand">Mandas Film<br />&amp; Music Studio</div>
-          <div style={{ width: 200, height: 1, background: "rgba(230,201,142,.4)", margin: "26px 0 16px" }} />
-          <div style={{ fontSize: 16, letterSpacing: ".06em", color: "#B9B1A0", lineHeight: 1.5 }}>Welcome To The One Stop Shop All In One Movie And Music App</div>
-          <button className="b" style={{ marginTop: 46, padding: "15px 44px" }}>TAP TO ENTER</button>
-          <div style={{ position: "absolute", bottom: 30, fontSize: 13, color: "#9A927F" }}>{SITE}</div>
-        </div>
-      )}
       <div className="mfs">
         <div className="top">
           <div><div className="eng">POWERED BY THE MANDASTRONG ENGINE</div><h1 className="brand" style={{ fontSize: "clamp(38px,6vw,56px)", margin: "6px 0 0" }}>Mandas Film &amp; Music Studio</h1></div>
