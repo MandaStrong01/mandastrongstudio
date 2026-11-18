@@ -34,16 +34,9 @@ const SB = "https://wvkqnrqcnoztajxxzyxc.supabase.co/functions/v1/";
 const SE = SB + "studio-engine";
 const LIPSYNC = SB + "lip-sync";
 const SITE = "mandasfilmandmusicstudio.bolt.host";
-// One plan: $50 a month. Extra usage is bought as top-ups (paste the top-up payment link below when it exists).
+// One plan: $50 a month. Extra usage uses the same Stripe link as the main app.
 const SUB_LINK = "https://buy.stripe.com/cNi8wRe8a9ZtcZh7YeafS05";
-const TOPUP_LINK = "";
-const SUGGEST = [
-  { l: "Animated Christmas adventure", t: "A two hour animated Christmas adventure about a brave girl who saves Santa's Book of Names." },
-  { l: "Anti-bullying film for schools", t: "A 20 minute anti-bullying film for schools, told through the eyes of a new kid." },
-  { l: "Music video", t: "A 3 minute music video for an original uplifting song, shot in a neon city at night." },
-  { l: "Family comedy", t: "A one hour family comedy about a dog who runs for mayor." },
-  { l: "Veterans' documentary", t: "A 10 minute documentary on veterans' mental health, told in their own words." },
-];
+const TOPUP_LINK = SUB_LINK; // same $50 link the main app uses for "Purchase usage credits"
 const PLANS = [
   { id: "starter", name: "Starter", line: "Short clips · watermark", link: "https://buy.stripe.com/00wcN7fcefjNgbtceuafS03" },
   { id: "creator", name: "Creator", line: "Films up to 1 hour · no watermark", link: "https://buy.stripe.com/cNi8wRe8a3B52kDceuafS04" },
@@ -206,7 +199,7 @@ const CSS = `
 .brand{font-family:'Great Vibes',cursive;color:var(--gold);font-weight:400;line-height:1.05}
 .top{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:12px}
 .eng{font-size:11px;letter-spacing:.14em;color:var(--gold)}
-.sug{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px}.sug span{font-size:11px;letter-spacing:.1em;color:var(--dim)}.sug .c{font-size:12px;padding:6px 10px}.hero{text-align:center;margin:26px 0 6px}.hero h2{font-family:'Great Vibes',cursive;font-weight:400;color:var(--gold);font-size:clamp(34px,6vw,52px);margin:0;line-height:1.1}.hero p{color:var(--dim);margin:8px auto 0;max-width:620px;font-size:15px}.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0 6px}.stp{position:relative;background:linear-gradient(160deg,#17140d,#0f1014);border:1px solid var(--gold);border-radius:6px;padding:18px 14px 14px;box-shadow:0 0 22px rgba(230,201,142,.08)}.stp b.n{position:absolute;top:-14px;left:14px;width:28px;height:28px;border-radius:50%;background:var(--gold);color:#000;display:flex;align-items:center;justify-content:center;font-size:15px}.stp h3{margin:2px 0 6px;font-size:15px;letter-spacing:.06em;color:var(--gold)}.stp span{font-size:13px;color:var(--text);line-height:1.5}.gets{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:14px 0 4px}.gets i{font-style:normal;font-size:12px;letter-spacing:.06em;border:1px solid var(--line);border-radius:20px;padding:5px 12px;color:var(--gold);background:#12141a}.op{border:2px solid var(--gold)!important;min-height:200px!important;box-shadow:0 0 0 3px rgba(230,201,142,.12)}.guide{border:1px solid var(--line);border-radius:3px;padding:12px;margin-top:8px;background:var(--panel);font-family:Georgia,serif;font-size:14px;line-height:1.55;white-space:pre-wrap}.lab{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--gold);margin:22px 0 8px}
+.mfs{background:radial-gradient(ellipse at 50% -8%,rgba(230,201,142,.16),transparent 58%),radial-gradient(ellipse at 90% 40%,rgba(120,80,200,.08),transparent 50%)}.hero h2{font-size:clamp(48px,9vw,86px)!important;background:linear-gradient(90deg,#fff3c9,#E6C98E,#b98a3e,#E6C98E,#fff3c9);background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent!important;animation:sheen 7s linear infinite;filter:drop-shadow(0 0 22px rgba(230,201,142,.28))}@keyframes sheen{to{background-position:220% 0}}.hero p{font-size:16px!important;max-width:560px!important}.len{margin-top:16px;border:1px solid var(--line);border-radius:6px;padding:14px 16px;background:linear-gradient(160deg,#15130d,#0e0f13)}.lenTop{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;letter-spacing:.1em;color:var(--gold)}.lenTop b{font-size:24px;letter-spacing:.02em;color:#fff3c9}.ticks{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);margin-top:2px}.go{background:linear-gradient(180deg,#f3dba3,#E6C98E 55%,#c9a45c)!important;box-shadow:0 0 30px rgba(230,201,142,.28);transition:transform .15s,box-shadow .15s}.go:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 0 44px rgba(230,201,142,.42)}.op{box-shadow:0 0 0 3px rgba(230,201,142,.12),0 0 34px rgba(230,201,142,.14)!important}.sug{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px}.sug span{font-size:11px;letter-spacing:.1em;color:var(--dim)}.sug .c{font-size:12px;padding:6px 10px}.hero{text-align:center;margin:26px 0 6px}.hero h2{font-family:'Great Vibes',cursive;font-weight:400;color:var(--gold);font-size:clamp(34px,6vw,52px);margin:0;line-height:1.1}.hero p{color:var(--dim);margin:8px auto 0;max-width:620px;font-size:15px}.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0 6px}.stp{position:relative;background:linear-gradient(160deg,#17140d,#0f1014);border:1px solid var(--gold);border-radius:6px;padding:18px 14px 14px;box-shadow:0 0 22px rgba(230,201,142,.08)}.stp b.n{position:absolute;top:-14px;left:14px;width:28px;height:28px;border-radius:50%;background:var(--gold);color:#000;display:flex;align-items:center;justify-content:center;font-size:15px}.stp h3{margin:2px 0 6px;font-size:15px;letter-spacing:.06em;color:var(--gold)}.stp span{font-size:13px;color:var(--text);line-height:1.5}.gets{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:14px 0 4px}.gets i{font-style:normal;font-size:12px;letter-spacing:.06em;border:1px solid var(--line);border-radius:20px;padding:5px 12px;color:var(--gold);background:#12141a}.op{border:2px solid var(--gold)!important;min-height:200px!important;box-shadow:0 0 0 3px rgba(230,201,142,.12)}.guide{border:1px solid var(--line);border-radius:3px;padding:12px;margin-top:8px;background:var(--panel);font-family:Georgia,serif;font-size:14px;line-height:1.55;white-space:pre-wrap}.lab{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--gold);margin:22px 0 8px}
 .ta{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:3px;color:var(--text);padding:12px;font-family:Georgia,'Times New Roman',serif;font-size:15px;line-height:1.55;resize:vertical;min-height:110px}
 .in{background:var(--panel);border:1px solid var(--line);border-radius:3px;color:var(--text);padding:11px 12px;font:inherit;font-size:14px;width:100%}
 select.in{appearance:auto}
@@ -278,6 +271,7 @@ export default function Studio() {
       const { data: sub } = await supabase.from("subscriptions").select("plan_tier,status").eq("user_id", user.id).maybeSingle();
       const tier = sub && sub.status === "active" ? sub.plan_tier : "";
       if ((role && role.role === "admin") || tier === "owner" || tier === "studio") setPlan("studio");
+      if ((role && role.role === "admin") || (sub && sub.status === "active")) setSubActive(true);
     } catch (e) { }
   })(); }, [user]);
   const logIn = async () => { setAuthMsg("Logging in…"); const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: pw }); setAuthMsg(error ? error.message : ""); };
@@ -321,8 +315,9 @@ export default function Studio() {
   const [watermark, setWatermark] = useState(() => load("watermark", true));
   const [creditNames, setCreditNames] = useState(() => load("creditNames", ""));
   // Free mode: build every scene from YOUR images first, then free stock pictures. Uses no engine credit.
-  const [freeMode, setFreeMode] = useState(() => load("freeMode", false));
-  useEffect(() => { save("freeMode", freeMode); }, [freeMode]);
+  const freeMode = false, setFreeMode = () => { }; // free mode is gone: films are made by the engine
+  const [subActive, setSubActive] = useState(false);
+  const trialKey = u => "mfs_trial_" + (u && u.id ? u.id : "x");
   const noCredit = useRef(false);
   const planRef = useRef([]);
   const engineFails = useRef(0), engineOff = useRef(false); // after 2 failed engine shots in a row the engine stops for this film, so no more credit is spent
@@ -646,9 +641,9 @@ export default function Studio() {
     };
     try {
       const words = { one: 1, two: 2, three: 3 };
-      let mins = 120; const mh = idea.match(/(\d+|one|two|three)\s*[- ]?\s*(?:hours?|hrs?|h)\b/i), mm = idea.match(/(\d+)\s*[- ]?\s*min/i);
+      let mins = minutes; const mh = idea.match(/(\d+|one|two|three)\s*[- ]?\s*(?:hours?|hrs?|h)\b/i), mm = idea.match(/(\d+)\s*[- ]?\s*min/i);
       if (mh) mins = (words[mh[1].toLowerCase()] || Number(mh[1])) * 60; else if (mm) mins = Number(mm[1]);
-      mins = Math.max(2, Math.min(180, mins));
+      mins = (mh || mm) ? mins : minutes; mins = Math.max(1, Math.min(180, mins));
       const N = Math.max(4, Math.min(36, Math.round(mins / 5)));
       const animated = /\b(animated|animation|pixar|cartoon)\b/i.test(idea);
       const raw = await ask('You are a film writer and director. The idea: """' + idea + '"""\nDesign a ' + mins + '-minute ' + (animated ? "animated " : "") + 'film. Return ONLY JSON, no other text: {"title":"","premise":"2 sentences","look":"2 sentences on colours, light, style","setting":"time of year, weather, places","characters":[{"name":"UPPERCASE NAME","who":"age, sex, personality, what they look like"}],"scenes":[{"title":"","summary":"one short sentence"}]}. Use EXACTLY ' + N + ' scenes in story order with a clear beginning, middle and end. Use at most 8 characters. Names are UPPERCASE letters only. Keep it warm and family friendly unless the idea says otherwise.', 4000);
@@ -706,6 +701,12 @@ export default function Studio() {
     if (!who) { try { const { data } = await supabase.auth.getSession(); who = data && data.session && data.session.user; if (!who) { const r = await supabase.auth.refreshSession(); who = r && r.data && r.data.session && r.data.session.user; } if (who) setUser(who); } catch (e) { } }
     if (!who) { setErr("Log in first, at the top of the page."); return; }
     if (!narr.trim() && !script.trim() && !photos.length && !clips.length) { setErr("Add your narration, script, photos or clips first."); return; }
+    if (minutes < 1) { setErr("Move the length bar above 0 minutes."); return; }
+    if (!subActive) {
+      let used = false; try { used = !!localStorage.getItem(trialKey(who)); } catch (e) { }
+      if (used) { setErr("Your free test film has been used. Subscribe for $50 a month to make more."); return; }
+      if (minutes > 1) { setErr("The free test film is up to 1 minute. Move the length bar to 1 minute or less."); return; }
+    }
     setBusy(true); setDone(false); setPct(2);
     let wl = null; try { wl = await navigator.wakeLock.request("screen"); } catch (e) { }
     projectId.current = "p" + Date.now(); save("pid", projectId.current);
@@ -766,6 +767,7 @@ export default function Studio() {
       // Then every scene is joined into ONE film file automatically.
       autoJoin.current = true;
       setPct(100); setStage("All scenes made. Joining them into one film — keep this tab open."); setDone(true);
+      if (!subActive) { try { localStorage.setItem(trialKey(who), "1"); } catch (e) { } }
     } catch (e) { setErr("Something stopped the film: " + e.message); }
     try { wl && wl.release(); } catch (e) { }
     setBusy(false);
@@ -1060,7 +1062,7 @@ export default function Studio() {
 
         <div className="row" style={{ marginTop: 12, gap: 8 }}>
           <button className="b g" onClick={() => { const em = (user && user.email) || email; window.open(SUB_LINK + (em ? "?prefilled_email=" + encodeURIComponent(em) : ""), "_blank", "noopener"); }}>SUBSCRIBE · $50 / MONTH</button>
-          <button className="b" onClick={() => { if (TOPUP_LINK) { const em = (user && user.email) || email; window.open(TOPUP_LINK + (em ? "?prefilled_email=" + encodeURIComponent(em) : ""), "_blank", "noopener"); } else setAddMsg("Extra usage packs are opening soon."); }}>BUY MORE USAGE</button>
+          <button className="b" onClick={() => { const em = (user && user.email) || email; window.open(TOPUP_LINK + (em ? "?prefilled_email=" + encodeURIComponent(em) : ""), "_blank", "noopener"); }}>BUY EXTRA USAGE</button>
         </div>
 
         {simple && <div className="hero">
@@ -1070,7 +1072,12 @@ export default function Studio() {
         <div className="lab">{simple ? "ENTER YOUR PROMPT" : "ONE PROMPT — PUT EVERYTHING IN ONE BOX"}</div>
         <textarea className="ta op" value={onePrompt} onChange={e => setOnePrompt(e.target.value)} placeholder={simple ? "Describe your film in as much detail as you like: the story, the characters, the look, the length.\n\nOr paste your full script with each speaker's name in [BRACKETS]." : "Title: Santa's List: The Book of Names\nLength: 60 min\n[SANTA] Ho ho ho!\n[LILY] I made a list!\nEverything else (directions, description, voices) goes on its own lines."} />
         <button className="go" style={{ marginTop: 10, display: simple ? "none" : undefined }} onClick={() => { const n = splitPrompt(); if (n) setAutoMake(true); else designFromIdea(); }}>SPLIT AND MAKE MY MOVIE</button>
-        {simple && <div className="sug"><span>TRY:</span>{SUGGEST.map((x, i) => <button key={i} className="c" onClick={() => setOnePrompt(x.t)}>{x.l}</button>)}</div>}
+        {simple && <div className="len">
+          <div className="lenTop"><span>FILM LENGTH</span><b>{minutes >= 60 ? Math.floor(minutes / 60) + " hr" + (minutes % 60 ? " " + (minutes % 60) + " min" : "") : minutes + " min"}</b></div>
+          <input type="range" className="rng" min={0} max={180} step={1} value={minutes} onChange={e => setMinutes(Number(e.target.value))} />
+          <div className="ticks"><span>0</span><span>1 hr</span><span>2 hr</span><span>3 hr</span></div>
+          {!subActive && <div className="msg" style={{ marginTop: 6 }}>Your first film is a free test of up to 1 minute. Subscribe for $50 a month for up to 3 hours.</div>}
+        </div>}
         <div style={{ display: "flex", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
           <button className="b s" onClick={() => setSimple(v => !v)}>{simple ? "ADVANCED CONTROLS" : "RETURN TO ONE PROMPT"}</button>
           <button className="b" style={{ display: simple ? "none" : undefined }} onClick={() => { const n = splitPrompt(); setAddMsg(n ? "Split into the boxes below. " + n + " spoken lines." : "No [NAME] lines found. Put each spoken line as [NAME] line."); }}>SPLIT INTO THE BOXES ONLY</button>
@@ -1084,7 +1091,7 @@ export default function Studio() {
         <input id="mfs-title" className="in" style={{ marginTop: 10 }} placeholder="Title (used for the title card, poster and credits)" value={title} onChange={e => setTitle(e.target.value)} />
         <div style={{ marginTop: 12 }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}><span>FILM LENGTH — up to 3 hours</span><b>{minutes >= 60 ? (Math.floor(minutes / 60) + " hr " + (minutes % 60 ? minutes % 60 + " min" : "")) : minutes + " min"}</b></div>
-          <input type="range" className="rng" min={1} max={180} value={minutes} onChange={e => setMinutes(Number(e.target.value))} />
+          <input type="range" className="rng" min={0} max={180} value={minutes} onChange={e => setMinutes(Number(e.target.value))} />
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--dim)" }}><span>1 min</span><span>1 hr</span><span>2 hr</span><span>3 hr</span></div>
         </div>
 
@@ -1183,7 +1190,6 @@ export default function Studio() {
           {fileBtn("mfs-logo", "image/*", async f => setLogo(await shrinkPhoto(await readAsDataURL(f), 512)), logo ? "My logo ✓" : "Add my logo")}
           <Toggle on={watermark} set={setWatermark}>Watermark on Starter</Toggle>
           <button className="c on">Never lose a render</button>
-          <Toggle on={freeMode} set={setFreeMode}>Free mode: my images + stock</Toggle>
         </div>
         {credits && <textarea id="mfs-credits" className="ta" style={{ minHeight: 70, marginTop: 8 }} value={creditNames} onChange={e => setCreditNames(e.target.value)} placeholder={"Credits, one per line\nDirected by …\nNarrated by …"} />}
 
