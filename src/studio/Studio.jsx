@@ -597,6 +597,8 @@ export default function Studio() {
 
   // ONE PROMPT: one box → title, length, spoken lines (Box 2) and directions/voices (Box 3). Nothing is changed in your files or voices.
   const [showGuide, setShowGuide] = useState(false);
+  const [simple, setSimple] = useState(() => load("simple", true)); // one-box view: one prompt, your files, one button
+  useEffect(() => { try { localStorage.setItem("mfs_simple", JSON.stringify(simple)); } catch (e) { } }, [simple]);
   const [onePrompt, setOnePrompt] = useState(""); const [autoMake, setAutoMake] = useState(false);
   function splitPrompt() {
     const sp = [], dr = [], vo = []; let t = "", len = 0;
@@ -609,6 +611,8 @@ export default function Studio() {
       else dr.push(l);
     });
     if (t) setTitle(t);
+    if (/\b(animated|animation|pixar|cartoon)\b/i.test(onePrompt)) { setKind("Animation"); setStyle("Animated"); }
+    if (simple) { setCharVoices(true); setVoiceMode("engine"); if (musicMode === "off") setMusicMode("library"); }
     if (len >= 1) setMinutes(Math.min(180, len));
     setNarr(sp.join("\n")); setScript(dr.join("\n").trim());
     return sp.length;
@@ -977,15 +981,17 @@ export default function Studio() {
         <div className="g3">{PLANS.map(p => p.id !== "studio" ? <div key={p.id} className="plan" style={{ position: "relative", opacity: 0.45, cursor: "not-allowed", overflow: "hidden" }}><h3>{p.name}</h3><span style={{ fontSize: 12, color: "#B9B1A0" }}>{p.line}</span><svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}><line x1="4" y1="4" x2="96" y2="96" stroke="#e5484d" strokeWidth="5" vectorEffect="non-scaling-stroke" /><line x1="96" y1="4" x2="4" y2="96" stroke="#e5484d" strokeWidth="5" vectorEffect="non-scaling-stroke" /></svg></div> : <button key={p.id} className="plan on" onClick={() => setPlan("studio")}><h3>{p.name}<span className="tick">✓</span></h3><span style={{ fontSize: 12, color: "#B9B1A0" }}>{p.line}</span></button>)}</div>
         <button className="b g" style={{ width: "100%", marginTop: 10 }} onClick={() => { setPlan("studio"); const p = PLANS[2]; const em = (user && user.email) || email; window.open(p.link + (em ? "?prefilled_email=" + encodeURIComponent(em) : ""), "_blank", "noopener"); }}>PAY FOR STUDIO — SECURE CHECKOUT</button>
 
-        <div className="lab">ONE PROMPT — PUT EVERYTHING IN ONE BOX</div>
+        <div className="lab">{simple ? "YOUR MOVIE — PUT EVERYTHING IN ONE BOX, ADD YOUR FILES, PRESS MAKE" : "ONE PROMPT — PUT EVERYTHING IN ONE BOX"}</div>
         <textarea className="ta op" value={onePrompt} onChange={e => setOnePrompt(e.target.value)} placeholder={"Title: Santa's List: The Book of Names\nLength: 60 min\n[SANTA] Ho ho ho!\n[LILY] I made a list!\nEverything else (directions, description, voices) goes on its own lines."} />
-        <button className="go" style={{ marginTop: 10 }} onClick={() => { const n = splitPrompt(); if (n) setAutoMake(true); else setAddMsg("No [NAME] lines found. Put each spoken line as [NAME] line."); }}>SPLIT AND MAKE MY MOVIE</button>
+        <button className="go" style={{ marginTop: 10, display: simple ? "none" : undefined }} onClick={() => { const n = splitPrompt(); if (n) setAutoMake(true); else setAddMsg("No [NAME] lines found. Put each spoken line as [NAME] line."); }}>SPLIT AND MAKE MY MOVIE</button>
         <div style={{ display: "flex", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
-          <button className="b" onClick={() => { const n = splitPrompt(); setAddMsg(n ? "Split into the boxes below. " + n + " spoken lines." : "No [NAME] lines found. Put each spoken line as [NAME] line."); }}>SPLIT INTO THE BOXES ONLY</button>
+          <button className="b s" onClick={() => setSimple(v => !v)}>{simple ? "SHOW ALL THE BOXES" : "BACK TO ONE BOX"}</button>
+          <button className="b" style={{ display: simple ? "none" : undefined }} onClick={() => { const n = splitPrompt(); setAddMsg(n ? "Split into the boxes below. " + n + " spoken lines." : "No [NAME] lines found. Put each spoken line as [NAME] line."); }}>SPLIT INTO THE BOXES ONLY</button>
           <button className="b s" onClick={() => setShowGuide(v => !v)}>{showGuide ? "CLOSE THE PROMPT GUIDE" : "NOT SURE WHAT TO WRITE? OPEN THE PROMPT GUIDE"}</button>
         </div>
         {showGuide && <div className="guide">{"HOW TO WRITE YOUR PROMPT\n\nLine 1:  Title: your film's name\nLine 2:  Length: 60 min\n\nEvery spoken line, in script order, with the speaker in square brackets:\n[NARRATOR] It was Christmas Eve.\n[LILY] Come on! We have to go look!\n\nEverything else goes on its own lines: what the film looks like, the weather, the mood, the music, and which voice plays which character.\n\nExample:\nTitle: Santa's List: The Book of Names\nLength: 60 min\n[SANTA] Ho ho ho!\n[LILY] I made a list!\nChristmas Eve night. Snow. Cold and crisp. Warm lights in the windows.\nVOICES: Doxy: Santa. Lily: Lily.\n\nThen add your photos, clips and voice files in box 4."}</div>}
 
+        <div style={{ display: simple ? "none" : undefined }}>
         <div className="lab">1 · WHAT ARE YOU MAKING?</div>
         <Chips items={KINDS} value={kind} onPick={setKind} />
         <input id="mfs-title" className="in" style={{ marginTop: 10 }} placeholder="Title (used for the title card, poster and credits)" value={title} onChange={e => setTitle(e.target.value)} />
@@ -1025,6 +1031,7 @@ export default function Studio() {
         <div className="lab">3 · DIRECTIONS, DESCRIPTION &amp; VOICES</div>
         <textarea id="mfs-script" className="ta" value={script} onChange={e => setScript(e.target.value)} placeholder={"Paste your directions here: length, footage order, weather, sound, description, and who uses which voice.\nExample:\nDOXY'S VOICE:\nSanta: older man. Deeper, warm.\nLILY'S VOICE:\nLily: girl, age 10.\nThe engine builds the scenes and gives each character their voice from this."} />
 
+        </div>
         <div className="lab">4 · PHOTOS, CLIPS &amp; CHARACTER VOICES</div>
         <label htmlFor="mfs-files" className={"drop" + (over ? " over" : "")} onDragOver={e => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)} onDrop={e => { e.preventDefault(); setOver(false); if (e.dataTransfer.files && e.dataTransfer.files.length) addFiles(e.dataTransfer.files); else dropLink(e); }}>
           DROP, DRAG OR TAP TO ADD PHOTOS, CLIPS AND CHARACTER VOICES (AS MANY AS YOU LIKE). NAME EACH VOICE FILE, LIKE LILY, DOXY OR ETHAN.
@@ -1038,6 +1045,7 @@ export default function Studio() {
         {(photos.length > 0 || clips.length > 0) && <div className="msg">Photos keep the same faces in every scene. Clips are used as your first scenes, in order.</div>}
         {charRecs.length > 0 && <div className="msg">Character voices ({charRecs.length}): {charRecs.map((r, i) => <span key={r.dbId} style={{ marginRight: 10, whiteSpace: "nowrap" }}>{r.name} <button aria-label="Remove" style={{ background: "transparent", border: "none", color: "inherit", cursor: "pointer" }} onClick={() => { dbClear(r.dbId); setCharRecs(x => x.filter((_, k) => k !== i)); }}>×</button></span>)} — each goes to the characters you give it in your directions, spoken in script order.</div>}
 
+        <div style={{ display: simple ? "none" : undefined }}>
         <div className="lab">5 · VOICES</div>
         <div className="g3">
           <div><span className="lbl">NARRATOR</span><select id="mfs-narrator" className="in" value={narrator} onChange={e => setNarrator(e.target.value)}>{VOICE_CHARACTERS.filter(v => !v.isOwner).map(v => <option key={v.id} value={v.id}>{v.name} — {v.origin} {String(v.gender).toLowerCase()}</option>)}</select></div>
@@ -1092,11 +1100,13 @@ export default function Studio() {
         </div>
         {credits && <textarea id="mfs-credits" className="ta" style={{ minHeight: 70, marginTop: 8 }} value={creditNames} onChange={e => setCreditNames(e.target.value)} placeholder={"Credits, one per line\nDirected by …\nNarrated by …"} />}
 
+        </div>
         <div style={{ marginTop: 18, border: "1px solid var(--line)", borderRadius: 3, padding: 12, display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", fontSize: 13 }}>
           <span>Before you start: {minutes} min · {Math.max(sceneCount, clips.length)} scenes · {Math.max(1, castNames)} voice{castNames > 1 ? "s" : ""} · {langCount} language{langCount > 1 ? "s" : ""}</span>
           <span style={{ color: "var(--gold)", fontWeight: 700 }}>About {est} min to make</span>
         </div>
-        <button className="go" onClick={makeMovie} disabled={busy}>{busy ? "MAKING YOUR MOVIE…" : "MAKE MY MOVIE"}</button>
+        {simple && <div className="row" style={{ marginTop: 10 }}><Toggle on={freeMode} set={setFreeMode}>Free mode: my images + stock</Toggle></div>}
+        <button className="go" onClick={() => { if (simple && onePrompt.trim()) { const n = splitPrompt(); if (n) setAutoMake(true); else setAddMsg("No [NAME] lines found. Put each spoken line as [NAME] line."); } else makeMovie(); }} disabled={busy}>{busy ? "MAKING YOUR MOVIE…" : "MAKE MY MOVIE"}</button>
         {(busy || stage) && <div className="msg">{stage}<div className="pb"><i style={{ width: pct + "%" }} /></div></div>}
         {err && <div className="msg err">{err}</div>}
 
