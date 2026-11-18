@@ -1073,7 +1073,7 @@ export default function Studio() {
       <style>{CSS}</style>
       <div className="mfs">
         <div className="top">
-          <div><div className="eng">POWERED BY THE MANDASTRONG ENGINE</div><h1 className="brand" style={{ fontSize: "clamp(26px,4.4vw,38px)", margin: "6px 0 0" }}>MANDAS <span style={{ fontWeight: 600 }}>1 shot film studio</span></h1></div>
+          <div><div className="eng">POWERED BY THE MANDASTRONG ENGINE</div><h1 className="brand" style={{ fontSize: "clamp(26px,4.4vw,38px)", margin: "6px 0 0" }}>Mandas 1 Shot Film Studio</h1></div>
           <div style={{ fontSize: 12, color: "var(--dim)" }}>{SITE}</div>
         </div>
 
