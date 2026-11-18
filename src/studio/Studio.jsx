@@ -196,8 +196,8 @@ const CSS = `
 .brand{font-family:'Great Vibes',cursive;color:var(--gold);font-weight:400;line-height:1.05}
 .top{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:12px}
 .eng{font-size:11px;letter-spacing:.14em;color:var(--gold)}
-.lab{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--gold);margin:22px 0 8px}
-.ta{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:3px;color:var(--text);padding:12px;font:inherit;font-size:14px;resize:vertical;min-height:110px}
+.op{border:2px solid var(--gold)!important;min-height:200px!important;box-shadow:0 0 0 3px rgba(230,201,142,.12)}.guide{border:1px solid var(--line);border-radius:3px;padding:12px;margin-top:8px;background:var(--panel);font-family:Georgia,serif;font-size:14px;line-height:1.55;white-space:pre-wrap}.lab{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--gold);margin:22px 0 8px}
+.ta{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:3px;color:var(--text);padding:12px;font-family:Georgia,'Times New Roman',serif;font-size:15px;line-height:1.55;resize:vertical;min-height:110px}
 .in{background:var(--panel);border:1px solid var(--line);border-radius:3px;color:var(--text);padding:11px 12px;font:inherit;font-size:14px;width:100%}
 select.in{appearance:auto}
 .login{display:grid;grid-template-columns:1fr 1fr auto auto;gap:8px}@media(max-width:640px){.login{grid-template-columns:1fr 1fr}}
@@ -596,6 +596,7 @@ export default function Studio() {
   }
 
   // ONE PROMPT: one box → title, length, spoken lines (Box 2) and directions/voices (Box 3). Nothing is changed in your files or voices.
+  const [showGuide, setShowGuide] = useState(false);
   const [onePrompt, setOnePrompt] = useState(""); const [autoMake, setAutoMake] = useState(false);
   function splitPrompt() {
     const sp = [], dr = [], vo = []; let t = "", len = 0;
@@ -977,11 +978,14 @@ export default function Studio() {
         <button className="b g" style={{ width: "100%", marginTop: 10 }} onClick={() => { setPlan("studio"); const p = PLANS[2]; const em = (user && user.email) || email; window.open(p.link + (em ? "?prefilled_email=" + encodeURIComponent(em) : ""), "_blank", "noopener"); }}>PAY FOR STUDIO — SECURE CHECKOUT</button>
 
         <div className="lab">ONE PROMPT — PUT EVERYTHING IN ONE BOX</div>
-        <textarea className="ta" style={{ minHeight: 150 }} value={onePrompt} onChange={e => setOnePrompt(e.target.value)} placeholder={"Title: Santa's List: The Book of Names\nLength: 60 min\n[SANTA] Ho ho ho!\n[LILY] I made a list!\nEverything else (directions, description, voices) goes on its own lines."} />
-        <div className="g3" style={{ marginTop: 8 }}>
-          <button className="b" onClick={() => { const n = splitPrompt(); setAddMsg(n ? "Split into the boxes below. " + n + " spoken lines." : "No [NAME] lines found. Put each spoken line as [NAME] line."); }}>SPLIT INTO THE BOXES</button>
-          <button className="b g" onClick={() => { const n = splitPrompt(); if (n) setAutoMake(true); else setAddMsg("No [NAME] lines found. Put each spoken line as [NAME] line."); }}>SPLIT AND MAKE MY MOVIE</button>
+        <textarea className="ta op" value={onePrompt} onChange={e => setOnePrompt(e.target.value)} placeholder={"Title: Santa's List: The Book of Names\nLength: 60 min\n[SANTA] Ho ho ho!\n[LILY] I made a list!\nEverything else (directions, description, voices) goes on its own lines."} />
+        <button className="go" style={{ marginTop: 10 }} onClick={() => { const n = splitPrompt(); if (n) setAutoMake(true); else setAddMsg("No [NAME] lines found. Put each spoken line as [NAME] line."); }}>SPLIT AND MAKE MY MOVIE</button>
+        <div style={{ display: "flex", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
+          <button className="b" onClick={() => { const n = splitPrompt(); setAddMsg(n ? "Split into the boxes below. " + n + " spoken lines." : "No [NAME] lines found. Put each spoken line as [NAME] line."); }}>SPLIT INTO THE BOXES ONLY</button>
+          <button className="b s" onClick={() => setShowGuide(v => !v)}>{showGuide ? "CLOSE THE PROMPT GUIDE" : "NOT SURE WHAT TO WRITE? OPEN THE PROMPT GUIDE"}</button>
         </div>
+        {showGuide && <div className="guide">{"HOW TO WRITE YOUR PROMPT\n\nLine 1:  Title: your film's name\nLine 2:  Length: 60 min\n\nEvery spoken line, in script order, with the speaker in square brackets:\n[NARRATOR] It was Christmas Eve.\n[LILY] Come on! We have to go look!\n\nEverything else goes on its own lines: what the film looks like, the weather, the mood, the music, and which voice plays which character.\n\nExample:\nTitle: Santa's List: The Book of Names\nLength: 60 min\n[SANTA] Ho ho ho!\n[LILY] I made a list!\nChristmas Eve night. Snow. Cold and crisp. Warm lights in the windows.\nVOICES: Doxy: Santa. Lily: Lily.\n\nThen add your photos, clips and voice files in box 4."}</div>}
+
         <div className="lab">1 · WHAT ARE YOU MAKING?</div>
         <Chips items={KINDS} value={kind} onPick={setKind} />
         <input id="mfs-title" className="in" style={{ marginTop: 10 }} placeholder="Title (used for the title card, poster and credits)" value={title} onChange={e => setTitle(e.target.value)} />
