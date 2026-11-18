@@ -1,6 +1,6 @@
 // @ts-nocheck
 // ═══════════════════════════════════════════════════════════════════
-// MANDAS FILM & MUSIC STUDIO — one shot, one page, everything in, everything out.
+// MANDAS 1 SHOT FILM STUDIO — one shot, one page, everything in, everything out.
 // A separate app inside the MandaStrong Studio project. It does not touch the
 // 25-page app. Powered by the MandaStrong Engine.
 // ═══════════════════════════════════════════════════════════════════
@@ -42,7 +42,16 @@ const PLANS = [
   { id: "creator", name: "Creator", line: "Films up to 1 hour · no watermark", link: "https://buy.stripe.com/cNi8wRe8a3B52kDceuafS04" },
   { id: "studio", name: "Studio", line: "Up to 3 hours · every extra · dubbing", link: "https://buy.stripe.com/cNi8wRe8a9ZtcZh7YeafS05" },
 ];
-const KINDS = ["Movie", "Documentary", "Music video", "Short clip", "Animation", "Ad / promo"];
+const KINDS = ["Movie", "Short film", "Video series", "Cartoon", "Animated series", "Documentary", "Music video", "Short clip", "Ad / promo", "Trailer", "Kids' story", "Explainer"];
+const GENRES = ["Drama", "Comedy", "Family", "Holiday", "Adventure", "Fantasy", "Sci-fi", "Romance", "Action", "Mystery", "Thriller", "Horror", "Western", "Historical", "Inspirational", "Educational"];
+const AUDIENCES = ["Kids", "Family", "Teens", "Adults"];
+const TOONS = ["2D hand-drawn", "3D animated", "Anime", "Claymation", "Stop motion", "Watercolour storybook", "Comic book", "Pixel art"];
+const CAMERAS = ["Cinematic", "Handheld", "Drone / aerial", "Close-ups", "Wide shots", "Slow motion"];
+const PACES = ["Slow", "Balanced", "Fast cuts"];
+const MUSIC_GENRES = ["Orchestral", "Piano", "Acoustic guitar", "Pop", "Rock", "Hip-hop", "Country", "Folk", "Electronic", "Jazz", "Choir", "Lullaby"];
+const TEMPOS = ["Slow", "Medium", "Fast"];
+const isAnimKind = k => /cartoon|animat|kids/i.test(k || "");
+const isSeries = k => /series/i.test(k || "");
 const STYLES = ["Cinematic", "Documentary", "Animated", "Vintage film", "Noir"];
 const GRADES = [
   { id: "gold", label: "Gold & Amber", tint: "rgba(232,190,110,0.10)", prompt: "warm gold and amber colour grade" },
@@ -300,6 +309,16 @@ export default function Studio() {
   const [mood, setMood] = useState(() => load("mood", "ambient"));
   const [musicPrompt, setMusicPrompt] = useState(() => load("musicPrompt", ""));
   const [style, setStyle] = useState(() => load("style", "Cinematic"));
+  const [genre, setGenre] = useState(() => load("genre", ""));
+  const [audience, setAudience] = useState(() => load("audience", ""));
+  const [toon, setToon] = useState(() => load("toon", ""));
+  const [camera, setCamera] = useState(() => load("camera", ""));
+  const [pace, setPace] = useState(() => load("pace", ""));
+  const [place, setPlace] = useState(() => load("place", ""));
+  const [episodes, setEpisodes] = useState(() => load("episodes", 1));
+  const [mGenre, setMGenre] = useState(() => load("mGenre", ""));
+  const [tempo, setTempo] = useState(() => load("tempo", ""));
+  const [showMusic, setShowMusic] = useState(false);
   const [grade, setGrade] = useState(() => load("grade", "gold"));
   const [enhance, setEnhance] = useState(() => load("enhance", true));
   const [duck, setDuck] = useState(() => load("duck", true));
@@ -322,7 +341,7 @@ export default function Studio() {
   const planRef = useRef([]);
   const engineFails = useRef(0), engineOff = useRef(false); // after 2 failed engine shots in a row the engine stops for this film, so no more credit is spent
   const lastClipRef = useRef(null), reuseN = useRef(0); // your clips are reused (never back to back) when the engine cannot make a scene
-  useEffect(() => { const o = { kind, title, narr, script, voiceMode, narrator, charVoices, lipSync, speed, spoken, subs, dubs, musicMode, mood, musicPrompt, style, grade, enhance, duck, cleanVoice, minutes, ratio, quality, vVol, mVol, cVol, allRatios, credits, watermark, creditNames, plan }; for (const k in o) save(k, o[k]); });
+  useEffect(() => { const o = { kind, title, narr, script, voiceMode, narrator, charVoices, lipSync, speed, spoken, subs, dubs, musicMode, mood, musicPrompt, style, grade, enhance, duck, cleanVoice, minutes, ratio, quality, vVol, mVol, cVol, allRatios, credits, watermark, creditNames, plan, genre, audience, toon, camera, pace, place, episodes, mGenre, tempo }; for (const k in o) save(k, o[k]); });
 
   // ── files ──
   const [photos, setPhotos] = useState([]); // {name,dataUrl}
@@ -462,6 +481,12 @@ export default function Studio() {
   const [done, setDone] = useState(false);
   const projectId = useRef(load("pid", "p" + Date.now()));
   const sceneCount = Math.max(1, Math.round(minutes * (minutes <= 10 ? 2 : 1)));
+  const animKind = isAnimKind(kind) || style === "Animated";
+  const epCount = isSeries(kind) ? Math.max(1, Number(episodes) || 1) : 1;
+  // What the picture engine is told for every shot.
+  const shotBrief = [genre && genre + " genre", animKind && toon && toon + " animation", camera && camera + " camera", pace && pace.toLowerCase() + " pacing", place && place].filter(Boolean).join(", ");
+  // What the film writer is told about the whole production.
+  const brief = [genre && "Genre: " + genre, audience && "Audience: " + audience, animKind && toon && "Animation style: " + toon, camera && "Camera: " + camera, pace && "Pace: " + pace.toLowerCase(), place && "Time and place: " + place, epCount > 1 && "A series of " + epCount + " episodes of about " + Math.max(1, Math.round(minutes / epCount)) + " minutes each. Give every episode its own title and end each one with a hook into the next"].filter(Boolean).join(". ");
   const castNames = (() => { try { return msParseCast(narr || msSpokenOnly(script)).speakers.length; } catch (e) { return 0; } })();
   const langCount = 1 + dubs.length;
 
@@ -523,7 +548,7 @@ export default function Studio() {
   }
 
   async function makeScene(i, text, list) {
-    const look = style + " style, " + (GRADES.find(g => g.id === grade) || GRADES[0]).prompt + (enhance ? ", photorealistic, 35mm film grain, sharp detail" : "") + ", no on-screen text";
+    const look = style + " style, " + (GRADES.find(g => g.id === grade) || GRADES[0]).prompt + (enhance ? (animKind ? ", crisp clean linework, rich colour, sharp detail" : ", photorealistic, 35mm film grain, sharp detail") : "") + (shotBrief ? ", " + shotBrief : "") + ", no on-screen text";
     const plan = planRef.current[i] || null;
     const photo = plan && plan.photo >= 0 && photos[plan.photo] ? photos[plan.photo].dataUrl : "";
     const setS = (patch) => setScenes(p => p.map((s, k) => k === i ? { ...s, ...patch } : s));
@@ -645,8 +670,8 @@ export default function Studio() {
       if (mh) mins = (words[mh[1].toLowerCase()] || Number(mh[1])) * 60; else if (mm) mins = Number(mm[1]);
       mins = (mh || mm) ? mins : minutes; mins = Math.max(1, Math.min(180, mins));
       const N = Math.max(4, Math.min(36, Math.round(mins / 5)));
-      const animated = /\b(animated|animation|pixar|cartoon)\b/i.test(idea);
-      const raw = await ask('You are a film writer and director. The idea: """' + idea + '"""\nDesign a ' + mins + '-minute ' + (animated ? "animated " : "") + 'film. Return ONLY JSON, no other text: {"title":"","premise":"2 sentences","look":"2 sentences on colours, light, style","setting":"time of year, weather, places","characters":[{"name":"UPPERCASE NAME","who":"age, sex, personality, what they look like"}],"scenes":[{"title":"","summary":"one short sentence"}]}. Use EXACTLY ' + N + ' scenes in story order with a clear beginning, middle and end. Use at most 8 characters. Names are UPPERCASE letters only. Keep it warm and family friendly unless the idea says otherwise.', 4000);
+      const animated = animKind || /\b(animated|animation|pixar|cartoon)\b/i.test(idea);
+      const raw = await ask('You are a film writer and director. The idea: """' + idea + '"""\nDesign a ' + mins + '-minute ' + (animated ? "animated " : "") + 'film. Return ONLY JSON, no other text: {"title":"","premise":"2 sentences","look":"2 sentences on colours, light, style","setting":"time of year, weather, places","characters":[{"name":"UPPERCASE NAME","who":"age, sex, personality, what they look like"}],"scenes":[{"title":"","summary":"one short sentence"}]}. Use EXACTLY ' + N + ' scenes in story order with a clear beginning, middle and end. Use at most 8 characters. Names are UPPERCASE letters only. Keep it warm and family friendly unless the idea says otherwise.' + (brief ? " PRODUCTION BRIEF (follow it): " + brief + "." : ""), 4000);
       const o = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1).replace(/```json|```/g, ""));
       const chars = (o.characters || []).map(c => ({ name: String(c.name || "").toUpperCase().replace(/[^A-Z .'&-]/g, "").trim(), who: String(c.who || "") })).filter(c => c.name);
       const scs = (o.scenes || []).slice(0, N);
@@ -722,7 +747,7 @@ export default function Studio() {
       let list = parseScenes(script);
       if (list.length) { setStage("Using your " + list.length + " scenes exactly as written…"); }
       else try {
-        const ask = "You are a film director making a " + kind + (title ? (' called "' + title + '"') : "") + ". Write an ordered shot list of EXACTLY " + n + " scenes for a " + minutes + "-minute film.\nLOOK for every scene: " + style + ", " + (GRADES.find(g => g.id === grade) || GRADES[0]).prompt + ". Keep the same characters looking the same in every scene.\nEach scene is one vivid visual paragraph (setting, who is there, light, camera move). No dialogue, no numbering.\nFollow the producer directions exactly.\n\nNARRATION:\n" + (narr || "(none)") + "\n\nSCRIPT AND PRODUCER DIRECTIONS:\n" + (script || "(none — build it from the narration and photos)") + "\n\nReturn ONLY a JSON array of " + n + " strings.";
+        const ask = "You are a film director making a " + kind + (title ? (' called "' + title + '"') : "") + ". Write an ordered shot list of EXACTLY " + n + " scenes for a " + minutes + "-minute film.\nLOOK for every scene: " + style + ", " + (GRADES.find(g => g.id === grade) || GRADES[0]).prompt + ". Keep the same characters looking the same in every scene.\nEach scene is one vivid visual paragraph (setting, who is there, light, camera move). No dialogue, no numbering.\nFollow the producer directions exactly." + (brief ? "\nPRODUCTION BRIEF: " + brief + "." : "") + "\n\nNARRATION:\n" + (narr || "(none)") + "\n\nSCRIPT AND PRODUCER DIRECTIONS:\n" + (script || "(none — build it from the narration and photos)") + "\n\nReturn ONLY a JSON array of " + n + " strings.";
         const d = await proxyFetch({ model: "claude-sonnet-4-20250514", max_tokens: 8000, messages: [{ role: "user", content: ask }] });
         const raw = (d && d.content ? d.content.filter(x => x.type === "text").map(x => x.text).join("") : "").replace(/```json|```/g, "");
         list = JSON.parse(raw.slice(raw.indexOf("["), raw.lastIndexOf("]") + 1)).map(s => String(s).trim()).filter(Boolean);
@@ -756,7 +781,7 @@ export default function Studio() {
       // 3 — music
       let mUrl = "";
       if (musicMode === "mine" && mySong) mUrl = mySong.url;
-      else if (musicMode === "make") { try { setStage("MandaStrong Engine — composing your music…"); const u = await seRun({ kind: "music", prompt: (musicPrompt || (style + " " + kind + " score, " + (MOODS.find(m => m.id === mood) || MOODS[0]).label)) + ", instrumental", duration: 30 }, 6); const b = await toBlob(u); await dbPut(projectId.current + "_music", b, {}); mUrl = URL.createObjectURL(b); } catch (e) { setErr("Music: " + e.message + ". Using the library track instead."); mUrl = await libraryMusic((MOODS.find(m => m.id === mood) || MOODS[0]).url); } }
+      else if (musicMode === "make") { try { setStage("MandaStrong Engine — composing your music…"); const u = await seRun({ kind: "music", prompt: (musicPrompt || (style + " " + kind + " score, " + (MOODS.find(m => m.id === mood) || MOODS[0]).label)) + (mGenre ? ", " + mGenre : "") + (tempo ? ", " + tempo.toLowerCase() + " tempo" : "") + ", instrumental", duration: 30 }, 6); const b = await toBlob(u); await dbPut(projectId.current + "_music", b, {}); mUrl = URL.createObjectURL(b); } catch (e) { setErr("Music: " + e.message + ". Using the library track instead."); mUrl = await libraryMusic((MOODS.find(m => m.id === mood) || MOODS[0]).url); } }
       else if (musicMode === "library") mUrl = await libraryMusic((MOODS.find(m => m.id === mood) || MOODS[0]).url);
       setMusicUrl(mUrl); setPct(24);
 
@@ -865,7 +890,7 @@ export default function Studio() {
       ctx.fillStyle = tint; ctx.fillRect(0, 0, W, H);
       if (subs && !opts.trailer) { const c = caps.find(x => tSec >= x.start && tSec < x.end); if (c) { ctx.font = "600 " + Math.round(H * 0.036) + "px Manrope, sans-serif"; ctx.textAlign = "center"; const lines = wrapText(ctx, c.text, W * 0.86); lines.forEach((ln, k) => { const y = H * 0.92 - (lines.length - 1 - k) * H * 0.048; ctx.lineWidth = 5; ctx.strokeStyle = "rgba(0,0,0,.8)"; ctx.strokeText(ln, W / 2, y); ctx.fillStyle = "#fff"; ctx.fillText(ln, W / 2, y); }); } }
       if (logoImg) { const lw = W * 0.1, lh = lw * logoImg.height / logoImg.width; ctx.globalAlpha = 0.8; ctx.drawImage(logoImg, W - lw - W * 0.03, H * 0.03, lw, lh); ctx.globalAlpha = 1; }
-      if (watermark && plan === "starter") { ctx.font = Math.round(H * 0.03) + "px Manrope"; ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.textAlign = "left"; ctx.fillText("Mandas Film & Music Studio", W * 0.03, H * 0.96); }
+      if (watermark && plan === "starter") { ctx.font = Math.round(H * 0.03) + "px Manrope"; ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.textAlign = "left"; ctx.fillText("Mandas 1 Shot Film Studio", W * 0.03, H * 0.96); }
       showPv();
     };
     const card = (lines, big) => { ctx.fillStyle = "#0E0F12"; ctx.fillRect(0, 0, W, H); ctx.textAlign = "center"; ctx.fillStyle = "#E6C98E"; ctx.font = Math.round(H * (big ? 0.11 : 0.06)) + "px 'Great Vibes', cursive"; ctx.fillText(lines[0] || "", W / 2, H * 0.42); ctx.fillStyle = "#F3EDE2"; ctx.font = Math.round(H * 0.032) + "px Manrope, sans-serif"; lines.slice(1).forEach((l, k) => ctx.fillText(l, W / 2, H * 0.55 + k * H * 0.05)); showPv(); };
@@ -896,7 +921,7 @@ export default function Studio() {
       if (endEl) try { endEl.play(); } catch (e) { }
       const names = creditNames.split("\n").map(s => s.trim()).filter(Boolean);
       const cEnd = Date.now() + Math.max(6000, names.length * 1500 + 4000);
-      while (Date.now() < cEnd && !stopExp.current) { card([title || "The End", ...names.slice(0, 8), "Made with Mandas Film & Music Studio"]); await sleep(33); }
+      while (Date.now() < cEnd && !stopExp.current) { card([title || "The End", ...names.slice(0, 8), "Made with Mandas 1 Shot Film Studio"]); await sleep(33); }
     }
     if (opts.trailer && title) { const e2 = Date.now() + 2500; while (Date.now() < e2) { card([title, "Coming soon"], true); await sleep(33); } }
     try { nEl && nEl.pause(); tEl && tEl.pause(); endEl && endEl.pause(); bed && bed.stop(); } catch (e) { }
@@ -1017,7 +1042,7 @@ export default function Studio() {
     try { const file = new File([f.blob], f.name, { type: f.blob.type }); if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: f.name }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
     const a = document.createElement("a"); a.href = f.url; a.download = f.name; document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 1500);
   };
-  const shareFilm = async () => { const f = exp.files[0]; if (f) return saveFile(f); try { await navigator.share({ title: title || "My film", text: "Made with Mandas Film & Music Studio", url: "https://" + SITE }); } catch (e) { } };
+  const shareFilm = async () => { const f = exp.files[0]; if (f) return saveFile(f); try { await navigator.share({ title: title || "My film", text: "Made with Mandas 1 Shot Film Studio", url: "https://" + SITE }); } catch (e) { } };
   const poster = async () => {
     const s = ready[Math.floor(ready.length / 2)]; if (!s) return;
     const [W, H] = sizeFor(ratio === "16:9" ? "9:16" : ratio, "1080p"); const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const ctx = cv.getContext("2d");
@@ -1026,7 +1051,7 @@ export default function Studio() {
     const vw = v.videoWidth || W, vh = v.videoHeight || H, sc = Math.max(W / vw, H / vh); try { ctx.drawImage(v, (W - vw * sc) / 2, (H - vh * sc) / 2, vw * sc, vh * sc); } catch (e) { }
     const g = ctx.createLinearGradient(0, H * 0.5, 0, H); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,.92)"); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     ctx.textAlign = "center"; ctx.fillStyle = "#E6C98E"; ctx.font = Math.round(W * 0.12) + "px 'Great Vibes', cursive"; ctx.fillText(title || "My Film", W / 2, H * 0.84);
-    ctx.fillStyle = "#F3EDE2"; ctx.font = Math.round(W * 0.028) + "px Manrope, sans-serif"; ctx.fillText(kind.toUpperCase() + " · MANDAS FILM & MUSIC STUDIO", W / 2, H * 0.9);
+    ctx.fillStyle = "#F3EDE2"; ctx.font = Math.round(W * 0.028) + "px Manrope, sans-serif"; ctx.fillText(kind.toUpperCase() + " · MANDAS 1 SHOT FILM STUDIO", W / 2, H * 0.9);
     const blob = await new Promise(res => cv.toBlob(res, "image/png")); await saveFile({ blob, name: (title || "My_Film").replace(/[^\w]+/g, "_") + "_Poster.png", url: URL.createObjectURL(blob) });
   };
   const saveProject = async () => {
@@ -1048,7 +1073,7 @@ export default function Studio() {
       <style>{CSS}</style>
       <div className="mfs">
         <div className="top">
-          <div><div className="eng">POWERED BY THE MANDASTRONG ENGINE</div><h1 className="brand" style={{ fontSize: "clamp(38px,6vw,56px)", margin: "6px 0 0" }}>Mandas Film &amp; Music Studio</h1></div>
+          <div><div className="eng">POWERED BY THE MANDASTRONG ENGINE</div><h1 className="brand" style={{ fontSize: "clamp(38px,6vw,56px)", margin: "6px 0 0" }}>Mandas 1 Shot Film Studio</h1></div>
           <div style={{ fontSize: 12, color: "var(--dim)" }}>{SITE}</div>
         </div>
 
@@ -1098,6 +1123,21 @@ export default function Studio() {
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}><span>FILM LENGTH — up to 3 hours</span><b>{minutes >= 60 ? (Math.floor(minutes / 60) + " hr " + (minutes % 60 ? minutes % 60 + " min" : "")) : minutes + " min"}</b></div>
           <input type="range" className="rng" min={0} max={180} value={minutes} onChange={e => setMinutes(Number(e.target.value))} />
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--dim)" }}><span>1 min</span><span>1 hr</span><span>2 hr</span><span>3 hr</span></div>
+        </div>
+        {isSeries(kind) && <div style={{ marginTop: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}><span>EPISODES</span><b>{epCount} episode{epCount > 1 ? "s" : ""} · about {Math.max(1, Math.round(minutes / epCount))} min each</b></div>
+          <input type="range" className="rng" min={1} max={24} value={epCount} onChange={e => setEpisodes(Number(e.target.value))} />
+          <div className="msg">The length bar is the whole series. The engine writes it as separate episodes, each with its own title and a hook into the next, and they play in order in one film.</div>
+        </div>}
+        <div className="g3" style={{ marginTop: 12 }}>
+          <div><span className="lbl">GENRE</span><Chips items={GENRES} value={genre} onPick={v => setGenre(genre === v ? "" : v)} /></div>
+          <div><span className="lbl">AUDIENCE</span><Chips items={AUDIENCES} value={audience} onPick={v => setAudience(audience === v ? "" : v)} /></div>
+          <div><span className="lbl">TIME AND PLACE</span><input id="mfs-place" className="in" value={place} onChange={e => setPlace(e.target.value)} placeholder="e.g. a snowy village, 1950s" /></div>
+        </div>
+        {animKind && <div style={{ marginTop: 10 }}><span className="lbl">ANIMATION STYLE</span><Chips items={TOONS} value={toon} onPick={v => setToon(toon === v ? "" : v)} /></div>}
+        <div className="g3" style={{ marginTop: 10 }}>
+          <div><span className="lbl">CAMERA</span><Chips items={CAMERAS} value={camera} onPick={v => setCamera(camera === v ? "" : v)} /></div>
+          <div><span className="lbl">PACE</span><Chips items={PACES} value={pace} onPick={v => setPace(pace === v ? "" : v)} /></div>
         </div>
 
         <div className="lab">2 · SPOKEN LINES — NARRATION AND EVERY CHARACTER</div>
@@ -1161,13 +1201,23 @@ export default function Studio() {
         </div>
         {dubs.length > 0 && <div className="row" style={{ marginTop: 8 }}>{dubs.map(l => <button key={l} className="c on" onClick={() => setDubs(dubs.filter(x => x !== l))}>{l} ×</button>)}</div>}
 
-        <div className="lab">7 · MUSIC</div>
+        <div className="lab">7 · MUSIC STUDIO</div>
+        <div className="row" style={{ alignItems: "center" }}>
+          <button className={"c" + (showMusic ? " on" : "")} onClick={() => setShowMusic(v => !v)}>{showMusic ? "CLOSE MUSIC STUDIO" : "OPEN MUSIC STUDIO"}</button>
+          <span className="msg" style={{ margin: 0 }}>Now: {({ library: "music library", make: "made for this film", mine: "my own song", off: "no music" })[musicMode]}{mood && musicMode !== "off" ? " · " + ((MOODS.find(m => m.id === mood) || MOODS[0]).label) : ""}</span>
+        </div>
+        {showMusic && <div className="tl" style={{ marginTop: 8 }}>
         <Chips items={[{ id: "library", label: "Music library" }, { id: "make", label: "Make my music" }, { id: "mine", label: "My own song" }, { id: "off", label: "No music" }]} value={musicMode} onPick={setMusicMode} />
         <div className="g3" style={{ marginTop: 8 }}>
           <div><span className="lbl">MOOD</span><select id="mfs-mood" className="in" value={mood} onChange={e => setMood(e.target.value)}>{MOODS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}</select></div>
           <div><span className="lbl">DESCRIBE THE MUSIC (FOR MAKE MY MUSIC)</span><input id="mfs-mp" className="in" value={musicPrompt} onChange={e => setMusicPrompt(e.target.value)} placeholder="e.g. soft piano and strings, hopeful" /></div>
           <div><span className="lbl">MY OWN SONG</span><div className="row">{fileBtn("mfs-song", "audio/*,.mp3,.m4a,.wav", f => { setMySong({ name: f.name, blob: f, url: URL.createObjectURL(f) }); setMusicMode("mine"); }, mySong ? "Song ✓" : "My song")}</div></div>
         </div>
+        <div className="g3" style={{ marginTop: 8 }}>
+          <div><span className="lbl">MUSIC STYLE (FOR MAKE MY MUSIC)</span><Chips items={MUSIC_GENRES} value={mGenre} onPick={v => setMGenre(mGenre === v ? "" : v)} /></div>
+          <div><span className="lbl">TEMPO (FOR MAKE MY MUSIC)</span><Chips items={TEMPOS} value={tempo} onPick={v => setTempo(tempo === v ? "" : v)} /></div>
+        </div>
+        </div>}
 
         <div className="lab">8 · LOOK</div>
         <Chips items={STYLES} value={style} onPick={setStyle} />
@@ -1267,7 +1317,7 @@ export default function Studio() {
               <div className="row" style={{ gap: 4, marginTop: 4 }}><button className="c" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => redoScene(i)} disabled={busy}>Redo</button><button className="c" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => removeScene(i)}>Remove</button></div>
             </div>)}</div>}
         </div>
-        <div style={{ textAlign: "center", fontSize: 11, color: "var(--dim)", marginTop: 26 }}>Mandas Film &amp; Music Studio · Powered by the MandaStrong Engine · {SITE}</div>
+        <div style={{ textAlign: "center", fontSize: 11, color: "var(--dim)", marginTop: 26 }}>Mandas 1 Shot Film Studio · Powered by the MandaStrong Engine · {SITE}</div>
       </div>
     </div>
   );
