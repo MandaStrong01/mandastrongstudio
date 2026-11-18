@@ -34,6 +34,16 @@ const SB = "https://wvkqnrqcnoztajxxzyxc.supabase.co/functions/v1/";
 const SE = SB + "studio-engine";
 const LIPSYNC = SB + "lip-sync";
 const SITE = "mandasfilmandmusicstudio.bolt.host";
+// One plan: $50 a month. Extra usage is bought as top-ups (paste the top-up payment link below when it exists).
+const SUB_LINK = "https://buy.stripe.com/cNi8wRe8a9ZtcZh7YeafS05";
+const TOPUP_LINK = "";
+const SUGGEST = [
+  { l: "Animated Christmas adventure", t: "A two hour animated Christmas adventure about a brave girl who saves Santa's Book of Names." },
+  { l: "Anti-bullying film for schools", t: "A 20 minute anti-bullying film for schools, told through the eyes of a new kid." },
+  { l: "Music video", t: "A 3 minute music video for an original uplifting song, shot in a neon city at night." },
+  { l: "Family comedy", t: "A one hour family comedy about a dog who runs for mayor." },
+  { l: "Veterans' documentary", t: "A 10 minute documentary on veterans' mental health, told in their own words." },
+];
 const PLANS = [
   { id: "starter", name: "Starter", line: "Short clips · watermark", link: "https://buy.stripe.com/00wcN7fcefjNgbtceuafS03" },
   { id: "creator", name: "Creator", line: "Films up to 1 hour · no watermark", link: "https://buy.stripe.com/cNi8wRe8a3B52kDceuafS04" },
@@ -196,7 +206,7 @@ const CSS = `
 .brand{font-family:'Great Vibes',cursive;color:var(--gold);font-weight:400;line-height:1.05}
 .top{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:12px}
 .eng{font-size:11px;letter-spacing:.14em;color:var(--gold)}
-.hero{text-align:center;margin:26px 0 6px}.hero h2{font-family:'Great Vibes',cursive;font-weight:400;color:var(--gold);font-size:clamp(34px,6vw,52px);margin:0;line-height:1.1}.hero p{color:var(--dim);margin:8px auto 0;max-width:620px;font-size:15px}.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0 6px}.stp{position:relative;background:linear-gradient(160deg,#17140d,#0f1014);border:1px solid var(--gold);border-radius:6px;padding:18px 14px 14px;box-shadow:0 0 22px rgba(230,201,142,.08)}.stp b.n{position:absolute;top:-14px;left:14px;width:28px;height:28px;border-radius:50%;background:var(--gold);color:#000;display:flex;align-items:center;justify-content:center;font-size:15px}.stp h3{margin:2px 0 6px;font-size:15px;letter-spacing:.06em;color:var(--gold)}.stp span{font-size:13px;color:var(--text);line-height:1.5}.gets{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:14px 0 4px}.gets i{font-style:normal;font-size:12px;letter-spacing:.06em;border:1px solid var(--line);border-radius:20px;padding:5px 12px;color:var(--gold);background:#12141a}.op{border:2px solid var(--gold)!important;min-height:200px!important;box-shadow:0 0 0 3px rgba(230,201,142,.12)}.guide{border:1px solid var(--line);border-radius:3px;padding:12px;margin-top:8px;background:var(--panel);font-family:Georgia,serif;font-size:14px;line-height:1.55;white-space:pre-wrap}.lab{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--gold);margin:22px 0 8px}
+.sug{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px}.sug span{font-size:11px;letter-spacing:.1em;color:var(--dim)}.sug .c{font-size:12px;padding:6px 10px}.hero{text-align:center;margin:26px 0 6px}.hero h2{font-family:'Great Vibes',cursive;font-weight:400;color:var(--gold);font-size:clamp(34px,6vw,52px);margin:0;line-height:1.1}.hero p{color:var(--dim);margin:8px auto 0;max-width:620px;font-size:15px}.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0 6px}.stp{position:relative;background:linear-gradient(160deg,#17140d,#0f1014);border:1px solid var(--gold);border-radius:6px;padding:18px 14px 14px;box-shadow:0 0 22px rgba(230,201,142,.08)}.stp b.n{position:absolute;top:-14px;left:14px;width:28px;height:28px;border-radius:50%;background:var(--gold);color:#000;display:flex;align-items:center;justify-content:center;font-size:15px}.stp h3{margin:2px 0 6px;font-size:15px;letter-spacing:.06em;color:var(--gold)}.stp span{font-size:13px;color:var(--text);line-height:1.5}.gets{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:14px 0 4px}.gets i{font-style:normal;font-size:12px;letter-spacing:.06em;border:1px solid var(--line);border-radius:20px;padding:5px 12px;color:var(--gold);background:#12141a}.op{border:2px solid var(--gold)!important;min-height:200px!important;box-shadow:0 0 0 3px rgba(230,201,142,.12)}.guide{border:1px solid var(--line);border-radius:3px;padding:12px;margin-top:8px;background:var(--panel);font-family:Georgia,serif;font-size:14px;line-height:1.55;white-space:pre-wrap}.lab{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--gold);margin:22px 0 8px}
 .ta{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:3px;color:var(--text);padding:12px;font-family:Georgia,'Times New Roman',serif;font-size:15px;line-height:1.55;resize:vertical;min-height:110px}
 .in{background:var(--panel);border:1px solid var(--line);border-radius:3px;color:var(--text);padding:11px 12px;font:inherit;font-size:14px;width:100%}
 select.in{appearance:auto}
@@ -1048,23 +1058,19 @@ export default function Studio() {
           </div>
         )}
 
-        <div className="lab">CHOOSE YOUR PLAN</div>
-        <div className="g3">{PLANS.map(p => p.id !== "studio" ? <div key={p.id} className="plan" style={{ position: "relative", opacity: 0.45, cursor: "not-allowed", overflow: "hidden" }}><h3>{p.name}</h3><span style={{ fontSize: 12, color: "#B9B1A0" }}>{p.line}</span><svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}><line x1="4" y1="4" x2="96" y2="96" stroke="#e5484d" strokeWidth="5" vectorEffect="non-scaling-stroke" /><line x1="96" y1="4" x2="4" y2="96" stroke="#e5484d" strokeWidth="5" vectorEffect="non-scaling-stroke" /></svg></div> : <button key={p.id} className="plan on" onClick={() => setPlan("studio")}><h3>{p.name}<span className="tick">✓</span></h3><span style={{ fontSize: 12, color: "#B9B1A0" }}>{p.line}</span></button>)}</div>
-        <button className="b g" style={{ width: "100%", marginTop: 10 }} onClick={() => { setPlan("studio"); const p = PLANS[2]; const em = (user && user.email) || email; window.open(p.link + (em ? "?prefilled_email=" + encodeURIComponent(em) : ""), "_blank", "noopener"); }}>PAY FOR STUDIO — SECURE CHECKOUT</button>
+        <div className="row" style={{ marginTop: 12, gap: 8 }}>
+          <button className="b g" onClick={() => { const em = (user && user.email) || email; window.open(SUB_LINK + (em ? "?prefilled_email=" + encodeURIComponent(em) : ""), "_blank", "noopener"); }}>SUBSCRIBE · $50 / MONTH</button>
+          <button className="b" onClick={() => { if (TOPUP_LINK) { const em = (user && user.email) || email; window.open(TOPUP_LINK + (em ? "?prefilled_email=" + encodeURIComponent(em) : ""), "_blank", "noopener"); } else setAddMsg("Extra usage packs are opening soon."); }}>BUY MORE USAGE</button>
+        </div>
 
         {simple && <div className="hero">
           <h2>One Prompt. One Film.</h2>
-          <p>Describe your story or provide your script, add your own footage and voices, and the MandaStrong Engine produces your finished film.</p>
-          <div className="steps">
-            <div className="stp"><b className="n">1</b><h3>DESCRIBE</h3><span>Enter a concept for your film, or paste a complete script with each speaker's name in [BRACKETS].</span></div>
-            <div className="stp"><b className="n">2</b><h3>UPLOAD</h3><span>Optional. Add your clips, photographs and character voice recordings, each voice file named for its character.</span></div>
-            <div className="stp"><b className="n">3</b><h3>PRODUCE</h3><span>Press Make. The engine builds each scene, casts the voices, scores the film and edits it into one finished piece.</span></div>
-          </div>
-          <div className="gets"><i>SCENE-BY-SCENE PRODUCTION</i><i>CHARACTER VOICE CASTING</i><i>ORIGINAL SCORE</i><i>AMBIENT SOUND DESIGN</i><i>SEAMLESS FINAL EDIT</i></div>
+          <p>Describe your film. Add your footage and voices if you have them. The engine writes, casts, scores and edits it into one finished movie.</p>
         </div>}
-        <div className="lab">{simple ? "YOUR PROMPT" : "ONE PROMPT — PUT EVERYTHING IN ONE BOX"}</div>
-        <textarea className="ta op" value={onePrompt} onChange={e => setOnePrompt(e.target.value)} placeholder={"Title: Santa's List: The Book of Names\nLength: 60 min\n[SANTA] Ho ho ho!\n[LILY] I made a list!\nEverything else (directions, description, voices) goes on its own lines."} />
+        <div className="lab">{simple ? "ENTER YOUR PROMPT" : "ONE PROMPT — PUT EVERYTHING IN ONE BOX"}</div>
+        <textarea className="ta op" value={onePrompt} onChange={e => setOnePrompt(e.target.value)} placeholder={simple ? "Describe your film in as much detail as you like: the story, the characters, the look, the length.\n\nOr paste your full script with each speaker's name in [BRACKETS]." : "Title: Santa's List: The Book of Names\nLength: 60 min\n[SANTA] Ho ho ho!\n[LILY] I made a list!\nEverything else (directions, description, voices) goes on its own lines."} />
         <button className="go" style={{ marginTop: 10, display: simple ? "none" : undefined }} onClick={() => { const n = splitPrompt(); if (n) setAutoMake(true); else designFromIdea(); }}>SPLIT AND MAKE MY MOVIE</button>
+        {simple && <div className="sug"><span>TRY:</span>{SUGGEST.map((x, i) => <button key={i} className="c" onClick={() => setOnePrompt(x.t)}>{x.l}</button>)}</div>}
         <div style={{ display: "flex", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
           <button className="b s" onClick={() => setSimple(v => !v)}>{simple ? "ADVANCED CONTROLS" : "RETURN TO ONE PROMPT"}</button>
           <button className="b" style={{ display: simple ? "none" : undefined }} onClick={() => { const n = splitPrompt(); setAddMsg(n ? "Split into the boxes below. " + n + " spoken lines." : "No [NAME] lines found. Put each spoken line as [NAME] line."); }}>SPLIT INTO THE BOXES ONLY</button>
@@ -1113,9 +1119,9 @@ export default function Studio() {
         <textarea id="mfs-script" className="ta" value={script} onChange={e => setScript(e.target.value)} placeholder={"Paste your directions here: length, footage order, weather, sound, description, and who uses which voice.\nExample:\nDOXY'S VOICE:\nSanta: older man. Deeper, warm.\nLILY'S VOICE:\nLily: girl, age 10.\nThe engine builds the scenes and gives each character their voice from this."} />
 
         </div>
-        <div className="lab">4 · PHOTOS, CLIPS &amp; CHARACTER VOICES</div>
+        <div className="lab">{simple ? "YOUR FOOTAGE & VOICES (OPTIONAL)" : "4 · PHOTOS, CLIPS & CHARACTER VOICES"}</div>
         <label htmlFor="mfs-files" className={"drop" + (over ? " over" : "")} onDragOver={e => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)} onDrop={e => { e.preventDefault(); setOver(false); if (e.dataTransfer.files && e.dataTransfer.files.length) addFiles(e.dataTransfer.files); else dropLink(e); }}>
-          DROP, DRAG OR TAP TO ADD PHOTOS, CLIPS AND CHARACTER VOICES (AS MANY AS YOU LIKE). NAME EACH VOICE FILE, LIKE LILY, DOXY OR ETHAN.
+          {simple ? "Drop or tap to add clips, pictures and character voices. Name each voice file after its character, like LILY." : "DROP, DRAG OR TAP TO ADD PHOTOS, CLIPS AND CHARACTER VOICES (AS MANY AS YOU LIKE). NAME EACH VOICE FILE, LIKE LILY, DOXY OR ETHAN."}
           <input id="mfs-files" type="file" multiple accept="image/*,video/*,audio/*,.heic,.heif,.mp4,.mov,.mp3,.m4a,.wav,.txt" style={{ display: "none" }} onChange={e => { const f = Array.from(e.target.files || []); e.target.value = ""; addFiles(f); }} />
         </label>
         {addMsg && <div className="msg">{addMsg}</div>}
@@ -1182,16 +1188,15 @@ export default function Studio() {
         {credits && <textarea id="mfs-credits" className="ta" style={{ minHeight: 70, marginTop: 8 }} value={creditNames} onChange={e => setCreditNames(e.target.value)} placeholder={"Credits, one per line\nDirected by …\nNarrated by …"} />}
 
         </div>
-        <div style={{ marginTop: 18, border: "1px solid var(--line)", borderRadius: 3, padding: 12, display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", fontSize: 13 }}>
+        <div style={{ marginTop: 18, border: "1px solid var(--line)", borderRadius: 3, padding: 12, display: simple ? "none" : "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", fontSize: 13 }}>
           <span>Before you start: {minutes} min · {Math.max(sceneCount, clips.length)} scenes · {Math.max(1, castNames)} voice{castNames > 1 ? "s" : ""} · {langCount} language{langCount > 1 ? "s" : ""}</span>
           <span style={{ color: "var(--gold)", fontWeight: 700 }}>About {est} min to make</span>
         </div>
-        {simple && <div className="row" style={{ marginTop: 10 }}><Toggle on={freeMode} set={setFreeMode}>Free mode: my images + stock</Toggle></div>}
         <button className="go" onClick={() => { if (simple && onePrompt.trim()) { const n = splitPrompt(); if (n) setAutoMake(true); else designFromIdea(); } else makeMovie(); }} disabled={busy || designing}>{designing ? "WRITING YOUR FILM…" : busy ? "MAKING YOUR MOVIE…" : "MAKE MY MOVIE"}</button>
         {(busy || stage) && <div className="msg">{stage}<div className="pb"><i style={{ width: pct + "%" }} /></div></div>}
         {err && <div className="msg err">{err}</div>}
 
-        <div className="lab">12 · PREVIEW</div>
+        <div className="lab">{simple ? "YOUR FILM" : "12 · PREVIEW"}</div>
         <div className="out">
           <div>
             <div ref={wrapRef} className="pv" style={{ aspectRatio: (RATIOS[ratio] || [16, 9]).join("/"), maxHeight: ratio === "9:16" ? 620 : undefined, margin: ratio === "9:16" ? "0 auto" : undefined }}>
