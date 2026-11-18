@@ -618,6 +618,77 @@ export default function Studio() {
     return sp.length;
   }
   useEffect(() => { if (autoMake && narr && !busy) { setAutoMake(false); makeMovie(); } }, [autoMake, narr, script]);
+  // JUST AN IDEA: no [NAME] lines? Write the whole film from the idea (outline, then every scene's spoken lines), fill the boxes, make it.
+  const [designing, setDesigning] = useState(false);
+  async function designFromIdea() {
+    const idea = String(onePrompt || "").trim();
+    if (!idea) { setAddMsg("Type your idea in the box first."); return; }
+    setDesigning(true); setErr(""); setAddMsg(""); setPct(2); setStage("Designing your film from your idea…");
+    const ask = async (prompt, max) => {
+      for (let t = 0; t < 2; t++) {
+        try {
+          const d = await proxyFetch({ model: "claude-sonnet-4-20250514", max_tokens: max, messages: [{ role: "user", content: prompt }] });
+          const txt = d && d.content ? d.content.filter(x => x.type === "text").map(x => x.text).join("") : "";
+          if (txt) return txt;
+        } catch (e) { }
+      }
+      throw new Error("The film writer did not answer. Press Make again.");
+    };
+    try {
+      const words = { one: 1, two: 2, three: 3 };
+      let mins = 120; const mh = idea.match(/(\d+|one|two|three)\s*[- ]?\s*(?:hours?|hrs?|h)\b/i), mm = idea.match(/(\d+)\s*[- ]?\s*min/i);
+      if (mh) mins = (words[mh[1].toLowerCase()] || Number(mh[1])) * 60; else if (mm) mins = Number(mm[1]);
+      mins = Math.max(2, Math.min(180, mins));
+      const N = Math.max(4, Math.min(36, Math.round(mins / 5)));
+      const animated = /\b(animated|animation|pixar|cartoon)\b/i.test(idea);
+      const raw = await ask('You are a film writer and director. The idea: """' + idea + '"""\nDesign a ' + mins + '-minute ' + (animated ? "animated " : "") + 'film. Return ONLY JSON, no other text: {"title":"","premise":"2 sentences","look":"2 sentences on colours, light, style","setting":"time of year, weather, places","characters":[{"name":"UPPERCASE NAME","who":"age, sex, personality, what they look like"}],"scenes":[{"title":"","summary":"one short sentence"}]}. Use EXACTLY ' + N + ' scenes in story order with a clear beginning, middle and end. Use at most 8 characters. Names are UPPERCASE letters only. Keep it warm and family friendly unless the idea says otherwise.', 4000);
+      const o = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1).replace(/```json|```/g, ""));
+      const chars = (o.characters || []).map(c => ({ name: String(c.name || "").toUpperCase().replace(/[^A-Z .'&-]/g, "").trim(), who: String(c.who || "") })).filter(c => c.name);
+      const scs = (o.scenes || []).slice(0, N);
+      if (!scs.length || !chars.length) throw new Error("The outline came back empty. Press Make again.");
+      const names = chars.map(c => c.name).join(", ");
+      const out = new Array(scs.length); let done = 0, next = 0;
+      const worker = async () => {
+        while (next < scs.length) {
+          const i = next++;
+          let txt = "";
+          try {
+            txt = await ask('You are writing scene ' + (i + 1) + ' of ' + scs.length + ' of the film "' + (o.title || "") + '".\nPremise: ' + (o.premise || "") + '\nLook: ' + (o.look || "") + '\nSetting: ' + (o.setting || "") + '\nCharacters: ' + chars.map(c => c.name + " (" + c.who + ")").join("; ") + '\nStory so far: ' + (i ? scs[i - 1].summary : "(this is the opening)") + '\nThis scene: ' + scs[i].title + " — " + scs[i].summary + '\nNext scene: ' + (scs[i + 1] ? scs[i + 1].summary : "(this is the ending)") + '\n\nWrite ONLY this, nothing else:\nVISUAL: one paragraph on what we see (place, action, camera, light, weather).\nThen 10 to 16 spoken lines, each on its own line as [NAME] line. NAME must be exactly one of: ' + names + '. Each line is one or two natural sentences. No stage directions, no narration unless NARRATOR is in the list.', 1800);
+          } catch (e) { }
+          const vis = (txt.split(/\r?\n/).find(l => /^VISUAL:/i.test(l.trim())) || "").replace(/^VISUAL:\s*/i, "").trim() || scs[i].summary;
+          const lines = txt.split(/\r?\n/).map(l => l.trim()).filter(l => /^\[[^\]]+\]\s*\S/.test(l));
+          out[i] = { vis, lines };
+          done++; setStage("Writing your film: scene " + done + " of " + scs.length + "…"); setPct(2 + Math.round(4 * done / scs.length));
+        }
+      };
+      await Promise.all([worker(), worker(), worker()]);
+      const title = String(o.title || "My Movie").trim();
+      const sp = out.flatMap(x => x.lines);
+      if (!sp.length) throw new Error("No spoken lines came back. Press Make again.");
+      const tm = k => { const m = Math.round(k * mins / scs.length); return Math.floor(m / 60) + ":" + String(m % 60).padStart(2, "0") + ":00"; };
+      const dir = [
+        "DESCRIPTION", o.premise || "", "",
+        "DIRECTIONS",
+        'MAKE a ' + mins + '-minute ' + (animated ? "animated " : "") + 'film called "' + title + '". BUILD it in the exact scene order below: ' + scs.length + ' scenes, no gaps. Render every scene and every line in SCRIPT ORDER, whatever order my files were uploaded in.', "",
+        "SCRIPT. Use the spoken lines exactly as written. A name in square brackets, like [" + chars[0].name + "], is that character speaking.", "",
+        "LOOK. " + (o.look || "") + " Keep every character looking the same from start to finish.", "",
+        "SETTING. " + (o.setting || ""), "",
+        "WHO THEY ARE.", ...chars.map(c => c.name + ": " + c.who), "",
+        "VOICES. Use my uploaded character voices where I added them. Otherwise give each character a separate voice that fits their name, age and sex. Each character keeps the same voice for the whole film.", "",
+        "FOOTAGE ORDER. 1. Use my uploaded images and clips first, in script order. 2. Use the audio already in my clips. 3. Stretch each clip to fill its scene. 4. Then stock footage. 5. Generate new clips only as a last resort, matching my look. Never show the same clip twice in a row.", "",
+        "SOUND. Music under the voices that fits each scene. Room tone and ambient sound for every place. Footsteps, doors, weather and crowd sounds wherever the scene shows them. No silence.", "",
+        "TIMING. Every scene fills its share of " + mins + ":00. No black frames. Fade out at the end.", "",
+        "SCENE GUIDE.", ...out.map((x, i) => "SCENE " + (i + 1) + " (" + tm(i) + "-" + tm(i + 1) + "). " + (scs[i].title ? scs[i].title + ". " : "") + x.vis)
+      ].join("\n");
+      setTitle(title); setMinutes(mins); if (animated) { setKind("Animation"); setStyle("Animated"); } else setKind("Movie");
+      setCharVoices(true); setVoiceMode("engine"); if (musicMode === "off") setMusicMode("library");
+      setNarr(sp.join("\n")); setScript(dir);
+      setDesigning(false); setStage("Your film is written: " + scs.length + " scenes, " + sp.length + " spoken lines. Making it now…");
+      setAutoMake(true);
+    } catch (e) {
+      setDesigning(false); setErr(String((e && e.message) || e)); setStage("");
+    }
+  }
   const makeMovie = async () => {
     setErr("");
     if (voiceMode === "mine" && !myRec) { setErr("Your recording is not loaded. Press UPLOAD MY RECORDING, choose your file, then press Make again. I will not use another voice."); return; }
@@ -983,12 +1054,13 @@ export default function Studio() {
 
         <div className="lab">{simple ? "YOUR MOVIE — PUT EVERYTHING IN ONE BOX, ADD YOUR FILES, PRESS MAKE" : "ONE PROMPT — PUT EVERYTHING IN ONE BOX"}</div>
         <textarea className="ta op" value={onePrompt} onChange={e => setOnePrompt(e.target.value)} placeholder={"Title: Santa's List: The Book of Names\nLength: 60 min\n[SANTA] Ho ho ho!\n[LILY] I made a list!\nEverything else (directions, description, voices) goes on its own lines."} />
-        <button className="go" style={{ marginTop: 10, display: simple ? "none" : undefined }} onClick={() => { const n = splitPrompt(); if (n) setAutoMake(true); else setAddMsg("No [NAME] lines found. Put each spoken line as [NAME] line."); }}>SPLIT AND MAKE MY MOVIE</button>
+        <button className="go" style={{ marginTop: 10, display: simple ? "none" : undefined }} onClick={() => { const n = splitPrompt(); if (n) setAutoMake(true); else designFromIdea(); }}>SPLIT AND MAKE MY MOVIE</button>
         <div style={{ display: "flex", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
           <button className="b s" onClick={() => setSimple(v => !v)}>{simple ? "SHOW ALL THE BOXES" : "BACK TO ONE BOX"}</button>
           <button className="b" style={{ display: simple ? "none" : undefined }} onClick={() => { const n = splitPrompt(); setAddMsg(n ? "Split into the boxes below. " + n + " spoken lines." : "No [NAME] lines found. Put each spoken line as [NAME] line."); }}>SPLIT INTO THE BOXES ONLY</button>
           <button className="b s" onClick={() => setShowGuide(v => !v)}>{showGuide ? "CLOSE THE PROMPT GUIDE" : "NOT SURE WHAT TO WRITE? OPEN THE PROMPT GUIDE"}</button>
         </div>
+        {simple && <div className="msg">Just an idea is enough, like "a two hour animated Christmas film about a lost reindeer". I write the whole film from it.</div>}
         {showGuide && <div className="guide">{"HOW TO WRITE YOUR PROMPT\n\nLine 1:  Title: your film's name\nLine 2:  Length: 60 min\n\nEvery spoken line, in script order, with the speaker in square brackets:\n[NARRATOR] It was Christmas Eve.\n[LILY] Come on! We have to go look!\n\nEverything else goes on its own lines: what the film looks like, the weather, the mood, the music, and which voice plays which character.\n\nExample:\nTitle: Santa's List: The Book of Names\nLength: 60 min\n[SANTA] Ho ho ho!\n[LILY] I made a list!\nChristmas Eve night. Snow. Cold and crisp. Warm lights in the windows.\nVOICES: Doxy: Santa. Lily: Lily.\n\nThen add your photos, clips and voice files in box 4."}</div>}
 
         <div style={{ display: simple ? "none" : undefined }}>
@@ -1106,7 +1178,7 @@ export default function Studio() {
           <span style={{ color: "var(--gold)", fontWeight: 700 }}>About {est} min to make</span>
         </div>
         {simple && <div className="row" style={{ marginTop: 10 }}><Toggle on={freeMode} set={setFreeMode}>Free mode: my images + stock</Toggle></div>}
-        <button className="go" onClick={() => { if (simple && onePrompt.trim()) { const n = splitPrompt(); if (n) setAutoMake(true); else setAddMsg("No [NAME] lines found. Put each spoken line as [NAME] line."); } else makeMovie(); }} disabled={busy}>{busy ? "MAKING YOUR MOVIE…" : "MAKE MY MOVIE"}</button>
+        <button className="go" onClick={() => { if (simple && onePrompt.trim()) { const n = splitPrompt(); if (n) setAutoMake(true); else designFromIdea(); } else makeMovie(); }} disabled={busy || designing}>{designing ? "WRITING YOUR FILM…" : busy ? "MAKING YOUR MOVIE…" : "MAKE MY MOVIE"}</button>
         {(busy || stage) && <div className="msg">{stage}<div className="pb"><i style={{ width: pct + "%" }} /></div></div>}
         {err && <div className="msg err">{err}</div>}
 
