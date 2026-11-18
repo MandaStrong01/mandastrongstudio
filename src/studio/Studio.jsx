@@ -706,6 +706,11 @@ export default function Studio() {
       let used = false; try { used = !!localStorage.getItem(trialKey(who)); } catch (e) { }
       if (used) { setErr("Your free test film has been used. Subscribe for $50 a month to make more."); return; }
       if (minutes > 1) { setErr("The free test film is up to 1 minute. Move the length bar to 1 minute or less."); return; }
+      // Server-side lock: the one free test film is claimed on the server, so clearing the browser does not reset it.
+      try {
+        const { data: ok, error: rpcErr } = await supabase.rpc("claim_studio_trial");
+        if (!rpcErr && ok === false) { try { localStorage.setItem(trialKey(who), "1"); } catch (e) { } setErr("Your free test film has been used. Subscribe for $50 a month to make more."); return; }
+      } catch (e) { }
     }
     setBusy(true); setDone(false); setPct(2);
     let wl = null; try { wl = await navigator.wakeLock.request("screen"); } catch (e) { }
