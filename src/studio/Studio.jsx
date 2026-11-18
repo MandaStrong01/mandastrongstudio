@@ -303,6 +303,7 @@ export default function Studio() {
   useEffect(() => { save("freeMode", freeMode); }, [freeMode]);
   const noCredit = useRef(false);
   const planRef = useRef([]);
+  const lastClipRef = useRef(null), reuseN = useRef(0); // your clips are reused (never back to back) when the engine cannot make a scene
   useEffect(() => { const o = { kind, title, narr, script, voiceMode, narrator, charVoices, lipSync, speed, spoken, subs, dubs, musicMode, mood, musicPrompt, style, grade, enhance, duck, cleanVoice, minutes, ratio, quality, vVol, mVol, cVol, allRatios, credits, watermark, creditNames, plan }; for (const k in o) save(k, o[k]); });
 
   // ── files ──
@@ -521,14 +522,17 @@ export default function Studio() {
     const openSlots = []; for (let k = 1; k <= total; k++) if (!taken.has(k)) openSlots.push(k);
     const slot = openSlots.indexOf(i + 1);
     const cl = byNum || (slot >= 0 && slot < free_.length ? free_[slot] : null);
-    if (cl) { blob = cl.blob; source = "your clip"; }
+    if (cl) { blob = cl.blob; source = "your clip"; lastClipRef.current = cl; }
     const free = () => freeMode || noCredit.current;
     // Footage order: your clip first, then the engine makes moving footage (your matched image is its starting picture),
     // and only if the engine cannot deliver (or Free mode is on) your image as a still. Stock only when Free mode is on.
     if (!blob && !free() && i === 0 && lipSync && photo && list.firstVoice) {
       try { const r = await fetch(LIPSYNC, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: photo, audio: list.firstVoice }) }); const d = await r.json(); if (d.video) { blob = await toBlob(d.video); source = "lip sync"; } else note = d.error || ""; } catch (e) { }
     }
-    if (!blob && !free()) { try { blob = await toBlob(await seRun({ kind: "video", prompt: text + "\n" + look, image: photo })); } catch (e) { note = e.message; if (e.nocredit) { noCredit.current = true; setStage("Engine is out of credit — switching to your own images."); } } }
+    if (!blob && !free()) { try { blob = await toBlob(await seRun({ kind: "video", prompt: text + "\n" + look, image: photo })); } catch (e) { note = e.message; if (e.nocredit) { noCredit.current = true; setStage("Engine is out of credit — using your own clips and images."); } } }
+    // Engine could not make this scene: use YOUR clips again (never the same one twice in a row), with their own sound.
+    // Frozen pictures and stock are the very last resort — and only when you have no clips at all.
+    if (!blob && clips.length) { let c2 = null; for (let t = 0; t < clips.length; t++) { const cand = clips[(reuseN.current + t) % clips.length]; if (clips.length === 1 || cand !== lastClipRef.current) { c2 = cand; reuseN.current = (reuseN.current + t + 1) % clips.length; break; } } if (!c2) c2 = clips[0]; blob = c2.blob; source = "your clip"; lastClipRef.current = c2; note = "Your clip used again — the engine could not make this scene."; }
     if (!blob && !free()) { try { const im = await seRun({ kind: "image", prompt: text + "\n" + look, aspect_ratio: ratio }, 4); blob = await stillToClip(im, 6, i); source = "engine still"; } catch (e) { if (e.nocredit) noCredit.current = true; } }
     if (!blob) { const r2 = await stockScene(plan, i, text, freeMode); if (r2) { blob = r2.blob; source = r2.source; } }
     if (!blob) { setS({ status: "failed", note: note || "No picture came back" }); return null; }
@@ -615,7 +619,7 @@ export default function Studio() {
       setMusicUrl(mUrl); setPct(24);
 
       // 3b — match your images to scenes and plan free stock for the rest
-      setStage("Matching your images to the scenes…"); noCredit.current = false;
+      setStage("Matching your images to the scenes…"); noCredit.current = false; reuseN.current = 0; lastClipRef.current = null;
       await planScenes(list);
       // 4 — scenes, ONE at a time (the engine limit allows one request at a time; throttled ones wait and retry by themselves)
       let next = 0, finished = 0; const failed = [];
