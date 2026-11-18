@@ -205,11 +205,11 @@ const CSS = `
 :root{--bg:#0E0F12;--panel:#121419;--line:#2E2A22;--gold:#E6C98E;--text:#F3EDE2;--dim:#9A927F}
 *{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);font-family:Manrope,system-ui,sans-serif}
 .mfs{max-width:1000px;margin:0 auto;padding:24px max(16px,env(safe-area-inset-left)) 80px max(16px,env(safe-area-inset-right))}
-.brand{font-family:'Great Vibes',cursive;color:var(--gold);font-weight:400;line-height:1.05}
+.brand{font-family:Manrope,system-ui,sans-serif;color:#f3ede2;font-weight:800;letter-spacing:.01em;line-height:1.1}.hero h2,.len,.ta{font-family:Manrope,system-ui,sans-serif!important}.hero h2{font-weight:800!important;letter-spacing:-.025em}
 .top{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:12px}
 .eng{font-size:11px;letter-spacing:.14em;color:var(--gold)}
 .mfs{background:radial-gradient(ellipse at 50% -8%,rgba(230,201,142,.16),transparent 58%),radial-gradient(ellipse at 90% 40%,rgba(120,80,200,.08),transparent 50%)}.hero h2{font-size:clamp(48px,9vw,86px)!important;background:linear-gradient(90deg,#fff3c9,#E6C98E,#b98a3e,#E6C98E,#fff3c9);background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent!important;animation:sheen 7s linear infinite;filter:drop-shadow(0 0 22px rgba(230,201,142,.28))}@keyframes sheen{to{background-position:220% 0}}.hero p{font-size:16px!important;max-width:560px!important}.len{margin-top:16px;border:1px solid var(--line);border-radius:6px;padding:14px 16px;background:linear-gradient(160deg,#15130d,#0e0f13)}.lenTop{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;letter-spacing:.1em;color:var(--gold)}.lenTop b{font-size:24px;letter-spacing:.02em;color:#fff3c9}.ticks{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);margin-top:2px}.go{background:linear-gradient(180deg,#f3dba3,#E6C98E 55%,#c9a45c)!important;box-shadow:0 0 30px rgba(230,201,142,.28);transition:transform .15s,box-shadow .15s}.go:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 0 44px rgba(230,201,142,.42)}.op{box-shadow:0 0 0 3px rgba(230,201,142,.12),0 0 34px rgba(230,201,142,.14)!important}.sug{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px}.sug span{font-size:11px;letter-spacing:.1em;color:var(--dim)}.sug .c{font-size:12px;padding:6px 10px}.hero{text-align:center;margin:26px 0 6px}.hero h2{font-family:'Great Vibes',cursive;font-weight:400;color:var(--gold);font-size:clamp(34px,6vw,52px);margin:0;line-height:1.1}.hero p{color:var(--dim);margin:8px auto 0;max-width:620px;font-size:15px}.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0 6px}.stp{position:relative;background:linear-gradient(160deg,#17140d,#0f1014);border:1px solid var(--gold);border-radius:6px;padding:18px 14px 14px;box-shadow:0 0 22px rgba(230,201,142,.08)}.stp b.n{position:absolute;top:-14px;left:14px;width:28px;height:28px;border-radius:50%;background:var(--gold);color:#000;display:flex;align-items:center;justify-content:center;font-size:15px}.stp h3{margin:2px 0 6px;font-size:15px;letter-spacing:.06em;color:var(--gold)}.stp span{font-size:13px;color:var(--text);line-height:1.5}.gets{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:14px 0 4px}.gets i{font-style:normal;font-size:12px;letter-spacing:.06em;border:1px solid var(--line);border-radius:20px;padding:5px 12px;color:var(--gold);background:#12141a}.op{border:2px solid var(--gold)!important;min-height:200px!important;box-shadow:0 0 0 3px rgba(230,201,142,.12)}.guide{border:1px solid var(--line);border-radius:3px;padding:12px;margin-top:8px;background:var(--panel);font-family:Georgia,serif;font-size:14px;line-height:1.55;white-space:pre-wrap}.lab{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--gold);margin:22px 0 8px}
-.ta{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:3px;color:var(--text);padding:12px;font-family:Georgia,'Times New Roman',serif;font-size:15px;line-height:1.55;resize:vertical;min-height:110px}
+.ta{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:3px;color:var(--text);padding:12px;font-family:Manrope,system-ui,sans-serif;font-size:15px;line-height:1.55;resize:vertical;min-height:110px}
 .in{background:var(--panel);border:1px solid var(--line);border-radius:3px;color:var(--text);padding:11px 12px;font:inherit;font-size:14px;width:100%}
 select.in{appearance:auto}
 .login{display:grid;grid-template-columns:1fr 1fr auto auto;gap:8px}@media(max-width:640px){.login{grid-template-columns:1fr 1fr}}
@@ -893,7 +893,7 @@ export default function Studio() {
       if (watermark && plan === "starter") { ctx.font = Math.round(H * 0.03) + "px Manrope"; ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.textAlign = "left"; ctx.fillText("Mandas 1 Shot Film Studio", W * 0.03, H * 0.96); }
       showPv();
     };
-    const card = (lines, big) => { ctx.fillStyle = "#0E0F12"; ctx.fillRect(0, 0, W, H); ctx.textAlign = "center"; ctx.fillStyle = "#E6C98E"; ctx.font = Math.round(H * (big ? 0.11 : 0.06)) + "px 'Great Vibes', cursive"; ctx.fillText(lines[0] || "", W / 2, H * 0.42); ctx.fillStyle = "#F3EDE2"; ctx.font = Math.round(H * 0.032) + "px Manrope, sans-serif"; lines.slice(1).forEach((l, k) => ctx.fillText(l, W / 2, H * 0.55 + k * H * 0.05)); showPv(); };
+    const card = (lines, big) => { ctx.fillStyle = "#0E0F12"; ctx.fillRect(0, 0, W, H); ctx.textAlign = "center"; ctx.fillStyle = "#E6C98E"; ctx.font = Math.round(H * (big ? 0.11 : 0.06)) + "px Manrope, sans-serif"; ctx.fillText(lines[0] || "", W / 2, H * 0.42); ctx.fillStyle = "#F3EDE2"; ctx.font = Math.round(H * 0.032) + "px Manrope, sans-serif"; lines.slice(1).forEach((l, k) => ctx.fillText(l, W / 2, H * 0.55 + k * H * 0.05)); showPv(); };
     rec.start(1000); if (bed) try { bed.start(0); } catch (e) { }
     const t0 = Date.now();
     // opening title card
@@ -1050,7 +1050,7 @@ export default function Studio() {
     try { v.currentTime = Math.min(2, (v.duration || 4) / 2); await new Promise(res => { v.onseeked = res; setTimeout(res, 2000); }); } catch (e) { }
     const vw = v.videoWidth || W, vh = v.videoHeight || H, sc = Math.max(W / vw, H / vh); try { ctx.drawImage(v, (W - vw * sc) / 2, (H - vh * sc) / 2, vw * sc, vh * sc); } catch (e) { }
     const g = ctx.createLinearGradient(0, H * 0.5, 0, H); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,.92)"); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    ctx.textAlign = "center"; ctx.fillStyle = "#E6C98E"; ctx.font = Math.round(W * 0.12) + "px 'Great Vibes', cursive"; ctx.fillText(title || "My Film", W / 2, H * 0.84);
+    ctx.textAlign = "center"; ctx.fillStyle = "#E6C98E"; ctx.font = Math.round(W * 0.12) + "px Manrope, sans-serif"; ctx.fillText(title || "My Film", W / 2, H * 0.84);
     ctx.fillStyle = "#F3EDE2"; ctx.font = Math.round(W * 0.028) + "px Manrope, sans-serif"; ctx.fillText(kind.toUpperCase() + " · MANDAS 1 SHOT FILM STUDIO", W / 2, H * 0.9);
     const blob = await new Promise(res => cv.toBlob(res, "image/png")); await saveFile({ blob, name: (title || "My_Film").replace(/[^\w]+/g, "_") + "_Poster.png", url: URL.createObjectURL(blob) });
   };
@@ -1073,7 +1073,7 @@ export default function Studio() {
       <style>{CSS}</style>
       <div className="mfs">
         <div className="top">
-          <div><div className="eng">POWERED BY THE MANDASTRONG ENGINE</div><h1 className="brand" style={{ fontSize: "clamp(38px,6vw,56px)", margin: "6px 0 0" }}>Mandas 1 Shot Film Studio</h1></div>
+          <div><div className="eng">POWERED BY THE MANDASTRONG ENGINE</div><h1 className="brand" style={{ fontSize: "clamp(26px,4.4vw,38px)", margin: "6px 0 0" }}>Mandas 1 Shot Film Studio</h1></div>
           <div style={{ fontSize: 12, color: "var(--dim)" }}>{SITE}</div>
         </div>
 
