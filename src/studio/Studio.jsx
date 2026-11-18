@@ -595,6 +595,24 @@ export default function Studio() {
     return plan;
   }
 
+  // ONE PROMPT: one box → title, length, spoken lines (Box 2) and directions/voices (Box 3). Nothing is changed in your files or voices.
+  const [onePrompt, setOnePrompt] = useState(""); const [autoMake, setAutoMake] = useState(false);
+  function splitPrompt() {
+    const sp = [], dr = [], vo = []; let t = "", len = 0;
+    String(onePrompt || "").split(/\r?\n/).forEach(raw => {
+      const l = raw.trim(); if (!l) { if (dr.length && dr[dr.length - 1] !== "") dr.push(""); return; }
+      let m;
+      if ((m = l.match(/^title\s*:\s*(.+)/i))) t = m[1].trim();
+      else if ((m = l.match(/^(?:length|runtime|duration)\s*:\s*(\d+)\s*(hr|hour|h|min|m)?/i))) { const n = Number(m[1]); len = /^h/i.test(m[2] || "") ? n * 60 : n; }
+      else if (/^\[[^\]]+\]/.test(l)) sp.push(l);
+      else dr.push(l);
+    });
+    if (t) setTitle(t);
+    if (len >= 1) setMinutes(Math.min(180, len));
+    setNarr(sp.join("\n")); setScript(dr.join("\n").trim());
+    return sp.length;
+  }
+  useEffect(() => { if (autoMake && narr && !busy) { setAutoMake(false); makeMovie(); } }, [autoMake, narr, script]);
   const makeMovie = async () => {
     setErr("");
     if (voiceMode === "mine" && !myRec) { setErr("Your recording is not loaded. Press UPLOAD MY RECORDING, choose your file, then press Make again. I will not use another voice."); return; }
@@ -958,6 +976,12 @@ export default function Studio() {
         <div className="g3">{PLANS.map(p => p.id !== "studio" ? <div key={p.id} className="plan" style={{ position: "relative", opacity: 0.45, cursor: "not-allowed", overflow: "hidden" }}><h3>{p.name}</h3><span style={{ fontSize: 12, color: "#B9B1A0" }}>{p.line}</span><svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}><line x1="4" y1="4" x2="96" y2="96" stroke="#e5484d" strokeWidth="5" vectorEffect="non-scaling-stroke" /><line x1="96" y1="4" x2="4" y2="96" stroke="#e5484d" strokeWidth="5" vectorEffect="non-scaling-stroke" /></svg></div> : <button key={p.id} className="plan on" onClick={() => setPlan("studio")}><h3>{p.name}<span className="tick">✓</span></h3><span style={{ fontSize: 12, color: "#B9B1A0" }}>{p.line}</span></button>)}</div>
         <button className="b g" style={{ width: "100%", marginTop: 10 }} onClick={() => { setPlan("studio"); const p = PLANS[2]; const em = (user && user.email) || email; window.open(p.link + (em ? "?prefilled_email=" + encodeURIComponent(em) : ""), "_blank", "noopener"); }}>PAY FOR STUDIO — SECURE CHECKOUT</button>
 
+        <div className="lab">ONE PROMPT — PUT EVERYTHING IN ONE BOX</div>
+        <textarea className="ta" style={{ minHeight: 150 }} value={onePrompt} onChange={e => setOnePrompt(e.target.value)} placeholder={"Title: Santa's List: The Book of Names\nLength: 60 min\n[SANTA] Ho ho ho!\n[LILY] I made a list!\nEverything else (directions, description, voices) goes on its own lines."} />
+        <div className="g3" style={{ marginTop: 8 }}>
+          <button className="b" onClick={() => { const n = splitPrompt(); setAddMsg(n ? "Split into the boxes below. " + n + " spoken lines." : "No [NAME] lines found. Put each spoken line as [NAME] line."); }}>SPLIT INTO THE BOXES</button>
+          <button className="b g" onClick={() => { const n = splitPrompt(); if (n) setAutoMake(true); else setAddMsg("No [NAME] lines found. Put each spoken line as [NAME] line."); }}>SPLIT AND MAKE MY MOVIE</button>
+        </div>
         <div className="lab">1 · WHAT ARE YOU MAKING?</div>
         <Chips items={KINDS} value={kind} onPick={setKind} />
         <input id="mfs-title" className="in" style={{ marginTop: 10 }} placeholder="Title (used for the title card, poster and credits)" value={title} onChange={e => setTitle(e.target.value)} />
