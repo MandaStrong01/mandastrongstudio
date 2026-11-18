@@ -315,6 +315,7 @@ export default function Studio() {
   useEffect(() => { save("freeMode", freeMode); }, [freeMode]);
   const noCredit = useRef(false);
   const planRef = useRef([]);
+  const engineFails = useRef(0), engineOff = useRef(false); // after 2 failed engine shots in a row the engine stops for this film, so no more credit is spent
   const lastClipRef = useRef(null), reuseN = useRef(0); // your clips are reused (never back to back) when the engine cannot make a scene
   useEffect(() => { const o = { kind, title, narr, script, voiceMode, narrator, charVoices, lipSync, speed, spoken, subs, dubs, musicMode, mood, musicPrompt, style, grade, enhance, duck, cleanVoice, minutes, ratio, quality, vVol, mVol, cVol, allRatios, credits, watermark, creditNames, plan }; for (const k in o) save(k, o[k]); });
 
@@ -533,9 +534,10 @@ export default function Studio() {
     const free_ = clips.filter(c => !numOf(c));
     const openSlots = []; for (let k = 1; k <= total; k++) if (!taken.has(k)) openSlots.push(k);
     const slot = openSlots.indexOf(i + 1);
-    const cl = byNum || (slot >= 0 && slot < free_.length ? free_[slot] : null);
+    const ca = planRef.current && planRef.current.clipAssign;
+    const cl = ca ? (ca[i] >= 0 ? clips[ca[i]] : null) : (byNum || (slot >= 0 && slot < free_.length ? free_[slot] : null));
     if (cl) { blob = cl.blob; source = "your clip"; lastClipRef.current = cl; }
-    const free = () => freeMode || noCredit.current;
+    const free = () => freeMode || noCredit.current || engineOff.current;
     // Footage order: your clip first, then the engine makes moving footage (your matched image is its starting picture),
     // and only if the engine cannot deliver (or Free mode is on) your image as a still. Stock only when Free mode is on.
     if (!blob && !free() && i === 0 && lipSync && photo && list.firstVoice) {
@@ -544,7 +546,7 @@ export default function Studio() {
     // No matched picture? Take a frame out of one of YOUR clips (a different clip and moment each time) so the engine keeps your look.
     let grab = "";
     if (!blob && clips.length && !photo) { const gc = clips[(i + reuseN.current) % clips.length]; if (gc && gc.blob) grab = await grabFrame(gc.blob, 0.25 + ((i * 37) % 50) / 100); }
-    if (!blob && !free()) { try { blob = await toBlob(await seRun({ kind: "video", prompt: text + "\n" + look, image: photo || grab })); } catch (e) { note = e.message; if (e.nocredit) { noCredit.current = true; setStage("Engine is out of credit — using your own clips and images."); } } }
+    if (!blob && !free()) { try { blob = await toBlob(await seRun({ kind: "video", prompt: text + "\n" + look, image: photo || grab })); engineFails.current = 0; } catch (e) { note = e.message; if (++engineFails.current >= 2 && !engineOff.current) { engineOff.current = true; setStage("The engine failed twice in a row — it is stopped for this film so no more credit is spent. Using your own footage."); } if (e.nocredit) { noCredit.current = true; setStage("Engine is out of credit — using your own clips and images."); } } }
     // Replicate/stock finished or failed: the engine makes its own moving shot from a frame of YOUR clip or image (same look), before anything else.
     if (!blob && (grab || photo)) { try { const b = await stillToClip(photo || grab, 7, i); if (b) { blob = b; source = "engine still from your footage"; } } catch (e) { } }
     // Engine could not make this scene: use YOUR clips again (never the same one twice in a row), with their own sound.
@@ -565,17 +567,30 @@ export default function Studio() {
     try {
       const pics = photos.slice(0, 40);
       const thumbs = [];
+      // Your clips too: one small frame from each, so the engine can put every clip on the scene it fits.
+      const cthumbs = [];
+      for (const c of clips.slice(0, 40)) { let d = ""; try { d = c.blob ? await grabFrame(c.blob, 0.4) : ""; } catch (e) { } cthumbs.push(d ? (await shrinkPhoto(d, 320)).split(",")[1] || "" : ""); }
       for (const p of pics) { const t = await shrinkPhoto(p.dataUrl, 320); thumbs.push(t.split(",")[1] || ""); }
       const content = [];
       thumbs.forEach((d, k) => { content.push({ type: "text", text: "IMAGE " + k + ":" }); content.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: d } }); });
-      content.push({ type: "text", text: "Here are " + n + " film scenes in order:\n" + list.map((t, k) => (k + 1) + ". " + t).join("\n") + "\n\nFor EACH scene: if one of the images above clearly shows what the scene describes, give its IMAGE number, otherwise -1. An image may be used for more than one scene only if it truly fits. Also give a short 2 to 5 word stock-photo search for the scene's main subject (real things, places, people or objects; no style words).\nReturn ONLY a JSON array of " + n + " objects like {\"photo\":-1,\"query\":\"cave paintings\"}." });
+      cthumbs.forEach((d, k) => { if (d) { content.push({ type: "text", text: "CLIP " + k + ":" }); content.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: d } }); } });
+      content.push({ type: "text", text: "Here are " + n + " film scenes in order:\n" + list.map((t, k) => (k + 1) + ". " + t).join("\n") + "\n\nFor EACH scene: if one of the images above clearly shows what the scene describes, give its IMAGE number, otherwise -1. Also, if one of the CLIPs clearly shows the scene, give its CLIP number as \"clip\", otherwise -1; use each CLIP for only one scene. An image may be used for more than one scene only if it truly fits. Also give a short 2 to 5 word stock-photo search for the scene's main subject (real things, places, people or objects; no style words).\nReturn ONLY a JSON array of " + n + " objects like {\"photo\":-1,\"clip\":-1,\"query\":\"cave paintings\"}." });
       const d = await proxyFetch({ model: "claude-sonnet-4-20250514", max_tokens: 8000, messages: [{ role: "user", content }] });
       const raw = (d && d.content ? d.content.filter(x => x.type === "text").map(x => x.text).join("") : "").replace(/```json|```/g, "");
       const arr = JSON.parse(raw.slice(raw.indexOf("["), raw.lastIndexOf("]") + 1));
-      plan = list.map((t, k) => { const a = arr[k] || {}; const ph = Number.isInteger(a.photo) && a.photo >= 0 && a.photo < pics.length ? a.photo : -1; return { photo: ph, query: String(a.query || "").slice(0, 80) || t.split(/\s+/).slice(0, 4).join(" ") }; });
+      plan = list.map((t, k) => { const a = arr[k] || {}; const ph = Number.isInteger(a.photo) && a.photo >= 0 && a.photo < pics.length ? a.photo : -1; const cp = Number.isInteger(a.clip) && a.clip >= 0 && a.clip < clips.length ? a.clip : -1; return { photo: ph, clip: cp, query: String(a.query || "").slice(0, 80) || t.split(/\s+/).slice(0, 4).join(" ") }; });
     } catch (e) { plan = list.map(t => ({ photo: -1, query: stockQuery(t) })); }
     // Your own images named with a scene number (e.g. "Scene 12.jpg", "12.png") always go on that scene.
     photos.forEach((p, k) => { const mm = String(p.name || "").match(/(?:scene|sc|clip)?[\s_-]*0*(\d{1,3})(?=\D*$)/i); if (mm) { const idx = Number(mm[1]) - 1; if (idx >= 0 && idx < plan.length) plan[idx].photo = k; } });
+    // CLIP ORDER: clips named with a scene number go there; then the clip each scene was matched to; then every leftover clip
+    // fills the remaining scenes in the order you added them. Each clip is used once, whatever order you picked them in.
+    const assign = new Array(n).fill(-1), usedC = new Set();
+    const numOfC = c => { const mm = String(c.name || "").replace(/\.[a-z0-9]+$/i, "").match(/(?:scene|sc|clip|part)?[\s_-]*0*(\d{1,3})\s*$/i); const k = mm ? Number(mm[1]) : 0; return k >= 1 && k <= n ? k : 0; };
+    clips.forEach((c, k) => { const q = numOfC(c); if (q && assign[q - 1] < 0) { assign[q - 1] = k; usedC.add(k); } });
+    plan.forEach((pl, i) => { if (assign[i] < 0 && pl.clip >= 0 && !usedC.has(pl.clip)) { assign[i] = pl.clip; usedC.add(pl.clip); } });
+    const left = clips.map((c, k) => k).filter(k => !usedC.has(k)); let li = 0;
+    for (let i = 0; i < n && li < left.length; i++) if (assign[i] < 0) assign[i] = left[li++];
+    plan.clipAssign = assign;
     planRef.current = plan;
     return plan;
   }
@@ -636,7 +651,7 @@ export default function Studio() {
       setMusicUrl(mUrl); setPct(24);
 
       // 3b — match your images to scenes and plan free stock for the rest
-      setStage("Matching your images to the scenes…"); noCredit.current = false; reuseN.current = 0; lastClipRef.current = null;
+      setStage("Matching your images to the scenes…"); noCredit.current = false; reuseN.current = 0; lastClipRef.current = null; engineFails.current = 0; engineOff.current = false;
       await planScenes(list);
       // 4 — scenes, ONE at a time (the engine limit allows one request at a time; throttled ones wait and retry by themselves)
       let next = 0, finished = 0; const failed = [];
