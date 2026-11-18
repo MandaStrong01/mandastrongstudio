@@ -203,13 +203,13 @@ function wrapText(ctx, text, maxW) { const words = String(text).split(" "); cons
 
 const CSS = `
 :root{--bg:#0E0F12;--panel:#121419;--line:#2E2A22;--gold:#E6C98E;--text:#F3EDE2;--dim:#9A927F}
-*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);font-family:"Plus Jakarta Sans",system-ui,sans-serif}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);font-family:"Inter",system-ui,sans-serif}
 .mfs{max-width:1000px;margin:0 auto;padding:24px max(16px,env(safe-area-inset-left)) 80px max(16px,env(safe-area-inset-right))}
-.brand{font-family:"Plus Jakarta Sans",system-ui,sans-serif;color:#f3ede2;font-weight:800;letter-spacing:.01em;line-height:1.1}.hero h2,.len,.ta{font-family:"Plus Jakarta Sans",system-ui,sans-serif!important}.hero h2{font-weight:800!important;letter-spacing:-.025em}
+.brand{font-family:"Inter",system-ui,sans-serif;color:#f3ede2;font-weight:800;letter-spacing:.01em;line-height:1.1}.hero h2,.len,.ta{font-family:"Inter",system-ui,sans-serif!important}.hero h2{font-weight:800!important;letter-spacing:-.025em}
 .top{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:12px}
 .eng{font-size:11px;letter-spacing:.14em;color:var(--gold)}
-.mfs{background:radial-gradient(ellipse at 50% -8%,rgba(230,201,142,.16),transparent 58%),radial-gradient(ellipse at 90% 40%,rgba(120,80,200,.08),transparent 50%)}.hero h2{font-size:clamp(48px,9vw,86px)!important;background:linear-gradient(90deg,#fff3c9,#E6C98E,#b98a3e,#E6C98E,#fff3c9);background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent!important;animation:sheen 7s linear infinite;filter:drop-shadow(0 0 22px rgba(230,201,142,.28))}@keyframes sheen{to{background-position:220% 0}}.hero p{font-size:16px!important;max-width:560px!important}.len{margin-top:16px;border:1px solid var(--line);border-radius:6px;padding:14px 16px;background:linear-gradient(160deg,#15130d,#0e0f13)}.lenTop{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;letter-spacing:.1em;color:var(--gold)}.lenTop b{font-size:24px;letter-spacing:.02em;color:#fff3c9}.ticks{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);margin-top:2px}.go{background:linear-gradient(180deg,#f3dba3,#E6C98E 55%,#c9a45c)!important;box-shadow:0 0 30px rgba(230,201,142,.28);transition:transform .15s,box-shadow .15s}.go:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 0 44px rgba(230,201,142,.42)}.op{box-shadow:0 0 0 3px rgba(230,201,142,.12),0 0 34px rgba(230,201,142,.14)!important}.sug{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px}.sug span{font-size:11px;letter-spacing:.1em;color:var(--dim)}.sug .c{font-size:12px;padding:6px 10px}.hero{text-align:center;margin:26px 0 6px}.hero h2{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;letter-spacing:-.025em;color:var(--gold);font-size:clamp(34px,6vw,52px);margin:0;line-height:1.1}.hero p{color:var(--dim);margin:8px auto 0;max-width:620px;font-size:15px}.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0 6px}.stp{position:relative;background:linear-gradient(160deg,#17140d,#0f1014);border:1px solid var(--gold);border-radius:6px;padding:18px 14px 14px;box-shadow:0 0 22px rgba(230,201,142,.08)}.stp b.n{position:absolute;top:-14px;left:14px;width:28px;height:28px;border-radius:50%;background:var(--gold);color:#000;display:flex;align-items:center;justify-content:center;font-size:15px}.stp h3{margin:2px 0 6px;font-size:15px;letter-spacing:.06em;color:var(--gold)}.stp span{font-size:13px;color:var(--text);line-height:1.5}.gets{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:14px 0 4px}.gets i{font-style:normal;font-size:12px;letter-spacing:.06em;border:1px solid var(--line);border-radius:20px;padding:5px 12px;color:var(--gold);background:#12141a}.op{border:2px solid var(--gold)!important;min-height:200px!important;box-shadow:0 0 0 3px rgba(230,201,142,.12)}.guide{border:1px solid var(--line);border-radius:3px;padding:12px;margin-top:8px;background:var(--panel);font-family:Georgia,serif;font-size:14px;line-height:1.55;white-space:pre-wrap}.lab{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--gold);margin:22px 0 8px}
-.ta{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:3px;color:var(--text);padding:12px;font-family:"Plus Jakarta Sans",system-ui,sans-serif;font-size:15px;line-height:1.55;resize:vertical;min-height:110px}
+.mfs{background:radial-gradient(ellipse at 50% -8%,rgba(230,201,142,.16),transparent 58%),radial-gradient(ellipse at 90% 40%,rgba(120,80,200,.08),transparent 50%)}.hero h2{font-size:clamp(48px,9vw,86px)!important;background:linear-gradient(90deg,#fff3c9,#E6C98E,#b98a3e,#E6C98E,#fff3c9);background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent!important;animation:sheen 7s linear infinite;filter:drop-shadow(0 0 22px rgba(230,201,142,.28))}@keyframes sheen{to{background-position:220% 0}}.hero p{font-size:16px!important;max-width:560px!important}.len{margin-top:16px;border:1px solid var(--line);border-radius:6px;padding:14px 16px;background:linear-gradient(160deg,#15130d,#0e0f13)}.lenTop{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;letter-spacing:.1em;color:var(--gold)}.lenTop b{font-size:24px;letter-spacing:.02em;color:#fff3c9}.ticks{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);margin-top:2px}.go{background:linear-gradient(180deg,#f3dba3,#E6C98E 55%,#c9a45c)!important;box-shadow:0 0 30px rgba(230,201,142,.28);transition:transform .15s,box-shadow .15s}.go:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 0 44px rgba(230,201,142,.42)}.op{box-shadow:0 0 0 3px rgba(230,201,142,.12),0 0 34px rgba(230,201,142,.14)!important}.sug{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px}.sug span{font-size:11px;letter-spacing:.1em;color:var(--dim)}.sug .c{font-size:12px;padding:6px 10px}.hero{text-align:center;margin:26px 0 6px}.hero h2{font-family:'Inter',sans-serif;font-weight:800;letter-spacing:-.025em;color:var(--gold);font-size:clamp(34px,6vw,52px);margin:0;line-height:1.1}.hero p{color:var(--dim);margin:8px auto 0;max-width:620px;font-size:15px}.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0 6px}.stp{position:relative;background:linear-gradient(160deg,#17140d,#0f1014);border:1px solid var(--gold);border-radius:6px;padding:18px 14px 14px;box-shadow:0 0 22px rgba(230,201,142,.08)}.stp b.n{position:absolute;top:-14px;left:14px;width:28px;height:28px;border-radius:50%;background:var(--gold);color:#000;display:flex;align-items:center;justify-content:center;font-size:15px}.stp h3{margin:2px 0 6px;font-size:15px;letter-spacing:.06em;color:var(--gold)}.stp span{font-size:13px;color:var(--text);line-height:1.5}.gets{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:14px 0 4px}.gets i{font-style:normal;font-size:12px;letter-spacing:.06em;border:1px solid var(--line);border-radius:20px;padding:5px 12px;color:var(--gold);background:#12141a}.op{border:2px solid var(--gold)!important;min-height:200px!important;box-shadow:0 0 0 3px rgba(230,201,142,.12)}.guide{border:1px solid var(--line);border-radius:3px;padding:12px;margin-top:8px;background:var(--panel);font-family:Georgia,serif;font-size:14px;line-height:1.55;white-space:pre-wrap}.lab{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--gold);margin:22px 0 8px}
+.ta{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:3px;color:var(--text);padding:12px;font-family:"Inter",system-ui,sans-serif;font-size:15px;line-height:1.55;resize:vertical;min-height:110px}
 .in{background:var(--panel);border:1px solid var(--line);border-radius:3px;color:var(--text);padding:11px 12px;font:inherit;font-size:14px;width:100%}
 select.in{appearance:auto}
 .login{display:grid;grid-template-columns:1fr 1fr auto auto;gap:8px}@media(max-width:640px){.login{grid-template-columns:1fr 1fr}}
@@ -627,6 +627,8 @@ export default function Studio() {
 
   // ONE PROMPT: one box → title, length, spoken lines (Box 2) and directions/voices (Box 3). Nothing is changed in your files or voices.
   const [showGuide, setShowGuide] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [showFiles, setShowFiles] = useState(false);
   const [simple, setSimple] = useState(() => load("simple", true)); // one-box view: one prompt, your files, one button
   useEffect(() => { try { localStorage.setItem("mfs_simple", JSON.stringify(simple)); } catch (e) { } }, [simple]);
   const [onePrompt, setOnePrompt] = useState(""); const [autoMake, setAutoMake] = useState(false);
@@ -724,7 +726,7 @@ export default function Studio() {
     if (voiceMode === "mine" && !myRec) { setErr("Your recording is not loaded. Press UPLOAD MY RECORDING, choose your file, then press Make again. I will not use another voice."); return; }
     let who = user;
     if (!who) { try { const { data } = await supabase.auth.getSession(); who = data && data.session && data.session.user; if (!who) { const r = await supabase.auth.refreshSession(); who = r && r.data && r.data.session && r.data.session.user; } if (who) setUser(who); } catch (e) { } }
-    if (!who) { setErr("Log in first, at the top of the page."); return; }
+    if (!who) { setShowLogin(true); setErr("Log in first, at the top of the page."); return; }
     if (!narr.trim() && !script.trim() && !photos.length && !clips.length) { setErr("Add your narration, script, photos or clips first."); return; }
     if (minutes < 1) { setErr("Move the length bar above 0 minutes."); return; }
     if (!subActive) {
@@ -888,12 +890,12 @@ export default function Studio() {
       ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
       if (prev && fa < 1) { frame(prev, 1, 1); frame(v, p, fa); } else frame(v, p, 1);
       ctx.fillStyle = tint; ctx.fillRect(0, 0, W, H);
-      if (subs && !opts.trailer) { const c = caps.find(x => tSec >= x.start && tSec < x.end); if (c) { ctx.font = "600 " + Math.round(H * 0.036) + "px Plus Jakarta Sans, sans-serif"; ctx.textAlign = "center"; const lines = wrapText(ctx, c.text, W * 0.86); lines.forEach((ln, k) => { const y = H * 0.92 - (lines.length - 1 - k) * H * 0.048; ctx.lineWidth = 5; ctx.strokeStyle = "rgba(0,0,0,.8)"; ctx.strokeText(ln, W / 2, y); ctx.fillStyle = "#fff"; ctx.fillText(ln, W / 2, y); }); } }
+      if (subs && !opts.trailer) { const c = caps.find(x => tSec >= x.start && tSec < x.end); if (c) { ctx.font = "600 " + Math.round(H * 0.036) + "px Inter, sans-serif"; ctx.textAlign = "center"; const lines = wrapText(ctx, c.text, W * 0.86); lines.forEach((ln, k) => { const y = H * 0.92 - (lines.length - 1 - k) * H * 0.048; ctx.lineWidth = 5; ctx.strokeStyle = "rgba(0,0,0,.8)"; ctx.strokeText(ln, W / 2, y); ctx.fillStyle = "#fff"; ctx.fillText(ln, W / 2, y); }); } }
       if (logoImg) { const lw = W * 0.1, lh = lw * logoImg.height / logoImg.width; ctx.globalAlpha = 0.8; ctx.drawImage(logoImg, W - lw - W * 0.03, H * 0.03, lw, lh); ctx.globalAlpha = 1; }
-      if (watermark && plan === "starter") { ctx.font = Math.round(H * 0.03) + "px Plus Jakarta Sans"; ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.textAlign = "left"; ctx.fillText("Mandas 1 Shot Film Studio", W * 0.03, H * 0.96); }
+      if (watermark && plan === "starter") { ctx.font = Math.round(H * 0.03) + "px Inter"; ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.textAlign = "left"; ctx.fillText("Mandas 1 Shot Film Studio", W * 0.03, H * 0.96); }
       showPv();
     };
-    const card = (lines, big) => { ctx.fillStyle = "#0E0F12"; ctx.fillRect(0, 0, W, H); ctx.textAlign = "center"; ctx.fillStyle = "#E6C98E"; ctx.font = Math.round(H * (big ? 0.11 : 0.06)) + "px Plus Jakarta Sans, sans-serif"; ctx.fillText(lines[0] || "", W / 2, H * 0.42); ctx.fillStyle = "#F3EDE2"; ctx.font = Math.round(H * 0.032) + "px Plus Jakarta Sans, sans-serif"; lines.slice(1).forEach((l, k) => ctx.fillText(l, W / 2, H * 0.55 + k * H * 0.05)); showPv(); };
+    const card = (lines, big) => { ctx.fillStyle = "#0E0F12"; ctx.fillRect(0, 0, W, H); ctx.textAlign = "center"; ctx.fillStyle = "#E6C98E"; ctx.font = Math.round(H * (big ? 0.11 : 0.06)) + "px Inter, sans-serif"; ctx.fillText(lines[0] || "", W / 2, H * 0.42); ctx.fillStyle = "#F3EDE2"; ctx.font = Math.round(H * 0.032) + "px Inter, sans-serif"; lines.slice(1).forEach((l, k) => ctx.fillText(l, W / 2, H * 0.55 + k * H * 0.05)); showPv(); };
     rec.start(1000); if (bed) try { bed.start(0); } catch (e) { }
     const t0 = Date.now();
     // opening title card
@@ -1050,8 +1052,8 @@ export default function Studio() {
     try { v.currentTime = Math.min(2, (v.duration || 4) / 2); await new Promise(res => { v.onseeked = res; setTimeout(res, 2000); }); } catch (e) { }
     const vw = v.videoWidth || W, vh = v.videoHeight || H, sc = Math.max(W / vw, H / vh); try { ctx.drawImage(v, (W - vw * sc) / 2, (H - vh * sc) / 2, vw * sc, vh * sc); } catch (e) { }
     const g = ctx.createLinearGradient(0, H * 0.5, 0, H); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,.92)"); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    ctx.textAlign = "center"; ctx.fillStyle = "#E6C98E"; ctx.font = Math.round(W * 0.12) + "px Plus Jakarta Sans, sans-serif"; ctx.fillText(title || "My Film", W / 2, H * 0.84);
-    ctx.fillStyle = "#F3EDE2"; ctx.font = Math.round(W * 0.028) + "px Plus Jakarta Sans, sans-serif"; ctx.fillText(kind.toUpperCase() + " · MANDAS 1 SHOT FILM STUDIO", W / 2, H * 0.9);
+    ctx.textAlign = "center"; ctx.fillStyle = "#E6C98E"; ctx.font = Math.round(W * 0.12) + "px Inter, sans-serif"; ctx.fillText(title || "My Film", W / 2, H * 0.84);
+    ctx.fillStyle = "#F3EDE2"; ctx.font = Math.round(W * 0.028) + "px Inter, sans-serif"; ctx.fillText(kind.toUpperCase() + " · MANDAS 1 SHOT FILM STUDIO", W / 2, H * 0.9);
     const blob = await new Promise(res => cv.toBlob(res, "image/png")); await saveFile({ blob, name: (title || "My_Film").replace(/[^\w]+/g, "_") + "_Poster.png", url: URL.createObjectURL(blob) });
   };
   const saveProject = async () => {
@@ -1071,7 +1073,21 @@ export default function Studio() {
   return (
     <div>
       <style>{CSS}</style>
+      <style>{`.hero h2{font-weight:300!important;letter-spacing:-.035em!important;font-size:clamp(40px,7.5vw,72px)!important;margin:0!important}.hero p{font-size:15px!important;color:var(--dim)!important;margin:10px auto 0!important}.hero{margin:34px 0 22px!important}.len{border:0!important;background:none!important;padding:10px 2px 0!important}.mini{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:4px 0 6px}.wm{font-size:14px;font-weight:600;letter-spacing:.06em;color:#f3ede2}.mr{display:flex;align-items:center;gap:16px;font-size:13px}.lk{background:none;border:0;color:var(--text);font:inherit;font-size:13px;cursor:pointer;opacity:.75;padding:4px 0}.lk:hover{opacity:1}.sub{background:var(--gold);color:#17130a;border:0;border-radius:999px;padding:8px 16px;font:inherit;font-size:12px;font-weight:700;cursor:pointer}.opts{display:flex;gap:22px;justify-content:center;margin:14px 0 6px}.opts button{background:none;border:0;color:var(--dim);font:inherit;font-size:13px;letter-spacing:.04em;cursor:pointer;padding:6px 0;border-bottom:1px solid transparent}.opts button:hover{color:var(--gold);border-bottom-color:var(--gold)}.ft{text-align:center;font-size:11px;color:var(--dim);margin-top:40px;opacity:.7}`}</style>
       <div className="mfs">
+        {simple && <div>
+          <div className="mini">
+            <div className="wm">Mandas 1 Shot Film Studio</div>
+            <div className="mr">{user ? <><span style={{ opacity: .7 }}>{user.email}</span><button className="lk" onClick={logOut}>Log out</button></> : <button className="lk" onClick={() => setShowLogin(v => !v)}>Log in</button>}<button className="sub" onClick={() => { const em = (user && user.email) || email; window.open(SUB_LINK + (em ? "?prefilled_email=" + encodeURIComponent(em) : ""), "_blank", "noopener"); }}>Subscribe · $50/month</button></div>
+          </div>
+          {!user && showLogin && <div style={{ marginTop: 8 }}><div className="login">
+            <input className="in" type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
+            <input className="in" type="password" placeholder="Password" value={pw} onChange={e => setPw(e.target.value)} autoComplete="current-password" />
+            <button className="b g" onClick={logIn}>LOG IN</button><button className="b" onClick={signUp}>SIGN UP</button>
+          </div></div>}
+          {!user && authMsg && <div className="msg">{authMsg}</div>}
+        </div>}
+        {!simple && <div>
         <div className="top">
           <div><div className="eng">POWERED BY THE MANDASTRONG ENGINE</div><h1 className="brand" style={{ fontSize: "clamp(26px,4.4vw,38px)", margin: "6px 0 0" }}>Mandas 1 Shot Film Studio</h1></div>
           <div style={{ fontSize: 12, color: "var(--dim)" }}>{SITE}</div>
@@ -1095,11 +1111,13 @@ export default function Studio() {
           <button className="b" onClick={() => { const em = (user && user.email) || email; window.open(TOPUP_LINK + (em ? "?prefilled_email=" + encodeURIComponent(em) : ""), "_blank", "noopener"); }}>BUY EXTRA USAGE</button>
         </div>
 
+        </div>}
+
         {simple && <div className="hero">
           <h2>One Prompt. One Film.</h2>
-          <p>Describe your film. Add your footage and voices if you have them. The engine writes, casts, scores and edits it into one finished movie.</p>
+          <p>Describe your film. The engine makes it.</p>
         </div>}
-        <div className="lab">{simple ? "ENTER YOUR PROMPT" : "ONE PROMPT — PUT EVERYTHING IN ONE BOX"}</div>
+        {!simple && <div className="lab">ONE PROMPT — PUT EVERYTHING IN ONE BOX</div>}
         <textarea className="ta op" value={onePrompt} onChange={e => setOnePrompt(e.target.value)} placeholder={simple ? "Describe your film in as much detail as you like: the story, the characters, the look, the length.\n\nOr paste your full script with each speaker's name in [BRACKETS]." : "Title: Santa's List: The Book of Names\nLength: 60 min\n[SANTA] Ho ho ho!\n[LILY] I made a list!\nEverything else (directions, description, voices) goes on its own lines."} />
         <button className="go" style={{ marginTop: 10, display: simple ? "none" : undefined }} onClick={() => { const n = splitPrompt(); if (n) setAutoMake(true); else designFromIdea(); }}>SPLIT AND MAKE MY MOVIE</button>
         {simple && <div className="len">
@@ -1108,10 +1126,11 @@ export default function Studio() {
           <div className="ticks"><span>0</span><span>1 hr</span><span>2 hr</span><span>3 hr</span></div>
           {!subActive && <div className="msg" style={{ marginTop: 6 }}>Your first film is a free test of up to 1 minute. Subscribe for $50 a month for up to 3 hours.</div>}
         </div>}
-        <div style={{ display: "flex", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
-          <button className="b s" onClick={() => setSimple(v => !v)}>{simple ? "ADVANCED CONTROLS" : "RETURN TO ONE PROMPT"}</button>
+        <div className={simple ? "opts" : undefined} style={simple ? undefined : { display: "flex", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
+          {simple ? <button onClick={() => setSimple(false)}>Advanced controls</button> : <button className="b s" onClick={() => setSimple(true)}>RETURN TO ONE PROMPT</button>}
+          {simple && <button onClick={() => setShowFiles(v => !v)}>{showFiles ? "Hide footage & voices" : "Footage & voices" + ((photos.length + clips.length + charRecs.length) ? " (" + (photos.length + clips.length + charRecs.length) + ")" : "")}</button>}
           <button className="b" style={{ display: simple ? "none" : undefined }} onClick={() => { const n = splitPrompt(); setAddMsg(n ? "Split into the boxes below. " + n + " spoken lines." : "No [NAME] lines found. Put each spoken line as [NAME] line."); }}>SPLIT INTO THE BOXES ONLY</button>
-          <button className="b s" onClick={() => setShowGuide(v => !v)}>{showGuide ? "CLOSE PROMPT GUIDE" : "PROMPT GUIDE"}</button>
+          {!simple && <button className="b s" onClick={() => setShowGuide(v => !v)}>{showGuide ? "CLOSE PROMPT GUIDE" : "PROMPT GUIDE"}</button>}
         </div>
         {showGuide && <div className="guide">{"HOW TO WRITE YOUR PROMPT\n\nLine 1:  Title: your film's name\nLine 2:  Length: 60 min\n\nEvery spoken line, in script order, with the speaker in square brackets:\n[NARRATOR] It was Christmas Eve.\n[LILY] Come on! We have to go look!\n\nEverything else goes on its own lines: what the film looks like, the weather, the mood, the music, and which voice plays which character.\n\nExample:\nTitle: Santa's List: The Book of Names\nLength: 60 min\n[SANTA] Ho ho ho!\n[LILY] I made a list!\nChristmas Eve night. Snow. Cold and crisp. Warm lights in the windows.\nVOICES: Doxy: Santa. Lily: Lily.\n\nThen add your photos, clips and voice files in box 4."}</div>}
 
@@ -1171,6 +1190,7 @@ export default function Studio() {
         <textarea id="mfs-script" className="ta" value={script} onChange={e => setScript(e.target.value)} placeholder={"Paste your directions here: length, footage order, weather, sound, description, and who uses which voice.\nExample:\nDOXY'S VOICE:\nSanta: older man. Deeper, warm.\nLILY'S VOICE:\nLily: girl, age 10.\nThe engine builds the scenes and gives each character their voice from this."} />
 
         </div>
+        <div style={{ display: simple && !showFiles ? "none" : undefined }}>
         <div className="lab">{simple ? "YOUR FOOTAGE & VOICES (OPTIONAL)" : "4 · PHOTOS, CLIPS & CHARACTER VOICES"}</div>
         <label htmlFor="mfs-files" className={"drop" + (over ? " over" : "")} onDragOver={e => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)} onDrop={e => { e.preventDefault(); setOver(false); if (e.dataTransfer.files && e.dataTransfer.files.length) addFiles(e.dataTransfer.files); else dropLink(e); }}>
           {simple ? "Drop or tap to add clips, pictures and character voices. Name each voice file after its character, like LILY." : "DROP, DRAG OR TAP TO ADD PHOTOS, CLIPS AND CHARACTER VOICES (AS MANY AS YOU LIKE). NAME EACH VOICE FILE, LIKE LILY, DOXY OR ETHAN."}
@@ -1249,6 +1269,8 @@ export default function Studio() {
         {credits && <textarea id="mfs-credits" className="ta" style={{ minHeight: 70, marginTop: 8 }} value={creditNames} onChange={e => setCreditNames(e.target.value)} placeholder={"Credits, one per line\nDirected by …\nNarrated by …"} />}
 
         </div>
+        </div>
+
         <div style={{ marginTop: 18, border: "1px solid var(--line)", borderRadius: 3, padding: 12, display: simple ? "none" : "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", fontSize: 13 }}>
           <span>Before you start: {minutes} min · {Math.max(sceneCount, clips.length)} scenes · {Math.max(1, castNames)} voice{castNames > 1 ? "s" : ""} · {langCount} language{langCount > 1 ? "s" : ""}</span>
           <span style={{ color: "var(--gold)", fontWeight: 700 }}>About {est} min to make</span>
@@ -1257,6 +1279,7 @@ export default function Studio() {
         {(busy || stage) && <div className="msg">{stage}<div className="pb"><i style={{ width: pct + "%" }} /></div></div>}
         {err && <div className="msg err">{err}</div>}
 
+        <div style={{ display: simple && !(busy || done || scenes.length > 0 || exp.files.length > 0) ? "none" : undefined }}>
         <div className="lab">{simple ? "YOUR FILM" : "12 · PREVIEW"}</div>
         <div className="out">
           <div>
@@ -1317,7 +1340,8 @@ export default function Studio() {
               <div className="row" style={{ gap: 4, marginTop: 4 }}><button className="c" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => redoScene(i)} disabled={busy}>Redo</button><button className="c" style={{ padding: "4px 8px", fontSize: 11 }} onClick={() => removeScene(i)}>Remove</button></div>
             </div>)}</div>}
         </div>
-        <div style={{ textAlign: "center", fontSize: 11, color: "var(--dim)", marginTop: 26 }}>Mandas 1 Shot Film Studio · Powered by the MandaStrong Engine · {SITE}</div>
+        </div>
+        <div className="ft">{simple ? "Powered by the MandaStrong Engine" : "Mandas 1 Shot Film Studio · Powered by the MandaStrong Engine · " + SITE}</div>
       </div>
     </div>
   );
