@@ -129,6 +129,19 @@ function sizeFor(ratio, quality) {
 }
 // Records a moving picture from a still: slow push-in and drift (used for photos and as a backup).
 const isStill = s => /image|photo|still/.test((s && s.source) || "");
+// Takes a picture (a frame) out of one of YOUR clips, so the engine's new shots keep your characters and look.
+async function grabFrame(blob, frac) {
+  return new Promise((resolve) => {
+    try {
+      const v = document.createElement("video"); const u = URL.createObjectURL(blob); v.muted = true; v.playsInline = true; v.preload = "auto"; v.src = u;
+      const fin = (d) => { try { URL.revokeObjectURL(u); } catch (e) { } resolve(d); };
+      const to = setTimeout(() => fin(""), 6000);
+      v.onloadedmetadata = () => { try { v.currentTime = Math.max(0.1, (v.duration || 4) * frac); } catch (e) { clearTimeout(to); fin(""); } };
+      v.onseeked = () => { try { const c = document.createElement("canvas"); const k = Math.min(1, 1024 / Math.max(v.videoWidth || 1024, v.videoHeight || 576)); c.width = Math.max(2, Math.round((v.videoWidth || 1024) * k)); c.height = Math.max(2, Math.round((v.videoHeight || 576) * k)); c.getContext("2d").drawImage(v, 0, 0, c.width, c.height); clearTimeout(to); fin(c.toDataURL("image/jpeg", 0.85)); } catch (e) { clearTimeout(to); fin(""); } };
+      v.onerror = () => { clearTimeout(to); fin(""); };
+    } catch (e) { resolve(""); }
+  });
+}
 async function stillToClip(src, secs, idx) {
   return new Promise((resolve) => {
     const img = new Image(); img.crossOrigin = "anonymous";
@@ -529,7 +542,12 @@ export default function Studio() {
     if (!blob && !free() && i === 0 && lipSync && photo && list.firstVoice) {
       try { const r = await fetch(LIPSYNC, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: photo, audio: list.firstVoice }) }); const d = await r.json(); if (d.video) { blob = await toBlob(d.video); source = "lip sync"; } else note = d.error || ""; } catch (e) { }
     }
-    if (!blob && !free()) { try { blob = await toBlob(await seRun({ kind: "video", prompt: text + "\n" + look, image: photo })); } catch (e) { note = e.message; if (e.nocredit) { noCredit.current = true; setStage("Engine is out of credit — using your own clips and images."); } } }
+    // No matched picture? Take a frame out of one of YOUR clips (a different clip and moment each time) so the engine keeps your look.
+    let grab = "";
+    if (!blob && clips.length && !photo) { const gc = clips[(i + reuseN.current) % clips.length]; if (gc && gc.blob) grab = await grabFrame(gc.blob, 0.25 + ((i * 37) % 50) / 100); }
+    if (!blob && !free()) { try { blob = await toBlob(await seRun({ kind: "video", prompt: text + "\n" + look, image: photo || grab })); } catch (e) { note = e.message; if (e.nocredit) { noCredit.current = true; setStage("Engine is out of credit — using your own clips and images."); } } }
+    // Replicate/stock finished or failed: the engine makes its own moving shot from a frame of YOUR clip or image (same look), before anything else.
+    if (!blob && (grab || photo)) { try { const b = await stillToClip(photo || grab, 7, i); if (b) { blob = b; source = "engine still from your footage"; } } catch (e) { } }
     // Engine could not make this scene: use YOUR clips again (never the same one twice in a row), with their own sound.
     // Frozen pictures and stock are the very last resort — and only when you have no clips at all.
     if (!blob && clips.length) { let c2 = null; for (let t = 0; t < clips.length; t++) { const cand = clips[(reuseN.current + t) % clips.length]; if (clips.length === 1 || cand !== lastClipRef.current) { c2 = cand; reuseN.current = (reuseN.current + t + 1) % clips.length; break; } } if (!c2) c2 = clips[0]; blob = c2.blob; source = "your clip"; lastClipRef.current = c2; note = "Your clip used again — the engine could not make this scene."; }
