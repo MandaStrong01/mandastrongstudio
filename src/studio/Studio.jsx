@@ -1053,22 +1053,22 @@ export default function Studio() {
         <button className="b g" style={{ width: "100%", marginTop: 10 }} onClick={() => { setPlan("studio"); const p = PLANS[2]; const em = (user && user.email) || email; window.open(p.link + (em ? "?prefilled_email=" + encodeURIComponent(em) : ""), "_blank", "noopener"); }}>PAY FOR STUDIO — SECURE CHECKOUT</button>
 
         {simple && <div className="hero">
-          <h2>Make a whole movie from one box</h2>
-          <p>Write your idea or paste your script. Add your own clips, pictures and voices if you have them. Press one button. The engine does the rest.</p>
+          <h2>One Prompt. One Film.</h2>
+          <p>Describe your story or provide your script, add your own footage and voices, and the MandaStrong Engine produces your finished film.</p>
           <div className="steps">
-            <div className="stp"><b className="n">1</b><h3>WRITE IT</h3><span>Type an idea, like "a two hour animated Christmas film". Or paste your full script with each speaker in [BRACKETS].</span></div>
-            <div className="stp"><b className="n">2</b><h3>ADD YOUR FILES</h3><span>Optional. Drop in your clips, pictures and character voice files. Name each voice file, like LILY or DOXY.</span></div>
-            <div className="stp"><b className="n">3</b><h3>PRESS MAKE</h3><span>It writes the scenes, casts the voices, adds music and sound, and joins everything into one finished film.</span></div>
+            <div className="stp"><b className="n">1</b><h3>DESCRIBE</h3><span>Enter a concept for your film, or paste a complete script with each speaker's name in [BRACKETS].</span></div>
+            <div className="stp"><b className="n">2</b><h3>UPLOAD</h3><span>Optional. Add your clips, photographs and character voice recordings, each voice file named for its character.</span></div>
+            <div className="stp"><b className="n">3</b><h3>PRODUCE</h3><span>Press Make. The engine builds each scene, casts the voices, scores the film and edits it into one finished piece.</span></div>
           </div>
-          <div className="gets"><i>🎬 SCENES IN ORDER</i><i>🎙 A VOICE FOR EVERY CHARACTER</i><i>🎵 MUSIC</i><i>🔊 BACKGROUND SOUND</i><i>✨ ONE SMOOTH FILM</i></div>
+          <div className="gets"><i>SCENE-BY-SCENE PRODUCTION</i><i>CHARACTER VOICE CASTING</i><i>ORIGINAL SCORE</i><i>AMBIENT SOUND DESIGN</i><i>SEAMLESS FINAL EDIT</i></div>
         </div>}
-        <div className="lab">{simple ? "YOUR MOVIE — PUT EVERYTHING IN ONE BOX, ADD YOUR FILES, PRESS MAKE" : "ONE PROMPT — PUT EVERYTHING IN ONE BOX"}</div>
+        <div className="lab">{simple ? "YOUR PROMPT" : "ONE PROMPT — PUT EVERYTHING IN ONE BOX"}</div>
         <textarea className="ta op" value={onePrompt} onChange={e => setOnePrompt(e.target.value)} placeholder={"Title: Santa's List: The Book of Names\nLength: 60 min\n[SANTA] Ho ho ho!\n[LILY] I made a list!\nEverything else (directions, description, voices) goes on its own lines."} />
         <button className="go" style={{ marginTop: 10, display: simple ? "none" : undefined }} onClick={() => { const n = splitPrompt(); if (n) setAutoMake(true); else designFromIdea(); }}>SPLIT AND MAKE MY MOVIE</button>
         <div style={{ display: "flex", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
-          <button className="b s" onClick={() => setSimple(v => !v)}>{simple ? "SHOW ALL THE BOXES" : "BACK TO ONE BOX"}</button>
+          <button className="b s" onClick={() => setSimple(v => !v)}>{simple ? "ADVANCED CONTROLS" : "RETURN TO ONE PROMPT"}</button>
           <button className="b" style={{ display: simple ? "none" : undefined }} onClick={() => { const n = splitPrompt(); setAddMsg(n ? "Split into the boxes below. " + n + " spoken lines." : "No [NAME] lines found. Put each spoken line as [NAME] line."); }}>SPLIT INTO THE BOXES ONLY</button>
-          <button className="b s" onClick={() => setShowGuide(v => !v)}>{showGuide ? "CLOSE THE PROMPT GUIDE" : "NOT SURE WHAT TO WRITE? OPEN THE PROMPT GUIDE"}</button>
+          <button className="b s" onClick={() => setShowGuide(v => !v)}>{showGuide ? "CLOSE PROMPT GUIDE" : "PROMPT GUIDE"}</button>
         </div>
         {showGuide && <div className="guide">{"HOW TO WRITE YOUR PROMPT\n\nLine 1:  Title: your film's name\nLine 2:  Length: 60 min\n\nEvery spoken line, in script order, with the speaker in square brackets:\n[NARRATOR] It was Christmas Eve.\n[LILY] Come on! We have to go look!\n\nEverything else goes on its own lines: what the film looks like, the weather, the mood, the music, and which voice plays which character.\n\nExample:\nTitle: Santa's List: The Book of Names\nLength: 60 min\n[SANTA] Ho ho ho!\n[LILY] I made a list!\nChristmas Eve night. Snow. Cold and crisp. Warm lights in the windows.\nVOICES: Doxy: Santa. Lily: Lily.\n\nThen add your photos, clips and voice files in box 4."}</div>}
 
