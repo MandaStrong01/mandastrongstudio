@@ -626,7 +626,7 @@ export default function Studio() {
   // ONE PROMPT: one box → title, length, spoken lines (Box 2) and directions/voices (Box 3). Nothing is changed in your files or voices.
   const [showGuide, setShowGuide] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
-  const [showFiles, setShowFiles] = useState(false);
+  const [showFiles, setShowFiles] = useState(true);
   const [simple, setSimple] = useState(() => load("simple", true)); // one-box view: one prompt, your files, one button
   useEffect(() => { try { localStorage.setItem("mfs_simple", JSON.stringify(simple)); } catch (e) { } }, [simple]);
   const [onePrompt, setOnePrompt] = useState(""); const [autoMake, setAutoMake] = useState(false);
