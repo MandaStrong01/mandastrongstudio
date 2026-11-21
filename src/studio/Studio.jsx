@@ -33,7 +33,7 @@ function proVoice(ac, input) {
 const SB = "https://wvkqnrqcnoztajxxzyxc.supabase.co/functions/v1/";
 const SE = SB + "studio-engine";
 const LIPSYNC = SB + "lip-sync";
-const SITE = "mandas1shotfilmstudio.bolt.host";
+const SITE = "mandas1shot1filmstudio.bolt.host";
 // One plan: $50 a month. Extra usage uses the same Stripe link as the main app.
 const SUB_LINK = "https://buy.stripe.com/cNi8wRe8a9ZtcZh7YeafS05";
 const TOPUP_LINK = SUB_LINK; // same $50 link the main app uses for "Purchase usage credits"
