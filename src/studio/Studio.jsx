@@ -567,7 +567,7 @@ export default function Studio() {
     const ca = planRef.current && planRef.current.clipAssign;
     const cl = ca ? (ca[i] >= 0 ? clips[ca[i]] : null) : (byNum || (slot >= 0 && slot < free_.length ? free_[slot] : null));
     if (cl) { blob = cl.blob; source = "your clip"; lastClipRef.current = cl; }
-    const free = () => freeMode || noCredit.current || engineOff.current;
+    const free = () => freeMode || noCredit.current;
     // Footage order: your clip first, then the engine makes moving footage (your matched image is its starting picture),
     // and only if the engine cannot deliver (or Free mode is on) your image as a still. Stock only when Free mode is on.
     if (!blob && !free() && i === 0 && lipSync && photo && list.firstVoice) {
@@ -576,12 +576,10 @@ export default function Studio() {
     // No matched picture? Take a frame out of one of YOUR clips (a different clip and moment each time) so the engine keeps your look.
     let grab = "";
     if (!blob && clips.length && !photo) { const gc = clips[(i + reuseN.current) % clips.length]; if (gc && gc.blob) grab = await grabFrame(gc.blob, 0.25 + ((i * 37) % 50) / 100); }
-    if (!blob && !free()) { try { blob = await toBlob(await seRun({ kind: "video", prompt: text + "\n" + look, image: photo || grab })); engineFails.current = 0; } catch (e) { note = e.message; if (++engineFails.current >= 2 && !engineOff.current) { engineOff.current = true; setStage("The engine failed twice in a row — it is stopped for this film so no more credit is spent. Using your own footage."); } if (e.nocredit) { noCredit.current = true; setStage("Engine is out of credit — using your own clips and images."); } } }
+    if (!blob && !free()) { try { blob = await toBlob(await seRun({ kind: "video", prompt: text + "\n" + look, image: photo || grab })); engineFails.current = 0; } catch (e) { note = e.message; if (e.nocredit) { noCredit.current = true; setStage("Engine is out of credit — using your own clips and images."); } } }
     // Replicate/stock finished or failed: the engine makes its own moving shot from a frame of YOUR clip or image (same look), before anything else.
-    if (!blob && (grab || photo)) { try { const b = await stillToClip(photo || grab, 7, i); if (b) { blob = b; source = "engine still from your footage"; } } catch (e) { } }
-    // Engine could not make this scene: use YOUR clips again (never the same one twice in a row), with their own sound.
-    // Frozen pictures and stock are the very last resort — and only when you have no clips at all.
-    if (!blob && clips.length) { let c2 = null; for (let t = 0; t < clips.length; t++) { const cand = clips[(reuseN.current + t) % clips.length]; if (clips.length === 1 || cand !== lastClipRef.current) { c2 = cand; reuseN.current = (reuseN.current + t + 1) % clips.length; break; } } if (!c2) c2 = clips[0]; blob = c2.blob; source = "your clip"; lastClipRef.current = c2; note = "Your clip used again — the engine could not make this scene."; }
+    const stretchSrc = photo || grab || (photos.length ? photos[i % photos.length].dataUrl : "");
+    if (!blob && stretchSrc) { try { const b = await stillToClip(stretchSrc, 7, i); if (b) { blob = b; source = "engine still from your footage"; } } catch (e) { } }
     if (!blob && !free()) { try { const im = await seRun({ kind: "image", prompt: text + "\n" + look, aspect_ratio: ratio }, 4); blob = await stillToClip(im, 6, i); source = "engine still"; } catch (e) { if (e.nocredit) noCredit.current = true; } }
     if (!blob) { const r2 = await stockScene(plan, i, text, freeMode); if (r2) { blob = r2.blob; source = r2.source; } }
     if (!blob) { setS({ status: "failed", note: note || "No picture came back" }); return null; }
