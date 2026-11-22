@@ -518,6 +518,8 @@ export default function Studio() {
     if ((charVoices || charRecs.length) && cast.speakers.length >= 2) {
       const cmap = msCastVoices(cast.speakers, narrator, t);
       const umap = charVoiceMap(cast.speakers); const uid = {};
+      // Nobody has to say who uses which voice: any character without a voice yet gets one of YOUR uploaded voices automatically (unused voices first).
+      if (charRecs.length) { const usedR = new Set(Object.values(umap)); let rr = 0; for (const sp of cast.speakers) { if (umap[sp.key]) continue; const free_ = charRecs.filter(r => !usedR.has(r)); const pick = free_.length ? free_[0] : charRecs[rr++ % charRecs.length]; umap[sp.key] = pick; usedR.add(pick); } }
       for (const k of Object.keys(umap)) { setStage("Copying " + umap[k].name + "'s voice for " + ((cast.speakers.find(x => x.key === k) || {}).label || k) + "…"); uid[k] = await cloneOf(umap[k]); }
       for (let i = 0; i < cast.segments.length; i++) {
         const sg = cast.segments[i]; const vc = sg.sp ? cmap[sg.sp] : null;
@@ -612,13 +614,16 @@ export default function Studio() {
     } catch (e) { plan = list.map(t => ({ photo: -1, query: stockQuery(t) })); }
     // Your own images named with a scene number (e.g. "Scene 12.jpg", "12.png") always go on that scene.
     photos.forEach((p, k) => { const mm = String(p.name || "").match(/(?:scene|sc|clip)?[\s_-]*0*(\d{1,3})(?=\D*$)/i); if (mm) { const idx = Number(mm[1]) - 1; if (idx >= 0 && idx < plan.length) plan[idx].photo = k; } });
+    // Every image you gave is used: any image no scene was matched to fills the scenes that still have none, in file-name order, whatever order you uploaded them.
+    { const usedP = new Set(plan.map(x => x.photo).filter(x => x >= 0)); const lp = photos.map((p, k) => k).filter(k => !usedP.has(k)).sort((x, y) => String(photos[x].name || "").localeCompare(String(photos[y].name || ""), undefined, { numeric: true })); let pi = 0; for (let i = 0; i < plan.length && pi < lp.length; i++) if (plan[i].photo < 0) plan[i].photo = lp[pi++]; }
     // CLIP ORDER: clips named with a scene number go there; then the clip each scene was matched to; then every leftover clip
     // fills the remaining scenes in the order you added them. Each clip is used once, whatever order you picked them in.
     const assign = new Array(n).fill(-1), usedC = new Set();
     const numOfC = c => { const mm = String(c.name || "").replace(/\.[a-z0-9]+$/i, "").match(/(?:scene|sc|clip|part)?[\s_-]*0*(\d{1,3})\s*$/i); const k = mm ? Number(mm[1]) : 0; return k >= 1 && k <= n ? k : 0; };
     clips.forEach((c, k) => { const q = numOfC(c); if (q && assign[q - 1] < 0) { assign[q - 1] = k; usedC.add(k); } });
     plan.forEach((pl, i) => { if (assign[i] < 0 && pl.clip >= 0 && !usedC.has(pl.clip)) { assign[i] = pl.clip; usedC.add(pl.clip); } });
-    const left = clips.map((c, k) => k).filter(k => !usedC.has(k)); let li = 0;
+    const nat = (x, y) => String((clips[x] || {}).name || "").localeCompare(String((clips[y] || {}).name || ""), undefined, { numeric: true });
+    const left = clips.map((c, k) => k).filter(k => !usedC.has(k)).sort(nat); let li = 0;
     for (let i = 0; i < n && li < left.length; i++) if (assign[i] < 0) assign[i] = left[li++];
     plan.clipAssign = assign;
     planRef.current = plan;
@@ -1285,7 +1290,7 @@ export default function Studio() {
           <span style={{ color: "var(--gold)", fontWeight: 700 }}>About {est} min to make</span>
         </div>
         <button className="go" onClick={() => { if (simple && onePrompt.trim()) { const n = splitPrompt(); if (n) setAutoMake(true); else designFromIdea(); } else makeMovie(); }} disabled={busy || designing}>{designing ? "WRITING YOUR FILM…" : busy ? "MAKING YOUR MOVIE…" : "MAKE MY MOVIE"}</button>
-        {(busy || stage) && <div className="msg">{stage}<div className="pb"><i style={{ width: pct + "%" }} /></div></div>}
+        {(busy || stage) && <div className="msg">{busy && <span className="spin" aria-hidden="true" style={{ display: "inline-block", verticalAlign: "middle", marginRight: 10 }} />}{stage}<div className="pb"><i style={{ width: pct + "%" }} /></div></div>}
         {err && <div className="msg err">{err}</div>}
 
         <div style={{ display: simple && !(busy || done || scenes.length > 0 || exp.files.length > 0) ? "none" : undefined }}>

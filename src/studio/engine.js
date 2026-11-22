@@ -188,7 +188,20 @@ async function engineCall(body){
 const VOICE_URL="https://wvkqnrqcnoztajxxzyxc.supabase.co/functions/v1/generate-voice";
 let __msAudio=null;
 
+// The engine allows only a few requests a minute on a low balance. Wait and try again instead of giving up.
+let __voiceGap=0,__voiceLast=0;
 async function engineSpeak(text,meta){
+  for(let tries=0;tries<6;tries++){
+    if(__voiceGap){const w=__voiceLast+__voiceGap-Date.now();if(w>0)await new Promise(r=>setTimeout(r,w));}
+    __voiceLast=Date.now();
+    const r=await engineSpeakOnce(text,meta);
+    if(r&&r.url)return r.url;
+    if(r&&r.throttled){__voiceGap=11000;await new Promise(x=>setTimeout(x,Math.min(30,Math.max(5,r.wait||10))*1000));continue;}
+    return "";
+  }
+  return "";
+}
+async function engineSpeakOnce(text,meta){
   meta=meta||{};
   // When no explicit voice id is supplied, anchor gender/origin so the engine
   // never free-picks a random character (which was landing on "Pippa").
@@ -205,19 +218,21 @@ async function engineSpeak(text,meta){
     })});
     let d=await res.json();
     let url=pickEngineUrl(d);
-    if(url) return url;
+    if(url) return {url};
+    const em=d&&d.error?JSON.stringify(d.error):"";
+    if(!url&&(res.status===429||/429|throttl|rate.?limit|too many/i.test(em))){const m=em.match(/retry_after\W+(\d+)/i);return {throttled:true,wait:m?Number(m[1]):10};}
     if(d&&d.id){
       for(let i=0;i<40;i++){
         await new Promise(r=>setTimeout(r,1500));
         const p=await fetch(VOICE_URL,{method:"POST",headers:await engineAuthHeaders(),body:JSON.stringify({id:d.id})});
         const pd=await p.json();
         url=pickEngineUrl(pd);
-        if(url) return url;
-        if(pd&&(pd.status==="failed"||pd.status==="canceled")) return "";
+        if(url) return {url};
+        if(pd&&(pd.status==="failed"||pd.status==="canceled")) return {};
       }
     }
   }catch(e){}
-  return "";
+  return {};
 }
 
 // ── TRANSLATE NARRATION AT RENDER ────────────────────────────────
