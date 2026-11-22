@@ -687,12 +687,16 @@ export default function Studio() {
       const worker = async () => {
         while (next < scs.length) {
           const i = next++;
-          let txt = "";
+          let txt = "", lines = [];
+          const nameSet = chars.map(c => c.name);
+          const clean = t => t.split(/\r?\n/).map(l => l.replace(/[*_`#>]+/g, "").replace(/^\s*(?:[-•]|\d+[.)])\s*/, "").trim()).map(l => { const m = l.match(/^\(?([A-Za-z][A-Za-z .'&-]{0,30}?)\)?\s*[:\-—]\s*(\S.*)$/); if (m && !/^\[/.test(l) && nameSet.includes(m[1].trim().toUpperCase())) return "[" + m[1].trim().toUpperCase() + "] " + m[2]; return l; }).filter(l => /^\[[^\]]+\]\s*\S/.test(l));
+          for (let tries = 0; tries < 3 && !lines.length; tries++) {
           try {
             txt = await ask('You are writing scene ' + (i + 1) + ' of ' + scs.length + ' of the film "' + (o.title || "") + '".\nPremise: ' + (o.premise || "") + '\nLook: ' + (o.look || "") + '\nSetting: ' + (o.setting || "") + '\nCharacters: ' + chars.map(c => c.name + " (" + c.who + ")").join("; ") + '\nStory so far: ' + (i ? scs[i - 1].summary : "(this is the opening)") + '\nThis scene: ' + scs[i].title + " — " + scs[i].summary + '\nNext scene: ' + (scs[i + 1] ? scs[i + 1].summary : "(this is the ending)") + '\n\nWrite ONLY this, nothing else:\nVISUAL: one paragraph on what we see (place, action, camera, light, weather).\nThen 10 to 16 spoken lines, each on its own line as [NAME] line. NAME must be exactly one of: ' + names + '. Each line is one or two natural sentences. No stage directions, no narration unless NARRATOR is in the list.', 1800);
           } catch (e) { }
+          lines = clean(txt);
+          }
           const vis = (txt.split(/\r?\n/).find(l => /^VISUAL:/i.test(l.trim())) || "").replace(/^VISUAL:\s*/i, "").trim() || scs[i].summary;
-          const lines = txt.split(/\r?\n/).map(l => l.trim()).filter(l => /^\[[^\]]+\]\s*\S/.test(l));
           out[i] = { vis, lines };
           done++; setStage("Writing your film: scene " + done + " of " + scs.length + "…"); setPct(2 + Math.round(4 * done / scs.length));
         }
