@@ -1092,7 +1092,7 @@ export default function Studio() {
         {simple && <div>
           <div className="mini">
             <div className="wm">Mandas 1 Shot Film Studio</div>
-            <div className="mr">{user ? <><span style={{ opacity: .7 }}>{user.email}</span><button className="lk" onClick={logOut}>Log out</button></> : <button className="lk" onClick={() => setShowLogin(v => !v)}>Log in</button>}<button className="sub" onClick={() => { const em = (user && user.email) || email; window.open(SUB_LINK + (em ? "?prefilled_email=" + encodeURIComponent(em) : ""), "_blank", "noopener"); }}>Subscribe · $50/month</button></div>
+            <div className="mr">{user ? <><span style={{ opacity: .7 }}>{user.email}</span><button className="lk" onClick={logOut}>Log out</button></> : <button className="lk" onClick={() => setShowLogin(v => !v)}>Log in</button>}<button className="lk" onClick={() => { const em = (user && user.email) || email; window.open(TOPUP_LINK + (em ? "?prefilled_email=" + encodeURIComponent(em) : ""), "_blank", "noopener"); }}>Buy extra usage</button><button className="sub" onClick={() => { const em = (user && user.email) || email; window.open(SUB_LINK + (em ? "?prefilled_email=" + encodeURIComponent(em) : ""), "_blank", "noopener"); }}>Subscribe · $50/month</button></div>
           </div>
           {!user && showLogin && <div style={{ marginTop: 8 }}><div className="login">
             <input className="in" type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
