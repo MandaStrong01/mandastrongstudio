@@ -897,7 +897,7 @@ export default function Studio() {
     const count = opts.trailer ? Math.min(ready.length, Math.ceil(opts.trailer / len)) : ready.length;
     let lastPv = 0; const showPv = () => { const pv = opts.preview && opts.preview.current; if (!pv || Date.now() - lastPv < 150) return; lastPv = Date.now(); try { if (pv.width !== 480) { pv.width = 480; pv.height = Math.round(480 * H / W); } pv.getContext("2d").drawImage(cv, 0, 0, pv.width, pv.height); } catch (e) { } };
     const frame = (v, p, a) => {
-      const vw = v.videoWidth || W, vh = v.videoHeight || H, sc = Math.max(W / vw, H / vh) * (1.02 + 0.06 * Math.min(1, p)), dw = vw * sc, dh = vh * sc;
+      const vw = v.videoWidth || W, vh = v.videoHeight || H, sc = Math.max(W / vw, H / vh) * (1.02 + 0.06 * Math.min(1, p)) * (v._clip ? 1.15 : 1), dw = vw * sc, dh = vh * sc;
       ctx.globalAlpha = Math.max(0, Math.min(1, a)); try { ctx.drawImage(v, (W - dw) / 2, (H - dh) / 2, dw, dh); } catch (e) { } ctx.globalAlpha = 1;
     };
     const draw = (v, tSec, p, prev, fa) => {
@@ -916,7 +916,7 @@ export default function Studio() {
     if (title) { const tEnd = Date.now() + 3000; while (Date.now() < tEnd && !stopExp.current) { card([title, kind], true); await sleep(33); } }
     if (nEl) try { await nEl.play(); } catch (e) { }
     const tStart = Date.now();
-    const mkV = s => { const v = document.createElement("video"); v.src = s.url; v.muted = s.source !== "your clip"; v.loop = !isStill(s); v.playsInline = true; v.preload = "auto"; v.setAttribute("playsinline", ""); v.setAttribute("webkit-playsinline", ""); v.style.cssText = "position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1"; try { document.body.appendChild(v); } catch (e) { }
+    const mkV = s => { const v = document.createElement("video"); v._clip = s.source === "your clip"; v.src = s.url; v.muted = s.source !== "your clip"; v.loop = !isStill(s); v.playsInline = true; v.preload = "auto"; v.setAttribute("playsinline", ""); v.setAttribute("webkit-playsinline", ""); v.style.cssText = "position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1"; try { document.body.appendChild(v); } catch (e) { }
       if (!v.muted) { try { const cg = ac.createGain(); cg.gain.value = cVol; ac.createMediaElementSource(v).connect(cg); cg.connect(dest); } catch (e) { v.muted = true; } }
       v._ok = new Promise(res => { v.onloadeddata = res; v.oncanplay = res; v.onerror = res; setTimeout(res, 8000); }); return v; };
     const FADE = Math.min(1.2, len * 0.3);
