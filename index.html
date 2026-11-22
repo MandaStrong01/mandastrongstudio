@@ -13,7 +13,7 @@
   <body>
     <script>
       // Mandas Film & Music Studio lives in this same project: its own address opens the one-page app.
-      if (/^(mandasfilm|mandas1shot)/i.test(location.hostname) || location.hash === "#studio") { document.title = "Mandas 1 Shot Film Studio"; location.replace("studio.html"); }
+      if (location.hostname === "mands1shot1filmstudios.bolt.host" || location.hash === "#studio") { document.title = "Mandas 1 Shot Film Studio"; location.replace("studio.html"); }
     </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
