@@ -669,6 +669,26 @@ export default function Studio() {
     return sp.length;
   }
   useEffect(() => { if (autoMake && narr && !busy) { setAutoMake(false); makeMovie(); } }, [autoMake, narr, script]);
+  // RE-VOICE MY FILM: makes only the voices again, with your uploaded voices, and puts them on the film you already made. No video is re-made.
+  const [pendingRV, setPendingRV] = useState(false); const [rvMsg, setRvMsg] = useState("");
+  async function reVoice() {
+    if (busy) return;
+    if (!subActive) { setErr("Re-voicing uses the engine. Subscribe to use it."); return; }
+    if (!narr.trim()) { if (onePrompt.trim() && splitPrompt()) { setPendingRV(true); return; } setErr("Paste your prompt in the box first, so I have the spoken lines."); return; }
+    if (!charRecs.length) { setErr("Add your voice files first (Footage & voices), named Doxy, Lily and Ethan."); return; }
+    setErr(""); setBusy(true); setRvMsg("Making your voices…");
+    try {
+      const v = await voiceIt(narr.trim(), spoken);
+      const secs = await msBlobSeconds(v.blob);
+      await dbPut(projectId.current + "_narr", v.blob, { text: v.text, secs });
+      setNarrUrl(URL.createObjectURL(v.blob)); setNarrText(v.text); setNarrSecs(secs); setVoiceMode("engine");
+      const ext = (v.blob.type || "").includes("wav") ? "wav" : "mp3";
+      await saveFile({ blob: v.blob, name: (title || "My_Film").replace(/[^\w]+/g, "_") + "_voices." + ext, url: URL.createObjectURL(v.blob) });
+      setRvMsg("Done. Your voices are on the film and the audio file is saved. Save the film again to get the new version.");
+    } catch (e) { setErr("Voices: " + e.message); setRvMsg(""); }
+    setBusy(false);
+  }
+  useEffect(() => { if (pendingRV && narr && !busy) { setPendingRV(false); reVoice(); } }, [pendingRV, narr, script]);
   // JUST AN IDEA: no [NAME] lines? Write the whole film from the idea (outline, then every scene's spoken lines), fill the boxes, make it.
   const [designing, setDesigning] = useState(false);
   async function designFromIdea() {
@@ -1155,7 +1175,9 @@ export default function Studio() {
           {simple && <button onClick={() => setShowFiles(v => !v)}>{showFiles ? "Hide footage & voices" : "Footage & voices" + ((photos.length + clips.length + charRecs.length) ? " (" + (photos.length + clips.length + charRecs.length) + ")" : "")}</button>}
           <button className="b" style={{ display: simple ? "none" : undefined }} onClick={() => { const n = splitPrompt(); setAddMsg(n ? "Split into the boxes below. " + n + " spoken lines." : "No [NAME] lines found. Put each spoken line as [NAME] line."); }}>SPLIT INTO THE BOXES ONLY</button>
           {simple ? <button onClick={() => setShowGuide(v => !v)}>{showGuide ? "Close prompt guide" : "Prompt guide"}</button> : <button className="b s" onClick={() => setShowGuide(v => !v)}>{showGuide ? "CLOSE PROMPT GUIDE" : "PROMPT GUIDE"}</button>}
+          {(scenes.length > 0 && !busy) && (simple ? <button onClick={reVoice}>Re-voice my film</button> : <button className="b s" onClick={reVoice}>RE-VOICE MY FILM</button>)}
         </div>
+        {rvMsg && <div className="msg" style={{ marginTop: 6 }}>{rvMsg}</div>}
         {showGuide && <div className="guide">{"HOW TO WRITE YOUR PROMPT\n\nLine 1:  Title: your film's name\nLine 2:  Length: 60 min\n\nEvery spoken line, in script order, with the speaker in square brackets:\n[NARRATOR] It was Christmas Eve.\n[LILY] Come on! We have to go look!\n\nEverything else goes on its own lines: what the film looks like, the weather, the mood, the music, and which voice plays which character.\n\nExample:\nTitle: Santa's List: The Book of Names\nLength: 60 min\n[SANTA] Ho ho ho!\n[LILY] I made a list!\nChristmas Eve night. Snow. Cold and crisp. Warm lights in the windows.\nVOICES: Doxy: Santa. Lily: Lily.\n\nThen add your photos, clips and voice files in box 4."}</div>}
 
         <div style={{ display: simple ? "none" : undefined }}>
