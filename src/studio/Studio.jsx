@@ -652,16 +652,33 @@ export default function Studio() {
   useEffect(() => { (async () => { try { const all = await dbAll(); const x = all.find(y => y.id === "mfs_oneprompt" && y.blob); if (x) { const tx = await x.blob.text(); setOnePrompt(p => p || fixEnc(tx)); } } catch (e) { } promptLoaded.current = true; })(); }, []);
   useEffect(() => { if (!promptLoaded.current) return; const t = setTimeout(() => dbPut("mfs_oneprompt", new Blob([onePrompt || ""], { type: "text/plain" }), {}), 400); return () => clearTimeout(t); }, [onePrompt]);
   function splitPrompt() {
-    const sp = [], dr = [], vo = []; let t = "", len = 0;
+    const sp = [], dr = [], vo = [], opt = {}; let t = "", len = 0;
     fixEnc(String(onePrompt || "")).split(/\r?\n/).forEach(raw => {
       const l = raw.trim(); if (!l) { if (dr.length && dr[dr.length - 1] !== "") dr.push(""); return; }
       let m;
       if ((m = l.match(/^title\s*:\s*(.+)/i))) t = m[1].trim();
       else if ((m = l.match(/^(?:length|runtime|duration)\s*:\s*(\d+)\s*(hr|hour|h|min|m)?/i))) { const n = Number(m[1]); len = /^h/i.test(m[2] || "") ? n * 60 : n; }
       else if (/^\[[^\]]+\]/.test(l)) sp.push(l);
+      else if ((m = l.match(/^(genre|audience|animation|camera|pace|place|grade|mood|tempo|ratio|quality|music style)\s*:\s*(.+)$/i))) opt[m[1].toLowerCase()] = m[2].trim();
       else dr.push(l);
     });
     if (t) setTitle(t);
+    // SETTINGS lines in the prompt choose the Advanced options (the closest listed choice wins).
+    const pick = (items, v) => { const x = String(v || "").toLowerCase().replace(/[^a-z0-9]/g, ""); if (!x) return ""; return items.find(i => String(i).toLowerCase().replace(/[^a-z0-9]/g, "") === x) || items.find(i => { const y = String(i).toLowerCase().replace(/[^a-z0-9]/g, ""); return y.includes(x) || x.includes(y); }) || ""; };
+    { let v;
+      if ((v = pick(GENRES, opt.genre))) setGenre(v);
+      if ((v = pick(AUDIENCES, opt.audience))) setAudience(v);
+      if ((v = pick(TOONS, opt.animation))) setToon(v);
+      if ((v = pick(CAMERAS, opt.camera))) setCamera(v);
+      if ((v = pick(PACES, opt.pace))) setPace(v);
+      if (opt.place) setPlace(opt.place);
+      if (opt.grade) { const g = GRADES.find(g => pick([g.id, g.label], opt.grade)); if (g) setGrade(g.id); }
+      if (opt.mood) { const md = MOODS.find(md => pick([md.id, md.label], opt.mood)); if (md) { setMood(md.id); } }
+      if ((v = pick(MUSIC_GENRES, opt["music style"]))) setMGenre(v);
+      if ((v = pick(TEMPOS, opt.tempo))) setTempo(v);
+      if (opt.ratio && RATIOS[opt.ratio.replace(/\s/g, "")]) setRatio(opt.ratio.replace(/\s/g, ""));
+      if (/^(720p|1080p)$/i.test(opt.quality || "")) setQuality(opt.quality.toLowerCase());
+    }
     if (/\b(animated|animation|pixar|cartoon)\b/i.test(onePrompt)) { setKind("Animation"); setStyle("Animated"); }
     if (simple) { setCharVoices(true); setVoiceMode("engine"); if (musicMode === "off") setMusicMode("library"); }
     if (len >= 1) setMinutes(Math.min(180, len));
