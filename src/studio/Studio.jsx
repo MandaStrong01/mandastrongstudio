@@ -631,14 +631,15 @@ export default function Studio() {
   const [showFiles, setShowFiles] = useState(true);
   const [simple, setSimple] = useState(() => load("simple", true)); // one-box view: one prompt, your files, one button
   useEffect(() => { try { localStorage.setItem("mfs_simple", JSON.stringify(simple)); } catch (e) { } }, [simple]);
+  const fixEnc = t => { try { return ((String(t).match(/%(?:20|0A|5B|5D|27)/gi) || []).length >= 3) ? decodeURIComponent(String(t).replace(/\+/g, " ")) : t; } catch (e) { try { return String(t).replace(/%0A/gi, "\n").replace(/%20/g, " ").replace(/%5B/gi, "[").replace(/%5D/gi, "]").replace(/%27/g, "'"); } catch (e2) { return t; } } };
   const [onePrompt, setOnePrompt] = useState(""); const [autoMake, setAutoMake] = useState(false);
   // The one prompt box is kept on the device too, at any size, exactly as pasted.
   const promptLoaded = useRef(false);
-  useEffect(() => { (async () => { try { const all = await dbAll(); const x = all.find(y => y.id === "mfs_oneprompt" && y.blob); if (x) { const tx = await x.blob.text(); setOnePrompt(p => p || tx); } } catch (e) { } promptLoaded.current = true; })(); }, []);
+  useEffect(() => { (async () => { try { const all = await dbAll(); const x = all.find(y => y.id === "mfs_oneprompt" && y.blob); if (x) { const tx = await x.blob.text(); setOnePrompt(p => p || fixEnc(tx)); } } catch (e) { } promptLoaded.current = true; })(); }, []);
   useEffect(() => { if (!promptLoaded.current) return; const t = setTimeout(() => dbPut("mfs_oneprompt", new Blob([onePrompt || ""], { type: "text/plain" }), {}), 400); return () => clearTimeout(t); }, [onePrompt]);
   function splitPrompt() {
     const sp = [], dr = [], vo = []; let t = "", len = 0;
-    String(onePrompt || "").split(/\r?\n/).forEach(raw => {
+    fixEnc(String(onePrompt || "")).split(/\r?\n/).forEach(raw => {
       const l = raw.trim(); if (!l) { if (dr.length && dr[dr.length - 1] !== "") dr.push(""); return; }
       let m;
       if ((m = l.match(/^title\s*:\s*(.+)/i))) t = m[1].trim();
@@ -657,7 +658,7 @@ export default function Studio() {
   // JUST AN IDEA: no [NAME] lines? Write the whole film from the idea (outline, then every scene's spoken lines), fill the boxes, make it.
   const [designing, setDesigning] = useState(false);
   async function designFromIdea() {
-    const idea = String(onePrompt || "").trim();
+    const idea = fixEnc(String(onePrompt || "")).trim();
     if (!idea) { setAddMsg("Type your idea in the box first."); return; }
     setDesigning(true); setErr(""); setAddMsg(""); setPct(2); setStage("Designing your film from your idea…");
     const ask = async (prompt, max) => {
@@ -1126,7 +1127,7 @@ export default function Studio() {
           <p>Describe your film. The engine makes it.</p>
         </div>}
         {!simple && <div className="lab">ONE PROMPT — PUT EVERYTHING IN ONE BOX</div>}
-        <textarea className="ta op" value={onePrompt} onChange={e => setOnePrompt(e.target.value)} placeholder={simple ? "Describe your film in as much detail as you like: the story, the characters, the look, the length.\n\nOr paste your full script with each speaker's name in [BRACKETS]." : "Title: Santa's List: The Book of Names\nLength: 60 min\n[SANTA] Ho ho ho!\n[LILY] I made a list!\nEverything else (directions, description, voices) goes on its own lines."} />
+        <textarea className="ta op" value={onePrompt} onChange={e => setOnePrompt(fixEnc(e.target.value))} placeholder={simple ? "Describe your film in as much detail as you like: the story, the characters, the look, the length.\n\nOr paste your full script with each speaker's name in [BRACKETS]." : "Title: Santa's List: The Book of Names\nLength: 60 min\n[SANTA] Ho ho ho!\n[LILY] I made a list!\nEverything else (directions, description, voices) goes on its own lines."} />
         <button className="go" style={{ marginTop: 10, display: simple ? "none" : undefined }} onClick={() => { const n = splitPrompt(); if (n) setAutoMake(true); else designFromIdea(); }}>SPLIT AND MAKE MY MOVIE</button>
         {simple && <div className="len">
           <div className="lenTop"><span>FILM LENGTH</span><b>{minutes >= 60 ? Math.floor(minutes / 60) + " hr" + (minutes % 60 ? " " + (minutes % 60) + " min" : "") : minutes + " min"}</b></div>
