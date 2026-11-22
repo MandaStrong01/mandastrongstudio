@@ -148,7 +148,7 @@ async function grabFrame(blob, frac) {
       const fin = (d) => { try { URL.revokeObjectURL(u); } catch (e) { } resolve(d); };
       const to = setTimeout(() => fin(""), 6000);
       v.onloadedmetadata = () => { try { v.currentTime = Math.max(0.1, (v.duration || 4) * frac); } catch (e) { clearTimeout(to); fin(""); } };
-      v.onseeked = () => { try { const c = document.createElement("canvas"); const k = Math.min(1, 1024 / Math.max(v.videoWidth || 1024, v.videoHeight || 576)); c.width = Math.max(2, Math.round((v.videoWidth || 1024) * k)); c.height = Math.max(2, Math.round((v.videoHeight || 576) * k)); c.getContext("2d").drawImage(v, 0, 0, c.width, c.height); clearTimeout(to); fin(c.toDataURL("image/jpeg", 0.85)); } catch (e) { clearTimeout(to); fin(""); } };
+      v.onseeked = () => { try { const c = document.createElement("canvas"); const k = Math.min(1, 1024 / Math.max(v.videoWidth || 1024, v.videoHeight || 576)); c.width = Math.max(2, Math.round((v.videoWidth || 1024) * k)); c.height = Math.max(2, Math.round((v.videoHeight || 576) * k)); { const gw = v.videoWidth || 1024, gh = v.videoHeight || 576; c.getContext("2d").drawImage(v, gw * 0.08, gh * 0.08, gw * 0.84, gh * 0.84, 0, 0, c.width, c.height); } clearTimeout(to); fin(c.toDataURL("image/jpeg", 0.85)); } catch (e) { clearTimeout(to); fin(""); } };
       v.onerror = () => { clearTimeout(to); fin(""); };
     } catch (e) { resolve(""); }
   });
@@ -591,7 +591,7 @@ export default function Studio() {
     if (!blob && clips.length && !photo) { const gc = clips[(i + reuseN.current) % clips.length]; if (gc && gc.blob) grab = await grabFrame(gc.blob, 0.25 + ((i * 37) % 50) / 100); }
     if (!blob && !free()) { try { blob = await toBlob(await seRun({ kind: "video", prompt: text + "\n" + look, image: photo || grab })); engineFails.current = 0; } catch (e) { note = e.message; if (e.nocredit) { noCredit.current = true; setStage("Engine is out of credit — using your own clips and images."); } } }
     // Replicate/stock finished or failed: the engine makes its own moving shot from a frame of YOUR clip or image (same look), before anything else.
-    const stretchSrc = photo || grab || (photos.length ? photos[i % photos.length].dataUrl : "");
+    const stretchSrc = photo || (photos.length ? photos[i % photos.length].dataUrl : "") || grab;
     if (!blob && stretchSrc) { try { const b = await stillToClip(stretchSrc, 7, i); if (b) { blob = b; source = "engine still from your footage"; } } catch (e) { } }
     if (!blob && !free()) { try { const im = await seRun({ kind: "image", prompt: text + "\n" + look, aspect_ratio: ratio }, 4); blob = await stillToClip(im, 6, i); source = "engine still"; } catch (e) { if (e.nocredit) noCredit.current = true; } }
     if (!blob) { const r2 = await stockScene(plan, i, text, freeMode); if (r2) { blob = r2.blob; source = r2.source; } }
@@ -946,7 +946,7 @@ export default function Studio() {
     if (title) { const tEnd = Date.now() + 3000; while (Date.now() < tEnd && !stopExp.current) { card([title, kind], true); await sleep(33); } }
     if (nEl) try { await nEl.play(); } catch (e) { }
     const tStart = Date.now();
-    const mkV = s => { const v = document.createElement("video"); v._clip = s.source === "your clip"; v.src = s.url; v.muted = s.source !== "your clip"; v.loop = !isStill(s); v.playsInline = true; v.preload = "auto"; v.setAttribute("playsinline", ""); v.setAttribute("webkit-playsinline", ""); v.style.cssText = "position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1"; try { document.body.appendChild(v); } catch (e) { }
+    const mkV = s => { const v = document.createElement("video"); v._clip = /^(your clip|engine still from your footage|engine)$/.test(String(s.source || "")); v.src = s.url; v.muted = s.source !== "your clip"; v.loop = !isStill(s); v.playsInline = true; v.preload = "auto"; v.setAttribute("playsinline", ""); v.setAttribute("webkit-playsinline", ""); v.style.cssText = "position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1"; try { document.body.appendChild(v); } catch (e) { }
       if (!v.muted) { try { const cg = ac.createGain(); cg.gain.value = cVol; ac.createMediaElementSource(v).connect(cg); cg.connect(dest); } catch (e) { v.muted = true; } }
       v._ok = new Promise(res => { v.onloadeddata = res; v.oncanplay = res; v.onerror = res; setTimeout(res, 8000); }); return v; };
     const FADE = Math.min(1.2, len * 0.3);
