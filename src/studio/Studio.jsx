@@ -521,6 +521,15 @@ export default function Studio() {
       // Nobody has to say who uses which voice: any character without a voice yet gets one of YOUR uploaded voices automatically (unused voices first).
       if (charRecs.length) { const usedR = new Set(Object.values(umap)); let rr = 0; for (const sp of cast.speakers) { if (umap[sp.key]) continue; const free_ = charRecs.filter(r => !usedR.has(r)); const pick = free_.length ? free_[0] : charRecs[rr++ % charRecs.length]; umap[sp.key] = pick; usedR.add(pick); } }
       for (const k of Object.keys(umap)) { setStage("Copying " + umap[k].name + "'s voice for " + ((cast.speakers.find(x => x.key === k) || {}).label || k) + "…"); uid[k] = await cloneOf(umap[k]); }
+      // Your voices are never swapped for a stock voice without telling you: stop and say which character failed.
+      if (charRecs.length) {
+        const lab = k => (cast.speakers.find(x => x.key === k) || {}).label || k;
+        for (const k of Object.keys(umap)) { if (!uid[k]) { uid[k] = await cloneOf(umap[k]); } }
+        const noClone = Object.keys(umap).filter(k => !uid[k]).map(lab);
+        if (noClone.length) throw Object.assign(new Error("Stopped before spending credit: your voice file could not be copied for " + noClone.join(", ") + ". Check the engine has credit and the file plays, then press Make again."), { stopFilm: true });
+        const noVoice = cast.speakers.filter(sp => !umap[sp.key]).map(sp => sp.label || sp.key);
+        if (noVoice.length) throw Object.assign(new Error("Stopped before spending credit: no uploaded voice is matched to " + noVoice.join(", ") + ". Name each voice file after its character (Doxy, Lily, Ethan) and list who uses it, like DOXY'S VOICE: Santa, Max."), { stopFilm: true });
+      }
       for (let i = 0; i < cast.segments.length; i++) {
         const sg = cast.segments[i]; const vc = sg.sp ? cmap[sg.sp] : null;
         setStage("Voicing " + (sg.sp ? (cast.speakers.find(x => x.key === sg.sp) || {}).label : "narrator") + " — " + (i + 1) + " of " + cast.segments.length);
@@ -784,6 +793,7 @@ export default function Studio() {
       else if (spokenText) {
         try { const v = await voiceIt(spokenText, spoken); nUrl = URL.createObjectURL(v.blob); nText = v.text; nSecs = await msBlobSeconds(v.blob); await dbPut(projectId.current + "_narr", v.blob, { text: nText, secs: nSecs }); if (lipSync) firstVoice = await readAsDataURL(v.blob.slice(0, 600000, v.blob.type)); }
         catch (e) {
+          if (e && e.stopFilm) throw e;
           if (myRec) { nUrl = myRec.url; nText = spokenText; nSecs = (await audioSecs(myRec.blob)) || (await msBlobSeconds(myRec.blob)); await dbPut(projectId.current + "_narr", myRec.blob, { text: nText, secs: nSecs }); if (tail) nSecs += tail.secs; setStage("Engine has no credit. Using your own recording as the voice."); }
           else setErr("Voice: " + e.message + ". The film will be made without narration.");
         }
