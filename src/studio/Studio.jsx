@@ -366,7 +366,7 @@ export default function Studio() {
     const findRec = (w) => { w = String(w || "").toLowerCase().trim(); if (!w) return null; return charRecs.find(r => r.name.toLowerCase() === w) || charRecs.find(r => r.name.toLowerCase().includes(w)) || null; };
     const norm = (x) => String(x || "").toUpperCase().replace(/\s+/g, " ").trim();
     let cur = null;
-    for (const ln of String((script || "") + "\n" + (narr || "")).split(/\r?\n/)) {
+    for (const ln of String((script || "") + "\n" + (narr || "")).replace(/(\S)[ \t]+([A-Za-z]+['’]S VOICE\s*:)/gi, "$1\n$2").split(/\r?\n/)) {
       const t = ln.trim(); if (!t) { continue; }
       const h = t.match(/^([A-Za-z][A-Za-z .'-]{0,30}?)['’]S VOICE\s*:?\s*$/i); if (h) { cur = findRec(h[1]); continue; }
       // One-line form: "DOXY'S VOICE: Santa, Max, Mr. Thompson and Pepper."
