@@ -140,6 +140,8 @@ function sizeFor(ratio, quality) {
 }
 // Records a moving picture from a still: slow push-in and drift (used for photos and as a backup).
 const isStill = s => /image|photo|still/.test((s && s.source) || "");
+// Shots that carry their own sound (your clips, and engine video) are never muted. Stills and lip-sync shots stay silent so voices are not doubled.
+const hasSound = s => !!s && /^(your clip|engine)$/.test(String(s.source || ""));
 // Takes a picture (a frame) out of one of YOUR clips, so the engine's new shots keep your characters and look.
 async function grabFrame(blob, frac) {
   return new Promise((resolve) => {
@@ -328,7 +330,7 @@ export default function Studio() {
   const [quality, setQuality] = useState(() => load("quality", "1080p"));
   const [vVol, setVVol] = useState(() => load("vVol", 1));
   const [mVol, setMVol] = useState(() => load("mVol", 0.3));
-  const [cVol, setCVol] = useState(() => load("cVol", 0.5));
+  const [cVol, setCVol] = useState(() => load("cVol", 0.8));
   const [allRatios, setAllRatios] = useState(() => load("allRatios", false));
   const [credits, setCredits] = useState(() => load("credits", true));
   const [watermark, setWatermark] = useState(() => load("watermark", true));
@@ -904,7 +906,7 @@ export default function Studio() {
     const v = vRef.current, n = nRef.current, m = mRef.current;
     if (playing) { [v, n, m, tRef.current].forEach(x => { try { x && x.pause(); } catch (e) { } }); setPlaying(false); return; }
     if (clock >= total) { setClock(0); setCur(0); if (v) v.src = ready[0].url; if (n) n.currentTime = 0; if (m) m.currentTime = 0; if (tRef.current) { tRef.current.pause(); tRef.current.currentTime = 0; } }
-    if (v) { if (!v.src) v.src = ready[cur].url; v.loop = !isStill(ready[cur]); v.muted = !ready[cur] || ready[cur].source !== "your clip"; v.volume = cVol; v.play().catch(() => { }); }
+    if (v) { if (!v.src) v.src = ready[cur].url; v.loop = !isStill(ready[cur]); v.muted = !hasSound(ready[cur]); v.volume = cVol; v.play().catch(() => { }); }
     if (n && activeNarr) { const t = tRef.current; if (useTail && t && n.ended && t.currentTime > 0) { t.volume = vVol; t.play().catch(() => { }); } else { n.volume = vVol; n.play().catch(() => { }); } }
     if (m && musicUrl) { m.loop = true; m.play().catch(() => { }); }
     setPlaying(true);
@@ -963,13 +965,16 @@ export default function Studio() {
       showPv();
     };
     const card = (lines, big) => { ctx.fillStyle = "#0E0F12"; ctx.fillRect(0, 0, W, H); ctx.textAlign = "center"; ctx.fillStyle = "#E6C98E"; ctx.font = Math.round(H * (big ? 0.11 : 0.06)) + "px Inter, sans-serif"; ctx.fillText(lines[0] || "", W / 2, H * 0.42); ctx.fillStyle = "#F3EDE2"; ctx.font = Math.round(H * 0.032) + "px Inter, sans-serif"; lines.slice(1).forEach((l, k) => ctx.fillText(l, W / 2, H * 0.55 + k * H * 0.05)); showPv(); };
+    // Phones only allow sound that was started from a tap: wake the voice track now, then rewind it, so it can play after the title card.
+    for (const el of [nEl, tEl]) { if (el) { try { await Promise.race([el.play(), sleep(800)]); el.pause(); el.currentTime = 0; } catch (e) { } } }
+    try { await ac.resume(); } catch (e) { }
     rec.start(1000); if (bed) try { bed.start(0); } catch (e) { }
     const t0 = Date.now();
     // opening title card
     if (title) { const tEnd = Date.now() + 3000; while (Date.now() < tEnd && !stopExp.current) { card([title, kind], true); await sleep(33); } }
     if (nEl) try { await nEl.play(); } catch (e) { }
     const tStart = Date.now();
-    const mkV = s => { const v = document.createElement("video"); v._clip = /^(your clip|engine still from your footage|engine)$/.test(String(s.source || "")); v.src = s.url; v.muted = s.source !== "your clip"; v.loop = !isStill(s); v.playsInline = true; v.preload = "auto"; v.setAttribute("playsinline", ""); v.setAttribute("webkit-playsinline", ""); v.style.cssText = "position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1"; try { document.body.appendChild(v); } catch (e) { }
+    const mkV = s => { const v = document.createElement("video"); v._clip = /^(your clip|engine still from your footage|engine)$/.test(String(s.source || "")); v.src = s.url; v.muted = !hasSound(s); v.loop = !isStill(s); v.playsInline = true; v.preload = "auto"; v.setAttribute("playsinline", ""); v.setAttribute("webkit-playsinline", ""); v.style.cssText = "position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1"; try { document.body.appendChild(v); } catch (e) { }
       if (!v.muted) { try { const cg = ac.createGain(); cg.gain.value = cVol; ac.createMediaElementSource(v).connect(cg); cg.connect(dest); } catch (e) { v.muted = true; } }
       v._ok = new Promise(res => { v.onloadeddata = res; v.oncanplay = res; v.onerror = res; setTimeout(res, 8000); }); return v; };
     const FADE = Math.min(1.2, len * 0.3);
@@ -1353,7 +1358,7 @@ export default function Studio() {
         <div className="out">
           <div>
             <div ref={wrapRef} className="pv" style={{ aspectRatio: (RATIOS[ratio] || [16, 9]).join("/"), maxHeight: ratio === "9:16" ? 620 : undefined, margin: ratio === "9:16" ? "0 auto" : undefined }}>
-              <video ref={vRef} playsInline loop={!isStill(ready[cur])} style={{ transition: "opacity .45s ease, transform .3s linear", transform: "scale(" + (1 + 0.06 * Math.min(1, (clock % sceneLen) / sceneLen)) + ")" }} muted={!ready[cur] || ready[cur].source !== "your clip"} src={ready[cur] ? ready[cur].url : undefined} />
+              <video ref={vRef} playsInline loop={!isStill(ready[cur])} style={{ transition: "opacity .45s ease, transform .3s linear", transform: "scale(" + (1 + 0.06 * Math.min(1, (clock % sceneLen) / sceneLen)) + ")" }} muted={!hasSound(ready[cur])} src={ready[cur] ? ready[cur].url : undefined} />
               {!ready.length && <div style={{ position: "absolute", color: "var(--dim)", fontSize: 13 }}>Your movie plays here</div>}
               {caption && <div className="cap">{caption}</div>}
             </div>
