@@ -339,7 +339,6 @@ export default function Studio() {
   const trialKey = u => "mfs_trial_" + (u && u.id ? u.id : "x");
   const noCredit = useRef(false);
   const planRef = useRef([]);
-  const stillCount = useRef(0), engineNote = useRef("");
   const engineFails = useRef(0), engineOff = useRef(false); // after 2 failed engine shots in a row the engine stops for this film, so no more credit is spent
   const lastClipRef = useRef(null), reuseN = useRef(0); // your clips are reused (never back to back) when the engine cannot make a scene
   useEffect(() => { const o = { kind, title, narr, script, voiceMode, narrator, charVoices, lipSync, speed, spoken, subs, dubs, musicMode, mood, musicPrompt, style, grade, enhance, duck, cleanVoice, minutes, ratio, quality, vVol, mVol, cVol, allRatios, credits, watermark, creditNames, plan, genre, audience, toon, camera, pace, place, episodes, mGenre, tempo }; for (const k in o) save(k, o[k]); });
@@ -602,8 +601,6 @@ export default function Studio() {
     if (!blob && !free()) { try { const im = await seRun({ kind: "image", prompt: text + "\n" + look, aspect_ratio: ratio }, 4); blob = await stillToClip(im, 6, i); source = "engine still"; } catch (e) { if (e.nocredit) noCredit.current = true; } }
     if (!blob) { const r2 = await stockScene(plan, i, text, freeMode); if (r2) { blob = r2.blob; source = r2.source; } }
     if (!blob) { setS({ status: "failed", note: note || "No picture came back" }); return null; }
-    if (note) engineNote.current = note;
-    if (/still|image|photo/.test(source) && source !== "your clip") stillCount.current++;
     await dbPut(projectId.current + "_scene_" + i, blob, { i, text, source });
     setS({ status: "done", blob, url: URL.createObjectURL(blob), source, note });
     return blob;
@@ -636,8 +633,6 @@ export default function Studio() {
     // CLIP ORDER: clips named with a scene number go there; then the clip each scene was matched to; then every leftover clip
     // fills the remaining scenes in the order you added them. Each clip is used once, whatever order you picked them in.
     const assign = new Array(n).fill(-1), usedC = new Set();
-    // A preview reel / trailer / montage of all the clips is never put on a scene: it would show a quick sweep of everything instead of the script's scene.
-    clips.forEach((c, k) => { if (/trailer|preview|reel|teaser|compilation|montage|all[\s_-]*clips|everything|full[\s_-]*film/i.test(String(c.name || ""))) usedC.add(k); });
     const numOfC = c => { const mm = String(c.name || "").replace(/\.[a-z0-9]+$/i, "").match(/(?:scene|sc|clip|part)?[\s_-]*0*(\d{1,3})\s*$/i); const k = mm ? Number(mm[1]) : 0; return k >= 1 && k <= n ? k : 0; };
     clips.forEach((c, k) => { const q = numOfC(c); if (q && assign[q - 1] < 0) { assign[q - 1] = k; usedC.add(k); } });
     plan.forEach((pl, i) => { if (assign[i] < 0 && pl.clip >= 0 && !usedC.has(pl.clip)) { assign[i] = pl.clip; usedC.add(pl.clip); } });
@@ -859,7 +854,7 @@ export default function Studio() {
       setMusicUrl(mUrl); setPct(24);
 
       // 3b — match your images to scenes and plan free stock for the rest
-      setStage("Matching your images to the scenes…"); noCredit.current = false; stillCount.current = 0; engineNote.current = ""; reuseN.current = 0; lastClipRef.current = null; engineFails.current = 0; engineOff.current = false;
+      setStage("Matching your images to the scenes…"); noCredit.current = false; reuseN.current = 0; lastClipRef.current = null; engineFails.current = 0; engineOff.current = false;
       await planScenes(list);
       // 4 — scenes, ONE at a time (the engine limit allows one request at a time; throttled ones wait and retry by themselves)
       let next = 0, finished = 0; const failed = [];
@@ -867,8 +862,6 @@ export default function Studio() {
       await worker();
       // Any scene that came back empty gets one more try before the film is joined.
       for (const i of failed) { setStage("Trying scene " + (i + 1) + " again…"); await makeScene(i, list[i], { firstVoice }); }
-      // Never silent: if scenes came out as still pictures, say how many and the engine's own reason.
-      if (stillCount.current) setErr(stillCount.current + " of " + list.length + " scenes came out as still pictures, not moving footage." + (engineNote.current ? " The engine said: " + engineNote.current : " The engine did not make moving shots (no credit, or it did not answer)."));
       // Then every scene is joined into ONE film file automatically.
       autoJoin.current = true;
       setPct(100); setStage("All scenes made. Joining them into one film — keep this tab open."); setDone(true);
