@@ -381,7 +381,7 @@ export default function Studio() {
     const res = {}; for (const sp of speakers) { const r = out[norm(sp.label || sp.key)]; if (r) res[sp.key] = r; } return res;
   };
   const cloneOf = async (r) => {
-    if (r.cloneId) return r.cloneId;
+    if (r.cloneId && !/^mm_/.test(r.cloneId)) return r.cloneId; // an old copied-voice id from the empty account is not reused
     try { const uri = await readAsDataURL(r.blob.slice(0, 1500000, r.blob.type || "audio/mpeg")); const vid = await engineCloneVoice(uri); if (vid) { r.cloneId = vid; dbPut(r.dbId, r.blob, { name: r.name, cloneId: vid }); return vid; } } catch (e) { }
     return "";
   };
