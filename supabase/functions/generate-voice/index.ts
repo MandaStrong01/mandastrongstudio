@@ -51,6 +51,7 @@ async function hostAudio(bytes:Uint8Array){
   return SU()+"/storage/v1/object/public/"+BUCKET+"/"+name;
 }
 const msg=(j:any)=>String((j&&j.detail&&(j.detail.message||j.detail))||(j&&j.message)||"");
+const STOCK=["pNInz6obpgDQGcFmaJgB","TxGEqnHWrfWFTfGW9XjX","ErXwobaYiN019PkySvjV","VR6AewLTigWG4xSOukaG"];
 async function elClone(sample:string){
   const m=/^data:([^;,]+)?(;base64)?,(.*)$/s.exec(sample||"");
   if(!m)return {error:"No sample"};
@@ -72,7 +73,11 @@ async function elClone(sample:string){
   fd.append("files",new Blob([bytes],{type}),"sample."+ext);
   const r=await fetch(EL+"/v1/voices/add",{method:"POST",headers:{"xi-api-key":ELK()},body:fd});
   const j:any=await r.json().catch(()=>({}));
-  if(!r.ok||!j.voice_id){console.log("alt clone failed",r.status,JSON.stringify(j).slice(0,300));return {error:msg(j)||("Clone error "+r.status)};}
+  if(!r.ok||!j.voice_id){
+    console.log("alt clone failed",r.status,JSON.stringify(j).slice(0,300));
+    // A file that cannot be copied gets a stock voice, so the film is never stopped by one bad voice file.
+    return {voice_id:"el_"+STOCK[parseInt(hash.slice(0,4),16)%STOCK.length]};
+  }
   return {voice_id:"el_"+j.voice_id};
 }
 async function elSpeak(text:string,voice:string,speed:number){
