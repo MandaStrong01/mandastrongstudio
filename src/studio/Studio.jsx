@@ -593,13 +593,12 @@ export default function Studio() {
     let grab = "";
     if (!blob && clips.length && !photo) { const gc = clips[(i + reuseN.current) % clips.length]; if (gc && gc.blob) grab = await grabFrame(gc.blob, 0.25 + ((i * 37) % 50) / 100); }
     if (!blob && !free()) { try { blob = await toBlob(await seRun({ kind: "video", prompt: text + "\n" + look, image: photo || grab })); engineFails.current = 0; } catch (e) { note = e.message; if (e.nocredit) { noCredit.current = true; setStage("Engine is out of credit — using your own clips and images."); } } }
-    // Replicate/stock finished or failed: the engine makes its own moving shot from a frame of YOUR clip or image (same look), before anything else.
-    // When the engine has no credit left: your matched picture first, then wintry stock pictures moved into shots (no faces), then the generic still.
-    const stretchSrc = photo || (photos.length ? photos[i % photos.length].dataUrl : "") || grab;
-    if (!blob && photo) { try { const b = await stillToClip(photo, 7, i); if (b) { blob = b; source = "engine still from your footage"; } } catch (e) { } }
-    if (!blob) { const r3 = await stockScene(plan, i, text, true); if (r3) { blob = r3.blob; source = r3.source; } }
-    if (!blob && stretchSrc) { try { const b = await stillToClip(stretchSrc, 7, i); if (b) { blob = b; source = "engine still from your footage"; } } catch (e) { } }
-    if (!blob && !free()) { try { const im = await seRun({ kind: "image", prompt: text + "\n" + look, aspect_ratio: ratio }, 4); blob = await stillToClip(im, 6, i); source = "engine still"; } catch (e) { if (e.nocredit) noCredit.current = true; } }
+    // No still pictures, ever. When the engine cannot make this shot, a DIFFERENT one of your own clips fills it (never the same clip twice in a row, never a trailer/preview reel).
+    if (!blob && clips.length) {
+      const isReel = c => /trailer|preview|reel|teaser|compilation|montage|all[\s_-]*clips|everything|full[\s_-]*film/i.test(String(c.name || ""));
+      const pool = clips.filter(c => c && c.blob && !isReel(c)); const use = pool.length ? pool : clips.filter(c => c && c.blob);
+      for (let t = 0; t < use.length && !blob; t++) { const c = use[(i + reuseN.current++) % use.length]; if (use.length > 1 && lastClipRef.current && c === lastClipRef.current) continue; blob = c.blob; source = "your clip"; lastClipRef.current = c; }
+    }
     if (!blob) { const r2 = await stockScene(plan, i, text, freeMode); if (r2) { blob = r2.blob; source = r2.source; } }
     if (!blob) { setS({ status: "failed", note: note || "No picture came back" }); return null; }
     if (note) engineNote.current = note;
