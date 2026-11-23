@@ -11,6 +11,10 @@ const first=(o:unknown)=>Array.isArray(o)?o[0]:o;
 const clean=(s:unknown)=>String(s||"").replace(/replicate/gi,"engine");
 const wrap=(u:unknown)=>{const s=String(u||"");return s?SELF+"?f="+encodeURIComponent(s):"";};
 const okHost=(u:string)=>{try{const h=new URL(u).hostname;return h==="replicate.delivery"||h.endsWith(".replicate.delivery")||h.endsWith(".r2.cloudflarestorage.com")||h.endsWith(".wikimedia.org")||h.endsWith(".pexels.com");}catch(e){return false;}};
+// TEMPORARY: video runs on Kling. To put it back, set VIDEO_PROVIDER to "minimax" and redeploy.
+const VIDEO_PROVIDER:string="kling";
+const KLING_IMG="kwaivgi/kling-v2.1";       // with a start picture
+const KLING_TXT="kwaivgi/kling-v1.6-standard"; // text only (no picture)
 const MODELS:Record<string,string>={video:"minimax/video-01",music:"meta/musicgen",image:"black-forest-labs/flux-schnell"};
 const VER:Record<string,string>={};
 async function create(model:string,input:Record<string,unknown>){
@@ -87,11 +91,18 @@ Deno.serve(async(req)=>{
       }
       const kind=String(b.kind||"video");
       let input:Record<string,unknown>={};
-      if(kind==="video"){ input={prompt:String(b.prompt||"").slice(0,1800),prompt_optimizer:true}; if(b.image)input.first_frame_image=b.image; }
+      let model=MODELS[kind];
+      if(kind==="video"){
+        if(VIDEO_PROVIDER==="kling"){
+          const NEG="text, captions, subtitles, logos, watermark, blurry, distorted faces, extra limbs";
+          if(b.image){ model=KLING_IMG; input={prompt:String(b.prompt||"").slice(0,2400),start_image:b.image,duration:5,mode:"standard",negative_prompt:NEG}; }
+          else { model=KLING_TXT; input={prompt:String(b.prompt||"").slice(0,2400),duration:5,aspect_ratio:"16:9",negative_prompt:NEG}; }
+        } else { input={prompt:String(b.prompt||"").slice(0,1800),prompt_optimizer:true}; if(b.image)input.first_frame_image=b.image; }
+      }
       else if(kind==="music"){ input={prompt:String(b.prompt||"cinematic orchestral score").slice(0,500),duration:Math.max(5,Math.min(30,Number(b.duration)||30)),model_version:"stereo-large",output_format:"mp3"}; }
       else if(kind==="image"){ input={prompt:String(b.prompt||"").slice(0,1500),aspect_ratio:String(b.aspect_ratio||"16:9"),output_format:"png"}; }
       else return J({error:"Unknown kind"});
-      return J(await create(MODELS[kind],input));
+      return J(await create(model,input));
     }
     if(!TOKEN())return J({ok:false,error:"Engine key missing"});
     const r=await fetch(API+"/account",{headers:H()});
