@@ -553,7 +553,7 @@ export default function Studio() {
     // stock only when Free mode is on — never otherwise
     if (!allowStock) return null;
     // after a reload the scene plan is gone, so the scene's own words are used for the search
-    const q = "winter snow " + ((plan && plan.query) || stockQuery(text) || "landscape");
+    const q = (plan && plan.query) || stockQuery(text) || "cinematic landscape";
     try {
       const st = await se({ kind: "stock", query: q });
       if (st && st.url) {
@@ -595,10 +595,7 @@ export default function Studio() {
     if (!blob && clips.length && !photo) { const gc = clips[(i + reuseN.current) % clips.length]; if (gc && gc.blob) grab = await grabFrame(gc.blob, 0.25 + ((i * 37) % 50) / 100); }
     if (!blob && !free()) { try { blob = await toBlob(await seRun({ kind: "video", prompt: text + "\n" + look, image: photo || grab })); engineFails.current = 0; } catch (e) { note = e.message; if (e.nocredit) { noCredit.current = true; setStage("Engine is out of credit — using your own clips and images."); } } }
     // Replicate/stock finished or failed: the engine makes its own moving shot from a frame of YOUR clip or image (same look), before anything else.
-    // When the engine has no credit left: your matched picture first, then wintry stock pictures moved into shots (no faces), then the generic still.
     const stretchSrc = photo || (photos.length ? photos[i % photos.length].dataUrl : "") || grab;
-    if (!blob && photo) { try { const b = await stillToClip(photo, 7, i); if (b) { blob = b; source = "engine still from your footage"; } } catch (e) { } }
-    if (!blob) { const r3 = await stockScene(plan, i, text, true); if (r3) { blob = r3.blob; source = r3.source; } }
     if (!blob && stretchSrc) { try { const b = await stillToClip(stretchSrc, 7, i); if (b) { blob = b; source = "engine still from your footage"; } } catch (e) { } }
     if (!blob && !free()) { try { const im = await seRun({ kind: "image", prompt: text + "\n" + look, aspect_ratio: ratio }, 4); blob = await stillToClip(im, 6, i); source = "engine still"; } catch (e) { if (e.nocredit) noCredit.current = true; } }
     if (!blob) { const r2 = await stockScene(plan, i, text, freeMode); if (r2) { blob = r2.blob; source = r2.source; } }
