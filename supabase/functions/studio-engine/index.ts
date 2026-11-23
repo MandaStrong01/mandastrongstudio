@@ -8,41 +8,58 @@ const SELF="https://wvkqnrqcnoztajxxzyxc.supabase.co/functions/v1/studio-engine"
 const UA={"User-Agent":"MandasFilmMusicStudio/1.0 (mandasfilmmusicstudio.bolt.host)"};
 const H=()=>({"Authorization":"Bearer "+TOKEN(),"Content-Type":"application/json"});
 const first=(o:unknown)=>Array.isArray(o)?o[0]:o;
-const clean=(s:unknown)=>String(s||"").replace(/replicate|kling|kuaishou/gi,"engine");
+const clean=(s:unknown)=>String(s||"").replace(/replicate|magic ?hour/gi,"engine");
 const wrap=(u:unknown)=>{const s=String(u||"");return s?SELF+"?f="+encodeURIComponent(s):"";};
-const okHost=(u:string)=>{try{const h=new URL(u).hostname;return h==="replicate.delivery"||h.endsWith(".replicate.delivery")||h.endsWith(".r2.cloudflarestorage.com")||h.endsWith(".wikimedia.org")||h.endsWith(".pexels.com")||/(klingai|kling\.ai|kwai|kuaishou|ksyun|yximgs|kwimgs)/.test(h);}catch(e){return false;}};
+const okHost=(u:string)=>{try{const h=new URL(u).hostname;return h==="replicate.delivery"||h.endsWith(".replicate.delivery")||h.endsWith(".r2.cloudflarestorage.com")||h.endsWith(".wikimedia.org")||h.endsWith(".pexels.com")||h.endsWith("magichour.ai");}catch(e){return false;}};
 // TEMPORARY: video runs on the second engine (own key ALT_VIDEO_KEY). To put it back, set VIDEO_PROVIDER to "minimax" and redeploy.
 const VIDEO_PROVIDER:string="alt";
-const ALT_API="https://api-singapore.klingai.com";
+const ALT_API="https://api.magichour.ai";
 const ALTH=()=>({"Authorization":"Bearer "+(Deno.env.get("ALT_VIDEO_KEY")||""),"Content-Type":"application/json"});
+async function altUpload(image:string){
+  let bytes:Uint8Array,ext="jpg";
+  const m=/^data:([^;,]+)?(;base64)?,(.*)$/s.exec(image);
+  if(m){
+    const t=m[1]||"image/jpeg"; ext=t.includes("png")?"png":t.includes("webp")?"webp":"jpg";
+    const bin=atob(m[3]); bytes=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+  } else {
+    const r=await fetch(image); if(!r.ok)return "";
+    const t=r.headers.get("content-type")||""; ext=t.includes("png")?"png":t.includes("webp")?"webp":"jpg";
+    bytes=new Uint8Array(await r.arrayBuffer());
+  }
+  const r1=await fetch(ALT_API+"/v1/files/upload-urls",{method:"POST",headers:ALTH(),body:JSON.stringify({items:[{type:"image",extension:ext}]})});
+  const j1:any=await r1.json().catch(()=>({}));
+  const it=j1&&j1.items&&j1.items[0];
+  if(!r1.ok||!it){ console.log("alt upload-url failed",r1.status,JSON.stringify(j1).slice(0,300)); return ""; }
+  const r2=await fetch(it.upload_url,{method:"PUT",body:bytes});
+  if(!r2.ok){ console.log("alt upload failed",r2.status); return ""; }
+  return String(it.file_path||"");
+}
 async function altCreate(prompt:string,image:string){
   if(!Deno.env.get("ALT_VIDEO_KEY"))return {error:"Engine key missing",nocredit:true};
-  const NEG=" Avoid: text, captions, subtitles, logos, watermark, blurry, distorted faces, extra limbs.";
-  const p=(prompt.slice(0,2500-NEG.length)+NEG);
+  const p=prompt.slice(0,3000)+" No text, captions or watermarks.";
   let path:string,body:Record<string,unknown>;
   if(image){
-    path="/image-to-video/kling-2.5-turbo";
-    const url=image.startsWith("data:")?image.replace(/^data:[^,]*,/,""):image;
-    body={contents:[{type:"prompt",text:p},{type:"first_frame",url}],settings:{duration:5,resolution:"720p"},options:{watermark_info:{enabled:false}}};
+    const fp=await altUpload(image);
+    if(!fp)return {error:"Engine could not take the start picture"};
+    path="/v1/image-to-video";
+    body={end_seconds:5,assets:{image_file_path:fp},style:{prompt:p},name:"scene"};
   } else {
-    path="/text-to-video/kling-2.5-turbo";
-    body={prompt:p,settings:{duration:5,aspect_ratio:"16:9",resolution:"720p"},options:{watermark_info:{enabled:false}}};
+    path="/v1/text-to-video";
+    body={end_seconds:5,aspect_ratio:"16:9",style:{prompt:p},name:"scene"};
   }
   const r=await fetch(ALT_API+path,{method:"POST",headers:ALTH(),body:JSON.stringify(body)});
   const j:any=await r.json().catch(()=>({}));
-  const d=j.data||j;
-  if(!r.ok||!d.id){ console.log("alt create failed",r.status,JSON.stringify(j).slice(0,400)); return {error:clean(j.message||j.msg||("Engine error "+r.status)),code:r.status,nocredit:r.status===402||r.status===429}; }
-  return {id:"a:"+d.id,status:"starting",url:""};
+  if(!r.ok||!j.id){ console.log("alt create failed",r.status,JSON.stringify(j).slice(0,400)); return {error:clean(j.message||("Engine error "+r.status)),code:r.status,nocredit:r.status===402}; }
+  return {id:"a:"+j.id,status:"starting",url:""};
 }
 async function altPoll(id:string){
-  const r=await fetch(ALT_API+"/tasks?task_ids="+encodeURIComponent(id),{headers:ALTH()});
+  const r=await fetch(ALT_API+"/v1/video-projects/"+encodeURIComponent(id),{headers:ALTH()});
   const j:any=await r.json().catch(()=>({}));
-  const t=(Array.isArray(j.data)?j.data[0]:j.data)||{};
-  if(t.status==="succeeded"){
-    const o=(t.outputs||[]).find((x:any)=>x&&x.type==="video"&&x.url);
-    return {id:"a:"+id,status:"succeeded",url:o?wrap(o.url):"",error:""};
+  if(j.status==="complete"){
+    const d=(j.downloads||[])[0];
+    return {id:"a:"+id,status:"succeeded",url:d&&d.url?wrap(d.url):"",error:""};
   }
-  if(t.status==="failed"){ console.log("alt failed",id,String(t.message).slice(0,300)); return {id:"a:"+id,status:"failed",url:"",error:clean(t.message||"Engine failed")}; }
+  if(j.status==="error"||j.status==="canceled"){ console.log("alt failed",id,JSON.stringify(j.error||j.status).slice(0,300)); return {id:"a:"+id,status:"failed",url:"",error:clean((j.error&&(j.error.message||j.error))||"Engine failed")}; }
   if(!r.ok)console.log("alt poll",r.status,JSON.stringify(j).slice(0,300));
   return {id:"a:"+id,status:"processing",url:"",error:""};
 }
