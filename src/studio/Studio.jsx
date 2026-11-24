@@ -33,7 +33,6 @@ function proVoice(ac, input) {
 const SB = "https://wvkqnrqcnoztajxxzyxc.supabase.co/functions/v1/";
 const SE = SB + "studio-engine";
 const LIPSYNC = SB + "lip-sync";
-const SITE = "mandas1shot1filmstudio.bolt.host";
 // One plan: $50 a month. Extra usage uses the same Stripe link as the main app.
 const SUB_LINK = "https://buy.stripe.com/cNi8wRe8a9ZtcZh7YeafS05";
 const TOPUP_LINK = SUB_LINK; // same $50 link the main app uses for "Purchase usage credits"
@@ -1124,7 +1123,7 @@ export default function Studio() {
     try { const file = new File([f.blob], f.name, { type: f.blob.type }); if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: f.name }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
     const a = document.createElement("a"); a.href = f.url; a.download = f.name; document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 1500);
   };
-  const shareFilm = async () => { const f = exp.files[0]; if (f) return saveFile(f); try { await navigator.share({ title: title || "My film", text: "Made with Mandas 1 Shot Film Studio", url: "https://" + SITE }); } catch (e) { } };
+  const shareFilm = async () => { const f = exp.files[0]; if (f) return saveFile(f); try { await navigator.share({ title: title || "My film", text: "Made with Mandas 1 Shot Film Studio", url: location.origin }); } catch (e) { } };
   const poster = async () => {
     const s = ready[Math.floor(ready.length / 2)]; if (!s) return;
     const [W, H] = sizeFor(ratio === "16:9" ? "9:16" : ratio, "1080p"); const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const ctx = cv.getContext("2d");
@@ -1170,7 +1169,6 @@ export default function Studio() {
         {!simple && <div>
         <div className="top">
           <div><div className="eng">POWERED BY THE MANDASTRONG ENGINE</div><h1 className="brand" style={{ fontSize: "clamp(26px,4.4vw,38px)", margin: "6px 0 0" }}>Mandas 1 Shot Film Studio</h1></div>
-          <div style={{ fontSize: 12, color: "var(--dim)" }}>{SITE}</div>
         </div>
 
         {user ? (
@@ -1445,7 +1443,7 @@ export default function Studio() {
             </div>)}</div>}
         </div>
         </div>
-        <div className="ft">{simple ? "Powered by the MandaStrong Engine" : "Mandas 1 Shot Film Studio · Powered by the MandaStrong Engine · " + SITE}</div>
+        <div className="ft">{simple ? "Powered by the MandaStrong Engine" : "Mandas 1 Shot Film Studio · Powered by the MandaStrong Engine"}</div>
       </div>
     </div>
   );
