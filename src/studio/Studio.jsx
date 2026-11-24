@@ -43,6 +43,10 @@ const PLANS = [
   { id: "studio", name: "Studio", line: "Up to 3 hours · every extra · dubbing", link: "https://buy.stripe.com/cNi8wRe8a9ZtcZh7YeafS05" },
 ];
 const KINDS = ["Movie", "Short film", "Video series", "Cartoon", "Animated series", "Documentary", "Music video", "Short clip", "Ad / promo", "Trailer", "Kids' story", "Explainer"];
+// NO LOOPING, LOW COST: engine clips are 5 s and play at half speed (10 s on screen), so one new shot fills every 10 s and nothing repeats.
+const SHOT_SECS = 10, SLOW = 0.5, SHOT_CAP = 360;
+const ANGLES = ["wide establishing shot", "close-up on the faces", "slow push-in from behind", "over-the-shoulder shot", "low angle looking up", "high angle looking down", "side view, tracking along", "detail shot of hands and objects", "slow pull-back to reveal the room", "medium two-shot, gentle camera drift"];
+const slowOf = s => (s && s.source === "engine") ? SLOW : 1;
 const GENRES = ["Drama", "Comedy", "Family", "Holiday", "Adventure", "Fantasy", "Sci-fi", "Romance", "Action", "Mystery", "Thriller", "Horror", "Western", "Historical", "Inspirational", "Educational"];
 const AUDIENCES = ["Kids", "Family", "Teens", "Adults"];
 const TOONS = ["2D hand-drawn", "3D animated", "Anime", "Claymation", "Stop motion", "Watercolour storybook", "Comic book", "Pixel art"];
@@ -833,7 +837,12 @@ export default function Studio() {
         list = paras.length ? paras : ["Opening establishing shot, cinematic light."];
       }
       if (!parseScenes(script).length) { while (list.length < n) list.push(list[list.length % Math.max(1, list.length)]); list = list.slice(0, n); }
+      // Cut each scene into different shots (new angle each time), one per 10 s of film, so a clip never has to repeat to fill time.
       shotMap.current = null;
+      { const origN = list.length, want = Math.min(SHOT_CAP, Math.ceil(minutes * 60 / SHOT_SECS));
+        if (origN && want > origN) { const per = Math.ceil(want / origN), ex = [], first = [];
+          list.forEach(tx => { first.push(ex.length); for (let k = 0; k < per; k++) ex.push(k ? tx + "\nThe same scene, a different shot: " + ANGLES[(k - 1) % ANGLES.length] + ". Same characters, same place, same look as the shot before. Continue the story of this scene." : tx); });
+          shotMap.current = { first, origN }; list = ex; setStage("Cutting your " + origN + " scenes into " + ex.length + " shots, so nothing repeats…"); } }
       setScenes(list.map(t => ({ text: t, status: "waiting" }))); setPct(6);
 
       // 2 — narration (yours or the engine), translated if asked
@@ -904,7 +913,7 @@ export default function Studio() {
     const iv = setInterval(() => {
       const c = (Date.now() - t0) / 1000; setClock(c);
       const k = Math.min(ready.length - 1, Math.floor(c / sceneLen));
-      if (k !== curRef.current && ready[k]) { curRef.current = k; const v = vRef.current; if (v) { v.style.opacity = 0; setTimeout(() => { setCur(k); v.src = ready[k].url; v.loop = !isStill(ready[k]); v.play().catch(() => { }); setTimeout(() => { v.style.opacity = 1; }, 120); }, 450); } else setCur(k); }
+      if (k !== curRef.current && ready[k]) { curRef.current = k; const v = vRef.current; if (v) { v.style.opacity = 0; setTimeout(() => { setCur(k); v.src = ready[k].url; v.loop = !isStill(ready[k]); v.playbackRate = slowOf(ready[k]); v.play().catch(() => { }); setTimeout(() => { v.style.opacity = 1; }, 120); }, 450); } else setCur(k); }
       const m = mRef.current; const talking = (nRef.current && !nRef.current.paused) || (tRef.current && !tRef.current.paused); if (m) m.volume = Math.max(0, Math.min(1, mVol * (duck && activeNarr && talking ? 0.45 : 1)));
       if (c >= total) { setPlaying(false); try { nRef.current && nRef.current.pause(); tRef.current && tRef.current.pause(); mRef.current && mRef.current.pause(); vRef.current && vRef.current.pause(); } catch (e) { } }
     }, 200);
@@ -915,7 +924,7 @@ export default function Studio() {
     const v = vRef.current, n = nRef.current, m = mRef.current;
     if (playing) { [v, n, m, tRef.current].forEach(x => { try { x && x.pause(); } catch (e) { } }); setPlaying(false); return; }
     if (clock >= total) { setClock(0); setCur(0); if (v) v.src = ready[0].url; if (n) n.currentTime = 0; if (m) m.currentTime = 0; if (tRef.current) { tRef.current.pause(); tRef.current.currentTime = 0; } }
-    if (v) { if (!v.src) v.src = ready[cur].url; v.loop = !isStill(ready[cur]); v.muted = !hasSound(ready[cur]); v.volume = cVol; v.play().catch(() => { }); }
+    if (v) { if (!v.src) v.src = ready[cur].url; v.loop = !isStill(ready[cur]); v.playbackRate = slowOf(ready[cur]); v.muted = !hasSound(ready[cur]); v.volume = cVol; v.play().catch(() => { }); }
     if (n && activeNarr) { const t = tRef.current; if (useTail && t && n.ended && t.currentTime > 0) { t.volume = vVol; t.play().catch(() => { }); } else { n.volume = vVol; n.play().catch(() => { }); } }
     if (m && musicUrl) { m.loop = true; m.play().catch(() => { }); }
     setPlaying(true);
@@ -983,7 +992,7 @@ export default function Studio() {
     if (title) { const tEnd = Date.now() + 3000; while (Date.now() < tEnd && !stopExp.current) { card([title, kind], true); await sleep(33); } }
     if (nEl) try { await nEl.play(); } catch (e) { }
     const tStart = Date.now();
-    const mkV = s => { const v = document.createElement("video"); v._clip = /^(your clip|engine still from your footage|engine)$/.test(String(s.source || "")); v.src = s.url; v.muted = !hasSound(s); v.loop = !isStill(s); v.playsInline = true; v.preload = "auto"; v.setAttribute("playsinline", ""); v.setAttribute("webkit-playsinline", ""); v.style.cssText = "position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1"; try { document.body.appendChild(v); } catch (e) { }
+    const mkV = s => { const v = document.createElement("video"); v._clip = /^(your clip|engine still from your footage|engine)$/.test(String(s.source || "")); v.src = s.url; v.muted = !hasSound(s); v.loop = !isStill(s); v.playbackRate = slowOf(s); v.playsInline = true; v.preload = "auto"; v.setAttribute("playsinline", ""); v.setAttribute("webkit-playsinline", ""); v.style.cssText = "position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1"; try { document.body.appendChild(v); } catch (e) { }
       if (!v.muted) { try { const cg = ac.createGain(); cg.gain.value = cVol; ac.createMediaElementSource(v).connect(cg); cg.connect(dest); } catch (e) { v.muted = true; } }
       v._ok = new Promise(res => { v.onloadeddata = res; v.oncanplay = res; v.onerror = res; setTimeout(res, 8000); }); return v; };
     const FADE = Math.min(1.2, len * 0.3);
@@ -1367,7 +1376,7 @@ export default function Studio() {
         </div>
 
         <div style={{ marginTop: 18, border: "1px solid var(--line)", borderRadius: 3, padding: 12, display: simple ? "none" : "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", fontSize: 13 }}>
-          <span>Before you start: {minutes} min · {Math.max(sceneCount, clips.length)} scenes · {Math.max(1, castNames)} voice{castNames > 1 ? "s" : ""} · {langCount} language{langCount > 1 ? "s" : ""}</span>
+          <span>Before you start: {minutes} min · {Math.max(sceneCount, clips.length)} scenes · up to {Math.max(sceneCount, clips.length, Math.min(SHOT_CAP, Math.ceil(minutes * 60 / SHOT_SECS)))} shots (one new shot every {SHOT_SECS} seconds; your own clips count too) · {Math.max(1, castNames)} voice{castNames > 1 ? "s" : ""} · {langCount} language{langCount > 1 ? "s" : ""}</span>
           <span style={{ color: "var(--gold)", fontWeight: 700 }}>About {est} min to make</span>
         </div>
         <button className="go" onClick={() => { if (simple && onePrompt.trim()) { const n = splitPrompt(); if (n) setAutoMake(true); else designFromIdea(); } else makeMovie(); }} disabled={busy || designing}>{designing ? "WRITING YOUR FILM…" : busy ? "MAKING YOUR MOVIE…" : "MAKE MY MOVIE"}</button>
