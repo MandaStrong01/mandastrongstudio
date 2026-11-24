@@ -808,16 +808,7 @@ export default function Studio() {
     if (!who) { setShowLogin(true); setErr("Log in first, at the top of the page."); return; }
     if (!narr.trim() && !script.trim() && !photos.length && !clips.length) { setErr("Add your narration, script, photos or clips first."); return; }
     if (minutes < 1) { setErr("Move the length bar above 0 minutes."); return; }
-    if (!subActive) {
-      let used = false; try { used = !!localStorage.getItem(trialKey(who)); } catch (e) { }
-      if (used) { setErr("Your free test film has been used. Subscribe for $50 a month to make more."); return; }
-      if (minutes > 1) { setErr("The free test film is up to 1 minute. Move the length bar to 1 minute or less."); return; }
-      // Server-side lock: the one free test film is claimed on the server, so clearing the browser does not reset it.
-      try {
-        const { data: ok, error: rpcErr } = await supabase.rpc("claim_studio_trial");
-        if (!rpcErr && ok === false) { try { localStorage.setItem(trialKey(who), "1"); } catch (e) { } setErr("Your free test film has been used. Subscribe for $50 a month to make more."); return; }
-      } catch (e) { }
-    }
+    if (!subActive) { setErr("Start your 7-day free trial to make a film. Press the 7-day free trial button."); return; }
     setBusy(true); setDone(false); setPct(2);
     let wl = null; try { wl = await navigator.wakeLock.request("screen"); } catch (e) { }
     projectId.current = "p" + Date.now(); save("pid", projectId.current);
@@ -885,7 +876,6 @@ export default function Studio() {
       // Then every scene is joined into ONE film file automatically.
       autoJoin.current = true;
       setPct(100); setStage("All scenes made. Joining them into one film — keep this tab open."); setDone(true);
-      if (!subActive) { try { localStorage.setItem(trialKey(who), "1"); } catch (e) { } }
     } catch (e) { setErr("Something stopped the film: " + e.message); }
     try { wl && wl.release(); } catch (e) { }
     setBusy(false);
@@ -1214,7 +1204,7 @@ export default function Studio() {
           <div className="lenTop"><span>FILM LENGTH</span><b>{minutes >= 60 ? Math.floor(minutes / 60) + " hr" + (minutes % 60 ? " " + (minutes % 60) + " min" : "") : minutes + " min"}</b></div>
           <input type="range" className="rng" min={0} max={180} step={1} value={minutes} onChange={e => setMinutes(Number(e.target.value))} />
           <div className="ticks"><span>0</span><span>1 hr</span><span>2 hr</span><span>3 hr</span></div>
-          {!subActive && <div className="msg" style={{ marginTop: 6 }}>Your first film is a free test of up to 1 minute. Subscribe for $50 a month for up to 3 hours.</div>}
+          {!subActive && <a href={SUB_LINK} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 8, padding: "8px 16px", border: "1px solid var(--gold)", borderRadius: 4, color: "var(--gold)", textDecoration: "none", fontSize: 13, letterSpacing: ".06em" }}>7-day free trial</a>}
         </div>}
         <div className={simple ? "opts" : undefined} style={simple ? undefined : { display: "flex", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
           {simple ? <button onClick={() => setSimple(false)}>Advanced controls</button> : <button className="b s" onClick={() => setSimple(true)}>RETURN TO ONE PROMPT</button>}
