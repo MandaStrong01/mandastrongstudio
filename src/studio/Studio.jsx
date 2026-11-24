@@ -34,6 +34,9 @@ const SB = "https://wvkqnrqcnoztajxxzyxc.supabase.co/functions/v1/";
 const SE = SB + "studio-engine";
 const LIPSYNC = SB + "lip-sync";
 const SITE = "mandas1shot1filmstudio.bolt.host";
+// NO LOOPING: every scene is cut into several different shots so a clip is not repeated to fill time. Engine clips are 5 seconds long.
+const SHOT_SECS = 5, SHOT_CAP = 180;
+const ANGLES = ["wide establishing shot", "close-up on the faces", "slow push-in from behind", "over-the-shoulder shot", "low angle looking up", "high angle looking down", "side view, tracking along", "detail shot of hands and objects", "slow pull-back to reveal the room", "medium two-shot, gentle camera drift"];
 // One plan: $50 a month. Extra usage uses the same Stripe link as the main app.
 const SUB_LINK = "https://buy.stripe.com/cNi8wRe8a9ZtcZh7YeafS05";
 const TOPUP_LINK = SUB_LINK; // same $50 link the main app uses for "Purchase usage credits"
@@ -341,6 +344,7 @@ export default function Studio() {
   const trialKey = u => "mfs_trial_" + (u && u.id ? u.id : "x");
   const noCredit = useRef(false);
   const planRef = useRef([]);
+  const shotMap = useRef(null);
   const engineFails = useRef(0), engineOff = useRef(false); // after 2 failed engine shots in a row the engine stops for this film, so no more credit is spent
   const lastClipRef = useRef(null), reuseN = useRef(0); // your clips are reused (never back to back) when the engine cannot make a scene
   useEffect(() => { const o = { kind, title, narr, script, voiceMode, narrator, charVoices, lipSync, speed, spoken, subs, dubs, musicMode, mood, musicPrompt, style, grade, enhance, duck, cleanVoice, minutes, ratio, quality, vVol, mVol, cVol, allRatios, credits, watermark, creditNames, plan, genre, audience, toon, camera, pace, place, episodes, mGenre, tempo }; for (const k in o) save(k, o[k]); });
@@ -626,18 +630,19 @@ export default function Studio() {
       plan = list.map((t, k) => { const a = arr[k] || {}; const ph = Number.isInteger(a.photo) && a.photo >= 0 && a.photo < pics.length ? a.photo : -1; const cp = Number.isInteger(a.clip) && a.clip >= 0 && a.clip < clips.length ? a.clip : -1; return { photo: ph, clip: cp, query: String(a.query || "").slice(0, 80) || t.split(/\s+/).slice(0, 4).join(" ") }; });
     } catch (e) { plan = list.map(t => ({ photo: -1, query: stockQuery(t) })); }
     // Your own images named with a scene number (e.g. "Scene 12.jpg", "12.png") always go on that scene.
-    photos.forEach((p, k) => { const mm = String(p.name || "").match(/(?:scene|sc|clip)?[\s_-]*0*(\d{1,3})(?=\D*$)/i); if (mm) { const idx = Number(mm[1]) - 1; if (idx >= 0 && idx < plan.length) plan[idx].photo = k; } });
+    photos.forEach((p, k) => { const mm = String(p.name || "").match(/(?:scene|sc|clip)?[\s_-]*0*(\d{1,3})(?=\D*$)/i); if (mm) { const q = Number(mm[1]); const idx = shotMap.current ? (q >= 1 && q <= shotMap.current.origN ? shotMap.current.first[q - 1] : -1) : q - 1; if (idx >= 0 && idx < plan.length) plan[idx].photo = k; } });
     // Every image you gave is used: any image no scene was matched to fills the scenes that still have none, in file-name order, whatever order you uploaded them.
-    { const usedP = new Set(plan.map(x => x.photo).filter(x => x >= 0)); const lp = photos.map((p, k) => k).filter(k => !usedP.has(k)).sort((x, y) => String(photos[x].name || "").localeCompare(String(photos[y].name || ""), undefined, { numeric: true })); let pi = 0; for (let i = 0; i < plan.length && pi < lp.length; i++) if (plan[i].photo < 0) plan[i].photo = lp[pi++]; }
+    { const usedP = new Set(plan.map(x => x.photo).filter(x => x >= 0)); const lp = photos.map((p, k) => k).filter(k => !usedP.has(k)).sort((x, y) => String(photos[x].name || "").localeCompare(String(photos[y].name || ""), undefined, { numeric: true })); let pi = 0; const fi = shotMap.current ? shotMap.current.first : plan.map((x, k) => k); for (const i of fi) { if (pi >= lp.length) break; if (plan[i].photo < 0) plan[i].photo = lp[pi++]; } if (shotMap.current) { let par = -1; plan.forEach((x, i) => { if (fi.includes(i)) par = i; else if (par >= 0 && x.photo < 0) x.photo = plan[par].photo; }); } }
     // CLIP ORDER: clips named with a scene number go there; then the clip each scene was matched to; then every leftover clip
     // fills the remaining scenes in the order you added them. Each clip is used once, whatever order you picked them in.
     const assign = new Array(n).fill(-1), usedC = new Set();
-    const numOfC = c => { const mm = String(c.name || "").replace(/\.[a-z0-9]+$/i, "").match(/(?:scene|sc|clip|part)?[\s_-]*0*(\d{1,3})\s*$/i); const k = mm ? Number(mm[1]) : 0; return k >= 1 && k <= n ? k : 0; };
-    clips.forEach((c, k) => { const q = numOfC(c); if (q && assign[q - 1] < 0) { assign[q - 1] = k; usedC.add(k); } });
+    const sm = shotMap.current, O = sm ? sm.origN : n, idxOf = q => (sm ? sm.first[q - 1] : q - 1), firstIdx = sm ? sm.first : plan.map((x, k) => k);
+    const numOfC = c => { const mm = String(c.name || "").replace(/\.[a-z0-9]+$/i, "").match(/(?:scene|sc|clip|part)?[\s_-]*0*(\d{1,3})\s*$/i); const k = mm ? Number(mm[1]) : 0; return k >= 1 && k <= O ? k : 0; };
+    clips.forEach((c, k) => { const q = numOfC(c); if (q && assign[idxOf(q)] < 0) { assign[idxOf(q)] = k; usedC.add(k); } });
     plan.forEach((pl, i) => { if (assign[i] < 0 && pl.clip >= 0 && !usedC.has(pl.clip)) { assign[i] = pl.clip; usedC.add(pl.clip); } });
     const nat = (x, y) => String((clips[x] || {}).name || "").localeCompare(String((clips[y] || {}).name || ""), undefined, { numeric: true });
     const left = clips.map((c, k) => k).filter(k => !usedC.has(k)).sort(nat); let li = 0;
-    for (let i = 0; i < n && li < left.length; i++) if (assign[i] < 0) assign[i] = left[li++];
+    for (const i of firstIdx) { if (li >= left.length) break; if (assign[i] < 0) assign[i] = left[li++]; }
     plan.clipAssign = assign;
     planRef.current = plan;
     return plan;
@@ -645,6 +650,15 @@ export default function Studio() {
 
   // ONE PROMPT: one box → title, length, spoken lines (Box 2) and directions/voices (Box 3). Nothing is changed in your files or voices.
   const [showGuide, setShowGuide] = useState(false);
+  const [gd, setGd] = useState({ title: "", len: "", genre: "", audience: "", anim: "", camera: "", pace: "", music: "", idea: "", chars: "", setting: "" });
+  const gset = k => e => { const v = e.target.value; setGd(p => ({ ...p, [k]: v })); };
+  // The guide writes the prompt box for you. Make my movie then reads the box and fills in Advanced by itself.
+  const writeFromGuide = () => {
+    const L = []; if (gd.title.trim()) L.push("Title: " + gd.title.trim()); if (Number(gd.len) >= 1) L.push("Length: " + Number(gd.len) + " min");
+    [["Genre", gd.genre], ["Audience", gd.audience], ["Animation", gd.anim], ["Camera", gd.camera], ["Pace", gd.pace], ["Music style", gd.music]].forEach(([k, v]) => { if (v) L.push(k + ": " + v); });
+    const para = [gd.idea.trim(), gd.chars.trim() ? "Characters: " + gd.chars.trim() : "", gd.setting.trim() ? "Setting and look: " + gd.setting.trim() : ""].filter(Boolean).join("\n");
+    setOnePrompt([...L, para].filter(Boolean).join("\n")); setShowGuide(false);
+  };
   const [showLogin, setShowLogin] = useState(false);
   const [showFiles, setShowFiles] = useState(true);
   const [simple, setSimple] = useState(() => load("simple", true)); // one-box view: one prompt, your files, one button
@@ -822,6 +836,12 @@ export default function Studio() {
         list = paras.length ? paras : ["Opening establishing shot, cinematic light."];
       }
       if (!parseScenes(script).length) { while (list.length < n) list.push(list[list.length % Math.max(1, list.length)]); list = list.slice(0, n); }
+      // Cut every scene into several different shots (new angle each time) so nothing has to loop to fill the length.
+      shotMap.current = null;
+      { const origN = list.length, want = Math.min(SHOT_CAP, Math.ceil(minutes * 60 / SHOT_SECS));
+        if (origN && want > origN) { const per = Math.ceil(want / origN), ex = [], first = [];
+          list.forEach(tx => { first.push(ex.length); for (let k = 0; k < per; k++) ex.push(k ? tx + "\nThe same scene, a different shot: " + ANGLES[(k - 1) % ANGLES.length] + ". Same characters, same place, same look as the shot before." : tx); });
+          shotMap.current = { first, origN }; list = ex; setStage("Cutting your " + origN + " scenes into " + ex.length + " shots, so nothing repeats…"); } }
       setScenes(list.map(t => ({ text: t, status: "waiting" }))); setPct(6);
 
       // 2 — narration (yours or the engine), translated if asked
@@ -1203,6 +1223,18 @@ export default function Studio() {
           {(scenes.length > 0 && !busy) && (simple ? <button onClick={reVoice}>Re-voice my film</button> : <button className="b s" onClick={reVoice}>RE-VOICE MY FILM</button>)}
         </div>
         {rvMsg && <div className="msg" style={{ marginTop: 6 }}>{rvMsg}</div>}
+        {showGuide && <div className="guide" style={{ whiteSpace: "normal" }}>
+          <div style={{ fontWeight: 600, marginBottom: 8 }}>FILL IN WHAT YOU KNOW. LEAVE THE REST TO THE ENGINE.</div>
+          <div style={{ display: "grid", gap: 8 }}>
+            <input className="in" placeholder="Film title" value={gd.title} onChange={gset("title")} />
+            <input className="in" placeholder="Length in minutes (e.g. 60)" inputMode="numeric" value={gd.len} onChange={gset("len")} />
+            {[["genre", "Genre", GENRES], ["audience", "Audience", AUDIENCES], ["anim", "Animation style (if animated)", TOONS], ["camera", "Camera", CAMERAS], ["pace", "Pace", PACES], ["music", "Music style", MUSIC_GENRES]].map(([k, lab, arr]) => <select key={k} className="in" value={gd[k]} onChange={gset(k)}><option value="">{lab}: engine chooses</option>{arr.map(x => <option key={x} value={x}>{x}</option>)}</select>)}
+            <textarea className="ta" placeholder="Your idea: what happens, in a paragraph or two" value={gd.idea} onChange={gset("idea")} />
+            <textarea className="ta" placeholder="Characters: name, age, who they are" value={gd.chars} onChange={gset("chars")} />
+            <textarea className="ta" placeholder="Setting and look: place, season, weather, mood" value={gd.setting} onChange={gset("setting")} />
+            <button className="go" onClick={writeFromGuide}>WRITE MY PROMPT</button>
+          </div>
+        </div>}
         {showGuide && <div className="guide">{"HOW TO WRITE YOUR PROMPT\n\nLine 1:  Title: your film's name\nLine 2:  Length: 60 min\n\nEvery spoken line, in script order, with the speaker in square brackets:\n[NARRATOR] It was Christmas Eve.\n[LILY] Come on! We have to go look!\n\nEverything else goes on its own lines: what the film looks like, the weather, the mood, the music, and which voice plays which character.\n\nExample:\nTitle: Santa's List: The Book of Names\nLength: 60 min\n[SANTA] Ho ho ho!\n[LILY] I made a list!\nChristmas Eve night. Snow. Cold and crisp. Warm lights in the windows.\nVOICES: Doxy: Santa. Lily: Lily.\n\nThen add your photos, clips and voice files in box 4."}</div>}
 
         <div style={{ display: simple ? "none" : undefined }}>
@@ -1347,6 +1379,16 @@ export default function Studio() {
           <span style={{ color: "var(--gold)", fontWeight: 700 }}>About {est} min to make</span>
         </div>
         <button className="go" onClick={() => { if (simple && onePrompt.trim()) { const n = splitPrompt(); if (n) setAutoMake(true); else designFromIdea(); } else makeMovie(); }} disabled={busy || designing}>{designing ? "WRITING YOUR FILM…" : busy ? "MAKING YOUR MOVIE…" : "MAKE MY MOVIE"}</button>
+        {(busy || designing) && <div aria-hidden="true" style={{ position: "fixed", right: 18, bottom: 18, zIndex: 60, width: 54, height: 54, pointerEvents: "none" }}>
+          <style>{"@keyframes mfsGoldTurn{to{transform:rotate(360deg)}}@keyframes mfsGoldPulse{0%,100%{opacity:.55;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)}}"}</style>
+          <svg viewBox="0 0 54 54" width="54" height="54" style={{ filter: "drop-shadow(0 0 8px rgba(230,201,142,.55))" }}>
+            <defs><linearGradient id="mfsGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#FFF1C9" /><stop offset=".5" stopColor="#E6C98E" /><stop offset="1" stopColor="#A9812F" /></linearGradient></defs>
+            <g style={{ transformOrigin: "27px 27px", animation: "mfsGoldTurn 1.6s linear infinite" }}>
+              <circle cx="27" cy="27" r="22" fill="none" stroke="url(#mfsGold)" strokeWidth="3.5" strokeLinecap="round" strokeDasharray="78 60" />
+              <circle cx="27" cy="5" r="3.2" fill="#FFF1C9" />
+            </g>
+            <polygon points="27,17 30,24 37,27 30,30 27,37 24,30 17,27 24,24" fill="url(#mfsGold)" style={{ transformOrigin: "27px 27px", animation: "mfsGoldPulse 1.4s ease-in-out infinite" }} />
+          </svg></div>}
         {(busy || stage) && <div className="msg">{busy && <span className="spin" aria-hidden="true" style={{ display: "inline-block", verticalAlign: "middle", marginRight: 10 }} />}{stage}<div className="pb"><i style={{ width: pct + "%" }} /></div></div>}
         {err && <div className="msg err">{err}</div>}
 
