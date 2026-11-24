@@ -34,9 +34,6 @@ const SB = "https://wvkqnrqcnoztajxxzyxc.supabase.co/functions/v1/";
 const SE = SB + "studio-engine";
 const LIPSYNC = SB + "lip-sync";
 const SITE = "mandas1shot1filmstudio.bolt.host";
-// NO LOOPING: every scene is cut into several different shots so a clip is not repeated to fill time. Engine clips are 5 seconds long.
-const SHOT_SECS = 5, SHOT_CAP = 180;
-const ANGLES = ["wide establishing shot", "close-up on the faces", "slow push-in from behind", "over-the-shoulder shot", "low angle looking up", "high angle looking down", "side view, tracking along", "detail shot of hands and objects", "slow pull-back to reveal the room", "medium two-shot, gentle camera drift"];
 // One plan: $50 a month. Extra usage uses the same Stripe link as the main app.
 const SUB_LINK = "https://buy.stripe.com/cNi8wRe8a9ZtcZh7YeafS05";
 const TOPUP_LINK = SUB_LINK; // same $50 link the main app uses for "Purchase usage credits"
@@ -836,12 +833,7 @@ export default function Studio() {
         list = paras.length ? paras : ["Opening establishing shot, cinematic light."];
       }
       if (!parseScenes(script).length) { while (list.length < n) list.push(list[list.length % Math.max(1, list.length)]); list = list.slice(0, n); }
-      // Cut every scene into several different shots (new angle each time) so nothing has to loop to fill the length.
       shotMap.current = null;
-      { const origN = list.length, want = Math.min(SHOT_CAP, Math.ceil(minutes * 60 / SHOT_SECS));
-        if (origN && want > origN) { const per = Math.ceil(want / origN), ex = [], first = [];
-          list.forEach(tx => { first.push(ex.length); for (let k = 0; k < per; k++) ex.push(k ? tx + "\nThe same scene, a different shot: " + ANGLES[(k - 1) % ANGLES.length] + ". Same characters, same place, same look as the shot before." : tx); });
-          shotMap.current = { first, origN }; list = ex; setStage("Cutting your " + origN + " scenes into " + ex.length + " shots, so nothing repeats…"); } }
       setScenes(list.map(t => ({ text: t, status: "waiting" }))); setPct(6);
 
       // 2 — narration (yours or the engine), translated if asked
