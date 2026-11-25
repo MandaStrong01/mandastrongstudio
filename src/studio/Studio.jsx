@@ -44,6 +44,7 @@ const PLANS = [
 const KINDS = ["Movie", "Short film", "Video series", "Cartoon", "Animated series", "Documentary", "Music video", "Short clip", "Ad / promo", "Trailer", "Kids' story", "Explainer"];
 // NO LOOPING, LOW COST: engine clips are 5 s and play at half speed (10 s on screen), so one new shot fills every 10 s and nothing repeats.
 const SHOT_SECS = 10, SLOW = 0.5, SHOT_CAP = 360;
+const CLONE_CACHE = new Map();
 const ANGLES = ["wide establishing shot", "close-up on the faces", "slow push-in from behind", "over-the-shoulder shot", "low angle looking up", "high angle looking down", "side view, tracking along", "detail shot of hands and objects", "slow pull-back to reveal the room", "medium two-shot, gentle camera drift"];
 const slowOf = s => (s && s.source === "engine") ? SLOW : 1;
 const GENRES = ["Drama", "Comedy", "Family", "Holiday", "Adventure", "Fantasy", "Sci-fi", "Romance", "Action", "Mystery", "Thriller", "Horror", "Western", "Historical", "Inspirational", "Educational"];
@@ -362,7 +363,7 @@ export default function Studio() {
   useEffect(() => { (async () => { try { const all = await dbAll(); const x = all.find(y => y.id === "mfs_myrec" && y.blob); if (x) setMyRec(p => p || { name: (x.meta && x.meta.name) || "audio", blob: x.blob, url: URL.createObjectURL(x.blob) }); } catch (e) { } })(); }, []);
   // ── CHARACTER VOICES YOU UPLOAD (e.g. Doxy, Lily, Ethan): kept on this device, one per file ──
   const [charRecs, setCharRecs] = useState([]); // {name,blob,url,dbId,cloneId}
-  useEffect(() => { (async () => { try { const all = await dbAll(); const mine = all.filter(x => String(x.id).startsWith("mfs_cvoice_") && x.blob).sort((x, y) => String(x.id).localeCompare(String(y.id))); if (mine.length) setCharRecs(p => p.length ? p : mine.map(x => ({ name: (x.meta && x.meta.name) || "voice", blob: x.blob, url: URL.createObjectURL(x.blob), dbId: x.id, cloneId: (x.meta && x.meta.cloneId) || "" }))); } catch (e) { } })(); }, []);
+  useEffect(() => { (async () => { try { const all = await dbAll(); const mine = all.filter(x => String(x.id).startsWith("mfs_cvoice_") && x.blob).sort((x, y) => String(x.id).localeCompare(String(y.id))); if (mine.length) setCharRecs(p => p.length ? p : mine.map(x => ({ name: (x.meta && x.meta.name) || "voice", blob: x.blob, url: URL.createObjectURL(x.blob), dbId: x.id, cloneId: (x.meta && x.meta.cloneId) || "", cloneAt: (x.meta && x.meta.cloneAt) || 0 }))); } catch (e) { } })(); }, []);
   const addCharRecs = (files) => { Array.from(files || []).forEach((f, k) => { const nm = String(f.name || "voice").replace(/\.[a-z0-9]+$/i, ""); const did = "mfs_cvoice_" + Date.now() + "_" + String(k).padStart(3, "0"); setCharRecs(p => [...p, { name: nm, blob: f, url: URL.createObjectURL(f), dbId: did, cloneId: "" }]); dbPut(did, f, { name: nm }); }); };
   // Which uploaded voice each character uses. Read from the boxes:
   //   "DOXY'S VOICE:" heading, then "Santa: ..." lines under it   — or —   "Santa: use Doxy's saved voice"
@@ -386,9 +387,13 @@ export default function Studio() {
     for (const sp of speakers) { const k = norm(sp.label || sp.key); if (!out[k]) { const r = findRec(sp.label || sp.key); const lb = String(sp.label || sp.key).toLowerCase().replace(/[^a-z]/g, ""); if (r && lb && new RegExp("(^|[^a-z])" + lb + "([^a-z]|$)", "i").test(r.name)) out[k] = r; } }
     const res = {}; for (const sp of speakers) { const r = out[norm(sp.label || sp.key)]; if (r) res[sp.key] = r; } return res;
   };
+  // A voice file is copied ONCE and the copy is reused for every character that uses it (each copy costs credit).
+  // A copy is reused for up to 5 days, then made fresh.
   const cloneOf = async (r) => {
-    if (r.cloneId && !/^mm_/.test(r.cloneId)) return r.cloneId; // an old copied-voice id from the empty account is not reused
-    try { const uri = await readAsDataURL(r.blob.slice(0, 1500000, r.blob.type || "audio/mpeg")); const vid = await engineCloneVoice(uri); if (vid) { r.cloneId = vid; dbPut(r.dbId, r.blob, { name: r.name, cloneId: vid }); return vid; } } catch (e) { }
+    const key = (r.name || "") + ":" + (r.blob ? r.blob.size : 0), now = Date.now(), fresh = 5 * 86400000;
+    const hit = CLONE_CACHE.get(key); if (hit && now - hit.at < fresh) { r.cloneId = hit.id; r.cloneAt = hit.at; return hit.id; }
+    if (r.cloneId && r.cloneAt && now - r.cloneAt < fresh) { CLONE_CACHE.set(key, { id: r.cloneId, at: r.cloneAt }); return r.cloneId; }
+    try { const uri = await readAsDataURL(r.blob.slice(0, 1500000, r.blob.type || "audio/mpeg")); const vid = await engineCloneVoice(uri); if (vid) { r.cloneId = vid; r.cloneAt = now; CLONE_CACHE.set(key, { id: vid, at: now }); dbPut(r.dbId, r.blob, { name: r.name, cloneId: vid, cloneAt: now }); return vid; } } catch (e) { }
     return "";
   };
   // ── ENGINE TO COMPLETE NARRATION: your recording plays first, the engine reads the rest ──
@@ -507,7 +512,8 @@ export default function Studio() {
       // Find the project with the MOST finished scenes. A newer, emptier project never hides your real footage.
       const counts = {}; all.forEach(x => { const m = /^(.*)_scene_\d+$/.exec(String(x.id)); if (m && x.blob) counts[m[1]] = (counts[m[1]] || 0) + 1; });
       const best = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
-      if (best && best !== projectId.current && (counts[best] || 0) > (counts[projectId.current] || 0)) { projectId.current = best; save("pid", best); }
+      // After "Start a new film" the page stays blank; every earlier film waits under MY PROJECTS.
+      if (!load("fresh", false) && best && best !== projectId.current && (counts[best] || 0) > (counts[projectId.current] || 0)) { projectId.current = best; save("pid", best); }
       const pre = projectId.current + "_scene_";
       const sc = all.filter(x => String(x.id).startsWith(pre) && x.blob).sort((a, b) => a.meta.i - b.meta.i);
       if (!sc.length) return;
@@ -522,7 +528,7 @@ export default function Studio() {
 
   async function voiceIt(text, lang) {
     let t = text; if (lang && lang !== "English") t = await translateText(text, lang);
-    const cast = msParseCast(t); let parts = [];
+    const cast = msParseCast(t); let parts = []; let lostLines = 0;
     if ((charVoices || charRecs.length) && cast.speakers.length >= 2) {
       const cmap = msCastVoices(cast.speakers, narrator, t);
       const umap = charVoiceMap(cast.speakers); const uid = {};
@@ -542,12 +548,13 @@ export default function Studio() {
         const sg = cast.segments[i]; const vc = sg.sp ? cmap[sg.sp] : null;
         setStage("Voicing " + (sg.sp ? (cast.speakers.find(x => x.key === sg.sp) || {}).label : "narrator") + " — " + (i + 1) + " of " + cast.segments.length);
         const meta = (sg.sp && uid[sg.sp]) ? { voice: uid[sg.sp], speed: Number(speed) || 1 } : vc ? { voice: vc.engineVoice || vc.id, gender: vc.gender || "", origin: vc.origin || "", speed: Number(speed) || 1 } : voiceMeta(narrator);
-        const r = await msVoiceText(sg.text, { ...meta, language: lang && lang !== "English" ? lang : "" }); parts.push(...r.parts);
+        const r = await msVoiceText(sg.text, { ...meta, language: lang && lang !== "English" ? lang : "" }); parts.push(...r.parts); if (r.failed) lostLines += r.failed;
       }
     } else {
       const r = await msVoiceText(t, { ...voiceMeta(narrator), language: lang && lang !== "English" ? lang : "" }, (i, n) => setStage("MandaStrong Engine — voicing part " + i + " of " + n + (lang && lang !== "English" ? " (" + lang + ")" : ""))); parts = r.parts;
     }
     if (!parts.length) throw new Error("The voice engine returned no audio");
+    if (lostLines) setErr(lostLines + " spoken line" + (lostLines > 1 ? "s" : "") + " could not be voiced and will be silent. Press Re-voice my film to try again.");
     return { blob: new Blob(parts, { type: parts[0].type || "audio/mpeg" }), text: t };
   }
 
@@ -810,7 +817,9 @@ export default function Studio() {
     if (!subActive) { setErr("Start your 7-day free trial to make a film. Press the 7-day free trial button."); return; }
     setBusy(true); setDone(false); setPct(2);
     let wl = null; try { wl = await navigator.wakeLock.request("screen"); } catch (e) { }
-    projectId.current = "p" + Date.now(); save("pid", projectId.current);
+    projectId.current = "p" + Date.now(); save("pid", projectId.current); save("fresh", false);
+    // Every film is filed under MY PROJECTS from the moment it starts, with its words, so it can be opened again.
+    try { await dbPut(projectId.current + "_meta", new Blob([JSON.stringify({ title, kind, minutes, ratio, style, narr, script, onePrompt })], { type: "application/json" }), { title: (title || "").trim(), kind, minutes, startedAt: new Date().toISOString(), hint: String(onePrompt || narr || script || "").trim().slice(0, 60) }); } catch (e) { }
     try {
       // 1 — scene list
       setStage("Reading your script and writing the scenes…");
@@ -928,7 +937,43 @@ export default function Studio() {
   const [savedFilms, setSavedFilms] = useState([]);
   const loadSaved = async () => { const all = await dbAll(); setSavedFilms(all.filter(x => String(x.id).includes("_final_") && x.blob).sort((a, b) => String(b.id).localeCompare(String(a.id))).map(x => ({ id: x.id, name: (x.meta && x.meta.name) || "My film", blob: x.blob }))); };
   useEffect(() => { loadSaved(); }, []);
+  // Load a finished film file (from Files or Photos) into this app: it appears under MY SAVED FILMS and MY PROJECTS.
+  const importFilm = async (fl) => {
+    const f = fl && fl[0]; if (!f) return;
+    const pid = "p" + Date.now(); const nm = f.name.replace(/\.[^.]+$/, "") || "My film";
+    await dbPut(pid + "_final_import", f, { name: f.name });
+    await dbPut(pid + "_meta", new Blob([JSON.stringify({ title: nm })], { type: "application/json" }), { title: nm, startedAt: Date.now() });
+    await loadSaved(); await loadProjects(); setErr("");
+  };
   const deleteSaved = async (id) => { try { const db = await idb(); const tx = db.transaction("f", "readwrite"); tx.objectStore("f").delete(id); await new Promise(res => { tx.oncomplete = res; tx.onerror = res; }); } catch (e) { } loadSaved(); };
+  // MY PROJECTS: every film ever started on this device, newest first. Open one to carry on; nothing is lost by starting a new film.
+  const [projects, setProjects] = useState([]);
+  const loadProjects = async () => {
+    const all = await dbAll(); const by = {};
+    all.forEach(x => { const m = /^(p\d+)_(.*)$/.exec(String(x.id)); if (!m || !x.blob) return; const p = by[m[1]] || (by[m[1]] = { id: m[1], scenes: 0, finals: 0, meta: null, narr: false }); if (/^scene_\d+$/.test(m[2])) p.scenes++; else if (m[2].startsWith("final_")) p.finals++; else if (m[2] === "meta") p.meta = x.meta || {}; else if (m[2] === "narr") p.narr = true; });
+    setProjects(Object.values(by).filter(p => p.scenes || p.finals || p.meta).sort((a, b) => Number(b.id.slice(1)) - Number(a.id.slice(1))).map(p => { const mt = p.meta || {}; const nm = mt.title || mt.hint || "Film"; return { id: p.id, name: nm, scenes: p.scenes, finals: p.finals, when: new Date(mt.startedAt || Number(p.id.slice(1))).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) }; }));
+  };
+  useEffect(() => { loadProjects(); }, [done, busy]);
+  const openProject = async (pid) => {
+    if (busy) { setErr("Wait for the film in progress, or stop it first."); return; }
+    const all = await dbAll(); const pre = pid + "_scene_";
+    const sc = all.filter(x => String(x.id).startsWith(pre) && x.blob).sort((a, b) => (a.meta.i || 0) - (b.meta.i || 0));
+    projectId.current = pid; save("pid", pid); save("fresh", false);
+    setScenes(sc.map(x => ({ text: x.meta.text || "", status: "done", blob: x.blob, url: URL.createObjectURL(x.blob), source: x.meta.source })));
+    const n = all.find(x => x.id === pid + "_narr"); if (n) { setNarrUrl(URL.createObjectURL(n.blob)); setNarrText(n.meta.text || ""); setNarrSecs(n.meta.secs || 0); } else { setNarrUrl(""); setNarrText(""); setNarrSecs(0); }
+    const m = all.find(x => x.id === pid + "_music"); setMusicUrl(m ? URL.createObjectURL(m.blob) : "");
+    const mt = all.find(x => x.id === pid + "_meta" && x.blob);
+    if (mt) { try { const o = JSON.parse(await mt.blob.text()); if (o.title != null) setTitle(o.title); if (o.kind) setKind(o.kind); if (o.minutes) setMinutes(o.minutes); if (o.narr != null) setNarr(o.narr); if (o.script != null) setScript(o.script); if (o.onePrompt != null) setOnePrompt(o.onePrompt); } catch (e) { } }
+    setExp({ busy: false, pct: 0, msg: "", files: [] }); setClock(0); setCur(0); setPct(0); setErr("");
+    setDone(sc.length > 0); setStage(sc.length ? "Project opened: " + (mt && mt.meta && (mt.meta.title || mt.meta.hint) || "Film") : "This project has no finished scenes. Its words are back in the boxes.");
+    try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) { }
+  };
+  const deleteProject = async (p) => {
+    if (!window.confirm("Delete \"" + p.name + "\" and all its scenes? This cannot be undone.")) return;
+    try { const all = await dbAll(); const db = await idb(); const tx = db.transaction("f", "readwrite"); for (const x of all) if (String(x.id).startsWith(p.id + "_")) tx.objectStore("f").delete(x.id); await new Promise(res => { tx.oncomplete = res; tx.onerror = res; }); } catch (e) { }
+    if (projectId.current === p.id) { setScenes([]); setDone(false); setNarrUrl(""); setMusicUrl(""); }
+    loadProjects(); loadSaved();
+  };
   const stopExp = useRef(false); const pvRef = useRef(null);
   async function renderFile(opts) {
     const r = opts.ratio, [W, H] = sizeFor(r, quality);
@@ -1141,7 +1186,8 @@ export default function Studio() {
     await dbPut(projectId.current + "_project", blob, {});
     await saveFile({ blob, name: (title || "My_Film").replace(/[^\w]+/g, "_") + "_Project.json", url: URL.createObjectURL(blob) });
   };
-  const newFilm = async () => { const all = await dbAll(); const db = await idb(); const tx = db.transaction("f", "readwrite"); for (const x of all) if (String(x.id).startsWith(projectId.current) && !String(x.id).includes("_final_")) tx.objectStore("f").delete(x.id); await new Promise(res => { tx.oncomplete = res; tx.onerror = res; }); setScenes([]); setDone(false); setNarrUrl(""); setMusicUrl(""); setExp({ busy: false, pct: 0, msg: "", files: [] }); setStage(""); setPct(0); setClock(0); setCur(0); };
+  // "Start a new film" now KEEPS the film you were on: it stays under MY PROJECTS.
+  const newFilm = async () => { try { const mt = (await dbAll()).find(x => x.id === projectId.current + "_meta"); if (!mt && (scenes.length || narrUrl)) await dbPut(projectId.current + "_meta", new Blob([JSON.stringify({ title, kind, minutes, ratio, style, narr, script, onePrompt })], { type: "application/json" }), { title: (title || "").trim(), kind, minutes, startedAt: new Date(Number(String(projectId.current).slice(1)) || Date.now()).toISOString(), hint: String(onePrompt || narr || script || "").trim().slice(0, 60) }); } catch (e) { } projectId.current = "p" + Date.now(); save("pid", projectId.current); save("fresh", true); loadProjects(); setScenes([]); setDone(false); setNarrUrl(""); setMusicUrl(""); setExp({ busy: false, pct: 0, msg: "", files: [] }); setStage(""); setPct(0); setClock(0); setCur(0); };
 
   // ── page ──
   const Chips = ({ items, value, onPick }) => <div className="row">{items.map(x => { const id = x.id || x, lb = x.label || x; return <button key={id} className={"c" + (value === id ? " on" : "")} onClick={() => onPick(id)}>{lb}</button>; })}</div>;
@@ -1209,7 +1255,7 @@ export default function Studio() {
           {simple && <button onClick={() => setShowFiles(v => !v)}>{showFiles ? "Hide footage & voices" : "Footage & voices" + ((photos.length + clips.length + charRecs.length) ? " (" + (photos.length + clips.length + charRecs.length) + ")" : "")}</button>}
           <button className="b" style={{ display: simple ? "none" : undefined }} onClick={() => { const n = splitPrompt(); setAddMsg(n ? "Split into the boxes below. " + n + " spoken lines." : "No [NAME] lines found. Put each spoken line as [NAME] line."); }}>SPLIT INTO THE BOXES ONLY</button>
           {simple ? <button onClick={() => setShowGuide(v => !v)}>{showGuide ? "Close prompt guide" : "Prompt guide"}</button> : <button className="b s" onClick={() => setShowGuide(v => !v)}>{showGuide ? "CLOSE PROMPT GUIDE" : "PROMPT GUIDE"}</button>}
-          {(scenes.length > 0 && !busy) && (simple ? <button onClick={reVoice}>Re-voice my film</button> : <button className="b s" onClick={reVoice}>RE-VOICE MY FILM</button>)}
+          {(!busy && !designing) && (simple ? <button onClick={reVoice}>Re-voice my film</button> : <button className="b s" onClick={reVoice}>RE-VOICE MY FILM</button>)}
         </div>
         {rvMsg && <div className="msg" style={{ marginTop: 6 }}>{rvMsg}</div>}
         {showGuide && <div className="guide" style={{ whiteSpace: "normal" }}>
@@ -1421,7 +1467,18 @@ export default function Studio() {
         {exp.files.length > 0 && <div className="row" style={{ marginTop: 8 }}>{exp.files.map(f => <button key={f.name} className="b s" onClick={() => saveFile(f)}>⬇ {f.name}</button>)}</div>}
 
         <div className="tl">
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", color: "var(--gold)", marginBottom: 6 }}>MY PROJECTS · EVERY FILM IS KEPT · TAP OPEN TO GO BACK</div>
+          {projects.length === 0 ? <div className="msg">No projects yet. Every film you make is kept here automatically.</div> :
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{projects.map(p => <div key={p.id} className="row" style={{ alignItems: "center" }}>
+              <div style={{ flex: 1, minWidth: 0, fontSize: 13 }}><div style={{ fontWeight: 700, wordBreak: "break-word" }}>{p.name}{projectId.current === p.id ? " · open now" : ""}</div><div style={{ opacity: .7, fontSize: 11 }}>{p.when} · {p.scenes} scene{p.scenes === 1 ? "" : "s"}{p.finals ? " · film saved" : ""}</div></div>
+              <button className="b g" style={{ padding: "9px 14px" }} onClick={() => openProject(p.id)}>Open</button>
+              <button className="c" onClick={() => deleteProject(p)}>Delete</button>
+            </div>)}</div>}
+        </div>
+
+        <div className="tl">
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", color: "var(--gold)", marginBottom: 6 }}>MY SAVED FILMS · TAP TO SAVE TO PHOTOS OR FILES</div>
+          <label className="b s" style={{ display: "inline-block", marginBottom: 8, cursor: "pointer" }}>Load a film from my device<input type="file" accept="video/*,.mp4,.webm,.mov" style={{ display: "none" }} onChange={e => { importFilm(e.target.files); e.target.value = ""; }} /></label>
           {savedFilms.length === 0 ? <div className="msg">No film saved yet. When your film is ready, a bright gold box appears above with its name and a button to press.</div> :
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{savedFilms.map(f => <div key={f.id} className="row" style={{ alignItems: "center" }}>
               <button className="b g" style={{ padding: "9px 14px", textAlign: "left", flex: 1 }} onClick={() => saveFile({ blob: f.blob, name: f.name, url: URL.createObjectURL(f.blob) })}>⬇ {f.name} · {Math.round(f.blob.size / 1048576)} MB</button>
