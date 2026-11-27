@@ -1399,7 +1399,7 @@ export default function Studio() {
         {simple && <div>
           <div className="mini">
             <div className="wm">The 1 Shot Film Studio</div>
-            <div className="mr">{user ? <><span style={{ opacity: .7 }}>{user.email}</span><button className="lk" onClick={logOut}>Log out</button></> : <button className="lk" onClick={() => setShowLogin(v => !v)}>Log in</button>}<button className="lk" onClick={() => { const em = (user && user.email) || email; window.open(TOPUP_LINK + (em ? "?prefilled_email=" + encodeURIComponent(em) : ""), "_blank", "noopener"); }}>Buy extra usage</button><button className="sub" onClick={() => { const em = (user && user.email) || email; window.open(SUB_LINK + (em ? "?prefilled_email=" + encodeURIComponent(em) : ""), "_blank", "noopener"); }}>Subscribe · $50/month</button></div>
+            <div className="mr">{user ? <><span style={{ opacity: .7 }}>{user.email}</span><button className="lk" onClick={logOut}>Log out</button></> : <button className="lk" onClick={() => setShowLogin(v => !v)}>Log in</button>}<button className="lk" onClick={() => { const em = (user && user.email) || email; window.open(TOPUP_LINK + (em ? "?prefilled_email=" + encodeURIComponent(em) : ""), "_blank", "noopener"); }}>Buy extra usage</button><button className="sub" onClick={() => { const em = (user && user.email) || email; window.open(SUB_LINK + (em ? "?prefilled_email=" + encodeURIComponent(em) : ""), "_blank", "noopener"); }}>Subscribe · $50/month</button>{!subActive && <a href={SUB_LINK} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginLeft: 8, padding: "8px 14px", border: "1px solid #4DFF88", borderRadius: 999, color: "#4DFF88", textDecoration: "none", fontSize: 13, letterSpacing: ".04em", boxShadow: "0 0 10px rgba(77,255,136,.35)" }}>7-day free trial</a>}</div>
           </div>
           {!user && showLogin && <div style={{ marginTop: 8 }}><div className="login">
             <input className="in" type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
@@ -1444,7 +1444,6 @@ export default function Studio() {
           <div className="lenTop"><span>FILM LENGTH</span><b>{minutes >= 60 ? Math.floor(minutes / 60) + " hr" + (minutes % 60 ? " " + (minutes % 60) + " min" : "") : minutes + " min"}</b></div>
           <input type="range" className="rng" min={0} max={180} step={1} value={minutes} onChange={e => setMinutes(Number(e.target.value))} />
           <div className="ticks"><span>0</span><span>1 hr</span><span>2 hr</span><span>3 hr</span></div>
-          {!subActive && <a href={SUB_LINK} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 8, padding: "8px 16px", border: "1px solid #4DFF88", borderRadius: 4, color: "#4DFF88", textDecoration: "none", fontSize: 13, letterSpacing: ".06em", boxShadow: "0 0 10px rgba(77,255,136,.35)" }}>7-day free trial</a>}
         </div>}
         <div className={simple ? "opts" : undefined} style={simple ? undefined : { display: "flex", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
           {simple ? <button onClick={() => setSimple(false)}>Advanced controls</button> : <button className="b s" onClick={() => setSimple(true)}>RETURN TO ONE PROMPT</button>}
