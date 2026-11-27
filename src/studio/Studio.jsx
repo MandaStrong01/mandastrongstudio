@@ -684,11 +684,11 @@ export default function Studio() {
     }
     // No matched picture? Take a frame out of one of YOUR clips (a different clip and moment each time) so the engine keeps your look.
     let grab = "";
-    const refPhoto = (!photo && !clips.length && photos.length) ? photos[i % photos.length].dataUrl : "";
+    const nearP = (() => { const pl = planRef.current || []; for (let d = 1; d <= pl.length; d++) for (const j of [i - d, i + d]) { const q = pl[j]; if (q && q.photo >= 0 && photos[q.photo]) return photos[q.photo].dataUrl; } return ""; })(); const refPhoto = (!photo && photos.length) ? (nearP || photos[i % photos.length].dataUrl) : "";
     if (!blob && clips.length && !photo) { const gc = clips[(i + reuseN.current) % clips.length]; if (gc && gc.blob) grab = await grabFrame(gc.blob, 0.25 + ((i * 37) % 50) / 100); }
     // Same look as the scenes already made: start from a frame of the nearest finished scene.
-    if (!blob && !photo) { let got = false; for (let d = 1; d < scenes.length && !got; d++) { const c = [scenes[i - d], scenes[i + d]].find(x => x && x.blob && x.url); if (c) { try { const g2 = await grabFrame(c.blob, 0.5); if (g2) { grab = g2; got = true; } } catch (e) { } } } }
-    if (!blob && !free()) { try { blob = await toBlob(await seRun({ kind: "video", prompt: text + "\n" + look, image: photo || grab || refPhoto })); engineFails.current = 0; } catch (e) { note = e.message; if (e.nocredit) { noCredit.current = true; setStage("Engine is out of credit — using your own clips and images."); } } }
+    if (!blob && !photo && !refPhoto) { let got = false; for (let d = 1; d < scenes.length && !got; d++) { const c = [scenes[i - d], scenes[i + d]].find(x => x && x.blob && x.url); if (c) { try { const g2 = await grabFrame(c.blob, 0.5); if (g2) { grab = g2; got = true; } } catch (e) { } } } }
+    if (!blob && !free()) { try { blob = await toBlob(await seRun({ kind: "video", prompt: text + "\n" + look, image: photo || refPhoto || grab })); engineFails.current = 0; } catch (e) { note = e.message; if (e.nocredit) { noCredit.current = true; setStage("Engine is out of credit — using your own clips and images."); } } }
     // Replicate/stock finished or failed: the engine makes its own moving shot from a frame of YOUR clip or image (same look), before anything else.
     const stretchSrc = photo || (photos.length ? photos[i % photos.length].dataUrl : "") || grab;
     if (!blob && stretchSrc) { try { const b = await stillToClip(stretchSrc, 7, i); if (b) { blob = b; source = "engine still from your footage"; } } catch (e) { } }
