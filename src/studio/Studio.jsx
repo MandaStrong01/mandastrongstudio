@@ -370,7 +370,9 @@ export default function Studio() {
   // ── files ──
   const [photos, setPhotos] = useState([]); // {name,dataUrl}
   const photosLoaded = useRef(false);
-  useEffect(() => { (async () => { try { const all = await dbAll(); const x = all.find(y => y.id === "mfs_photos"); if (x && x.blob) setPhotos(JSON.parse(await x.blob.text())); } catch (e) { } photosLoaded.current = true; })(); }, []);
+  useEffect(() => { (async () => { try { const all = await dbAll(); const x = all.find(y => y.id === "mfs_photos"); if (x && x.blob) setPhotos(JSON.parse(await x.blob.text())); } catch (e) { } photosLoaded.current = true;
+    // The 11 Santa's List character pictures are added once, named after each character, so every scene can start from the right face. Remove any you do not want; they are not added again.
+    try { if (!localStorage.getItem("mfs_cast_v1")) { const add = []; for (const n of ["LILY THOMPSON", "MAX THOMPSON", "JINGLE", "SANTA CLAUS", "MRS THOMPSON", "MR THOMPSON", "PEPPER", "HOLLY", "THOMAS", "THE NORTH STAR", "FIZZ"]) { const r = await fetch("/characters/" + n.replace(/ /g, "_") + ".jpg"); if (!r.ok || !/image/.test(r.headers.get("content-type") || "")) continue; const d = await readAsDataURL(await r.blob()); if (d) add.push({ name: n + " (character)", dataUrl: d }); } if (add.length) { setPhotos(p => [...p, ...add.filter(x => !p.some(y => y.name === x.name))]); localStorage.setItem("mfs_cast_v1", "1"); } } } catch (e) { } })(); }, []);
   useEffect(() => { if (photosLoaded.current) dbPut("mfs_photos", new Blob([JSON.stringify(photos)], { type: "application/json" }), {}); }, [photos]);
   const [clips, setClips] = useState([]);   // {name,url,blob}
   useEffect(() => { try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { } }, []);
