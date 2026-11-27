@@ -1664,7 +1664,6 @@ export default function Studio() {
         <div className="tl">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
             <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", color: "var(--gold)" }}>TIMELINE · REDO OR REMOVE ANY SCENE</span>
-            {!busy && scenes.some(x => x.url) && scenes.some(x => !x.url) && <button className="b g" style={{ padding: "6px 14px", fontSize: 12 }} onClick={finishRest}>FINISH THE REST ({scenes.filter(x => !x.url).length} scenes left)</button>}
             {done && <button className="c" onClick={newFilm}>Start a new film</button>}
           </div>
           {scenes.length === 0 ? <div className="msg">Your scenes appear here as they are made.</div> :
