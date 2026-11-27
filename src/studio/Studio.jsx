@@ -534,7 +534,13 @@ export default function Studio() {
       const pre = projectId.current + "_scene_";
       const sc = all.filter(x => String(x.id).startsWith(pre) && x.blob).sort((a, b) => a.meta.i - b.meta.i);
       if (!sc.length) return;
-      setScenes(sc.map(x => ({ text: x.meta.text || "", status: "done", blob: x.blob, url: URL.createObjectURL(x.blob), source: x.meta.source })));
+      // Scenes that were never made are put back as "waiting" (their words come from the saved scene plan), so the film can be finished.
+      let texts = [];
+      try { const sy = all.find(x => x.id === projectId.current + "_sync"); if (sy && sy.blob) { const sp = JSON.parse(await sy.blob.text()); const f = sp.first || [], sn = sp.scenes || []; for (let idx = 0; idx < (sp.nShots || 0); idx++) { let q0 = 0; for (let q = 0; q < f.length; q++) if (f[q] <= idx) q0 = q; const k = idx - (f[q0] || 0); const tx = sn[q0] || ""; texts.push(k ? tx + "\nThe same scene, a different shot: " + ANGLES[(k - 1) % ANGLES.length] + ". Same characters, same place, same look as the shot before. Continue the story of this scene." : tx); } } } catch (e) { texts = []; }
+      const byI = {}; sc.forEach(x => { byI[x.meta.i] = x; });
+      const NS = Math.max(texts.length, sc.reduce((m, x) => Math.max(m, x.meta.i), -1) + 1);
+      const arr = []; for (let i = 0; i < NS; i++) { const x = byI[i]; arr.push(x ? { text: x.meta.text || "", status: "done", blob: x.blob, url: URL.createObjectURL(x.blob), source: x.meta.source } : { text: texts[i] || "", status: "waiting" }); }
+      setScenes(arr);
       const n = all.find(x => x.id === projectId.current + "_narr"); if (n) { setNarrUrl(URL.createObjectURL(n.blob)); setNarrText(n.meta.text || ""); setNarrSecs(n.meta.secs || 0); }
       const m = all.find(x => x.id === projectId.current + "_music"); if (m) setMusicUrl(URL.createObjectURL(m.blob));
       setDone(true); setStage("Your last film was brought back.");
@@ -948,7 +954,7 @@ export default function Studio() {
     if (!narr.trim() && !script.trim() && !photos.length && !clips.length) { setErr("Add your narration, script, photos or clips first."); return; }
     if (minutes < 1) { setErr("Move the length bar above 0 minutes."); return; }
     if (!subActive) { setErr("Start your 7-day free trial to make a film. Press the 7-day free trial button."); return; }
-    setBusy(true); setDone(false); setPct(2);
+    setBusy(true); setDone(false); setPct(2); autoFinished.current = false;
     let wl = null; try { wl = await navigator.wakeLock.request("screen"); } catch (e) { }
     projectId.current = "p" + Date.now(); save("pid", projectId.current); save("fresh", false);
     // Every film is filed under MY PROJECTS from the moment it starts, with its words, so it can be opened again.
@@ -1032,6 +1038,9 @@ export default function Studio() {
   };
   const redoScene = async (i) => { if (busy) return; setBusy(true); await makeScene(i, scenes[i].text, {}); setBusy(false); };
   const removeScene = (i) => setScenes(p => p.filter((_, k) => k !== i));
+  // A film that stopped part-way finishes itself, once, with no button. Scenes already made are kept.
+  const autoFinished = useRef(false);
+  useEffect(() => { if (busy || autoFinished.current) return; if (scenes.some(x => x.url) && scenes.some(x => !x.url && x.text && x.status !== "making")) { autoFinished.current = true; finishRest(); } }, [busy, scenes]);
   // FINISH THE REST: carries on with only the scenes that have no picture yet. Scenes already made are kept and nothing starts over.
   const finishRest = async () => {
     if (busy) return;
