@@ -536,7 +536,7 @@ export default function Studio() {
       if (!sc.length) return;
       // Scenes that were never made are put back as "waiting" (their words come from the saved scene plan), so the film can be finished.
       let texts = [];
-      try { const sy = all.find(x => x.id === projectId.current + "_sync"); if (sy && sy.blob) { const sp = JSON.parse(await sy.blob.text()); const f = sp.first || [], sn = sp.scenes || []; for (let idx = 0; idx < (sp.nShots || 0); idx++) { let q0 = 0; for (let q = 0; q < f.length; q++) if (f[q] <= idx) q0 = q; const k = idx - (f[q0] || 0); const tx = sn[q0] || ""; texts.push(k ? tx + "\nThe same scene, a different shot: " + ANGLES[(k - 1) % ANGLES.length] + ". Same characters, same place, same look as the shot before. Continue the story of this scene." : tx); } } } catch (e) { texts = []; }
+      try { const sy = all.find(x => x.id === projectId.current + "_sync"); if (sy && sy.blob) { const sp = JSON.parse(await sy.blob.text()); const f = sp.first || [], sn0 = sp.scenes || []; let full = []; try { full = parseScenes(script); } catch (e) { } const sn = full.length === sn0.length ? full : sn0; for (let idx = 0; idx < (sp.nShots || 0); idx++) { let q0 = 0; for (let q = 0; q < f.length; q++) if (f[q] <= idx) q0 = q; const k = idx - (f[q0] || 0); const tx = sn[q0] || ""; texts.push(k ? tx + "\nThe same scene, a different shot: " + ANGLES[(k - 1) % ANGLES.length] + ". Same characters, same place, same look as the shot before. Continue the story of this scene." : tx); } } } catch (e) { texts = []; }
       const byI = {}; sc.forEach(x => { byI[x.meta.i] = x; });
       const NS = Math.max(texts.length, sc.reduce((m, x) => Math.max(m, x.meta.i), -1) + 1);
       const arr = []; for (let i = 0; i < NS; i++) { const x = byI[i]; arr.push(x ? { text: x.meta.text || "", status: "done", blob: x.blob, url: URL.createObjectURL(x.blob), source: x.meta.source } : { text: texts[i] || "", status: "waiting" }); }
@@ -686,6 +686,8 @@ export default function Studio() {
     let grab = "";
     const refPhoto = (!photo && !clips.length && photos.length) ? photos[i % photos.length].dataUrl : "";
     if (!blob && clips.length && !photo) { const gc = clips[(i + reuseN.current) % clips.length]; if (gc && gc.blob) grab = await grabFrame(gc.blob, 0.25 + ((i * 37) % 50) / 100); }
+    // Same look as the scenes already made: start from a frame of the nearest finished scene.
+    if (!blob && !photo) { let got = false; for (let d = 1; d < scenes.length && !got; d++) { const c = [scenes[i - d], scenes[i + d]].find(x => x && x.blob && x.url); if (c) { try { const g2 = await grabFrame(c.blob, 0.5); if (g2) { grab = g2; got = true; } } catch (e) { } } } }
     if (!blob && !free()) { try { blob = await toBlob(await seRun({ kind: "video", prompt: text + "\n" + look, image: photo || grab || refPhoto })); engineFails.current = 0; } catch (e) { note = e.message; if (e.nocredit) { noCredit.current = true; setStage("Engine is out of credit — using your own clips and images."); } } }
     // Replicate/stock finished or failed: the engine makes its own moving shot from a frame of YOUR clip or image (same look), before anything else.
     const stretchSrc = photo || (photos.length ? photos[i % photos.length].dataUrl : "") || grab;
