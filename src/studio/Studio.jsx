@@ -1032,6 +1032,24 @@ export default function Studio() {
   };
   const redoScene = async (i) => { if (busy) return; setBusy(true); await makeScene(i, scenes[i].text, {}); setBusy(false); };
   const removeScene = (i) => setScenes(p => p.filter((_, k) => k !== i));
+  // FINISH THE REST: carries on with only the scenes that have no picture yet. Scenes already made are kept and nothing starts over.
+  const finishRest = async () => {
+    if (busy) return;
+    const todo = scenes.map((s, i) => (s.url ? -1 : i)).filter(i => i >= 0);
+    if (!todo.length) { setErr("Every scene is already made."); return; }
+    setErr(""); setBusy(true); setDone(false); noCredit.current = false; engineFails.current = 0; engineOff.current = false;
+    let wl = null; try { wl = await navigator.wakeLock.request("screen"); } catch (e) { }
+    try {
+      const failed = []; let n = 0;
+      for (const i of todo) { setStage("MandaStrong Engine — finishing scene " + (i + 1) + " of " + scenes.length + " (" + (todo.length - n) + " left)…"); const b = await makeScene(i, scenes[i].text, {}); if (!b) failed.push(i); n++; setPct(Math.round((scenes.length - todo.length + n) / scenes.length * 100)); }
+      const still = [];
+      for (const i of failed) { setStage("Trying scene " + (i + 1) + " again…"); const b2 = await makeScene(i, scenes[i].text, {}); if (!b2) still.push(i); }
+      if (still.length) { setErr("Scene " + still.map(i => i + 1).join(", ") + " still did not come back. Press FINISH THE REST again."); setStage("Stopped. " + still.length + " scene(s) missing."); }
+      else { autoJoin.current = true; setPct(100); setStage("All scenes made. Joining them into one film — keep this tab open."); setDone(true); }
+    } catch (e) { setErr("Something stopped the film: " + e.message); }
+    try { wl && wl.release(); } catch (e) { }
+    setBusy(false);
+  };
 
   // ── preview player (picture + voice + music together) ──
   const vRef = useRef(null), nRef = useRef(null), mRef = useRef(null), tRef = useRef(null), wrapRef = useRef(null);
@@ -1646,6 +1664,7 @@ export default function Studio() {
         <div className="tl">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
             <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", color: "var(--gold)" }}>TIMELINE · REDO OR REMOVE ANY SCENE</span>
+            {!busy && scenes.some(x => x.url) && scenes.some(x => !x.url) && <button className="b g" style={{ padding: "6px 14px", fontSize: 12 }} onClick={finishRest}>FINISH THE REST ({scenes.filter(x => !x.url).length} scenes left)</button>}
             {done && <button className="c" onClick={newFilm}>Start a new film</button>}
           </div>
           {scenes.length === 0 ? <div className="msg">Your scenes appear here as they are made.</div> :
