@@ -1,6 +1,6 @@
 // @ts-nocheck
 // ═══════════════════════════════════════════════════════════════════
-// MANDAS 1 SHOT FILM STUDIO — one shot, one page, everything in, everything out.
+// THE 1 SHOT FILM STUDIO — one shot, one page, everything in, everything out.
 // A separate app inside the MandaStrong Studio project. It does not touch the
 // 25-page app. Powered by the MandaStrong Engine.
 // ═══════════════════════════════════════════════════════════════════
@@ -47,6 +47,9 @@ const SHOT_SECS = 10, SLOW = 0.5, SHOT_CAP = 360;
 const CLONE_CACHE = new Map();
 const ANGLES = ["wide establishing shot", "close-up on the faces", "slow push-in from behind", "over-the-shoulder shot", "low angle looking up", "high angle looking down", "side view, tracking along", "detail shot of hands and objects", "slow pull-back to reveal the room", "medium two-shot, gentle camera drift"];
 const slowOf = s => (s && s.source === "engine") ? SLOW : 1;
+// A clip shorter than its slot is STRETCHED (played slower) to fill it, not looped. Lip-synced clips stay at normal speed so the mouth matches the voice.
+const rateOf = (s, len) => { const b = slowOf(s); if (s && s.source === "your clip" && s.dur > 0 && len > s.dur + 0.3) return Math.max(0.35, s.dur / len); return b; };
+const clipDur = (b) => new Promise(res => { try { let d = false; const fin = x => { if (!d) { d = true; res(isFinite(x) ? x : 0); } }; const v = document.createElement("video"); v.preload = "metadata"; v.muted = true; v.onloadedmetadata = () => fin(v.duration); v.onerror = () => fin(0); setTimeout(() => fin(0), 5000); v.src = URL.createObjectURL(b); } catch (e) { res(0); } });
 const GENRES = ["Drama", "Comedy", "Family", "Holiday", "Adventure", "Fantasy", "Sci-fi", "Romance", "Action", "Mystery", "Thriller", "Horror", "Western", "Historical", "Inspirational", "Educational"];
 const AUDIENCES = ["Kids", "Family", "Teens", "Adults"];
 const TOONS = ["2D hand-drawn", "3D animated", "Anime", "Claymation", "Stop motion", "Watercolour storybook", "Comic book", "Pixel art"];
@@ -72,6 +75,16 @@ const MOODS = [
   { id: "sad", label: "Melancholy", url: "https://cdn.pixabay.com/audio/2022/10/18/audio_31a1f6f2a6.mp3" },
   { id: "action", label: "Action", url: "https://cdn.pixabay.com/audio/2022/11/22/audio_febc508520.mp3" },
 ];
+// Built-in character voices for Santa's List: kids sound like kids, the fairy and Santa sound like themselves. They are made by the voice engine, not copied from an uploaded file.
+const BUILTIN_VOICE = { LILY: "ms_lily", MAX: "ms_max", HOLLY: "ms_holly", THOMAS: "ms_thomas", FIZZ: "ms_fizz", SANTA: "ms_santa" };
+const builtinFor = (speakers) => {
+  const nm = x => String(x.label || x.key || "").toUpperCase().replace(/[^A-Z]/g, "");
+  const names = speakers.map(nm); const out = {};
+  if (!names.includes("SANTA") || !(names.includes("LILY") || names.includes("MAX"))) return out;
+  speakers.forEach(sp => { const v = BUILTIN_VOICE[nm(sp)]; if (v) out[sp.key] = v; });
+  return out;
+};
+const XMAS_MUSIC = "warm orchestral Christmas film score, classic Christmas carol melodies, sleigh bells, soft strings, harp, glockenspiel, gentle choir, magical and heartwarming, plays quietly under dialogue, steady and loopable";
 const LANGS = ["English", "French", "Spanish", "German", "Italian", "Portuguese", "Dutch", "Polish", "Russian", "Arabic", "Hindi", "Mandarin Chinese", "Japanese", "Korean", "Turkish", "Greek"];
 const RATIOS = { "16:9": [16, 9], "9:16": [9, 16], "1:1": [1, 1], "21:9": [21, 9] };
 
@@ -197,7 +210,7 @@ function parseScenes(text) {
   const t = String(text || ""); const re = /^\s*SCENE\s+(\d+)\s*[:.\-—]?\s*(.*)$/gim; const marks = []; let m;
   while ((m = re.exec(t))) marks.push({ n: Number(m[1]), at: m.index, head: m[2] || "", end: re.lastIndex });
   if (marks.length < 2) return [];
-  return marks.map((mk, k) => { const body = t.slice(mk.end, k + 1 < marks.length ? marks[k + 1].at : t.length).trim(); const txt = (mk.head + " " + body).replace(/\s+/g, " ").trim(); return txt; }).filter(Boolean);
+  return marks.map((mk, k) => { let body = t.slice(mk.end, k + 1 < marks.length ? marks[k + 1].at : t.length).trim(); if (k + 1 === marks.length) body = body.split(/\n\s*\n/)[0]; /* the last scene stops at the first empty line, so voices, footage and script notes are not read as part of it */ const txt = (mk.head + " " + body).replace(/\s+/g, " ").trim(); return txt; }).filter(Boolean);
 }
 const STOP = new Set("a an the and or of in on at to for with from by into onto over under above below beside behind between through across along around toward towards as is are was were be been being it its this that these those their his her them they he she we you your our one two each every all some any no not only just very slow slowly fast camera shot shots frame framing push pull dolly track tracking pan tilt crane static locked off wide close up close-up macro aerial lens light lit lighting grade graded warm cold cool gold golden amber blue teal orange black white sepia grain film cinematic documentary photorealistic shallow depth field bokeh soft deep heavy single continuous composed divided vertically centre center left right half halves interior exterior scene still stillness quiet gentle long held beat feels necessary hopeful serious respectful tender comic deadpan dust haze flare highlights glow glowing screen".split(" "));
 function stockQuery(text) {
@@ -307,6 +320,7 @@ export default function Studio() {
   const [narrator, setNarrator] = useState(() => load("narrator", "james"));
   const [charVoices, setCharVoices] = useState(() => load("charVoices", true));
   const [lipSync, setLipSync] = useState(() => load("lipSync", false));
+  const [lsTest, setLsTest] = useState(null); // one-clip lip sync test: {msg, busy, url}
   const [speed, setSpeed] = useState(() => load("speed", 1));
   const [spoken, setSpoken] = useState(() => load("spoken", "English"));
   const [subs, setSubs] = useState(() => load("subs", true));
@@ -330,6 +344,9 @@ export default function Studio() {
   const [duck, setDuck] = useState(() => load("duck", true));
   const [cleanVoice, setCleanVoice] = useState(() => load("cleanVoice", true));
   const [minutes, setMinutes] = useState(() => load("minutes", 5));
+  // Seconds of film per clip. Set by "Clip length: 60 sec" (or "60 seconds per clip") in the prompt.
+  const [clipSecs, setClipSecs] = useState(() => Number(load("clipsecs", SHOT_SECS)) || SHOT_SECS);
+  useEffect(() => { save("clipsecs", clipSecs); }, [clipSecs]);
   const [ratio, setRatio] = useState(() => load("ratio", "16:9"));
   const [quality, setQuality] = useState(() => load("quality", "1080p"));
   const [vVol, setVVol] = useState(() => load("vVol", 1));
@@ -526,14 +543,41 @@ export default function Studio() {
 
   const voiceMeta = (id) => { const v = VOICE_CHARACTERS.find(x => x.id === id) || VOICE_CHARACTERS.find(x => x.id === "james"); return { voice: v.engineVoice || v.id, gender: v.gender || "", origin: v.origin || "", speed: Number(speed) || 1 }; };
 
+  // LIP SYNC TEST: one of YOUR clips and one of Lily's lines, sent once. About 300 credits. Nothing else in the film changes.
+  const lipTest = async () => {
+    const c = clips[0];
+    if (!c || !c.blob) { setLsTest({ msg: "Add your clips first, then press this again." }); return; }
+    if (c.blob.size > 14000000) { setLsTest({ msg: "The first clip is over 14 MB, too big for the test." }); return; }
+    try {
+      setLsTest({ msg: "Making Lily's test line…", busy: true });
+      const r = await msVoiceText("Twas the night before Christmas, when all through the house.", { voice: "ms_lily", gender: "", origin: "", speed: 1 });
+      if (!r.parts.length) throw new Error("the voice engine returned no audio");
+      const ab = new Blob(r.parts, { type: r.parts[0].type || "audio/mpeg" });
+      setLsTest({ msg: "Lily's line is ready. Reading the clip…", busy: true });
+      const secs = await new Promise(res => { let done = false; const fin = x => { if (!done) { done = true; res(x || 0); } }; const v = document.createElement("video"); v.preload = "metadata"; v.muted = true; v.onloadedmetadata = () => fin(v.duration); v.onerror = () => fin(0); setTimeout(() => fin(0), 5000); v.src = URL.createObjectURL(c.blob); });
+      setLsTest({ msg: "Sending the clip for lip sync…", busy: true });
+      const hd = { "Content-Type": "application/json" };
+      const res = await fetch(LIPSYNC, { method: "POST", headers: hd, body: JSON.stringify({ video: await readAsDataURL(c.blob), audio: await readAsDataURL(ab), secs: Math.min(10, secs || 5) }) });
+      const d = await res.json().catch(() => ({ error: "the server answered with an error (" + res.status + "). The clip may be too big." })); if (d.error) throw new Error(d.error); if (!d.id) throw new Error("lip sync did not start");
+      for (let k = 0; k < 90; k++) {
+        setLsTest({ msg: "Lip sync is working… " + (d.credits ? "(about " + d.credits + " credits) " : "") + "keep this open.", busy: true });
+        await sleep(4000);
+        const pr = await fetch(LIPSYNC, { method: "POST", headers: hd, body: JSON.stringify({ pollId: d.id }) }); const p = await pr.json();
+        if (p.error) throw new Error(p.error);
+        if (p.video) { setLsTest({ msg: "Done." + (d.credits ? " It used about " + d.credits + " credits." : "") + " Play it below.", url: p.video }); return; }
+      }
+      throw new Error("it took too long");
+    } catch (e) { setLsTest({ msg: "Lip sync test: " + (e.message || e) }); }
+  };
+
   async function voiceIt(text, lang) {
     let t = text; if (lang && lang !== "English") t = await translateText(text, lang);
-    const cast = msParseCast(t); let parts = []; let lostLines = 0;
+    const cast = msParseCast(t); let parts = []; let lostLines = 0; const segs = [];
     if ((charVoices || charRecs.length) && cast.speakers.length >= 2) {
       const cmap = msCastVoices(cast.speakers, narrator, t);
-      const umap = charVoiceMap(cast.speakers); const uid = {};
+      const umap = charVoiceMap(cast.speakers); const uid = {}; const bmap = builtinFor(cast.speakers); for (const k of Object.keys(bmap)) delete umap[k];
       // Nobody has to say who uses which voice: any character without a voice yet gets one of YOUR uploaded voices automatically (unused voices first).
-      if (charRecs.length) { const usedR = new Set(Object.values(umap)); let rr = 0; for (const sp of cast.speakers) { if (umap[sp.key]) continue; const free_ = charRecs.filter(r => !usedR.has(r)); const pick = free_.length ? free_[0] : charRecs[rr++ % charRecs.length]; umap[sp.key] = pick; usedR.add(pick); } }
+      if (charRecs.length) { const usedR = new Set(Object.values(umap)); let rr = 0; for (const sp of cast.speakers) { if (umap[sp.key] || bmap[sp.key]) continue; const free_ = charRecs.filter(r => !usedR.has(r)); const pick = free_.length ? free_[0] : charRecs[rr++ % charRecs.length]; umap[sp.key] = pick; usedR.add(pick); } }
       for (const k of Object.keys(umap)) { setStage("Copying " + umap[k].name + "'s voice for " + ((cast.speakers.find(x => x.key === k) || {}).label || k) + "…"); uid[k] = await cloneOf(umap[k]); }
       // Your voices are never swapped for a stock voice without telling you: stop and say which character failed.
       if (charRecs.length) {
@@ -541,21 +585,52 @@ export default function Studio() {
         for (const k of Object.keys(umap)) { if (!uid[k]) { uid[k] = await cloneOf(umap[k]); } }
         const noClone = Object.keys(umap).filter(k => !uid[k]).map(lab);
         if (noClone.length) throw Object.assign(new Error("Stopped before spending credit: your voice file could not be copied for " + noClone.join(", ") + ". Check the engine has credit and the file plays, then press Make again."), { stopFilm: true });
-        const noVoice = cast.speakers.filter(sp => !umap[sp.key]).map(sp => sp.label || sp.key);
+        const noVoice = cast.speakers.filter(sp => !umap[sp.key] && !bmap[sp.key]).map(sp => sp.label || sp.key);
         if (noVoice.length) throw Object.assign(new Error("Stopped before spending credit: no uploaded voice is matched to " + noVoice.join(", ") + ". Name each voice file after its character (Doxy, Lily, Ethan) and list who uses it, like DOXY'S VOICE: Santa, Max."), { stopFilm: true });
       }
       for (let i = 0; i < cast.segments.length; i++) {
         const sg = cast.segments[i]; const vc = sg.sp ? cmap[sg.sp] : null;
         setStage("Voicing " + (sg.sp ? (cast.speakers.find(x => x.key === sg.sp) || {}).label : "narrator") + " — " + (i + 1) + " of " + cast.segments.length);
-        const meta = (sg.sp && uid[sg.sp]) ? { voice: uid[sg.sp], speed: Number(speed) || 1 } : vc ? { voice: vc.engineVoice || vc.id, gender: vc.gender || "", origin: vc.origin || "", speed: Number(speed) || 1 } : voiceMeta(narrator);
+        const meta = (sg.sp && bmap[sg.sp]) ? { voice: bmap[sg.sp], gender: "", origin: "", speed: Number(speed) || 1 } : (sg.sp && uid[sg.sp]) ? { voice: uid[sg.sp], speed: Number(speed) || 1 } : vc ? { voice: vc.engineVoice || vc.id, gender: vc.gender || "", origin: vc.origin || "", speed: Number(speed) || 1 } : voiceMeta(narrator);
         const r = await msVoiceText(sg.text, { ...meta, language: lang && lang !== "English" ? lang : "" }); parts.push(...r.parts); if (r.failed) lostLines += r.failed;
+        segs.push({ sp: sg.sp || "", text: sg.text, blob: r.parts.length ? new Blob(r.parts, { type: r.parts[0].type || "audio/mpeg" }) : null });
       }
     } else {
       const r = await msVoiceText(t, { ...voiceMeta(narrator), language: lang && lang !== "English" ? lang : "" }, (i, n) => setStage("MandaStrong Engine — voicing part " + i + " of " + n + (lang && lang !== "English" ? " (" + lang + ")" : ""))); parts = r.parts;
     }
     if (!parts.length) throw new Error("The voice engine returned no audio");
     if (lostLines) setErr(lostLines + " spoken line" + (lostLines > 1 ? "s" : "") + " could not be voiced and will be silent. Press Re-voice my film to try again.");
-    return { blob: new Blob(parts, { type: parts[0].type || "audio/mpeg" }), text: t };
+    return { blob: new Blob(parts, { type: parts[0].type || "audio/mpeg" }), text: t, segs };
+  }
+  // IN SYNC: every spoken line is placed inside its own scene's time, so the right picture is on screen when it is said.
+  // The film keeps its full length; between lines the music plays.
+  async function syncedTrack(segs, plan) {
+    const SR = 16000; const good = segs.filter(x => x.blob); if (!good.length || !plan || !plan.nShots) return null;
+    setStage("Putting every line in its scene…");
+    const bufs = [];
+    for (const sg of segs) { let d = null; if (sg.blob) { try { const oc = new OfflineAudioContext(1, SR, SR); const b = await oc.decodeAudioData(await sg.blob.arrayBuffer()); const a = new Float32Array(b.length); for (let c = 0; c < b.numberOfChannels; c++) { const ch = b.getChannelData(c); for (let i = 0; i < a.length; i++) a[i] += ch[i] / b.numberOfChannels; } d = a; } catch (e) { } } if (d && d.length) { let pk = 0, sq = 0, cnt = 0; for (let i = 0; i < d.length; i++) { const x = Math.abs(d[i]); if (x > pk) pk = x; if (x > 0.02) { sq += x * x; cnt++; } } const rms = cnt > 200 ? Math.sqrt(sq / cnt) : 0; if (rms > 0 && pk > 0) { const g = Math.min(0.2 / rms, 0.95 / pk, 6); for (let i = 0; i < d.length; i++) d[i] *= g; } } bufs.push(d); }
+    const sc = plan.scenes || []; let assign = null;
+    if (sc.length > 1) {
+      try {
+        const ask = "Here are the scenes of a film, in order:\n" + sc.map((x, i) => (i + 1) + ". " + x).join("\n") + "\n\nHere are the film's spoken lines, in story order:\n" + segs.map((x, i) => (i + 1) + ". " + String(x.text).slice(0, 160)).join("\n") + "\n\nFor each spoken line, give the number of the scene it is spoken in. Lines are in story order, so the scene numbers never go down. Return ONLY a JSON array of " + segs.length + " numbers.";
+        const d = await proxyFetch({ model: "claude-sonnet-4-20250514", max_tokens: 4000, messages: [{ role: "user", content: ask }] });
+        const raw = (d && d.content ? d.content.filter(x => x.type === "text").map(x => x.text).join("") : "");
+        const arr = JSON.parse(raw.slice(raw.indexOf("["), raw.lastIndexOf("]") + 1));
+        if (Array.isArray(arr) && arr.length === segs.length) assign = arr.map(n => Math.max(0, Math.min(sc.length - 1, (Number(n) || 1) - 1)));
+      } catch (e) { }
+    }
+    if (!assign) assign = segs.map((_, i) => Math.floor(i * Math.max(1, sc.length) / segs.length));
+    for (let i = 1; i < assign.length; i++) if (assign[i] < assign[i - 1]) assign[i] = assign[i - 1];
+    const shotLen = plan.total / plan.nShots; const first = plan.first || [];
+    const start = k => (first[k] != null ? first[k] : Math.round(k * plan.nShots / Math.max(1, sc.length))) * shotLen;
+    const at = []; let cur = 0;
+    for (let i = 0; i < segs.length; i++) { const t0 = Math.max(cur, (i === 0 || assign[i] !== assign[i - 1]) ? start(assign[i]) + 0.8 : cur); at.push(t0); cur = t0 + (bufs[i] ? bufs[i].length / SR : 0) + 0.6; }
+    const total = Math.max(plan.total, cur + 1); const n = Math.ceil(total * SR);
+    const pcm = new Int16Array(n);
+    for (let i = 0; i < segs.length; i++) { const b = bufs[i]; if (!b) continue; const o = Math.floor(at[i] * SR); for (let j = 0; j < b.length && o + j < n; j++) { const v = Math.max(-1, Math.min(1, b[j])); pcm[o + j] = v < 0 ? v * 32768 : v * 32767; } }
+    const hd = new DataView(new ArrayBuffer(44)); const w = (p, x) => { for (let i = 0; i < x.length; i++) hd.setUint8(p + i, x.charCodeAt(i)); };
+    w(0, "RIFF"); hd.setUint32(4, 36 + n * 2, true); w(8, "WAVE"); w(12, "fmt "); hd.setUint32(16, 16, true); hd.setUint16(20, 1, true); hd.setUint16(22, 1, true); hd.setUint32(24, SR, true); hd.setUint32(28, SR * 2, true); hd.setUint16(32, 2, true); hd.setUint16(34, 16, true); w(36, "data"); hd.setUint32(40, n * 2, true);
+    return { blob: new Blob([hd.buffer, pcm.buffer], { type: "audio/wav" }), secs: total, lines: segs.map((sg, i) => ({ sp: sg.sp || "", t0: at[i], buf: bufs[i] })) };
   }
 
   // Turns a picture (your photo or a stock photo) into a moving shot.
@@ -576,7 +651,7 @@ export default function Studio() {
   }
 
   async function makeScene(i, text, list) {
-    const look = style + " style, " + (GRADES.find(g => g.id === grade) || GRADES[0]).prompt + (enhance ? (animKind ? ", crisp clean linework, rich colour, sharp detail" : ", photorealistic, 35mm film grain, sharp detail") : "") + (shotBrief ? ", " + shotBrief : "") + ", no on-screen text";
+    const look = style + " style, " + (GRADES.find(g => g.id === grade) || GRADES[0]).prompt + (enhance ? (animKind ? ", crisp clean linework, rich colour, sharp detail" : ", photorealistic, 35mm film grain, sharp detail") : "") + (shotBrief ? ", " + shotBrief : "") + (animKind ? ", Pixar-style 3D animated feature film, expressive characters moving and acting all the time, gentle moving camera, never a frozen picture" : "") + (/christmas|santa|xmas|sleigh|north pole/i.test(String(title || "") + " " + String(onePrompt || "").slice(0, 4000) + " " + String(script || "").slice(0, 4000)) ? ", Christmas Eve winter night, snow falling softly, frosted windows, visible breath clouds, glowing snow, deep blue night outdoors, warm gold light indoors" : "") + ", no on-screen text";
     const plan = planRef.current[i] || null;
     const photo = plan && plan.photo >= 0 && photos[plan.photo] ? photos[plan.photo].dataUrl : "";
     const setS = (patch) => setScenes(p => p.map((s, k) => k === i ? { ...s, ...patch } : s));
@@ -603,8 +678,9 @@ export default function Studio() {
     }
     // No matched picture? Take a frame out of one of YOUR clips (a different clip and moment each time) so the engine keeps your look.
     let grab = "";
+    const refPhoto = (!photo && !clips.length && photos.length) ? photos[i % photos.length].dataUrl : "";
     if (!blob && clips.length && !photo) { const gc = clips[(i + reuseN.current) % clips.length]; if (gc && gc.blob) grab = await grabFrame(gc.blob, 0.25 + ((i * 37) % 50) / 100); }
-    if (!blob && !free()) { try { blob = await toBlob(await seRun({ kind: "video", prompt: text + "\n" + look, image: photo || grab })); engineFails.current = 0; } catch (e) { note = e.message; if (e.nocredit) { noCredit.current = true; setStage("Engine is out of credit — using your own clips and images."); } } }
+    if (!blob && !free()) { try { blob = await toBlob(await seRun({ kind: "video", prompt: text + "\n" + look, image: photo || grab || refPhoto })); engineFails.current = 0; } catch (e) { note = e.message; if (e.nocredit) { noCredit.current = true; setStage("Engine is out of credit — using your own clips and images."); } } }
     // Replicate/stock finished or failed: the engine makes its own moving shot from a frame of YOUR clip or image (same look), before anything else.
     const stretchSrc = photo || (photos.length ? photos[i % photos.length].dataUrl : "") || grab;
     if (!blob && stretchSrc) { try { const b = await stillToClip(stretchSrc, 7, i); if (b) { blob = b; source = "engine still from your footage"; } } catch (e) { } }
@@ -612,7 +688,7 @@ export default function Studio() {
     if (!blob) { const r2 = await stockScene(plan, i, text, freeMode); if (r2) { blob = r2.blob; source = r2.source; } }
     if (!blob) { setS({ status: "failed", note: note || "No picture came back" }); return null; }
     await dbPut(projectId.current + "_scene_" + i, blob, { i, text, source });
-    setS({ status: "done", blob, url: URL.createObjectURL(blob), source, note });
+    const dur = await clipDur(blob); setS({ status: "done", blob, url: URL.createObjectURL(blob), source, note, dur });
     return blob;
   }
 
@@ -677,17 +753,30 @@ export default function Studio() {
   useEffect(() => { (async () => { try { const all = await dbAll(); const x = all.find(y => y.id === "mfs_oneprompt" && y.blob); if (x) { const tx = await x.blob.text(); setOnePrompt(p => p || fixEnc(tx)); } } catch (e) { } promptLoaded.current = true; })(); }, []);
   useEffect(() => { if (!promptLoaded.current) return; const t = setTimeout(() => dbPut("mfs_oneprompt", new Blob([onePrompt || ""], { type: "text/plain" }), {}), 400); return () => clearTimeout(t); }, [onePrompt]);
   function splitPrompt() {
-    const sp = [], dr = [], vo = [], opt = {}; let t = "", len = 0;
+    const sp = [], dr = [], vo = [], opt = {}; let t = "", len = 0, clip = 0;
     fixEnc(String(onePrompt || "")).split(/\r?\n/).forEach(raw => {
       const l = raw.trim(); if (!l) { if (dr.length && dr[dr.length - 1] !== "") dr.push(""); return; }
       let m;
       if ((m = l.match(/^title\s*:\s*(.+)/i))) t = m[1].trim();
       else if ((m = l.match(/^(?:length|runtime|duration)\s*:\s*(\d+)\s*(hr|hour|h|min|m)?/i))) { const n = Number(m[1]); len = /^h/i.test(m[2] || "") ? n * 60 : n; }
+      else if ((m = l.match(/^(?:clip length|clip|clips|shot length|seconds per clip)\s*:\s*(\d+)\s*(s|sec|secs|seconds?|m|min|mins|minutes?)?/i))) { const n = Number(m[1]); clip = /^m/i.test(m[2] || "") ? n * 60 : n; }
       else if (/^\[[^\]]+\]/.test(l)) sp.push(l);
       else if ((m = l.match(/^(genre|audience|animation|camera|pace|place|grade|mood|tempo|ratio|quality|music style)\s*:\s*(.+)$/i))) opt[m[1].toLowerCase()] = m[2].trim();
       else dr.push(l);
     });
     if (t) setTitle(t);
+    // Plain words in the prompt fill the settings too, when there is no "Setting:" line for them.
+    { const prose = dr.join(" ");
+      const findIn = (items) => { for (const i of items) { const w = String(i).split(/[\/(]/)[0].trim(); if (w.length > 2 && new RegExp("\\b" + w.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&") + "\\b", "i").test(prose)) return i; } return ""; };
+      const fill = (k, items) => { if (!opt[k]) { const v = findIn(items); if (v) opt[k] = v; } };
+      fill("genre", GENRES); fill("audience", AUDIENCES); fill("animation", TOONS); fill("camera", CAMERAS); fill("pace", PACES); fill("music style", MUSIC_GENRES);
+      if (!opt.mood) { const md = MOODS.find(md => new RegExp("\\b" + md.label + "\\b", "i").test(prose)); if (md) opt.mood = md.label; }
+      if (!opt.ratio) { const r = prose.match(/\b(16:9|9:16|1:1|4:3|21:9)\b/); if (r) opt.ratio = r[1]; }
+      if (!opt.quality) { const q = prose.match(/\b(720p|1080p)\b/i); if (q) opt.quality = q[1]; }
+      if (!len) { const lm = prose.match(/\b(\d+(?:\.\d+)?)\s*[- ]?(hours?|hrs?|minutes?|mins?)\b(?!\s*(?:per|each|a)\s*clip)/i); if (lm) len = Math.round(Number(lm[1]) * (/^h/i.test(lm[2]) ? 60 : 1)); }
+      if (!clip) { const cm = prose.match(/\b(\d+)\s*[- ]?(seconds?|secs?|minutes?|mins?)\s*(?:per|each|a)\s*(?:clip|shot|scene)\b/i) || prose.match(/\b(\d+)\s*[- ]?(second|sec|minute|min)\s+(?:clips?|shots?)\b/i); if (cm) clip = Number(cm[1]) * (/^m/i.test(cm[2]) ? 60 : 1); }
+    }
+    if (clip >= 2) setClipSecs(Math.min(600, clip));
     // SETTINGS lines in the prompt choose the Advanced options (the closest listed choice wins).
     const pick = (items, v) => { const x = String(v || "").toLowerCase().replace(/[^a-z0-9]/g, ""); if (!x) return ""; return items.find(i => String(i).toLowerCase().replace(/[^a-z0-9]/g, "") === x) || items.find(i => { const y = String(i).toLowerCase().replace(/[^a-z0-9]/g, ""); return y.includes(x) || x.includes(y); }) || ""; };
     { let v;
@@ -721,7 +810,10 @@ export default function Studio() {
     setErr(""); setBusy(true); setRvMsg("Making your voices…");
     try {
       const v = await voiceIt(narr.trim(), spoken);
-      const secs = await msBlobSeconds(v.blob);
+      try { const all = await dbAll(); const sp = all.find(x => x.id === projectId.current + "_sync"); let plan = sp && sp.blob ? JSON.parse(await sp.blob.text()) : null;
+        if (!plan && scenes.length) plan = { scenes: scenes.map(x => String(x.text || "").slice(0, 400)), first: scenes.map((_, i) => i), nShots: scenes.length, total: Math.max(minutes * 60, 1) };
+        const st = plan ? await syncedTrack(v.segs || [], plan) : null; if (st) v.blob = st.blob; } catch (e) { }
+      const secs = (v.blob.type === "audio/wav" ? await audioSecs(v.blob) : 0) || await msBlobSeconds(v.blob);
       await dbPut(projectId.current + "_narr", v.blob, { text: v.text, secs });
       setNarrUrl(URL.createObjectURL(v.blob)); setNarrText(v.text); setNarrSecs(secs); setVoiceMode("engine");
       const ext = (v.blob.type || "").includes("wav") ? "wav" : "mp3";
@@ -806,6 +898,47 @@ export default function Studio() {
       setDesigning(false); setErr(String((e && e.message) || e)); setStage("");
     }
   }
+  // WHOLE-FILM LIP SYNC: every shot where a character speaks is sent once, with that shot's own line placed at the right moment
+  // (silence before and after). The narrator's shots are left alone. The film's voice track is not touched, so the sound stays in sync.
+  async function lipSyncFilm(lines, shotBlobs, plan) {
+    const SR = 16000, nS = plan.nShots, shotLen = plan.total / nS; const groups = {};
+    for (const ln of lines || []) { if (!ln.sp || !ln.buf || !ln.buf.length) continue; const j = Math.max(0, Math.min(nS - 1, Math.floor(ln.t0 / shotLen))); (groups[j] = groups[j] || []).push(ln); }
+    const keys = Object.keys(groups).map(Number).sort((a, b) => a - b); if (!keys.length) return;
+    let done = 0, ok = 0, bad = 0, credits = 0, stop = false;
+    const secsOf = (b) => new Promise(res => { let d = false; const fin = x => { if (!d) { d = true; res(x || 0); } }; const v = document.createElement("video"); v.preload = "metadata"; v.muted = true; v.onloadedmetadata = () => fin(v.duration); v.onerror = () => fin(0); setTimeout(() => fin(0), 6000); v.src = URL.createObjectURL(b); });
+    const one = async (j) => {
+      const blob = shotBlobs[j]; if (!blob || !/^video/.test(blob.type || "") || blob.size > 14000000) { bad++; return; }
+      const secs = await secsOf(blob); if (!(secs > 0.8) || secs > 10.05) { bad++; return; }
+      const n = Math.ceil(secs * SR); const pcm = new Int16Array(n); let used = 0;
+      for (const ln of groups[j]) { const off = Math.floor((ln.t0 - j * shotLen) * SR); if (off < 0 || off >= n - SR * 0.5) continue; used++; for (let k = 0; k < ln.buf.length && off + k < n; k++) { const v = Math.max(-1, Math.min(1, ln.buf[k])); pcm[off + k] = v < 0 ? v * 32768 : v * 32767; } }
+      if (!used) { bad++; return; }
+      const hd = new DataView(new ArrayBuffer(44)); const w = (p, x) => { for (let i = 0; i < x.length; i++) hd.setUint8(p + i, x.charCodeAt(i)); };
+      w(0, "RIFF"); hd.setUint32(4, 36 + n * 2, true); w(8, "WAVE"); w(12, "fmt "); hd.setUint32(16, 16, true); hd.setUint16(20, 1, true); hd.setUint16(22, 1, true); hd.setUint32(24, SR, true); hd.setUint32(28, SR * 2, true); hd.setUint16(32, 2, true); hd.setUint16(34, 16, true); w(36, "data"); hd.setUint32(40, n * 2, true);
+      const hdr = { "Content-Type": "application/json" };
+      const res = await fetch(LIPSYNC, { method: "POST", headers: hdr, body: JSON.stringify({ video: await readAsDataURL(blob), audio: await readAsDataURL(new Blob([hd.buffer, pcm.buffer], { type: "audio/wav" })), secs }) });
+      const d = await res.json().catch(() => ({ error: "server error " + res.status }));
+      if (d.error || !d.id) { bad++; if (/credit|402|insufficient|key missing/i.test(String(d.error))) stop = true; return; }
+      credits += Number(d.credits) || 0;
+      for (let t = 0; t < 90; t++) {
+        await sleep(4000);
+        const pr = await fetch(LIPSYNC, { method: "POST", headers: hdr, body: JSON.stringify({ pollId: d.id }) }); const p = await pr.json().catch(() => ({}));
+        if (p.error) { bad++; return; }
+        if (p.video) {
+          const nb = await toBlob(p.video); const ns = nb ? await secsOf(nb) : 0;
+          if (!nb || nb.size < 10000 || ns < secs * 0.8) { bad++; return; }
+          await dbPut(projectId.current + "_scene_" + j, nb, { i: j, text: "", source: "lip sync" });
+          setScenes(pv => pv.map((sc, k) => k === j ? { ...sc, blob: nb, url: URL.createObjectURL(nb), source: "lip sync" } : sc)); ok++; return;
+        }
+      }
+      bad++;
+    };
+    let next = 0;
+    const worker = async () => { while (next < keys.length && !stop) { const j = keys[next++]; setStage("Lip sync: speaking shot " + (done + 1) + " of " + keys.length + "…"); try { await one(j); } catch (e) { bad++; } done++; setPct(Math.min(99, 90 + Math.round(done / keys.length * 9))); } };
+    await Promise.all([worker(), worker(), worker()]);
+    setStage("Lip sync done on " + ok + " of " + keys.length + " speaking shots (about " + credits + " credits)." + (stop ? " Stopped: the lip-sync engine is out of credit." : ""));
+    if (bad) setErr(bad + " speaking shot" + (bad > 1 ? "s" : "") + " could not be lip synced and keep the original picture.");
+  }
+
   const makeMovie = async () => {
     setErr("");
     if (voiceMode === "mine" && !myRec) { setErr("Your recording is not loaded. Press UPLOAD MY RECORDING, choose your file, then press Make again. I will not use another voice."); return; }
@@ -838,21 +971,28 @@ export default function Studio() {
       if (!parseScenes(script).length) { while (list.length < n) list.push(list[list.length % Math.max(1, list.length)]); list = list.slice(0, n); }
       // Cut each scene into different shots (new angle each time), one per 10 s of film, so a clip never has to repeat to fill time.
       shotMap.current = null;
-      { const origN = list.length, want = Math.min(SHOT_CAP, Math.ceil(minutes * 60 / SHOT_SECS));
-        if (origN && want > origN) { const per = Math.ceil(want / origN), ex = [], first = [];
-          list.forEach(tx => { first.push(ex.length); for (let k = 0; k < per; k++) ex.push(k ? tx + "\nThe same scene, a different shot: " + ANGLES[(k - 1) % ANGLES.length] + ". Same characters, same place, same look as the shot before. Continue the story of this scene." : tx); });
+      const origList = list.slice();
+      { const origN = list.length, want = Math.min(SHOT_CAP, Math.ceil(minutes * 60 / (clipSecs || SHOT_SECS)));
+        if (origN && want > origN) {
+          // Each scene gets shots in proportion to its own time, e.g. SCENE 5 (13:00-20:00) gets 7 minutes of shots.
+          const tm = list.map(tx => { const r = /\((\d+):(\d{2})\s*[-–—]\s*(\d+):(\d{2})\)/.exec(tx); return r ? Math.max(1, (Number(r[3]) * 60 + Number(r[4])) - (Number(r[1]) * 60 + Number(r[2]))) : 0; });
+          const w = tm.every(x => x > 0) ? tm : list.map(() => 1); const sw = w.reduce((a, b) => a + b, 0);
+          const ex = [], first = [];
+          list.forEach((tx, i) => { first.push(ex.length); const per = Math.max(1, Math.round(want * w[i] / sw)); for (let k = 0; k < per; k++) ex.push(k ? tx + "\nThe same scene, a different shot: " + ANGLES[(k - 1) % ANGLES.length] + ". Same characters, same place, same look as the shot before. Continue the story of this scene." : tx); });
           shotMap.current = { first, origN }; list = ex; setStage("Cutting your " + origN + " scenes into " + ex.length + " shots, so nothing repeats…"); } }
+      const syncPlan = { scenes: origList.map(x => String(x).slice(0, 400)), first: shotMap.current ? shotMap.current.first : origList.map((_, i) => i), nShots: list.length, total: Math.max(minutes * 60, 1) };
+      try { await dbPut(projectId.current + "_sync", new Blob([JSON.stringify(syncPlan)], { type: "application/json" }), {}); } catch (e) { }
       setScenes(list.map(t => ({ text: t, status: "waiting" }))); setPct(6);
 
       // 2 — narration (yours or the engine), translated if asked
-      let nUrl = "", nText = "", nSecs = 0, firstVoice = "";
+      let nUrl = "", nText = "", nSecs = 0, firstVoice = "", lsLines = null; const shotBlobs = [];
       // Your own clips carry their own voices. With clips and no narration, the engine does not voice the script at all.
       const clipVoices = clips.length > 0 && !narr.trim() && voiceMode !== "mine";
       const spokenText = clipVoices ? "" : (narr.trim() || msSpokenOnly(script));
       if (clipVoices) setStage("Using the voices in your clips.");
       if (voiceMode === "mine" && myRec) { nUrl = myRec.url; nText = spokenText; nSecs = (await audioSecs(myRec.blob)) || (await msBlobSeconds(myRec.blob)); await dbPut(projectId.current + "_narr", myRec.blob, { text: nText, secs: nSecs }); if (tail) nSecs += tail.secs; }
       else if (spokenText) {
-        try { const v = await voiceIt(spokenText, spoken); nUrl = URL.createObjectURL(v.blob); nText = v.text; nSecs = await msBlobSeconds(v.blob); await dbPut(projectId.current + "_narr", v.blob, { text: nText, secs: nSecs }); if (lipSync) firstVoice = await readAsDataURL(v.blob.slice(0, 600000, v.blob.type)); }
+        try { const v = await voiceIt(spokenText, spoken); try { const st = await syncedTrack(v.segs || [], syncPlan); if (st) { v.blob = st.blob; lsLines = st.lines; } } catch (e) { } nUrl = URL.createObjectURL(v.blob); nText = v.text; nSecs = (v.blob.type === "audio/wav" ? await audioSecs(v.blob) : 0) || await msBlobSeconds(v.blob); await dbPut(projectId.current + "_narr", v.blob, { text: nText, secs: nSecs }); if (lipSync) firstVoice = await readAsDataURL(v.blob.slice(0, 600000, v.blob.type)); }
         catch (e) {
           if (e && e.stopFilm) throw e;
           if (myRec) { nUrl = myRec.url; nText = spokenText; nSecs = (await audioSecs(myRec.blob)) || (await msBlobSeconds(myRec.blob)); await dbPut(projectId.current + "_narr", myRec.blob, { text: nText, secs: nSecs }); if (tail) nSecs += tail.secs; setStage("Engine has no credit. Using your own recording as the voice."); }
@@ -867,8 +1007,9 @@ export default function Studio() {
 
       // 3 — music
       let mUrl = "";
+      const xmasFilm = /christmas|santa|xmas|sleigh|north pole/i.test(String(title || "") + " " + String(narr || "").slice(0, 4000) + " " + String(script || "").slice(0, 4000));
       if (musicMode === "mine" && mySong) mUrl = mySong.url;
-      else if (musicMode === "make") { try { setStage("MandaStrong Engine — composing your music…"); const u = await seRun({ kind: "music", prompt: (musicPrompt || (style + " " + kind + " score, " + (MOODS.find(m => m.id === mood) || MOODS[0]).label)) + (mGenre ? ", " + mGenre : "") + (tempo ? ", " + tempo.toLowerCase() + " tempo" : "") + ", instrumental", duration: 30 }, 6); const b = await toBlob(u); await dbPut(projectId.current + "_music", b, {}); mUrl = URL.createObjectURL(b); } catch (e) { setErr("Music: " + e.message + ". Using the library track instead."); mUrl = await libraryMusic((MOODS.find(m => m.id === mood) || MOODS[0]).url); } }
+      else if (musicMode === "make" || (musicMode === "library" && xmasFilm)) { try { setStage("MandaStrong Engine — composing your music…"); const u = await seRun({ kind: "music", prompt: (musicPrompt || (xmasFilm ? XMAS_MUSIC : (style + " " + kind + " score, " + (MOODS.find(m => m.id === mood) || MOODS[0]).label))) + (mGenre ? ", " + mGenre : "") + (tempo ? ", " + tempo.toLowerCase() + " tempo" : "") + ", instrumental", duration: 60 }, 6); const b = await toBlob(u); await dbPut(projectId.current + "_music", b, {}); mUrl = URL.createObjectURL(b); } catch (e) { setErr("Music: " + e.message + ". Using the library track instead."); mUrl = await libraryMusic((MOODS.find(m => m.id === mood) || MOODS[0]).url); } }
       else if (musicMode === "library") mUrl = await libraryMusic((MOODS.find(m => m.id === mood) || MOODS[0]).url);
       setMusicUrl(mUrl); setPct(24);
 
@@ -877,10 +1018,11 @@ export default function Studio() {
       await planScenes(list);
       // 4 — scenes, ONE at a time (the engine limit allows one request at a time; throttled ones wait and retry by themselves)
       let next = 0, finished = 0; const failed = [];
-      const worker = async () => { while (next < list.length) { const i = next++; setStage("MandaStrong Engine — making scene " + (i + 1) + " of " + list.length + "…"); const b = await makeScene(i, list[i], { firstVoice }); if (!b) failed.push(i); finished++; setPct(24 + Math.round(finished / list.length * 74)); } };
+      const worker = async () => { while (next < list.length) { const i = next++; setStage("MandaStrong Engine — making scene " + (i + 1) + " of " + list.length + "…"); const b = await makeScene(i, list[i], { firstVoice }); if (!b) failed.push(i); else shotBlobs[i] = b; finished++; setPct(24 + Math.round(finished / list.length * 74)); } };
       await worker();
       // Any scene that came back empty gets one more try before the film is joined.
-      for (const i of failed) { setStage("Trying scene " + (i + 1) + " again…"); await makeScene(i, list[i], { firstVoice }); }
+      for (const i of failed) { setStage("Trying scene " + (i + 1) + " again…"); { const b2 = await makeScene(i, list[i], { firstVoice }); if (b2) shotBlobs[i] = b2; } }
+      if (lipSync && lsLines && !freeMode) { try { await lipSyncFilm(lsLines, shotBlobs, syncPlan); } catch (e) { setErr("Lip sync stopped: " + (e.message || e) + ". The film keeps its original pictures."); } }
       // Then every scene is joined into ONE film file automatically.
       autoJoin.current = true;
       setPct(100); setStage("All scenes made. Joining them into one film — keep this tab open."); setDone(true);
@@ -911,7 +1053,7 @@ export default function Studio() {
     const iv = setInterval(() => {
       const c = (Date.now() - t0) / 1000; setClock(c);
       const k = Math.min(ready.length - 1, Math.floor(c / sceneLen));
-      if (k !== curRef.current && ready[k]) { curRef.current = k; const v = vRef.current; if (v) { v.style.opacity = 0; setTimeout(() => { setCur(k); v.src = ready[k].url; v.loop = !isStill(ready[k]); v.playbackRate = slowOf(ready[k]); v.play().catch(() => { }); setTimeout(() => { v.style.opacity = 1; }, 120); }, 450); } else setCur(k); }
+      if (k !== curRef.current && ready[k]) { curRef.current = k; const v = vRef.current; if (v) { v.style.opacity = 0; setTimeout(() => { setCur(k); v.src = ready[k].url; v.loop = !isStill(ready[k]); v.playbackRate = rateOf(ready[k], sceneLen); v.play().catch(() => { }); setTimeout(() => { v.style.opacity = 1; }, 120); }, 450); } else setCur(k); }
       const m = mRef.current; const talking = (nRef.current && !nRef.current.paused) || (tRef.current && !tRef.current.paused); if (m) m.volume = Math.max(0, Math.min(1, mVol * (duck && activeNarr && talking ? 0.45 : 1)));
       if (c >= total) { setPlaying(false); try { nRef.current && nRef.current.pause(); tRef.current && tRef.current.pause(); mRef.current && mRef.current.pause(); vRef.current && vRef.current.pause(); } catch (e) { } }
     }, 200);
@@ -922,7 +1064,7 @@ export default function Studio() {
     const v = vRef.current, n = nRef.current, m = mRef.current;
     if (playing) { [v, n, m, tRef.current].forEach(x => { try { x && x.pause(); } catch (e) { } }); setPlaying(false); return; }
     if (clock >= total) { setClock(0); setCur(0); if (v) v.src = ready[0].url; if (n) n.currentTime = 0; if (m) m.currentTime = 0; if (tRef.current) { tRef.current.pause(); tRef.current.currentTime = 0; } }
-    if (v) { if (!v.src) v.src = ready[cur].url; v.loop = !isStill(ready[cur]); v.playbackRate = slowOf(ready[cur]); v.muted = !hasSound(ready[cur]); v.volume = cVol; v.play().catch(() => { }); }
+    if (v) { if (!v.src) v.src = ready[cur].url; v.loop = !isStill(ready[cur]); v.playbackRate = rateOf(ready[cur], sceneLen); v.muted = !hasSound(ready[cur]); v.volume = cVol; v.play().catch(() => { }); }
     if (n && activeNarr) { const t = tRef.current; if (useTail && t && n.ended && t.currentTime > 0) { t.volume = vVol; t.play().catch(() => { }); } else { n.volume = vVol; n.play().catch(() => { }); } }
     if (m && musicUrl) { m.loop = true; m.play().catch(() => { }); }
     setPlaying(true);
@@ -1013,7 +1155,7 @@ export default function Studio() {
       ctx.fillStyle = tint; ctx.fillRect(0, 0, W, H);
       if (subs && !opts.trailer) { const c = caps.find(x => tSec >= x.start && tSec < x.end); if (c) { ctx.font = "600 " + Math.round(H * 0.036) + "px Inter, sans-serif"; ctx.textAlign = "center"; const lines = wrapText(ctx, c.text, W * 0.86); lines.forEach((ln, k) => { const y = H * 0.92 - (lines.length - 1 - k) * H * 0.048; ctx.lineWidth = 5; ctx.strokeStyle = "rgba(0,0,0,.8)"; ctx.strokeText(ln, W / 2, y); ctx.fillStyle = "#fff"; ctx.fillText(ln, W / 2, y); }); } }
       if (logoImg) { const lw = W * 0.1, lh = lw * logoImg.height / logoImg.width; ctx.globalAlpha = 0.8; ctx.drawImage(logoImg, W - lw - W * 0.03, H * 0.03, lw, lh); ctx.globalAlpha = 1; }
-      if (watermark && plan === "starter") { ctx.font = Math.round(H * 0.03) + "px Inter"; ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.textAlign = "left"; ctx.fillText("Mandas 1 Shot Film Studio", W * 0.03, H * 0.96); }
+      if (watermark && plan === "starter") { ctx.font = Math.round(H * 0.03) + "px Inter"; ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.textAlign = "left"; ctx.fillText("The 1 Shot Film Studio", W * 0.03, H * 0.96); }
       showPv();
     };
     const card = (lines, big) => { ctx.fillStyle = "#0E0F12"; ctx.fillRect(0, 0, W, H); ctx.textAlign = "center"; ctx.fillStyle = "#E6C98E"; ctx.font = Math.round(H * (big ? 0.11 : 0.06)) + "px Inter, sans-serif"; ctx.fillText(lines[0] || "", W / 2, H * 0.42); ctx.fillStyle = "#F3EDE2"; ctx.font = Math.round(H * 0.032) + "px Inter, sans-serif"; lines.slice(1).forEach((l, k) => ctx.fillText(l, W / 2, H * 0.55 + k * H * 0.05)); showPv(); };
@@ -1026,7 +1168,7 @@ export default function Studio() {
     if (title) { const tEnd = Date.now() + 3000; while (Date.now() < tEnd && !stopExp.current) { card([title, kind], true); await sleep(33); } }
     if (nEl) try { await nEl.play(); } catch (e) { }
     const tStart = Date.now();
-    const mkV = s => { const v = document.createElement("video"); v._clip = /^(your clip|engine still from your footage|engine)$/.test(String(s.source || "")); v.src = s.url; v.muted = !hasSound(s); v.loop = !isStill(s); v.playbackRate = slowOf(s); v.playsInline = true; v.preload = "auto"; v.setAttribute("playsinline", ""); v.setAttribute("webkit-playsinline", ""); v.style.cssText = "position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1"; try { document.body.appendChild(v); } catch (e) { }
+    const mkV = s => { const v = document.createElement("video"); v._clip = /^(your clip|engine still from your footage|engine)$/.test(String(s.source || "")); v.src = s.url; v.muted = !hasSound(s); v.loop = !isStill(s); v.playbackRate = rateOf(s, len); v.playsInline = true; v.preload = "auto"; v.setAttribute("playsinline", ""); v.setAttribute("webkit-playsinline", ""); v.style.cssText = "position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1"; try { document.body.appendChild(v); } catch (e) { }
       if (!v.muted) { try { const cg = ac.createGain(); cg.gain.value = cVol; ac.createMediaElementSource(v).connect(cg); cg.connect(dest); } catch (e) { v.muted = true; } }
       v._ok = new Promise(res => { v.onloadeddata = res; v.oncanplay = res; v.onerror = res; setTimeout(res, 8000); }); return v; };
     const FADE = Math.min(1.2, len * 0.3);
@@ -1047,7 +1189,7 @@ export default function Studio() {
       if (endEl) try { endEl.play(); } catch (e) { }
       const names = creditNames.split("\n").map(s => s.trim()).filter(Boolean);
       const cEnd = Date.now() + Math.max(6000, names.length * 1500 + 4000);
-      while (Date.now() < cEnd && !stopExp.current) { card([title || "The End", ...names.slice(0, 8), "Made with Mandas 1 Shot Film Studio"]); await sleep(33); }
+      while (Date.now() < cEnd && !stopExp.current) { card([title || "The End", ...names.slice(0, 8), "Made with The 1 Shot Film Studio"]); await sleep(33); }
     }
     if (opts.trailer && title) { const e2 = Date.now() + 2500; while (Date.now() < e2) { card([title, "Coming soon"], true); await sleep(33); } }
     try { nEl && nEl.pause(); tEl && tEl.pause(); endEl && endEl.pause(); bed && bed.stop(); } catch (e) { }
@@ -1161,14 +1303,26 @@ export default function Studio() {
   };
   // A film that came back in pieces is put back together on this device, then saved.
   const getJoined = async () => {
-    if (join.urls.length === 1) return;
     try { setJoin(j => ({ ...j, msg: "Downloading your film…" })); const parts = []; for (const u of join.urls) parts.push(await (await fetch(u)).blob()); const blob = new Blob(parts, { type: "video/mp4" }); await saveFile({ blob, name: join.fileName, url: URL.createObjectURL(blob) }); setJoin(j => ({ ...j, msg: "Your film is ready." })); } catch (e) { setJoin(j => ({ ...j, msg: "Download failed — try again." })); }
   };
-  const saveFile = async (f, toPhotos) => {
-    try { const file = new File([f.blob], f.name, { type: f.blob.type }); if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: f.name }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
-    const a = document.createElement("a"); a.href = f.url; a.download = f.name; document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 1500);
+  // Every download asks for a file name, then lets the user choose where to save it.
+  const [pendingSave, setPendingSave] = useState(null);
+  const shareOrDownload = async (file, url) => {
+    try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: file.name }); return true; } } catch (e) { if (e && e.name === "AbortError") return true; if (e && e.name === "NotAllowedError") { setPendingSave({ file, url }); return true; } }
+    const a = document.createElement("a"); a.href = url || URL.createObjectURL(file); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 1500); return true;
   };
-  const shareFilm = async () => { const f = exp.files[0]; if (f) return saveFile(f); try { await navigator.share({ title: title || "My film", text: "Made with Mandas 1 Shot Film Studio", url: location.origin }); } catch (e) { } };
+  const saveFile = async (f, toPhotos) => {
+    const m = /\.[a-z0-9]{2,5}$/i.exec(f.name || ""); const ext = m ? m[0] : "";
+    let nm = window.prompt("Name your file:", (f.name || "My_Film").replace(/\.[a-z0-9]{2,5}$/i, ""));
+    if (nm === null) return;
+    nm = (nm.trim() || "My_Film").replace(/[\\/:*?"<>|]/g, "_"); if (ext && !nm.toLowerCase().endsWith(ext.toLowerCase())) nm += ext;
+    if (window.showSaveFilePicker) {
+      try { const h = await window.showSaveFilePicker({ suggestedName: nm }); const w = await h.createWritable(); await w.write(f.blob); await w.close(); return; } catch (e) { if (e && e.name === "AbortError") return; }
+    }
+    const file = new File([f.blob], nm, { type: f.blob.type || "application/octet-stream" });
+    await shareOrDownload(file, f.url);
+  };
+  const shareFilm = async () => { const f = exp.files[0]; if (f) return saveFile(f); try { await navigator.share({ title: title || "My film", text: "Made with The 1 Shot Film Studio", url: location.origin }); } catch (e) { } };
   const poster = async () => {
     const s = ready[Math.floor(ready.length / 2)]; if (!s) return;
     const [W, H] = sizeFor(ratio === "16:9" ? "9:16" : ratio, "1080p"); const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const ctx = cv.getContext("2d");
@@ -1177,7 +1331,7 @@ export default function Studio() {
     const vw = v.videoWidth || W, vh = v.videoHeight || H, sc = Math.max(W / vw, H / vh); try { ctx.drawImage(v, (W - vw * sc) / 2, (H - vh * sc) / 2, vw * sc, vh * sc); } catch (e) { }
     const g = ctx.createLinearGradient(0, H * 0.5, 0, H); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,.92)"); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     ctx.textAlign = "center"; ctx.fillStyle = "#E6C98E"; ctx.font = Math.round(W * 0.12) + "px Inter, sans-serif"; ctx.fillText(title || "My Film", W / 2, H * 0.84);
-    ctx.fillStyle = "#F3EDE2"; ctx.font = Math.round(W * 0.028) + "px Inter, sans-serif"; ctx.fillText(kind.toUpperCase() + " · MANDAS 1 SHOT FILM STUDIO", W / 2, H * 0.9);
+    ctx.fillStyle = "#F3EDE2"; ctx.font = Math.round(W * 0.028) + "px Inter, sans-serif"; ctx.fillText(kind.toUpperCase() + " · THE 1 SHOT FILM STUDIO", W / 2, H * 0.9);
     const blob = await new Promise(res => cv.toBlob(res, "image/png")); await saveFile({ blob, name: (title || "My_Film").replace(/[^\w]+/g, "_") + "_Poster.png", url: URL.createObjectURL(blob) });
   };
   const saveProject = async () => {
@@ -1202,7 +1356,7 @@ export default function Studio() {
       <div className="mfs">
         {simple && <div>
           <div className="mini">
-            <div className="wm">Mandas 1 Shot Film Studio</div>
+            <div className="wm">The 1 Shot Film Studio</div>
             <div className="mr">{user ? <><span style={{ opacity: .7 }}>{user.email}</span><button className="lk" onClick={logOut}>Log out</button></> : <button className="lk" onClick={() => setShowLogin(v => !v)}>Log in</button>}<button className="lk" onClick={() => { const em = (user && user.email) || email; window.open(TOPUP_LINK + (em ? "?prefilled_email=" + encodeURIComponent(em) : ""), "_blank", "noopener"); }}>Buy extra usage</button><button className="sub" onClick={() => { const em = (user && user.email) || email; window.open(SUB_LINK + (em ? "?prefilled_email=" + encodeURIComponent(em) : ""), "_blank", "noopener"); }}>Subscribe · $50/month</button></div>
           </div>
           {!user && showLogin && <div style={{ marginTop: 8 }}><div className="login">
@@ -1214,7 +1368,7 @@ export default function Studio() {
         </div>}
         {!simple && <div>
         <div className="top">
-          <div><div className="eng">POWERED BY THE MANDASTRONG ENGINE</div><h1 className="brand" style={{ fontSize: "clamp(26px,4.4vw,38px)", margin: "6px 0 0" }}>Mandas 1 Shot Film Studio</h1></div>
+          <div><div className="eng">POWERED BY THE MANDASTRONG ENGINE</div><h1 className="brand" style={{ fontSize: "clamp(26px,4.4vw,38px)", margin: "6px 0 0" }}>The 1 Shot Film Studio</h1></div>
         </div>
 
         {user ? (
@@ -1242,7 +1396,7 @@ export default function Studio() {
           <p>Describe your film. The engine makes it.</p>
         </div>}
         {!simple && <div className="lab">ONE PROMPT — PUT EVERYTHING IN ONE BOX</div>}
-        <textarea className="ta op" value={onePrompt} onChange={e => setOnePrompt(fixEnc(e.target.value))} placeholder={simple ? "Describe your film in as much detail as you like: the story, the characters, the look, the length.\n\nOr paste your full script with each speaker's name in [BRACKETS]." : "Title: Santa's List: The Book of Names\nLength: 60 min\n[SANTA] Ho ho ho!\n[LILY] I made a list!\nEverything else (directions, description, voices) goes on its own lines."} />
+        <textarea className="ta op" value={onePrompt} onChange={e => setOnePrompt(fixEnc(e.target.value))} placeholder={simple ? "Paste your prompt, script and voices here.\n\nPROMPT: describe your film: story, look, camera, light, weather, sound, length and clip length (e.g. 60 min, 60 seconds per clip).\nSCRIPT: every spoken line with the speaker in [BRACKETS].\nVOICES: who uses which voice, e.g. DOXY'S VOICE: Santa, Max.\n\nThe settings fill themselves in from your words." : "Title: Santa's List: The Book of Names\nLength: 60 min\n[SANTA] Ho ho ho!\n[LILY] I made a list!\nEverything else (directions, description, voices) goes on its own lines."} />
         <button className="go" style={{ marginTop: 10, display: simple ? "none" : undefined }} onClick={() => { const n = splitPrompt(); if (n) setAutoMake(true); else designFromIdea(); }}>SPLIT AND MAKE MY MOVIE</button>
         {simple && <div className="len">
           <div className="lenTop"><span>FILM LENGTH</span><b>{minutes >= 60 ? Math.floor(minutes / 60) + " hr" + (minutes % 60 ? " " + (minutes % 60) + " min" : "") : minutes + " min"}</b></div>
@@ -1256,8 +1410,11 @@ export default function Studio() {
           <button className="b" style={{ display: simple ? "none" : undefined }} onClick={() => { const n = splitPrompt(); setAddMsg(n ? "Split into the boxes below. " + n + " spoken lines." : "No [NAME] lines found. Put each spoken line as [NAME] line."); }}>SPLIT INTO THE BOXES ONLY</button>
           {simple ? <button onClick={() => setShowGuide(v => !v)}>{showGuide ? "Close prompt guide" : "Prompt guide"}</button> : <button className="b s" onClick={() => setShowGuide(v => !v)}>{showGuide ? "CLOSE PROMPT GUIDE" : "PROMPT GUIDE"}</button>}
           {(!busy && !designing) && (simple ? <button onClick={reVoice}>Re-voice my film</button> : <button className="b s" onClick={reVoice}>RE-VOICE MY FILM</button>)}
+          {(!busy && !designing) && (simple ? <button onClick={lipTest} disabled={!!(lsTest && lsTest.busy)}>Lip sync test</button> : <button className="b" onClick={lipTest} disabled={!!(lsTest && lsTest.busy)}>LIP SYNC TEST</button>)}
         </div>
         {rvMsg && <div className="msg" style={{ marginTop: 6 }}>{rvMsg}</div>}
+        {lsTest && lsTest.msg && <div className="msg" style={{ marginTop: 6 }}>{lsTest.msg}</div>}
+        {lsTest && lsTest.url && <video src={lsTest.url} controls playsInline style={{ width: "100%", maxWidth: 520, marginTop: 8, borderRadius: 8 }} />}
         {showGuide && <div className="guide" style={{ whiteSpace: "normal" }}>
           <div style={{ fontWeight: 600, marginBottom: 8 }}>FILL IN WHAT YOU KNOW. LEAVE THE REST TO THE ENGINE.</div>
           <div style={{ display: "grid", gap: 8 }}>
@@ -1349,7 +1506,7 @@ export default function Studio() {
           <div><span className="lbl">CHARACTER VOICES</span><button className={"c" + (charVoices ? " on" : "")} style={{ width: "100%" }} onClick={() => setCharVoices(!charVoices)}>{charVoices ? "Auto-cast from script" : "Narrator only"}</button></div>
           <div><span className="lbl">VOICE SPEED {Number(speed).toFixed(1)}×</span><input type="range" className="rng" min={0.7} max={1.3} step={0.05} value={speed} onChange={e => setSpeed(Number(e.target.value))} /></div>
         </div>
-        <div className="row" style={{ marginTop: 8 }}><Toggle on={lipSync} set={setLipSync}>Lip sync {lipSync ? "ON" : "OFF"}</Toggle>{lipSync && !photos.length && <span className="msg">Add a face photo for lip sync.</span>}</div>
+        <div className="row" style={{ marginTop: 8 }}><Toggle on={lipSync} set={setLipSync}>Lip sync {lipSync ? "ON" : "OFF"}</Toggle>{lipSync && <span className="msg">Every shot where a character speaks is lip synced. About 30 credits per second of those shots.</span>}</div>
 
         <div className="lab">6 · LANGUAGE</div>
         <div className="g3">
@@ -1410,7 +1567,7 @@ export default function Studio() {
         </div>
 
         <div style={{ marginTop: 18, border: "1px solid var(--line)", borderRadius: 3, padding: 12, display: simple ? "none" : "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", fontSize: 13 }}>
-          <span>Before you start: {minutes} min · {Math.max(sceneCount, clips.length)} scenes · up to {Math.max(sceneCount, clips.length, Math.min(SHOT_CAP, Math.ceil(minutes * 60 / SHOT_SECS)))} shots (one new shot every {SHOT_SECS} seconds; your own clips count too) · {Math.max(1, castNames)} voice{castNames > 1 ? "s" : ""} · {langCount} language{langCount > 1 ? "s" : ""}</span>
+          <span>Before you start: {minutes} min · {Math.max(sceneCount, clips.length)} scenes · up to {Math.max(sceneCount, clips.length, Math.min(SHOT_CAP, Math.ceil(minutes * 60 / (clipSecs || SHOT_SECS))))} shots (one new shot every {clipSecs || SHOT_SECS} seconds; your own clips count too) · {Math.max(1, castNames)} voice{castNames > 1 ? "s" : ""} · {langCount} language{langCount > 1 ? "s" : ""}</span>
           <span style={{ color: "var(--gold)", fontWeight: 700 }}>About {est} min to make</span>
         </div>
         <button className="go" onClick={() => { if (simple && onePrompt.trim()) { const n = splitPrompt(); if (n) setAutoMake(true); else designFromIdea(); } else makeMovie(); }} disabled={busy || designing}>{designing ? "WRITING YOUR FILM…" : busy ? "MAKING YOUR MOVIE…" : "MAKE MY MOVIE"}</button>
@@ -1462,8 +1619,8 @@ export default function Studio() {
         {(exp.busy || exp.msg) && <div className="msg">{exp.busy && <div className="livebox"><canvas ref={pvRef} /><span className="livetag">● LIVE</span></div>}<div className="prow">{exp.busy && <span className="spin" aria-hidden="true" />}<span>{exp.msg}</span></div><div className="pb"><i style={{ width: exp.pct + "%" }} /></div></div>}
         {packMsg && <div className="msg">{packMsg}</div>}
         {(join.busy || join.msg) && <div className="msg">{join.msg}<div className="pb"><i style={{ width: join.pct + "%" }} /></div></div>}
-        {join.urls.length > 0 && <div className="row" style={{ marginTop: 8 }}>{join.urls.length === 1 ? <a className="b g" style={{ textDecoration: "none", padding: "13px 22px" }} href={join.urls[0]} download={join.fileName}>⬇ DOWNLOAD MY FILM · {join.fileName}</a> : <button className="b g" onClick={getJoined}>⬇ DOWNLOAD MY FILM · {join.fileName}</button>}</div>}
-        {(exp.files.length > 0 || join.urls.length > 0 || (done && !busy && savedFilms.length > 0 && !exp.busy && !join.busy)) && (() => { const f = exp.files[0] || (savedFilms[0] && { blob: savedFilms[0].blob, name: savedFilms[0].name, url: URL.createObjectURL(savedFilms[0].blob) }); const nm = (title && title.trim()) || (f && f.name) || (join.fileName || "My film"); const go = () => { if (exp.files[0]) saveFile(exp.files[0]); else if (join.urls.length > 1) getJoined(); else if (join.urls.length === 1) { const a = document.createElement("a"); a.href = join.urls[0]; a.download = join.fileName; document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 1500); } else if (f) saveFile(f); }; return <div style={{ marginTop: 14, padding: 16, borderRadius: 6, background: "linear-gradient(135deg,#ffe08a,#ffb938)", color: "#000", textAlign: "center", boxShadow: "0 0 24px rgba(255,200,80,.55)" }}><div style={{ fontSize: 13, fontWeight: 800, letterSpacing: ".1em" }}>YOUR FILM IS READY</div><div style={{ fontSize: 22, fontWeight: 800, margin: "6px 0 12px", wordBreak: "break-word" }}>{nm}</div><button onClick={go} style={{ width: "100%", padding: "16px 10px", fontSize: 18, fontWeight: 800, border: "3px solid #000", borderRadius: 6, background: "#000", color: "#ffd45e", cursor: "pointer" }}>⬇ PRESS HERE TO SAVE YOUR FILM</button></div>; })()}
+        {join.urls.length > 0 && <div className="row" style={{ marginTop: 8 }}><button className="b g" onClick={getJoined}>⬇ DOWNLOAD MY FILM · {join.fileName}</button></div>}
+        {(exp.files.length > 0 || join.urls.length > 0 || (done && !busy && savedFilms.length > 0 && !exp.busy && !join.busy)) && (() => { const f = exp.files[0] || (savedFilms[0] && { blob: savedFilms[0].blob, name: savedFilms[0].name, url: URL.createObjectURL(savedFilms[0].blob) }); const nm = (title && title.trim()) || (f && f.name) || (join.fileName || "My film"); const go = () => { if (exp.files[0]) saveFile(exp.files[0]); else if (join.urls.length > 0) getJoined(); else if (f) saveFile(f); }; return <div style={{ marginTop: 14, padding: 16, borderRadius: 6, background: "linear-gradient(135deg,#ffe08a,#ffb938)", color: "#000", textAlign: "center", boxShadow: "0 0 24px rgba(255,200,80,.55)" }}><div style={{ fontSize: 13, fontWeight: 800, letterSpacing: ".1em" }}>YOUR FILM IS READY</div><div style={{ fontSize: 22, fontWeight: 800, margin: "6px 0 12px", wordBreak: "break-word" }}>{nm}</div><button onClick={go} style={{ width: "100%", padding: "16px 10px", fontSize: 18, fontWeight: 800, border: "3px solid #000", borderRadius: 6, background: "#000", color: "#ffd45e", cursor: "pointer" }}>⬇ PRESS HERE TO SAVE YOUR FILM</button></div>; })()}
         {exp.files.length > 0 && <div className="row" style={{ marginTop: 8 }}>{exp.files.map(f => <button key={f.name} className="b s" onClick={() => saveFile(f)}>⬇ {f.name}</button>)}</div>}
 
         <div className="tl">
@@ -1500,7 +1657,8 @@ export default function Studio() {
             </div>)}</div>}
         </div>
         </div>
-        <div className="ft">{simple ? "Powered by the MandaStrong Engine" : "Mandas 1 Shot Film Studio · Powered by the MandaStrong Engine"}</div>
+        {pendingSave && <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.75)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}><div style={{ background: "#111", border: "1px solid #c9a64a", borderRadius: 8, padding: 20, maxWidth: 420, width: "100%", textAlign: "center" }}><div style={{ color: "#f3e6c0", fontWeight: 700, marginBottom: 6 }}>{pendingSave.file.name}</div><div style={{ color: "#bba", fontSize: 13, marginBottom: 14 }}>Your file is ready. Tap Save, then choose where to keep it.</div><button className="b g" style={{ width: "100%" }} onClick={async () => { const p = pendingSave; setPendingSave(null); try { await navigator.share({ files: [p.file], title: p.file.name }); } catch (e) { if (!(e && e.name === "AbortError")) { const a = document.createElement("a"); a.href = p.url || URL.createObjectURL(p.file); a.download = p.file.name; document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 1500); } } }}>SAVE</button><button className="b s" style={{ width: "100%", marginTop: 8 }} onClick={() => setPendingSave(null)}>Cancel</button></div></div>}
+        <div className="ft">{simple ? "Powered by the MandaStrong Engine" : "The 1 Shot Film Studio · Powered by the MandaStrong Engine"}</div>
       </div>
     </div>
   );
