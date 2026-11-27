@@ -772,6 +772,19 @@ export default function Studio() {
       else if ((m = l.match(/^(genre|audience|animation|camera|pace|place|grade|mood|tempo|ratio|quality|music style)\s*:\s*(.+)$/i))) opt[m[1].toLowerCase()] = m[2].trim();
       else dr.push(l);
     });
+    // A screenplay pasted without [NAME] lines: read each speaker's name, then their line, here on the page (no film writer needed).
+    if (!sp.length) {
+      const NAMES = /^(LILY & MAX|LILY|MAX|JINGLE|SANTA|MRS\. THOMPSON|MR\. THOMPSON|PEPPER|HOLLY|THOMAS|FIZZ|SARAH|EMMA)$/;
+      const L = fixEnc(String(onePrompt || "")).split(/\r?\n/).map(x => x.trim());
+      for (let i = 0; i < L.length; i++) {
+        if (!NAMES.test(L[i])) continue;
+        let j = i + 1; while (j < L.length && /^\(.*\)$/.test(L[j])) j++;
+        if (j >= L.length || !L[j] || NAMES.test(L[j])) continue;
+        let line = L[j];
+        if (/^\((beat|pause)\)$/i.test(L[j + 1] || "") && L[j + 2] && !NAMES.test(L[j + 2])) line += " " + L[j + 2];
+        sp.push("[" + L[i] + "] " + line);
+      }
+    }
     if (t) setTitle(t);
     // Plain words in the prompt fill the settings too, when there is no "Setting:" line for them.
     { const prose = dr.join(" ");
