@@ -583,7 +583,7 @@ export default function Studio() {
     const cast = msParseCast(t); let parts = []; let lostLines = 0; const segs = [];
     if ((charVoices || charRecs.length) && cast.speakers.length >= 2) {
       const cmap = msCastVoices(cast.speakers, narrator, t);
-      const umap = charVoiceMap(cast.speakers); const uid = {}; const bmap = builtinFor(cast.speakers); for (const k of Object.keys(bmap)) delete umap[k];
+      const umap = charVoiceMap(cast.speakers); const uid = {}; const bmap0 = builtinFor(cast.speakers); const bmap = {}; for (const k of Object.keys(bmap0)) if (!umap[k]) bmap[k] = bmap0[k]; /* a character your directions or an uploaded voice name already gives a voice keeps that upload; the built-in voice covers the rest */
       // Nobody has to say who uses which voice: any character without a voice yet gets one of YOUR uploaded voices automatically (unused voices first).
       if (charRecs.length) { const usedR = new Set(Object.values(umap)); let rr = 0; for (const sp of cast.speakers) { if (umap[sp.key] || bmap[sp.key]) continue; const free_ = charRecs.filter(r => !usedR.has(r)); const pick = free_.length ? free_[0] : charRecs[rr++ % charRecs.length]; umap[sp.key] = pick; usedR.add(pick); } }
       for (const k of Object.keys(umap)) { setStage("Copying " + umap[k].name + "'s voice for " + ((cast.speakers.find(x => x.key === k) || {}).label || k) + "…"); uid[k] = await cloneOf(umap[k]); }
