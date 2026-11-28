@@ -551,6 +551,7 @@ export default function Studio() {
 
   const voiceMeta = (id) => { const v = VOICE_CHARACTERS.find(x => x.id === id) || VOICE_CHARACTERS.find(x => x.id === "james"); return { voice: v.engineVoice || v.id, gender: v.gender || "", origin: v.origin || "", speed: Number(speed) || 1 }; };
 
+  const goProjects = () => { const e = document.getElementById("mfs-projects"); if (e) e.scrollIntoView({ behavior: "smooth", block: "start" }); };
   // LIP SYNC TEST: one of YOUR clips and one of Lily's lines, sent once. About 300 credits. Nothing else in the film changes.
   const lipTest = async () => {
     const c = clips[0];
@@ -1454,6 +1455,7 @@ export default function Studio() {
           {simple ? <button onClick={() => setShowGuide(v => !v)}>{showGuide ? "Close prompt guide" : "Prompt guide"}</button> : <button className="b s" onClick={() => setShowGuide(v => !v)}>{showGuide ? "CLOSE PROMPT GUIDE" : "PROMPT GUIDE"}</button>}
           {(!busy && !designing) && (simple ? <button onClick={reVoice}>Re-voice my film</button> : <button className="b s" onClick={reVoice}>RE-VOICE MY FILM</button>)}
           {(!busy && !designing) && (simple ? <button onClick={lipTest} disabled={!!(lsTest && lsTest.busy)}>Lip sync test</button> : <button className="b" onClick={lipTest} disabled={!!(lsTest && lsTest.busy)}>LIP SYNC TEST</button>)}
+          {simple ? <button onClick={goProjects}>My Projects</button> : <button className="b s" onClick={goProjects}>MY PROJECTS</button>}
         </div>
         {rvMsg && <div className="msg" style={{ marginTop: 6 }}>{rvMsg}</div>}
         {lsTest && lsTest.msg && <div className="msg" style={{ marginTop: 6 }}>{lsTest.msg}</div>}
@@ -1666,7 +1668,7 @@ export default function Studio() {
         {(exp.files.length > 0 || join.urls.length > 0 || (done && !busy && savedFilms.length > 0 && !exp.busy && !join.busy)) && (() => { const f = exp.files[0] || (savedFilms[0] && { blob: savedFilms[0].blob, name: savedFilms[0].name, url: URL.createObjectURL(savedFilms[0].blob) }); const nm = (title && title.trim()) || (f && f.name) || (join.fileName || "My film"); const go = () => { if (exp.files[0]) saveFile(exp.files[0]); else if (join.urls.length > 0) getJoined(); else if (f) saveFile(f); }; return <div style={{ marginTop: 14, padding: 16, borderRadius: 6, background: "linear-gradient(135deg,#ffe08a,#ffb938)", color: "#000", textAlign: "center", boxShadow: "0 0 24px rgba(255,200,80,.55)" }}><div style={{ fontSize: 13, fontWeight: 800, letterSpacing: ".1em" }}>YOUR FILM IS READY</div><div style={{ fontSize: 22, fontWeight: 800, margin: "6px 0 12px", wordBreak: "break-word" }}>{nm}</div><button onClick={go} style={{ width: "100%", padding: "16px 10px", fontSize: 18, fontWeight: 800, border: "3px solid #000", borderRadius: 6, background: "#000", color: "#ffd45e", cursor: "pointer" }}>⬇ PRESS HERE TO SAVE YOUR FILM</button></div>; })()}
         {exp.files.length > 0 && <div className="row" style={{ marginTop: 8 }}>{exp.files.map(f => <button key={f.name} className="b s" onClick={() => saveFile(f)}>⬇ {f.name}</button>)}</div>}
 
-        <div className="tl">
+        <div className="tl" id="mfs-projects">
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", color: "var(--gold)", marginBottom: 6 }}>MY PROJECTS · EVERY FILM IS KEPT · TAP OPEN TO GO BACK</div>
           {projects.length === 0 ? <div className="msg">No projects yet. Every film you make is kept here automatically.</div> :
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{projects.map(p => <div key={p.id} className="row" style={{ alignItems: "center" }}>
